@@ -1,25 +1,29 @@
-var expenseList = JSON.parse(localStorage.getItem('expenseItems')) || [  ];
-var incomeList = JSON.parse(localStorage.getItem('incomeItems')) || [];
-
-var printExpense = function() {
-    
-}
-
-
+var expenseAmountNumberArr = [];
+var incomeAmountNumberArr = [];
 
 
 $('.add-expense').on('click', function() {
+    //get the values of the form
     var expenseName = $('#expenseName').val().trim();
     var expenseAmount = $('#expenseAmount').val().trim();
 
+    // create p tags
     var expenseNameText = $('<p>');
     var expenseAmountText = $('<p>');
 
+    //change the p tags text
     expenseNameText.text(expenseName);
     expenseAmountText.text(expenseAmount);
 
+    //print out the p tags to screen
     $('.expenses-name').append(expenseNameText);
     $('.expenses-amount').append(expenseAmountText);
+
+    //take the expense number input and make it an iterger
+    expenseAmountNumber = parseInt(expenseAmount);
+    
+    //push the intergers into the array
+    expenseAmountNumberArr.push(expenseAmountNumber);
 
     var expenseItems = {
         name: expenseName,
@@ -33,8 +37,21 @@ $('.add-expense').on('click', function() {
     $('#expenseName').val("")
     $('#expenseAmount').val("")
 
-    printExpense(expenseList)
+    expenseTotal()
 });
+
+$(".total-expense").find("span").text("0")
+
+var expenseTotal = function() {
+    var expenseCounter = 0;
+
+    for (var i = 0; i < expenseAmountNumberArr.length; i++) { 
+        expenseCounter = expenseAmountNumberArr[i] + expenseCounter;
+    }
+    $(".total-expense").find("span").text(expenseCounter)
+    
+}
+
 
 $('.add-income').on('click', function() {
     var incomeName = $('#incomeName').val().trim();
@@ -49,15 +66,27 @@ $('.add-income').on('click', function() {
     $('.incomes-name').append(incomeNameText);
     $('.incomes-amount').append(incomeAmountText);
 
+    var incomeAmountNumber = parseInt(incomeAmount);
+    
+    incomeAmountNumberArr.push(incomeAmountNumber);
+
     var incomeItems = {
         name: incomeName,
         amount: incomeAmount
     }
-    
-    localStorage.setItem("incomeItems", JSON.stringify(incomeItems))
 
     $('#incomeName').val("")
     $('#incomeAmount').val("")
 
-    
+    incomeTotal()
 });
+
+
+var incomeTotal = function() {
+    var incomeCounter = 0;
+    for (var i = 0; i < incomeAmountNumberArr.length; i++) {
+        incomeCounter = incomeAmountNumberArr[i] + incomeCounter;
+    }
+    $('.total-income').find('span').text(incomeCounter);
+}
+
