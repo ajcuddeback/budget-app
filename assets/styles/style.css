@@ -65,3 +65,8 @@ button:active {
     border: none;
 }
 
+.expense-output-wrapper, .income-output-wrapper {
+    display: flex;
+    justify-content: space-around;
+}
+
