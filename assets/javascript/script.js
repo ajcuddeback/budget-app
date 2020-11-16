@@ -1,59 +1,72 @@
-var expenseAmountNumberArr = [];
+
 var incomeAmountNumberArr = [];
+var saveData = function (newDataObject) {
+    var currentData = JSON.parse(localStorage.getItem('expenseItems')) || [];
+    currentData.push(newDataObject);
+    localStorage.setItem('expenseItems', JSON.stringify(currentData))
+}
 
-
-$('.add-expense').on('click', function() {
+var renderExpenses = function () {
     //get the values of the form
     var expenseName = $('#expenseName').val().trim();
     var expenseAmount = $('#expenseAmount').val().trim();
-
-    // create p tags
-    var expenseNameText = $('<p>');
-    var expenseAmountText = $('<p>');
-
-    //change the p tags text
-    expenseNameText.text(expenseName);
-    expenseAmountText.text(expenseAmount);
-
-    //print out the p tags to screen
-    $('.expenses-name').append(expenseNameText);
-    $('.expenses-amount').append(expenseAmountText);
-
-    //take the expense number input and make it an iterger
-    expenseAmountNumber = parseInt(expenseAmount);
-    
-    //push the intergers into the array
-    expenseAmountNumberArr.push(expenseAmountNumber);
 
     var expenseItems = {
         name: expenseName,
         amount: expenseAmount
     }
-
-    // expenseList.push(expenseItems)
-    
-    localStorage.setItem("expenseItems", JSON.stringify(expenseItems))
+    console.log(expenseItems)
+    if (!expenseName) {
+        alert("Please fill out all the feilds!")
+        window.location.reload()
+    } else {
+        saveData(expenseItems)
+    }
+    getExpenses()
 
     $('#expenseName').val("")
     $('#expenseAmount').val("")
 
     expenseTotal()
-});
+};
+
+var getExpenses = function () {
+    var currentData = JSON.parse(localStorage.getItem('expenseItems')) || []
+
+    $('.expenses-amount').empty()
+        currentData.forEach(element => {
+            // create p tags
+            var expenseNameText = $('<p>');
+            var expenseAmountText = $('<p>');
+
+            expenseNameText.addClass("expenseNameP");
+            expenseAmountText.addClass("expenseAmountP");
+
+            expenseNameText.text(element.name)
+            expenseAmountText.text(element.amount)
+
+            $('.expenses-name').append(expenseNameText);
+            $('.expenses-amount').append(expenseAmountText);
+        });
+}
+
+getExpenses()
 
 $(".total-expense").find("span").text("0")
 
-var expenseTotal = function() {
+var expenseTotal = function () {
     var expenseCounter = 0;
-
-    for (var i = 0; i < expenseAmountNumberArr.length; i++) { 
-        expenseCounter = expenseAmountNumberArr[i] + expenseCounter;
+    var expenseAmountArrObj = JSON.parse(localStorage.getItem('expenseItems')) || [];
+    for (var i = 0; i < expenseAmountArrObj.length; i++) {
+        expenseCounter = parseInt(expenseAmountArrObj[i].amount) + expenseCounter;
+        console.log(parseInt(expenseAmountArrObj[i].amount))
     }
     $(".total-expense").find("span").text(expenseCounter)
-    
+
 }
+expenseTotal()
 
-
-$('.add-income').on('click', function() {
+$('.add-income').on('click', function () {
     var incomeName = $('#incomeName').val().trim();
     var incomeAmount = $('#incomeAmount').val().trim();
 
@@ -67,7 +80,7 @@ $('.add-income').on('click', function() {
     $('.incomes-amount').append(incomeAmountText);
 
     var incomeAmountNumber = parseInt(incomeAmount);
-    
+
     incomeAmountNumberArr.push(incomeAmountNumber);
 
     var incomeItems = {
@@ -82,7 +95,7 @@ $('.add-income').on('click', function() {
 });
 
 
-var incomeTotal = function() {
+var incomeTotal = function () {
     var incomeCounter = 0;
     for (var i = 0; i < incomeAmountNumberArr.length; i++) {
         incomeCounter = incomeAmountNumberArr[i] + incomeCounter;
@@ -90,3 +103,4 @@ var incomeTotal = function() {
     $('.total-income').find('span').text(incomeCounter);
 }
 
+$('.add-expense').on('click', renderExpenses)
