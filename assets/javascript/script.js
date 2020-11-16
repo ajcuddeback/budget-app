@@ -1,12 +1,10 @@
-
-var incomeAmountNumberArr = [];
 var saveData = function (newDataObject) {
     var currentData = JSON.parse(localStorage.getItem('expenseItems')) || [];
     currentData.push(newDataObject);
     localStorage.setItem('expenseItems', JSON.stringify(currentData))
 }
 
-var renderExpenses = function () {
+var getExpenseValHandler = function () {
     //get the values of the form
     var expenseName = $('#expenseName').val().trim();
     var expenseAmount = $('#expenseAmount').val().trim();
@@ -22,7 +20,7 @@ var renderExpenses = function () {
     } else {
         saveData(expenseItems)
     }
-    getExpenses()
+    printExpenses()
 
     $('#expenseName').val("")
     $('#expenseAmount').val("")
@@ -30,7 +28,7 @@ var renderExpenses = function () {
     expenseTotal()
 };
 
-var getExpenses = function () {
+var printExpenses = function () {
     var currentData = JSON.parse(localStorage.getItem('expenseItems')) || []
 
     $('.expenses-amount').empty()
@@ -50,7 +48,7 @@ var getExpenses = function () {
         });
 }
 
-getExpenses()
+printExpenses()
 
 $(".total-expense").find("span").text("0")
 
@@ -103,4 +101,4 @@ var incomeTotal = function () {
     $('.total-income').find('span').text(incomeCounter);
 }
 
-$('.add-expense').on('click', renderExpenses)
+$('.add-expense').on('click', getExpenseValHandler)
