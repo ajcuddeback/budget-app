@@ -18,7 +18,7 @@
             </div>
 
             <div class="total-val">
-                <h3 class="totals-border">Left Over: <span>4000</span></h3>
+                <h3 class="totals-border left-over">Left Over: <span></span></h3>
             </div>
         </div>
 
@@ -37,7 +37,7 @@
             </div>
             <div class="income-div input-borders">
                 Name: <input type="text" name="income-name" id="incomeName">
-                Amount: <input type="text" name="income-amount" id="incomeAmount">
+                Amount: <input type="number" name="income-amount" id="incomeAmount" onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
                 <button type="submit" class="add-income">Enter</button>
                 <div class="income-output-wrapper">
                     <div class="incomes-name">
