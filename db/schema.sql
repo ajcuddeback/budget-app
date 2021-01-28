@@ -1,0 +1,2 @@
+DROP DATABASE IF EXISTS budgeter_db;
+CREATE DATABASE budgeter_db;

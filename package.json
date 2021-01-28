@@ -18,6 +18,8 @@
   },
   "homepage": "https://github.com/ajcuddeback/budget-app#readme",
   "dependencies": {
-    "express": "^4.17.1"
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "sequelize": "^6.5.0"
   }
 }
