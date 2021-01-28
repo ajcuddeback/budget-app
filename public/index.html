@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Budget App</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="./assets/styles/style.css">
+    </head>
+    <body>
+        <h1>MONTHLY BUDGET</h1>
+         
+        <div class="totals-wrapper">
+            <div class="money-totals">
+                <h3 class="totals-border total-expense">Total Expenses: <span></span></h3>
+                <h3 class="totals-border total-income">Total Income: <span></span></h3>
+            </div>
+
+            <div class="total-val">
+                <h3 class="totals-border left-over">Left Over: <span></span></h3>
+            </div>
+        </div>
+
+        <div class="input-divs">
+            <div class="expense-div input-borders">
+                Name: <input type="text" name="expense-name" id="expenseName">
+                Amount: <input type="number" name="expense-amount" id="expenseAmount" onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
+                <button type="submit" class="add-expense">Enter</button>
+                <div class="expense-output-wrapper">
+                    
+                </div>
+            </div>
+            <div class="income-div input-borders">
+                Name: <input type="text" name="income-name" id="incomeName">
+                Amount: <input type="number" name="income-amount" id="incomeAmount" onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
+                <button type="submit" class="add-income">Enter</button>
+                <div class="income-output-wrapper">
+                
+                </div>
+            </div>
+        </div>
+        <!-- <button class="save" onclick="saveCheckbox()">Save</button> -->
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="assets/javascript/script.js" async defer></script>
+    </body>
+</html> 
