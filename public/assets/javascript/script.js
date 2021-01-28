@@ -2,18 +2,6 @@ var expenseCheckCounter = 0;
 var incomeCheckCounter = 0;
 expenseCheckArr = [];
 
-var saveExpenses = function (newDataObject) {
-    var currentExpenses = JSON.parse(localStorage.getItem('expenseItems')) || [];
-    currentExpenses.push(newDataObject);
-    localStorage.setItem('expenseItems', JSON.stringify(currentExpenses));
-}
-
-var saveIncome = function (newDataObject2) {
-    var currentIncome = JSON.parse(localStorage.getItem('incomeItems')) || [];
-    currentIncome.push(newDataObject2);
-    localStorage.setItem('incomeItems', JSON.stringify(currentIncome));
-}
-
 var getExpenseValHandler = function () {
     //get the values of the form
     var expenseName = $('#expenseName').val().trim();
