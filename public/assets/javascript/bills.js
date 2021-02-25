@@ -46,20 +46,46 @@ async function getExpenseHandler(event) {
                 let expenseItemsDiv = document.createElement('div');
                 let billName = document.createElement('p');
                 let billAmount = document.createElement('p');
+                let billDelete = document.createElement('button');
 
                 billName.innerHTML = bill.name;
                 billAmount.innerHTML = bill.amount;
+                billDelete.innerHTML = 'Delete'
 
+                billDelete.classList.add('delete-btn');
                 expenseItemsDiv.classList.add('expense-items');
+
+                billDelete.setAttribute('id', `${bill.id}`)
 
                 expenseItemsDiv.append(billName);
                 expenseItemsDiv.append(billAmount);
+                expenseItemsDiv.append(billDelete)
                 expenseDiv.append(expenseItemsDiv);
 
                 totalBills = totalBills + parseInt(bill.amount);
             })
 
             totalExpenseDiv.innerHTML = `Total Expenses: ${totalBills}`;
+            async function deleteBill(event) {
+
+                const id = event.target.getAttribute('id');
+
+                const response = await fetch(`/api/bills/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                if (response.ok) {
+                    document.location.reload();
+                } else {
+                    alert(response.statusText)
+                }
+            }
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', deleteBill)
+            });
 
         })
     } else {
