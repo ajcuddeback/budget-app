@@ -25,15 +25,21 @@
     </div>
 
     <div class="input-divs">
+        <h2>Expenses</h2>
         <div class="expense-div input-borders">
+
             Name: <input type="text" name="expense-name" id="expenseName">
+
+
             Amount: <input type="number" name="expense-amount" id="expenseAmount"
                 onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
+
             <button type="submit" class="add-expense">Enter</button>
             <div class="expense-output-wrapper">
 
             </div>
         </div>
+        <h2>Income</h2>
         <div class="income-div input-borders">
             Name: <input type="text" name="income-name" id="incomeName">
             Amount: <input type="number" name="income-amount" id="incomeAmount"

@@ -1,82 +1,96 @@
 body {
-    background-color: #1B262C;
+  background-color: #1b262c;
 }
 
-h1 {
-    text-align: center;
-    color: #BBE1FA;
+h1,
+h2 {
+  text-align: center;
+  color: #bbe1fa;
 }
 
 .totals-wrapper {
-    border: 1px solid #BBE1FA;
-    border-radius: 5px;
-    width: 70%;
-    margin: 0 auto;
-    height: 300px;
-    background-color: #0F4C75;
+  border: 1px solid #bbe1fa;
+  border-radius: 5px;
+  width: 70%;
+  margin: 0 auto;
+  height: 300px;
+  background-color: #0f4c75;
 }
 .money-totals {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 1%;
+  display: flex;
+  justify-content: space-around;
+  margin-top: 1%;
 }
 .totals-border {
-    border: 1px solid #1B262C;
-    border-radius: 5px;
-    padding: 15px;
-    background-color: #3282B8;
-    color: #BBE1FA;
-    font-weight: 400;
+  border: 1px solid #1b262c;
+  border-radius: 5px;
+  padding: 15px;
+  background-color: #3282b8;
+  color: #bbe1fa;
+  font-weight: 400;
 }
 .total-val {
-    display: flex;
-    justify-content: center;
-    margin-top: 5%;
+  display: flex;
+  justify-content: center;
+  margin-top: 5%;
 }
 
 .input-divs {
-    display: flex;
-    justify-content: space-around;
-    width: 70%;
-    margin: 0 auto;
+  display: flex;
+  justify-content: space-around;
+  width: 70%;
+  margin: 0 auto;
 }
 .input-borders {
-    padding: 20px;
-    margin-top: 50px;
-    border: 1px solid black;
-    border-radius: 5px;
-    background-color: #0F4C75;
-    color: #BBE1FA;
+  padding: 20px;
+  margin-top: 50px;
+  border: 1px solid black;
+  border-radius: 5px;
+  background-color: #0f4c75;
+  color: #bbe1fa;
 }
 button {
-    background-color: #3282B8;
-    border-radius: 5px;
-    padding: 5px 10px;
-    position: relative;
-    border: none;
+  background-color: #3282b8;
+  border-radius: 5px;
+  padding: 5px 10px;
+  position: relative;
+  border: none;
 }
 button:hover {
-    top: 2px;
-    left: 1px;
+  top: 2px;
+  left: 1px;
 }
 button:active {
-    top: 4px;
-    left: 2px;
-    border: none;
+  top: 4px;
+  left: 2px;
+  border: none;
 }
-.expense-div, .income-div {
-    width: 45%;
+.expense-div,
+.income-div {
+  width: 45%;
 }
-.expense-output-wrapper, .income-output-wrapper {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    width: 90%;
+.expense-output-wrapper,
+.income-output-wrapper {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 90%;
 }
-.expense-items, .income-items {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    
+.expense-items,
+.income-items {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
 }
 
+@media only screen and (max-width: 560px) {
+  .input-divs {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .expense-div,
+  .income-div {
+    width: 70%;
+  }
+}
