@@ -21,7 +21,8 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
     Bills.create({
         name: req.body.name,
-        amount: req.body.amount
+        amount: req.body.amount,
+        user_id: req.session.user_id
     })
         .then(dbBillsData => res.json(dbBillsData))
         .catch(err => {
