@@ -81,6 +81,12 @@ button:active {
   display: flex;
   justify-content: space-around;
   width: 100%;
+  margin-top: 1rem;
+}
+
+.delete-income,
+.delete-btn {
+  height: 80%;
 }
 
 @media only screen and (max-width: 560px) {
@@ -92,5 +98,16 @@ button:active {
   .expense-div,
   .income-div {
     width: 70%;
+  }
+}
+
+@media only screen and (max-width: 380px) {
+  input {
+    width: 80%;
+    margin-bottom: 1rem;
+  }
+  .expense-output-wrapper,
+  .income-output-wrapper {
+    width: 100%;
   }
 }
