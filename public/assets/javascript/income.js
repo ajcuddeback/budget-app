@@ -22,11 +22,8 @@ async function addIncomeHandler(event) {
 
 async function getIncomeHandler(event) {
 
-    const id = window.location.toString().split('/')[
-        window.location.toString().split('/').length - 1
-    ];
 
-    const response = await fetch(`/api/users/${id}`, {
+    const response = await fetch(`/api/users/one`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'

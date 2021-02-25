@@ -22,11 +22,8 @@ async function addExpenseHandler(event) {
 
 async function getExpenseHandler(event) {
 
-    const id = window.location.toString().split('/')[
-        window.location.toString().split('/').length - 1
-    ];
 
-    const response = await fetch(`/api/users/${id}`, {
+    const response = await fetch(`/api/users/one`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'

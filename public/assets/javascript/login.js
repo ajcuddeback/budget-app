@@ -17,9 +17,7 @@ async function loginHandler(event) {
     });
 
     if (response.ok) {
-        response.json().then(data => {
-            document.location.replace(`/${data.id}`)
-        })
+        document.location.replace('/')
 
     } else {
         response.json().then(text => {

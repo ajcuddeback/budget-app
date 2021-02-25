@@ -10,7 +10,7 @@ router.get('/signup', (req, res) => {
     res.sendFile(path.join(__dirname, '../../public/signup.html'))
 });
 
-router.get('/:id', withAuth, (req, res) => {
+router.get('/', withAuth, (req, res) => {
     res.sendFile(path.join(__dirname, '../../public/home.html'))
 });
 
