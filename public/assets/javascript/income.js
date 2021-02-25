@@ -62,7 +62,7 @@ async function getIncomeHandler(event) {
                 incomeAmount.innerHTML = income.amount;
                 incomeDelete.innerHTML = 'Delete'
 
-                incomeDelete.classList.add('delete-btn');
+                incomeDelete.classList.add('delete-income');
                 incomeItemsDiv.classList.add('income-items');
 
                 incomeDelete.setAttribute('id', `${income.id}`)
@@ -98,7 +98,7 @@ async function getIncomeHandler(event) {
                 }
             }
 
-            document.querySelectorAll('.delete-btn').forEach(btn => {
+            document.querySelectorAll('.delete-income').forEach(btn => {
                 btn.addEventListener('click', deleteIncome)
             });
 
