@@ -36,9 +36,13 @@ async function getExpenseHandler(event) {
     if (response.ok) {
         response.json().then(text => {
             const expenseDiv = document.querySelector('.expense-output-wrapper');
+            const totalExpenseDiv = document.querySelector('.total-expense');
+            totalExpenseDiv.innerHTML = ""
 
-            const billArr = text.bills
+            const billArr = text.bills;
+            let totalBills = 0;
             billArr.forEach(bill => {
+
                 let expenseItemsDiv = document.createElement('div');
                 let billName = document.createElement('p');
                 let billAmount = document.createElement('p');
@@ -52,8 +56,10 @@ async function getExpenseHandler(event) {
                 expenseItemsDiv.append(billAmount);
                 expenseDiv.append(expenseItemsDiv);
 
-
+                totalBills = totalBills + parseInt(bill.amount);
             })
+
+            totalExpenseDiv.innerHTML = `Total Expenses: ${totalBills}`;
 
         })
     } else {

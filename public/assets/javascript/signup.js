@@ -21,7 +21,9 @@ async function signupHandler(event) {
     });
 
     if (response.ok) {
-        document.location.replace('/')
+        response.json().then(data => {
+            document.location.replace(`/${data.id}`)
+        })
     } else {
         response.json().then(text => {
             errorP.append(text.message)
