@@ -37,10 +37,20 @@ async function getIncomeHandler(event) {
         response.json().then(text => {
             const incomeDiv = document.querySelector('.income-output-wrapper');
             const totalIncomeDiv = document.querySelector('.total-income');
-            totalIncomeDiv.innerHTML = ""
+            const leftOverDiv = document.querySelector('.left-over');
+
+            totalIncomeDiv.innerHTML = "";
+            leftOverDiv.innerHTML = "";
 
             const incomeArr = text.incomes;
+            const billsArr = text.bills;
             let totalIncome = 0;
+            let totalBills = 0;
+            let totalLeftOver = 0;
+
+            billsArr.forEach(bill => {
+                totalBills = totalBills + parseInt(bill.amount);
+            })
             incomeArr.forEach(income => {
 
                 let incomeItemsDiv = document.createElement('div');
@@ -64,8 +74,13 @@ async function getIncomeHandler(event) {
 
                 totalIncome = totalIncome + parseInt(income.amount);
             })
+            totalLeftOver = totalIncome - totalBills;
 
             totalIncomeDiv.innerHTML = `Total Incomes: ${totalIncome}`;
+            leftOverDiv.innerHTML = `Left Over: ${totalLeftOver}`;
+
+
+
             async function deleteIncome(event) {
 
                 const id = event.target.getAttribute('id');
