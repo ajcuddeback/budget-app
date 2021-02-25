@@ -73,3 +73,36 @@ router.post('/', (req, res) => {
             res.status(500).json(err);
         })
 });
+
+router.post('/login', (req, res) => {
+    User.findOne({
+        where: {
+            username: req.body.username,
+        }
+    })
+        .then((dbUserData) => {
+            if (!dbUserData) {
+                res.status(400).json({ message: "No user found at this username!" });
+                return;
+            }
+
+            const validatePassword = dbUserData.checkPassword(req.body.password);
+
+            if (!validatePassword) {
+                res.status(400).json({ message: "Your password is not correct!" });
+                return;
+            }
+
+            res.json(dbUserData);
+        })
+        .catch(err => {
+            console.log(err);
+            res.status(500).json(err);
+        })
+});
+
+router.post("/logout", (req, res) => {
+    if (req.session.loggedIn) {
+    }
+})
+module.exports = router
