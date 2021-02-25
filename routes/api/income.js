@@ -28,4 +28,14 @@ router.post('/', (req, res) => {
             console.log(err.message);
             res.status(500).json(err)
         })
+});
+
+router.delete('/:id', (req, res) => {
+    Income.destroy({
+        where: {
+            id: req.params.id
+        }
+    })
 })
+
+module.exports = router;
