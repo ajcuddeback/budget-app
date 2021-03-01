@@ -102,12 +102,16 @@ button:active {
 }
 
 @media only screen and (max-width: 380px) {
-  input {
+  input[type="text"],
+  input[type="number"] {
     width: 80%;
     margin-bottom: 1rem;
   }
   .expense-output-wrapper,
   .income-output-wrapper {
+    width: 100%;
+  }
+  .input-divs {
     width: 100%;
   }
 }

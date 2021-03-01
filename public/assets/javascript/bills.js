@@ -62,10 +62,10 @@ async function getExpenseHandler(event) {
                     isPayedBtn.checked = false
                 }
 
+                expenseItemsDiv.append(isPayedBtn);
                 expenseItemsDiv.append(billName);
                 expenseItemsDiv.append(billAmount);
                 expenseItemsDiv.append(billDelete);
-                expenseItemsDiv.append(isPayedBtn);
                 expenseDiv.append(expenseItemsDiv);
 
                 totalBills = totalBills + parseInt(bill.amount);
