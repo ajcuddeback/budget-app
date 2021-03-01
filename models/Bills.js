@@ -23,6 +23,11 @@ Bills.init(
                 isDecimal: true
             }
         },
+        is_payed: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
         user_id: {
             type: DataTypes.INTEGER,
             allowNull: false,

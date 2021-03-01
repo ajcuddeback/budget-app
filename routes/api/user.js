@@ -6,7 +6,7 @@ router.get('/', (req, res) => {
         include: [
             {
                 model: Bills,
-                attributes: ['id', 'name', 'amount']
+                attributes: ['id', 'name', 'amount', 'is_payed']
             },
             {
                 model: Income,
@@ -36,7 +36,7 @@ router.get('/one', (req, res) => {
         include: [
             {
                 model: Bills,
-                attributes: ['id', 'name', 'amount']
+                attributes: ['id', 'name', 'amount', 'is_payed']
             },
             {
                 model: Income,

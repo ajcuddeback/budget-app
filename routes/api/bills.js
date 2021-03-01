@@ -31,6 +31,33 @@ router.post('/', (req, res) => {
         })
 });
 
+router.put('/:id', (req, res) => {
+
+    console.log(req.body.isPayed)
+
+    Bills.update(
+        { is_payed: req.body.isPayed },
+        {
+            where: {
+                id: req.params.id
+            }
+        }
+
+    )
+        .then(dbBillsData => {
+            if (!dbBillsData) {
+                res.status(404).json({ message: 'No bill found at this id!' });
+                return;
+            };
+
+            res.json(dbBillsData)
+        })
+        .catch(err => {
+            console.log(err);
+            res.status(500).json(err);
+        })
+})
+
 router.delete('/:id', (req, res) => {
     Bills.destroy({
         where: {

@@ -21,8 +21,6 @@ async function addExpenseHandler(event) {
 };
 
 async function getExpenseHandler(event) {
-
-
     const response = await fetch(`/api/users/one`, {
         method: 'GET',
         headers: {
@@ -44,6 +42,7 @@ async function getExpenseHandler(event) {
                 let billName = document.createElement('p');
                 let billAmount = document.createElement('p');
                 let billDelete = document.createElement('button');
+                let isPayedBtn = document.createElement('INPUT');
 
                 billName.innerHTML = bill.name;
                 billAmount.innerHTML = bill.amount;
@@ -51,12 +50,22 @@ async function getExpenseHandler(event) {
 
                 billDelete.classList.add('delete-btn');
                 expenseItemsDiv.classList.add('expense-items');
+                isPayedBtn.classList.add('isPayedCheckbox')
 
-                billDelete.setAttribute('id', `${bill.id}`)
+                billDelete.setAttribute('id', `${bill.id}`);
+                isPayedBtn.setAttribute('type', 'checkbox');
+                isPayedBtn.setAttribute('id', `${bill.id}`);
+
+                if (bill.is_payed === true) {
+                    isPayedBtn.checked = true
+                } else {
+                    isPayedBtn.checked = false
+                }
 
                 expenseItemsDiv.append(billName);
                 expenseItemsDiv.append(billAmount);
-                expenseItemsDiv.append(billDelete)
+                expenseItemsDiv.append(billDelete);
+                expenseItemsDiv.append(isPayedBtn);
                 expenseDiv.append(expenseItemsDiv);
 
                 totalBills = totalBills + parseInt(bill.amount);
@@ -78,10 +87,41 @@ async function getExpenseHandler(event) {
                 } else {
                     alert(response.statusText)
                 }
+            };
+
+            async function isPayedHandler(event) {
+                const id = event.target.getAttribute('id');
+                let isPayed;
+
+                if (event.target.checked) {
+                    isPayed = true
+                } else {
+                    isPayed = false
+                };
+
+                const response = await fetch(`/api/bills/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        isPayed
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+
+                if (response.ok) {
+                    document.location.reload();
+                } else {
+                    alert(response.statusText)
+                }
             }
 
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', deleteBill)
+            });
+
+            document.querySelectorAll('.isPayedCheckbox').forEach(checkbox => {
+                checkbox.addEventListener('click', isPayedHandler)
             });
 
         })
