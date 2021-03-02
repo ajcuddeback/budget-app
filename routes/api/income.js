@@ -22,6 +22,7 @@ router.post('/', (req, res) => {
     Income.create({
         name: req.body.name,
         amount: req.body.amount,
+        month_year: req.body.month_year,
         user_id: req.session.user_id
     })
         .then(dbIncomeData => res.json(dbIncomeData))
