@@ -11,12 +11,13 @@
 </head>
 
 <body>
-    <header>
-        <button class="back">Previous Month</button>
-        <h1 class="month-and-year"></h1>
-        <button class="next">Next Month</button>
-    </header>
     <button class="logout">Logout</button>
+    <header>
+        <button class="back">Previous</button>
+        <h1 class="month-and-year"></h1>
+        <button class="next">Next</button>
+    </header>
+
     <div class="totals-wrapper">
         <div class="money-totals">
             <h3 class="totals-border total-expense">Total Expenses: <span></span></h3>
@@ -29,16 +30,19 @@
     </div>
 
     <div class="input-divs">
-        <h2>Expenses</h2>
+
         <div class="expense-div input-borders">
+            <h2 class="expenseh">Expenses</h2>
+            <form class="expense-form">
 
-            Name: <input type="text" name="expense-name" id="expenseName">
+                Name: <input type="text" name="expense-name" id="expenseName">
 
 
-            Amount: <input type="number" name="expense-amount" id="expenseAmount"
-                onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
+                Amount: <input type="number" name="expense-amount" id="expenseAmount"
+                    onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
 
-            <button type="submit" class="add-expense">Enter</button>
+                <button type="submit" class="add-expense">Enter</button>
+            </form>
             <div class="expense-output-wrapper">
                 <div class="expense-items header">
                     <p>Is Payed?</p>
@@ -48,12 +52,20 @@
                 </div>
             </div>
         </div>
-        <h2>Income</h2>
+
         <div class="income-div input-borders">
-            Name: <input type="text" name="income-name" id="incomeName">
-            Amount: <input type="number" name="income-amount" id="incomeAmount"
-                onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
-            <button type="submit" class="add-income">Enter</button>
+            <h2 class="incomeh">Income</h2>
+            <form class="input-form">
+                Name: <input type="text" name="income-name" id="incomeName">
+                Amount: <input type="number" name="income-amount" id="incomeAmount"
+                    onkeydown="javascript: return event.keyCode === 8 || event.keyCode === 46 ? true : !isNaN(Number(event.key))">
+                <button type="submit" class="add-income">Enter</button>
+            </form>
+            <div class="income-items header">
+                <p>Name</p>
+                <p>Amount</p>
+                <p>Delete</p>
+            </div>
             <div class="income-output-wrapper">
 
             </div>

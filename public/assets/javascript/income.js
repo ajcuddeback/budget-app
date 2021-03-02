@@ -72,7 +72,7 @@ async function getIncomeHandler(event) {
             })
 
 
-            totalIncomeDiv.innerHTML = `Total Incomes: ${totalIncome}`;
+            totalIncomeDiv.innerHTML = `Total Income: $${totalIncome}`;
 
             async function deleteIncome(event) {
 

@@ -8,11 +8,33 @@ h2 {
   color: #bbe1fa;
 }
 
+button {
+  cursor: pointer;
+}
+
 header {
   display: flex;
   width: 70%;
   margin: 0 auto;
   justify-content: space-between;
+}
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+.header {
+  border-bottom: 1px solid black;
+}
+
+.back,
+.next {
+  width: 5rem;
+}
+
+.expenseh,
+.incomeh {
+  font-size: 2rem;
 }
 
 .totals-wrapper {
@@ -49,7 +71,7 @@ header {
   margin: 0 auto;
 }
 .input-borders {
-  padding: 20px;
+  padding: 5px 10px;
   margin-top: 50px;
   border: 1px solid black;
   border-radius: 5px;
@@ -102,8 +124,27 @@ button:active {
   width: 70%;
   margin: 0 auto;
 }
+@media only screen and (max-width: 1670px) {
+  .input-divs {
+    width: 90%;
+  }
+}
 
-@media only screen and (max-width: 560px) {
+@media only screen and (max-width: 1300px) {
+  .expense-form,
+  .input-form {
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+  }
+  .expense-form button,
+  .input-form button {
+    width: 5rem;
+    margin-top: 1rem;
+  }
+}
+
+@media only screen and (max-width: 800px) {
   .input-divs {
     flex-direction: column;
     justify-content: center;
@@ -115,7 +156,31 @@ button:active {
   }
 }
 
+@media only screen and (max-width: 500px) {
+  .money-totals {
+    flex-direction: column;
+    width: 60%;
+    margin: 0 auto;
+  }
+  .expense-div,
+  .income-div {
+    width: 90%;
+  }
+
+  .totals-wrapper {
+    height: 400px;
+  }
+  .next,
+  .back {
+    margin-top: 2rem;
+    height: 4rem;
+  }
+}
+
 @media only screen and (max-width: 380px) {
+  .month-and-year {
+    font-size: 1.5rem;
+  }
   input[type="text"],
   input[type="number"] {
     width: 80%;

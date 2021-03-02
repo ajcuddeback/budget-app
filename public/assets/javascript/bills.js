@@ -80,7 +80,7 @@ async function getExpenseHandler(event) {
                 totalBills = totalBills + parseInt(bill.amount);
             })
 
-            totalExpenseDiv.innerHTML = `Total Expenses: ${totalBills}`;
+            totalExpenseDiv.innerHTML = `Total Expenses: $${totalBills}`;
             async function deleteBill(event) {
 
                 const id = event.target.getAttribute('id');
