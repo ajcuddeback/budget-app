@@ -32,5 +32,5 @@
 
 ## Website
 
-[Deployed Dev Connect](https://budget-application-1999.herokuapp.com/)
-![Dev-connect](images/budget-app.png)
+[Deployed Budget App](https://budget-application-1999.herokuapp.com/)
+![Budget App](images/budget-app.png)
