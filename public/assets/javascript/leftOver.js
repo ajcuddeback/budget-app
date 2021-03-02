@@ -33,4 +33,4 @@ function calculateLeftOver() {
 
 };
 
-setTimeout(calculateLeftOver, 300)
+setTimeout(calculateLeftOver, 300);
