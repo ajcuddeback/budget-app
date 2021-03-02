@@ -1,12 +1,17 @@
 async function addExpenseHandler(event) {
     const name = document.querySelector('#expenseName').value;
     const amount = document.querySelector('#expenseAmount').value;
+    let month_year = document.querySelector('.month-and-year').innerHTML.split(' ');
+    const month = month_year[0];
+    const year = month_year[1];
 
     const response = await fetch('/api/bills', {
         method: 'POST',
         body: JSON.stringify({
             name,
-            amount
+            amount,
+            month,
+            year
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -21,7 +26,11 @@ async function addExpenseHandler(event) {
 };
 
 async function getExpenseHandler(event) {
-    const response = await fetch(`/api/users/one`, {
+    let month_year = document.querySelector('.month-and-year').innerHTML.split(' ');
+    const month = month_year[0];
+    const year = month_year[1];
+
+    const response = await fetch(`/api/users/bill/${month}/${year}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
@@ -126,7 +135,11 @@ async function getExpenseHandler(event) {
 
         })
     } else {
-        alert(response.statusText)
+        response.json().then(text => {
+            const expenseDiv = document.querySelector('.expense-output-wrapper');
+            expenseDiv.innerHTML = ''
+            expenseDiv.append(text.message)
+        })
     }
 };
 

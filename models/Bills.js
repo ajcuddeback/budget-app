@@ -28,7 +28,11 @@ Bills.init(
             allowNull: false,
             defaultValue: false
         },
-        month_year: {
+        month: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        year: {
             type: DataTypes.STRING,
             allowNull: false
         },

@@ -1,12 +1,17 @@
 async function addIncomeHandler(event) {
     const name = document.querySelector('#incomeName').value;
     const amount = document.querySelector('#incomeAmount').value;
+    let month_year_income = document.querySelector('.month-and-year').innerHTML.split(' ');
+    const month = month_year_income[0];
+    const year = month_year_income[1];
 
     const response = await fetch('/api/income', {
         method: 'POST',
         body: JSON.stringify({
             name,
-            amount
+            amount,
+            month,
+            year
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -22,8 +27,11 @@ async function addIncomeHandler(event) {
 
 async function getIncomeHandler(event) {
 
+    let month_year_income = document.querySelector('.month-and-year').innerHTML.split(' ');
+    const month = month_year_income[0];
+    const year = month_year_income[1];
 
-    const response = await fetch(`/api/users/one`, {
+    const response = await fetch(`/api/users/income/${month}/${year}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
@@ -34,20 +42,12 @@ async function getIncomeHandler(event) {
         response.json().then(text => {
             const incomeDiv = document.querySelector('.income-output-wrapper');
             const totalIncomeDiv = document.querySelector('.total-income');
-            const leftOverDiv = document.querySelector('.left-over');
 
             totalIncomeDiv.innerHTML = "";
-            leftOverDiv.innerHTML = "";
 
             const incomeArr = text.incomes;
-            const billsArr = text.bills;
             let totalIncome = 0;
-            let totalBills = 0;
-            let totalLeftOver = 0;
 
-            billsArr.forEach(bill => {
-                totalBills = totalBills + parseInt(bill.amount);
-            })
             incomeArr.forEach(income => {
 
                 let incomeItemsDiv = document.createElement('div');
@@ -68,15 +68,11 @@ async function getIncomeHandler(event) {
                 incomeItemsDiv.append(incomeAmount);
                 incomeItemsDiv.append(incomeDelete)
                 incomeDiv.append(incomeItemsDiv);
-
                 totalIncome = totalIncome + parseInt(income.amount);
             })
-            totalLeftOver = totalIncome - totalBills;
+
 
             totalIncomeDiv.innerHTML = `Total Incomes: ${totalIncome}`;
-            leftOverDiv.innerHTML = `Left Over: ${totalLeftOver}`;
-
-
 
             async function deleteIncome(event) {
 
@@ -101,7 +97,11 @@ async function getIncomeHandler(event) {
 
         })
     } else {
-        alert(response.statusText)
+        response.json().then(text => {
+            const incomeDiv = document.querySelector('.income-output-wrapper');
+            incomeDiv.innerHTML = ''
+            incomeDiv.append(text.message)
+        })
     }
 };
 

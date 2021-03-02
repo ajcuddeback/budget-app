@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const { User, Bills, Income } = require('../../models');
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op
 
 router.get('/', (req, res) => {
     User.findAll({
@@ -28,7 +30,7 @@ router.get('/', (req, res) => {
         })
 });
 
-router.get('/one', (req, res) => {
+router.get('/bill/:month/:year', (req, res) => {
     User.findOne({
         where: {
             id: req.session.user_id
@@ -36,17 +38,45 @@ router.get('/one', (req, res) => {
         include: [
             {
                 model: Bills,
-                attributes: ['id', 'name', 'amount', 'is_payed']
-            },
-            {
-                model: Income,
-                attributes: ['id', 'name', 'amount']
+                where: {
+                    [Op.and]: [{ month: req.params.month }, { year: req.params.year }]
+                },
+                attributes: ['id', 'name', 'amount', 'month', 'year', 'is_payed']
             }
         ]
     })
         .then(dbUserData => {
             if (!dbUserData) {
-                res.status(404).json({ message: 'No user found!' });
+                res.status(404).json({ message: 'No bills yet!' });
+                return;
+            }
+
+            res.json(dbUserData);
+        })
+        .catch(err => {
+            console.log(err);
+            res.status(500).json(err);
+        })
+});
+
+router.get('/income/:month/:year', (req, res) => {
+    User.findOne({
+        where: {
+            id: req.session.user_id
+        },
+        include: [
+            {
+                model: Income,
+                where: {
+                    [Op.and]: [{ month: req.params.month }, { year: req.params.year }]
+                },
+                attributes: ['id', 'name', 'amount', 'month', 'year']
+            }
+        ]
+    })
+        .then(dbUserData => {
+            if (!dbUserData) {
+                res.status(404).json({ message: 'No income yet!' });
                 return;
             }
 

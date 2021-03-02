@@ -23,7 +23,11 @@ Income.init(
                 isDecimal: true
             }
         },
-        month_year: {
+        month: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        year: {
             type: DataTypes.STRING,
             allowNull: false
         },

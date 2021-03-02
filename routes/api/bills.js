@@ -22,7 +22,8 @@ router.post('/', (req, res) => {
     Bills.create({
         name: req.body.name,
         amount: req.body.amount,
-        month_year: req.body.month_year,
+        month: req.body.month,
+        year: req.body.year,
         user_id: req.session.user_id
     })
         .then(dbBillsData => res.json(dbBillsData))
