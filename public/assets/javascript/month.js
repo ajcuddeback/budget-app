@@ -11,9 +11,11 @@ function load() {
     if (!month) {
         localStorage.setItem('month', JSON.stringify(dt.toLocaleDateString('en-us', { month: 'long' })));
         localStorage.setItem('counter', JSON.stringify(0))
+        document.location.reload()
     }
     if (!year) {
         localStorage.setItem('year', JSON.stringify(dt.getFullYear()))
+        document.location.reload()
     }
 
 
