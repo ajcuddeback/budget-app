@@ -9,7 +9,7 @@
 
 ## Purpose
 
-- A simple budget app where you can add expenses and income. Just create an account and add your bills!
+- A simple budget app where you can add expenses and income to your current month, or for months in advance! Just create an account and add your bills!
 
 ## Technologies
 
