@@ -75,11 +75,12 @@ router.get('/income/:month/:year', (req, res) => {
         ]
     })
         .then(dbUserData => {
+            console.log(dbUserData)
             if (!dbUserData) {
-                res.status(404).json({ message: 'No income yet!' });
-                return;
+                // instead - return an empty array rather than a 404, then do the leftOver functionality within the call back because there would be no 404!
+                res.status(404).json({message: 'no data'})
+                return ; 
             }
-
             res.json(dbUserData);
         })
         .catch(err => {
@@ -141,6 +142,16 @@ router.post('/login', (req, res) => {
             res.status(500).json(err);
         })
 });
+
+router.get("/auth", (req, res) => {
+    if(req.session.loggedIn) {
+        res.json({message: 'You are logged in already'})
+        return true
+    } else {
+        res.json({message: 'You are not logged in yet'})
+        return false
+    }
+})
 
 router.post("/logout", (req, res) => {
     if (req.session.loggedIn) {
