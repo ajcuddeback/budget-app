@@ -13,12 +13,14 @@
 
 ## Technologies
 
-- CSS
+- MERN
+- React.js
 - Node.js
 - Express.js
 - Express-Session
 - MySQL
 - Sequelize
+- Styled Components
 - JawsDB
 - dotenv
 - bcrypt
