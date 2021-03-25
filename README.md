@@ -33,4 +33,5 @@
 ## Website
 
 [Deployed Budget App](https://budget-application-1999.herokuapp.com/)
-![Budget App](images/budget-app.png)
+![Budget App](images/screencapture-budget-application-1999-herokuapp-2021-03-24-21_43_39.png)
+![Budget App](images/screencapture-budget-application-1999-herokuapp-2021-03-24-21_45_25.png)
