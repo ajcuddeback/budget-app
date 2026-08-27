@@ -102,3 +102,22 @@ dist
 
 # TernJS port file
 .tern-port
+
+# --- Rewrite stack (Angular + Spring) ---
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+*.class
+
+# --- Secrets: never commit ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.jks
+id_rsa*
+
+# --- Local Claude overrides ---
+.claude/settings.local.json
