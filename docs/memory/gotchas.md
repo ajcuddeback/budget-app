@@ -63,4 +63,32 @@ The file can be perfectly valid and still appear to do nothing.
 
 *Added 2026-08-27 — while building this harness.*
 
+### Playwright's pinned version and a container's pre-baked Chromium drift apart
+
+`@playwright/test` resolves a browser by *revision*, not "whatever Chromium is installed".
+Pinning 1.56.1 made it look for `chromium-1234` while the container shipped `chromium-1194` —
+so it reported a missing browser despite a perfectly good Chromium being present, and
+`npx playwright install` in that environment is either blocked or downloads a second copy.
+
+`tools/ui/helpers/browser.ts` resolves an existing browser under `PLAYWRIGHT_BROWSERS_PATH`
+first and passes it as `executablePath`. A mismatched-but-close revision drives fine over CDP.
+Override with `UI_CHROMIUM_PATH`.
+
+*Added 2026-08-28 — while building the UI validation harness.*
+
+---
+
+### `@axe-core/playwright` can pull a second copy of `playwright-core`
+
+Its peer range is `>= 1.0.0`, so npm happily hoisted `playwright-core@1.62.1` alongside
+`@playwright/test`'s own `1.56.1`. Two copies means two incompatible `Page` types, and
+`new AxeBuilder({ page })` fails to typecheck with a confusing "Type 'Page' is missing the
+following properties from type 'Page'".
+
+Fixed with an npm `overrides` entry pinning `playwright-core` to one version. Prefer that over
+casting the argument — a cast hides the skew rather than resolving it, and the skew can be real
+at runtime too.
+
+*Added 2026-08-28.*
+
 ---

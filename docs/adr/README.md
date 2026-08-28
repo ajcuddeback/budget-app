@@ -35,3 +35,4 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0008](0008-user-scoped-data-access.md) | Every query scoped to the authenticated user | Accepted | 2026-08-27 |
 | [0009](0009-testcontainers-over-h2.md) | Testcontainers over H2 | Accepted | 2026-08-27 |
 | [0010](0010-ai-harness-and-doc-structure.md) | AI harness and documentation structure | Accepted | 2026-08-27 |
+| [0011](0011-playwright-ui-validation-harness.md) | Playwright harness for agent-driven UI validation | Accepted | 2026-08-28 |

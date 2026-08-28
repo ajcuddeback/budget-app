@@ -69,6 +69,22 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   fi
 fi
 
+# -------------------------------------------------------------------- ui
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
+  section "UI validation harness"
+  if [ ! -d tools/ui/node_modules ]; then
+    skip "UI harness" "dependencies not installed (cd tools/ui && npm ci)"
+  elif [ ! -f frontend/package.json ]; then
+    # No app yet: at least prove the harness itself still works.
+    run "harness self-check (no app yet)" tools/ui-check.sh --selfcheck
+  elif curl -fsS --max-time 2 "${UI_BASE_URL:-http://localhost:4200}" >/dev/null 2>&1; then
+    run "live UI checks" tools/ui-check.sh
+    printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
+  else
+    skip "live UI checks" "app not serving — run tools/ui-check.sh --serve to include them"
+  fi
+fi
+
 # ------------------------------------------------------------------ docs
 section "Documentation"
 missing=0

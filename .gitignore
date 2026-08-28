@@ -121,3 +121,9 @@ id_rsa*
 
 # --- Local Claude overrides ---
 .claude/settings.local.json
+
+# --- UI validation harness ---
+tools/ui/node_modules/
+tools/ui/artifacts/
+tools/ui/dev-server.log
+tools/ui/test-results/

@@ -8,6 +8,33 @@ and link it from here.
 
 ---
 
+### 2026-08-28 — UI harness lives in tools/, not frontend/e2e/
+
+Put the Playwright harness in `tools/ui/` rather than the conventional Angular `frontend/e2e/`.
+
+Reasons: it must work before `frontend/` exists (it does — `--selfcheck` passes today); it is
+developer tooling rather than app code; and it can be pointed at any URL, including the legacy
+app, which makes parity comparison possible during the rewrite.
+
+Cost: diverges from Angular convention, so people may look for it in the wrong place.
+Mitigated by pointing at it from `CLAUDE.md`, `tools/README.md`, and the roadmap.
+
+See ADR-0011.
+
+---
+
+### 2026-08-28 — Screenshot review is a required step, not an optional one
+
+The harness prints absolute screenshot paths and the report tells the agent to open each with
+the Read tool. The `ui-validator` agent, the `/ui-check` skill, and the guide all state that
+reporting on the UI without having read the screenshots is worse than reporting no check.
+
+This is a soft control — an agent *can* skip it. It's stated in three places because that is the
+only enforcement available: the value of the harness is entirely in step 3, and a run that stops
+at "tests passed" recreates the exact blind spot it exists to remove.
+
+---
+
 ### 2026-08-27 — Harness built before any rewrite code
 
 Set up `CLAUDE.md`, `docs/`, agents, skills, and hooks **before** writing a line of Angular or

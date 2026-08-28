@@ -8,6 +8,7 @@ Use `/vertical-slice` to work one.
 | # | Slice | Depends on | Status |
 |---|---|---|---|
 | 0 | AI harness, docs, style guides | — | **Done** |
+| 0b | UI validation harness (Playwright + axe) | 0 | **Done** |
 | 1 | Backend + frontend skeletons, CI, `verify.sh` proven | 0 | Next |
 | 2 | [Users & authentication](features/accounts-and-auth.md) | 1 | Planned |
 | 3 | Accounts (money containers) | 2 | Planned |
@@ -25,4 +26,6 @@ Use `/vertical-slice` to work one.
 - Nothing starts without a feature doc (`/feature-doc`).
 - Nothing is "done" until `tools/verify.sh` passes and the mandatory auth tests from
   `guides/testing-style.md` exist.
+- Any slice with a UI is not done until `tools/ui-check.sh` has been run **and its screenshots
+  read**. See `guides/ui-validation.md`.
 - Slice 11 only happens after parity is genuinely reached — not "close enough".

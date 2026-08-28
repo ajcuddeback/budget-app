@@ -4,6 +4,7 @@
 |---|---|
 | `verify.sh` | **The gate.** Build, lint, test, scan, doc checks, both stacks. Run before claiming anything is done. |
 | `dev-up.sh` | Start local PostgreSQL in Docker for development. |
+| `ui-check.sh` | Drive the running UI in a real browser, screenshot it for agent review, and check accessibility, console errors, and layout. See [`ui/README.md`](ui/README.md). |
 
 ## verify.sh
 

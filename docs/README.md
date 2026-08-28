@@ -40,5 +40,6 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 - [Memory](memory/README.md)
 - Style guides: [Java](guides/java-style.md) · [Angular](guides/angular-style.md) ·
   [API](guides/api-style.md) · [Database](guides/database-style.md) ·
-  [Testing](guides/testing-style.md) · [Git & review](guides/git-style.md)
+  [Testing](guides/testing-style.md) · [Git & review](guides/git-style.md) ·
+  [UI validation](guides/ui-validation.md)
 - [Roadmap](roadmap.md)

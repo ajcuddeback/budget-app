@@ -42,6 +42,10 @@ Rules you enforce without being asked:
 ## When you finish
 
 - Run `tools/verify.sh frontend`. Report the real result.
+- **Run `tools/ui-check.sh` and read the screenshots it prints.** You cannot tell whether a
+  component renders correctly by reading its template. Accessibility violations, console errors,
+  and layout overflow are reported automatically; whether it *looks* right is something you
+  judge by opening the images. See `docs/guides/ui-validation.md`.
 - Update the feature doc if behavior changed.
 
 ## What you don't do

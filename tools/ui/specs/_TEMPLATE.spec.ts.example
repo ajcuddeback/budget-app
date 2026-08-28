@@ -1,0 +1,49 @@
+// Copy to specs/app/<feature>.spec.ts and remove the .example suffix.
+//
+// These specs run only when the app is actually serving — tools/ui-check.sh refuses to run
+// without it — so you can assume the app is up and navigate freely.
+
+import { test, expect } from '../helpers/ui-test.js';
+
+test.describe('<feature>', () => {
+  test('<what a user does>', async ({ page, ui }) => {
+    await page.goto('/');
+
+    // Query the way a user perceives the page: role, label, text.
+    // Never a CSS class — that couples the test to styling and breaks on every redesign.
+    await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
+
+    // Capture anything a human should eyeball. Label it for the report.
+    await ui.shot('accounts-list');
+
+    // Drive a real interaction.
+    await page.getByRole('button', { name: 'Add account' }).click();
+    await page.getByLabel('Name').fill('Checking');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByText('Checking')).toBeVisible();
+    await ui.shot('accounts-after-add');
+
+    // The automated checks. Run these on every meaningful state, not just the happy end state.
+    expect(await ui.a11y('accounts list')).toBe(0);
+    await ui.noOverflow();
+    ui.noErrors();
+  });
+
+  // States that are easy to forget and where UIs usually look worst:
+  test.skip('empty state', async ({ page, ui }) => {
+    // A new user with no accounts. Does this look intentional or broken?
+    await page.goto('/accounts');
+    await ui.shot('accounts-empty');
+    ui.noErrors();
+  });
+
+  test.skip('error state', async ({ page, ui }) => {
+    // Force a failure and check the user is told something useful.
+    await page.route('**/api/accounts', (r) => r.fulfill({ status: 500, body: '{}' }));
+    await page.goto('/accounts');
+    await ui.shot('accounts-error');
+    await expect(page.getByRole('alert')).toBeVisible();
+    // noErrors() is NOT appropriate here — a 500 is the point of the test.
+  });
+});

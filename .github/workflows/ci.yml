@@ -34,6 +34,29 @@ jobs:
       - name: Run the gate
         run: tools/verify.sh
 
+  ui:
+    name: UI validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install UI harness
+        working-directory: tools/ui
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Prove the harness works
+        run: tools/ui-check.sh --selfcheck
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-artifacts
+          path: tools/ui/artifacts/
+          retention-days: 7
+
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest

@@ -29,7 +29,13 @@
       "Edit(backend/**)",
       "Edit(frontend/**)",
       "Edit(docs/**)",
-      "Edit(tools/**)"
+      "Edit(tools/**)",
+      "Bash(tools/ui-check.sh*)",
+      "Bash(npx playwright*)",
+      "Bash(npx tsc*)",
+      "Bash(npx tsx*)",
+      "Edit(tools/ui/**)",
+      "Bash(curl -fsS*)"
     ],
     "deny": [
       "Edit(client/**)",

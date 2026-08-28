@@ -20,6 +20,7 @@ Read the doc, then read only the code you are about to change.
 | Add or change a REST endpoint | `docs/guides/api-style.md` |
 | Write a migration or entity | `docs/guides/database-style.md` |
 | Write tests | `docs/guides/testing-style.md` |
+| Check how the UI actually looks | `docs/guides/ui-validation.md` |
 | Commit, branch, or open a PR | `docs/guides/git-style.md` |
 | Understand a domain term | `docs/domain/model.md`, `docs/memory/glossary.md` |
 | Wonder "why is it like this?" | `docs/adr/` (index in `docs/adr/README.md`) |
@@ -58,6 +59,8 @@ patterns. They exist only as a behavioral reference until parity is reached; see
 6. **Tests ship with the change.** A feature without tests is not done. See
    `docs/guides/testing-style.md` for what "enough" means.
 7. **`tools/verify.sh` must pass before you say you're done.** Not "should pass" — run it.
+8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and *read the
+   screenshots*. A green test suite does not tell you the page renders correctly.
 
 ## Working agreement
 
@@ -70,7 +73,7 @@ patterns. They exist only as a behavioral reference until parity is reached; see
 - **Update the feature doc in the same change** that alters the behavior it describes.
   Stale docs are worse than no docs — they get trusted.
 - **Prefer the specialists.** `spring-api`, `angular-ui`, `persistence`, `security-auditor`,
-  `test-author`, `docs-curator`. Use `security-auditor` on anything touching auth, money
+  `test-author`, `docs-curator`, `ui-validator`. Use `security-auditor` on anything touching auth, money
   movement, or user data boundaries — including your own work.
 - **Ask when the security answer is unclear.** Guessing at a security control is worse than
   a question.
@@ -82,8 +85,10 @@ tools/verify.sh              # full local gate: build, lint, test, both stacks
 tools/verify.sh backend      # backend only
 tools/verify.sh frontend     # frontend only
 tools/dev-up.sh              # start Postgres (docker) for local dev
+tools/ui-check.sh            # drive the running UI, screenshot it, check a11y
+tools/ui-check.sh --selfcheck  # prove the UI harness works with no app present
 ```
 
 ## Slash commands
 
-`/feature-doc` · `/adr` · `/vertical-slice` · `/threat-model` · `/remember` · `/verify`
+`/feature-doc` · `/adr` · `/vertical-slice` · `/threat-model` · `/remember` · `/verify` · `/ui-check`

@@ -40,12 +40,23 @@ gets `404` on user A's resource — plus whatever this feature specifically need
 
 Lazy route, smart page, presentational components, typed service and forms. Amounts stay strings.
 
-## 6. Security review — `security-auditor` agent
+## 6. Look at it — `ui-validator` agent
+
+```bash
+tools/ui-check.sh --serve
+```
+
+Then **read the screenshots it prints**. Accessibility violations, console errors, and layout
+overflow come back automatically; whether the screen actually looks finished is a judgement you
+can only make by opening the images. A slice with green tests and an unusable mobile layout is
+not done.
+
+## 7. Security review — `security-auditor` agent
 
 Run it on the whole slice, including work you did yourself. Fix everything Critical and High
 before proceeding; record any accepted Medium in the feature doc with the reasoning.
 
-## 7. Verify
+## 8. Verify
 
 ```bash
 tools/verify.sh
@@ -54,7 +65,7 @@ tools/verify.sh
 Actually run it. If it fails, fix it — or say plainly what's broken and why. Never report a
 slice as done on an assumed-green build.
 
-## 8. Close the loop
+## 9. Close the loop
 
 - Update the feature doc: status, and any behavior that changed during implementation.
 - `/adr` for structural decisions made along the way; `/remember` for smaller ones and for
