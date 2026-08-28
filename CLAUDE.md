@@ -21,6 +21,7 @@ Read the doc, then read only the code you are about to change.
 | Write a migration or entity | `docs/guides/database-style.md` |
 | Write tests | `docs/guides/testing-style.md` |
 | Check how the UI actually looks | `docs/guides/ui-validation.md` |
+| Write docs for the people using the app | `docs/guides/user-docs.md`, `userguide/STYLE.md` |
 | Commit, branch, or open a PR | `docs/guides/git-style.md` |
 | Understand a domain term | `docs/domain/model.md`, `docs/memory/glossary.md` |
 | Wonder "why is it like this?" | `docs/adr/` (index in `docs/adr/README.md`) |
@@ -31,7 +32,8 @@ Read the doc, then read only the code you are about to change.
 ```
 backend/     Spring Boot API (Java 21, Maven)   — not yet created
 frontend/    Angular SPA (TypeScript)           — not yet created
-docs/        Durable knowledge. See docs/README.md
+docs/        Durable knowledge for DEVELOPERS and agents. See docs/README.md
+userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader — see its STYLE.md
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
 .claude/     Agents, skills, hooks for this repo
 client/      LEGACY React app  — read-only reference, being replaced
@@ -61,6 +63,9 @@ patterns. They exist only as a behavioral reference until parity is reached; see
 7. **`tools/verify.sh` must pass before you say you're done.** Not "should pass" — run it.
 8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and *read the
    screenshots*. A green test suite does not tell you the page renders correctly.
+9. **A user-visible feature ships with its user guide.** `userguide/` is written from the
+   running app, never from the feature doc — see ADR-0012. Screenshots use demo data only;
+   they are committed, and this is a financial app.
 
 ## Working agreement
 
@@ -73,7 +78,7 @@ patterns. They exist only as a behavioral reference until parity is reached; see
 - **Update the feature doc in the same change** that alters the behavior it describes.
   Stale docs are worse than no docs — they get trusted.
 - **Prefer the specialists.** `spring-api`, `angular-ui`, `persistence`, `security-auditor`,
-  `test-author`, `docs-curator`, `ui-validator`. Use `security-auditor` on anything touching auth, money
+  `test-author`, `docs-curator`, `ui-validator`, `user-docs`. Use `security-auditor` on anything touching auth, money
   movement, or user data boundaries — including your own work.
 - **Ask when the security answer is unclear.** Guessing at a security control is worse than
   a question.
@@ -87,8 +92,10 @@ tools/verify.sh frontend     # frontend only
 tools/dev-up.sh              # start Postgres (docker) for local dev
 tools/ui-check.sh            # drive the running UI, screenshot it, check a11y
 tools/ui-check.sh --selfcheck  # prove the UI harness works with no app present
+tools/userguide-capture.sh   # capture annotated screenshots for the user guide
+tools/userguide-check.sh     # find stale/missing/orphaned user-guide screenshots
 ```
 
 ## Slash commands
 
-`/feature-doc` · `/adr` · `/vertical-slice` · `/threat-model` · `/remember` · `/verify` · `/ui-check`
+`/feature-doc` · `/adr` · `/vertical-slice` · `/threat-model` · `/remember` · `/verify` · `/ui-check` · `/user-guide`

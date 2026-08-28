@@ -9,6 +9,7 @@ Use `/vertical-slice` to work one.
 |---|---|---|---|
 | 0 | AI harness, docs, style guides | — | **Done** |
 | 0b | UI validation harness (Playwright + axe) | 0 | **Done** |
+| 0c | User-guide capture + `user-docs` agent | 0b | **Done** |
 | 1 | Backend + frontend skeletons, CI, `verify.sh` proven | 0 | Next |
 | 2 | [Users & authentication](features/accounts-and-auth.md) | 1 | Planned |
 | 3 | Accounts (money containers) | 2 | Planned |
@@ -28,4 +29,6 @@ Use `/vertical-slice` to work one.
   `guides/testing-style.md` exist.
 - Any slice with a UI is not done until `tools/ui-check.sh` has been run **and its screenshots
   read**. See `guides/ui-validation.md`.
+- Any user-visible slice is not done until its guide exists in `userguide/`, written from the
+  running app. See `guides/user-docs.md`.
 - Slice 11 only happens after parity is genuinely reached — not "close enough".

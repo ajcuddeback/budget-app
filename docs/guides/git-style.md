@@ -47,6 +47,8 @@ A PR includes:
 - [ ] `tools/verify.sh` passes — actually run, not assumed
 - [ ] Tests cover the new behavior, including the mandatory auth tests in `testing-style.md`
 - [ ] Feature doc created or updated **in this change**
+- [ ] UI change? `tools/ui-check.sh` run and its screenshots read
+- [ ] User-visible? Guide written or updated in `userguide/`, from the running app
 - [ ] Decisions worth keeping are in an ADR or `docs/memory/`
 - [ ] No secrets, no new `any`, no disabled security controls
 - [ ] Migration added if the schema changed, and it is append-only

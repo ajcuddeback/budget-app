@@ -91,4 +91,16 @@ at runtime too.
 
 *Added 2026-08-28.*
 
+### `new Function()` inside `page.evaluate` breaks under our own CSP
+
+The doc-capture overlay first built its highlight ring via `new Function(...)` inside the page.
+Playwright's `page.evaluate` itself is fine under a strict CSP — it goes through the debugger
+protocol, not `eval` — but `new Function()` *inside* the page is ordinary dynamic evaluation and
+`script-src` without `unsafe-eval` blocks it. Our security model mandates exactly that CSP, so
+the annotation would have silently failed on our own app while working on a data: URL fixture.
+
+Pass a plain inline callback to `page.evaluate` instead.
+
+*Added 2026-08-28 — caught while building the user-guide capture pipeline.*
+
 ---

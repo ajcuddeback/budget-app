@@ -35,7 +35,10 @@
       "Bash(npx tsc*)",
       "Bash(npx tsx*)",
       "Edit(tools/ui/**)",
-      "Bash(curl -fsS*)"
+      "Bash(curl -fsS*)",
+      "Bash(tools/userguide-capture.sh*)",
+      "Bash(tools/userguide-check.sh*)",
+      "Edit(userguide/**)"
     ],
     "deny": [
       "Edit(client/**)",

@@ -79,7 +79,7 @@ rm -rf "$UI_OUT_DIR"; mkdir -p "$UI_OUT_DIR"
 
 # ---------------------------------------------------------------------- run
 GREP_ARG=""; [ -n "$GREP" ] && GREP_ARG="--grep $GREP"
-(cd "$UI" && npx playwright test --grep-invert "harness (captures|detects)" $GREP_ARG $HEADED)
+(cd "$UI" && npx playwright test --grep-invert "@doc|harness (captures|detects)" $GREP_ARG $HEADED)
 status=$?
 
 (cd "$UI" && npx tsx helpers/summarize.ts) || true

@@ -1,5 +1,9 @@
 # Documentation Map
 
+> **This tree is for developers and agents.** Customer-facing help for people *using* the app
+> lives in [`userguide/`](../userguide/README.md) — different reader, different vocabulary,
+> different source of truth (the running app). Don't mix them. See ADR-0012.
+
 Four kinds of knowledge live here. Put new writing in the right one — the value of this tree is
 that an agent can find the answer without reading code.
 
@@ -41,5 +45,5 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 - Style guides: [Java](guides/java-style.md) · [Angular](guides/angular-style.md) ·
   [API](guides/api-style.md) · [Database](guides/database-style.md) ·
   [Testing](guides/testing-style.md) · [Git & review](guides/git-style.md) ·
-  [UI validation](guides/ui-validation.md)
+  [UI validation](guides/ui-validation.md) · [User docs](guides/user-docs.md)
 - [Roadmap](roadmap.md)

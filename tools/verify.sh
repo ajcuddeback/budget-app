@@ -85,6 +85,14 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   fi
 fi
 
+# ------------------------------------------------------------ user guide
+section "User guide"
+if [ -d userguide ]; then
+  run "user guide integrity" tools/userguide-check.sh
+else
+  skip "user guide" "userguide/ does not exist"
+fi
+
 # ------------------------------------------------------------------ docs
 section "Documentation"
 missing=0

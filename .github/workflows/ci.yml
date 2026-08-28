@@ -47,8 +47,12 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
-      - name: Prove the harness works
+      - name: Prove the UI harness works
         run: tools/ui-check.sh --selfcheck
+      - name: Prove the user-guide capture pipeline works
+        run: tools/userguide-capture.sh --selfcheck
+      - name: Check the user guide for rot
+        run: tools/userguide-check.sh
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4

@@ -8,6 +8,30 @@ and link it from here.
 
 ---
 
+### 2026-08-28 — User guide is a separate tree with a separate agent
+
+`userguide/` sits beside `docs/`, not inside it, and is written by `user-docs` rather than
+`docs-curator`. Different reader, different vocabulary, different source of truth: developer docs
+come from decisions and specs, the user guide comes from the running app.
+
+Keeping them apart also protects the routing in `CLAUDE.md` — an agent looking for a spec would
+otherwise land in a how-to guide.
+
+See ADR-0012.
+
+---
+
+### 2026-08-28 — Self-check output never lands in committed directories
+
+The user-guide capture self-check originally wrote its proof-of-pipeline screenshots straight
+into `userguide/images/`, where they showed up as permanent orphans and would have been
+committed as repo bloat.
+
+Self-checks now write to `tools/ui/artifacts/`. General rule: a self-check proves machinery
+works; its output is never content, and it should never touch a directory that gets committed.
+
+---
+
 ### 2026-08-28 — UI harness lives in tools/, not frontend/e2e/
 
 Put the Playwright harness in `tools/ui/` rather than the conventional Angular `frontend/e2e/`.

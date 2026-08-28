@@ -51,12 +51,24 @@ overflow come back automatically; whether the screen actually looks finished is 
 can only make by opening the images. A slice with green tests and an unusable mobile layout is
 not done.
 
-## 7. Security review — `security-auditor` agent
+## 7. Document it for users — `user-docs` agent
+
+If the slice is user-visible, it ships with its guide:
+
+```bash
+tools/userguide-capture.sh --serve
+```
+
+Read the screenshots, then write the guide in `userguide/` **from what you saw** — never from
+the feature doc. Writing it is also a second review pass: a step that's hard to describe
+clearly is usually a design problem worth fixing now.
+
+## 8. Security review — `security-auditor` agent
 
 Run it on the whole slice, including work you did yourself. Fix everything Critical and High
 before proceeding; record any accepted Medium in the feature doc with the reasoning.
 
-## 8. Verify
+## 9. Verify
 
 ```bash
 tools/verify.sh
@@ -65,7 +77,7 @@ tools/verify.sh
 Actually run it. If it fails, fix it — or say plainly what's broken and why. Never report a
 slice as done on an assumed-green build.
 
-## 9. Close the loop
+## 10. Close the loop
 
 - Update the feature doc: status, and any behavior that changed during implementation.
 - `/adr` for structural decisions made along the way; `/remember` for smaller ones and for
