@@ -36,4 +36,5 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0009](0009-testcontainers-over-h2.md) | Testcontainers over H2 | Accepted | 2026-08-27 |
 | [0010](0010-ai-harness-and-doc-structure.md) | AI harness and documentation structure | Accepted | 2026-08-27 |
 | [0011](0011-playwright-ui-validation-harness.md) | Playwright harness for agent-driven UI validation | Accepted | 2026-08-28 |
-| [0012](0012-customer-facing-user-guide.md) | Customer-facing user guide captured from the running app | Accepted | 2026-08-28 |
+| [0012](0012-customer-facing-user-guide.md) | Customer-facing user guide captured from the running app | Accepted (amended by 0013) | 2026-08-28 |
+| [0013](0013-captures-render-against-fixtures.md) | Captures render against fixtures, never a live app | Accepted | 2026-08-28 |

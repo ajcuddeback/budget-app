@@ -65,8 +65,11 @@ built with, and the two drift. `helpers/browser.ts` prefers an existing browser 
 On a normal dev machine, `npx playwright install chromium` once and it uses Playwright's own.
 Override either with `UI_CHROMIUM_PATH`.
 
-## Security
+## Data
 
-Screenshots of a budgeting app contain financial data. Use seeded test data, never real records.
-`artifacts/` is gitignored — keep it that way, and never attach a screenshot taken against real
-data to an issue or PR.
+Validation runs drive whatever you point them at, and their output is gitignored — pointing
+`ui-check.sh` at a deployed staging environment is a legitimate thing to do.
+
+**Documentation captures are different**, because their images are committed. They render
+against the fixtures in `fixtures/demo-data.ts` via request interception, and
+`tools/userguide-capture.sh` refuses any non-local target outright. See ADR-0013.

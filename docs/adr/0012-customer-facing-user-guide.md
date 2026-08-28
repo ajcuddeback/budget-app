@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-08-28
 - **Deciders:** Repository owner
+- **Amended by:** [ADR-0013](0013-captures-render-against-fixtures.md) — the privacy guidance in
+  *Consequences* below was replaced by a mechanism (fixtures + a local-only capture guard).
+  The rest of this record stands as written.
 
 ## Context
 

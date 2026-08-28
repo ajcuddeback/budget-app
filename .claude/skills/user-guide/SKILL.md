@@ -71,10 +71,14 @@ tools/userguide-check.sh
 
 Missing images, orphans, broken links, and screenshots older than the UI they depict.
 
-## Screenshots and privacy
+## Where the screenshots get their data
 
-Demo data only. **Never a screenshot containing real financial records** — these images are
-committed to the repository. This is the one rule here with a real blast radius.
+The `doc` fixture intercepts every `/api/**` call and answers it from
+`tools/ui/fixtures/demo-data.ts`, so a capture run has no backend and no database behind it.
+Captures also refuse any non-local target, enforced in the script with no override (ADR-0013).
+
+If a guide needs a scenario the fixtures don't cover — an empty account list, an overspent
+budget line — add it to `demo-data.ts` rather than reaching for a different data source.
 
 ## Report back
 

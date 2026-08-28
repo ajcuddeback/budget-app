@@ -53,16 +53,22 @@ A user-visible slice is not done until its guide exists. Same rule as tests and 
 written in the same change, not in a documentation sprint later. Documentation debt is repaid at
 a terrible exchange rate — nobody remembers the edge cases three weeks on.
 
-## Privacy
+## Where the data comes from
 
-Screenshots of a budgeting app show financial data, and `userguide/images/` is **committed**.
+Captures render the real UI against `tools/ui/fixtures/demo-data.ts`. The `doc` fixture
+intercepts every `/api/**` request and answers it from that file, so a capture run involves no
+backend, no database and no credentials. `tools/userguide-capture.sh` additionally refuses any
+non-local target, with no override flag.
 
-- Demo/seeded data only. Never a real user's records, never your own.
-- No real names, real balances, or real account numbers.
-- Check the image before committing it — including the parts of the screen you weren't
-  thinking about, like a sidebar total or a notification.
+Two things follow:
 
-This is the one rule here that causes real harm if broken.
+- **Screenshots are reproducible.** The same bytes every run, so a re-capture differs only when
+  the UI actually changed — which is what makes the staleness check meaningful.
+- **Extending the guide means extending the fixtures.** Need an empty state, an overspent budget
+  line, a very long account name? Add it to `demo-data.ts`. That is the only place guide data
+  comes from.
+
+See ADR-0013.
 
 ## Capture helper
 

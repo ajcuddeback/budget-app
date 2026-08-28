@@ -103,4 +103,17 @@ Pass a plain inline callback to `page.evaluate` instead.
 
 *Added 2026-08-28 — caught while building the user-guide capture pipeline.*
 
+### Playwright route precedence: the LAST registered handler wins
+
+A spec registered `page.route('**/accounts', ...)` to serve an app shell, after the doc fixture
+had already registered `page.route('**/api/**', ...)`. The broad pattern matched
+`/api/accounts` too, and because it was registered later it took precedence — so the page's own
+`fetch('/api/accounts')` was answered with HTML. The symptom was a bare timeout waiting for
+content, with nothing in the console pointing at routing.
+
+Register the narrowest pattern you can, and prefer an exact URL for a page shell. When a mock
+seems not to be applied, check whether a later route is shadowing it.
+
+*Added 2026-08-28 — while building the fixture-backed capture pipeline.*
+
 ---

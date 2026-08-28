@@ -8,6 +8,22 @@ and link it from here.
 
 ---
 
+### 2026-08-28 — Prefer a mechanism over a warning, and notice when you've written a warning
+
+The first version of the capture pipeline handled the "don't screenshot real data" risk with
+four copies of a warning and an unrestricted `--url` flag. It was corrected to fixtures plus a
+local-only guard with no override (ADR-0013).
+
+The general lesson, worth applying beyond this case: **when you find yourself writing the same
+caution in several files, that is a signal you are missing a control.** Repetition is what
+people reach for when the mechanism isn't there. The fix is usually not a better-worded warning.
+
+Related: the underlying gap was a missing capability. There were no fixtures, so a populated
+screenshot required a real instance, so a warning was needed to compensate. Warnings often mark
+the spot where something wasn't built.
+
+---
+
 ### 2026-08-28 — User guide is a separate tree with a separate agent
 
 `userguide/` sits beside `docs/`, not inside it, and is written by `user-docs` rather than

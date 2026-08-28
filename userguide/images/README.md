@@ -10,8 +10,15 @@ guide without pictures of the real thing is not a user guide.
 - Never add an image by hand. If it did not come from a capture run, it will go stale with
   nothing to detect it.
 
-## Demo data only
+## Where the data comes from
 
-These images are committed to the repository and this is a budgeting app. **Never capture
-against real financial records** — not a user's, not your own. Check the whole frame before
-committing, including sidebars and notifications you weren't thinking about.
+Everything visible in these screenshots is defined in `tools/ui/fixtures/demo-data.ts`. The
+capture run intercepts every `/api/**` request and answers it from that file, so there is no
+database, no server and no credentials involved — the app renders fixtures and nothing else.
+
+Captures also refuse to run against anything but a local address, enforced in
+`tools/userguide-capture.sh` with no override.
+
+Need a scenario the fixtures don't cover — an empty state, an overspent budget, a long account
+name? Add it to `demo-data.ts`. That keeps captures reproducible: the same bytes every run, so
+a screenshot only changes when the UI does. See ADR-0013.

@@ -10,6 +10,10 @@
 # real thing is not a user guide. Every capture is stamped with the commit and date it was
 # taken so tools/userguide-check.sh can flag ones that have gone stale.
 #
+# The API is mocked from tools/ui/fixtures/demo-data.ts: no backend, no database, no
+# credentials. Only a local target is accepted, and that is enforced below rather than
+# requested in a comment. See ADR-0013.
+#
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
@@ -27,6 +31,17 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
+
+# Enforced, not advised: doc captures are committed to the repository and have no reason to
+# reach a remote host. There is deliberately no override flag (ADR-0013).
+case "$(printf '%s' "$URL" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')" in
+  localhost|127.0.0.1|0.0.0.0|::1|\[::1\]) ;;
+  *)
+    echo "Refusing to capture against '$URL'." >&2
+    echo "  Documentation captures run only against a local instance serving fixture data" >&2
+    echo "  from tools/ui/fixtures/demo-data.ts. There is no override. See ADR-0013." >&2
+    exit 2 ;;
+esac
 
 if [ ! -d "$UI/node_modules" ]; then
   echo "Installing UI harness dependencies (one time)..."
@@ -51,7 +66,7 @@ if [ "$SELFCHECK" -eq 1 ]; then
   rm -rf "$USERGUIDE_IMAGES"; mkdir -p "$USERGUIDE_IMAGES"
   echo "Self-check: proving the user-guide capture pipeline works (no app required)."
   echo "  (writing to tools/ui/artifacts/userguide-selfcheck/, not the committed guide)"
-  run_capture specs/docs/guide-selfcheck.spec.ts
+  run_capture specs/docs/guide-selfcheck.spec.ts specs/docs/mock-api-selfcheck.spec.ts
   status=$?
 else
   SERVER_PID=""

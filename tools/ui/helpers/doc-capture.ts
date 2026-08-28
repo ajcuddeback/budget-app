@@ -1,4 +1,5 @@
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
+import { mockApi, type ApiCall } from './mock-api.js';
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,10 @@ import path from 'node:path';
  * A screenshot in a user guide is a promise about what the reader will see. When it lies,
  * the reader assumes they broke something. That is why every capture is stamped with a
  * commit and date, and why tools/userguide-check.sh flags shots older than the UI they show.
+ *
+ * The API is mocked automatically from tools/ui/fixtures/demo-data.ts before the first
+ * navigation, so a capture run has no backend, no database, and no credentials — it cannot
+ * read real records because there is nothing real to read (ADR-0013).
  */
 
 const IMAGES_DIR = path.resolve(
@@ -76,12 +81,17 @@ type DocFixtures = {
     /** Name the guide these captures belong to. Sets the filename prefix. */
     guide: (slug: string) => void;
     capture: (name: string, caption: string, options?: CaptureOptions) => Promise<string>;
+    /** Every /api/** request the page made, answered from fixtures. */
+    apiCalls: ApiCall[];
   };
 };
 
 export const test = base.extend<DocFixtures>({
   doc: async ({ page }, use) => {
     let guideSlug = 'guide';
+
+    // Installed before the spec navigates anywhere, so nothing escapes to a real backend.
+    const apiCalls = await mockApi(page);
 
     const capture = async (
       name: string,
@@ -172,6 +182,7 @@ export const test = base.extend<DocFixtures>({
         guideSlug = slug;
       },
       capture,
+      apiCalls,
     });
   },
 });

@@ -64,8 +64,8 @@ patterns. They exist only as a behavioral reference until parity is reached; see
 8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and *read the
    screenshots*. A green test suite does not tell you the page renders correctly.
 9. **A user-visible feature ships with its user guide.** `userguide/` is written from the
-   running app, never from the feature doc — see ADR-0012. Screenshots use demo data only;
-   they are committed, and this is a financial app.
+   running UI, never from the feature doc — see ADR-0012. Captures render against the demo
+   fixtures in `tools/ui/fixtures/demo-data.ts` and refuse any non-local target (ADR-0013).
 
 ## Working agreement
 

@@ -53,6 +53,13 @@ jobs:
         run: tools/userguide-capture.sh --selfcheck
       - name: Check the user guide for rot
         run: tools/userguide-check.sh
+      - name: Prove captures refuse a non-local target
+        run: |
+          if tools/userguide-capture.sh --url https://budget.example.com >/dev/null 2>&1; then
+            echo "Capture guard did NOT refuse a remote target — see ADR-0013" >&2
+            exit 1
+          fi
+          echo "Capture guard correctly refused a remote target." 
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4

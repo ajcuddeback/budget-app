@@ -74,9 +74,12 @@ From `STYLE.md`, the ones most often broken:
 
 ## Screenshots
 
-- Only from `tools/userguide-capture.sh` against the real app. Never mock one up.
-- Demo data only. **A screenshot must never contain anyone's real financial records** — this is
-  a budgeting app and those images get committed to a public repository.
+- Only from `tools/userguide-capture.sh`. Never mock one up by hand.
+- The data in them comes from `tools/ui/fixtures/demo-data.ts` — the capture intercepts every
+  `/api/**` call and answers from that file, so there is no backend to reach. Captures also
+  refuse any non-local target (ADR-0013), so this is not something you need to be careful about;
+  it is not possible.
+- Need a scenario the fixtures don't cover? Add it to `demo-data.ts`.
 - Highlight the element the step refers to; the capture helper draws a numbered ring.
 - After the step, not before.
 
@@ -93,5 +96,6 @@ the first person positioned to notice. That feedback is more valuable than the g
 
 - Write steps for a screen you have not looked at.
 - Copy the developer feature doc into the user guide.
-- Include real user data in a screenshot.
 - Describe a feature as available when it is not built. Mark it as not yet written instead.
+- Weaken the capture guard to reach some other environment. If the fixtures don't show what you
+  need, extend the fixtures.

@@ -51,13 +51,15 @@ insulting. Delete the word — the sentence is always better without it.
 
 ## Screenshots
 
-- Every screenshot comes from `tools/userguide-capture.sh` against the real app. Never mock one
-  up, never crop one from somewhere else.
+- Every screenshot comes from `tools/userguide-capture.sh`, which renders the real UI against
+  the demo fixtures in `tools/ui/fixtures/demo-data.ts`. Never mock one up by hand.
 - Put it **after** the step it illustrates, not before.
 - Every image needs alt text describing what it shows — people using screen readers are using
   this app too.
 - Highlight the thing the step refers to (the capture helper draws a numbered ring).
-- Demo data only. Never a screenshot containing anyone's real financial records.
+- The names and amounts you see (Alex Rivera, Everyday Checking, 2,480.15) come from that
+  fixture file. If a guide needs a scenario the fixtures don't cover, **add it there** — that
+  keeps every screenshot consistent and reproducible.
 
 ## Structure of a guide
 
