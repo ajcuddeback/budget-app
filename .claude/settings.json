@@ -38,7 +38,9 @@
       "Bash(curl -fsS*)",
       "Bash(tools/userguide-capture.sh*)",
       "Bash(tools/userguide-check.sh*)",
-      "Edit(userguide/**)"
+      "Edit(userguide/**)",
+      "Bash(tools/update-skills.sh*)",
+      "Bash(npx --yes skills*)"
     ],
     "deny": [
       "Edit(client/**)",
@@ -79,6 +81,17 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-write.sh",
             "timeout": 15,
             "statusMessage": "Checking for secrets and legacy paths..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.sh",
+            "timeout": 10,
+            "statusMessage": "Checking project scaffolding rules..."
           }
         ]
       }

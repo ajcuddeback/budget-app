@@ -16,7 +16,7 @@ Read the doc, then read only the code you are about to change.
 | Understand the system shape | `docs/architecture/overview.md` |
 | Touch auth, sessions, cookies, CSRF | `docs/architecture/security-model.md` (**mandatory**) |
 | Write Java | `docs/guides/java-style.md` |
-| Write Angular / TypeScript | `docs/guides/angular-style.md` |
+| Write Angular / TypeScript | the `angular-developer` skill, then `docs/guides/angular-style.md` |
 | Add or change a REST endpoint | `docs/guides/api-style.md` |
 | Write a migration or entity | `docs/guides/database-style.md` |
 | Write tests | `docs/guides/testing-style.md` |
@@ -35,6 +35,7 @@ frontend/    Angular SPA (TypeScript)           — not yet created
 docs/        Durable knowledge for DEVELOPERS and agents. See docs/README.md
 userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader — see its STYLE.md
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
+.agents/     Vendored third-party agent skills (Angular's). Pinned; see skills-lock.json
 .claude/     Agents, skills, hooks for this repo
 client/      LEGACY React app  — read-only reference, being replaced
 server/      LEGACY Express API — read-only reference, being replaced
@@ -94,8 +95,14 @@ tools/ui-check.sh            # drive the running UI, screenshot it, check a11y
 tools/ui-check.sh --selfcheck  # prove the UI harness works with no app present
 tools/userguide-capture.sh   # capture annotated screenshots for the user guide
 tools/userguide-check.sh     # find stale/missing/orphaned user-guide screenshots
+tools/update-skills.sh       # refresh vendored third-party agent skills (review the diff)
 ```
 
 ## Slash commands
 
 `/feature-doc` · `/adr` · `/vertical-slice` · `/threat-model` · `/remember` · `/verify` · `/ui-check` · `/user-guide`
+
+Plus Angular's own vendored skills: `angular-developer` (framework guidance) and
+`angular-new-app` (scaffolding). They are the source of truth for **Angular**;
+`docs/guides/angular-style.md` is the source of truth for **this project**, and its override
+table lists every point where we differ. See ADR-0014.

@@ -11,8 +11,32 @@ You implement frontend features in this repository's Angular SPA.
 Read:
 1. `CLAUDE.md`
 2. The feature doc in `docs/features/`. **No feature doc means stop and say so.**
-3. `docs/guides/angular-style.md`
+3. `docs/guides/angular-style.md` — especially the override table at the top
 4. `docs/guides/api-style.md` — so you consume the API as it's actually shaped
+
+## Use the official Angular skill
+
+This repo vendors Angular's own skills. **Invoke `angular-developer` for framework
+questions** — signals, `resource`, DI, routing, ARIA components, pipes, CLI, migrations. It is
+the Angular team's own guidance, kept current with the framework, and far deeper than our style
+guide. Don't reconstruct Angular knowledge from memory when the skill has the current answer.
+
+Two layers, and they do not overlap:
+
+- **`angular-developer`** answers *how does Angular do this?*
+- **`docs/guides/angular-style.md`** answers *what does this project do?*
+
+Where they disagree, **the project guide wins** — its override table lists every such point
+(forms, styling, scaffolding path, `--ai-config`, SSR). If you hit a disagreement that is not in
+that table, do not pick one silently: raise it and get it recorded.
+
+The overrides most likely to bite you:
+
+- **Typed reactive forms, not Signal Forms.** The skill prefers Signal Forms for new apps; we
+  deliberately do not. Forms are our untrusted-input edge.
+- **No Tailwind.** SCSS and design tokens. Introducing Tailwind needs an ADR.
+- **Scaffold only into `frontend/`**, and never pass `--ai-config` to `ng new` — it writes a
+  competing agent config that fights this harness.
 
 ## How you build
 

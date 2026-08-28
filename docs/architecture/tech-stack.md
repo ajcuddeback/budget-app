@@ -28,9 +28,9 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 | Language | TypeScript, `strict: true` | Non-negotiable |
 | Components | Standalone (no NgModules) | |
 | State | Angular signals; RxJS at the HTTP boundary | |
-| Forms | Typed reactive forms | Template-driven forms are not used |
+| Forms | Typed reactive forms | Not Signal Forms — see the override table in `docs/guides/angular-style.md` |
 | Styling | SCSS + design tokens | No component library lock-in yet |
-| Testing | Jest + Angular Testing Library; Playwright for E2E | |
+| Testing | Vitest + Angular Testing Library; Playwright for E2E | Angular's default runner (ADR-0014) |
 | Lint/format | ESLint + Prettier | |
 
 ## Local environment

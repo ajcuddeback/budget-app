@@ -116,4 +116,42 @@ seems not to be applied, check whether a later route is shadowing it.
 
 *Added 2026-08-28 — while building the fixture-backed capture pipeline.*
 
+### Vendored skills are symlinks, and Windows checkouts can break them
+
+`npx skills add` puts real files in `.agents/skills/<name>/` and symlinks
+`.claude/skills/<name>` to them. Git stores the symlink correctly (mode 120000) and it resolves
+on macOS and Linux.
+
+On Windows without symlink support enabled (`core.symlinks`, which needs Developer Mode or an
+elevated clone), git checks the symlink out as a **plain text file containing the target path**.
+The skill then silently does not load — no error, it just is not there.
+
+If Angular guidance seems missing on Windows, check whether `.claude/skills/angular-developer`
+is a directory or a one-line text file.
+
+*Added 2026-08-28 — ADR-0014.*
+
+### A substring-matching Bash guard will block prose about itself — and lock you out of fixing it
+
+A `PreToolUse` Bash hook enforcing "scaffold only into frontend/" matched any command
+*containing* `ng new`. It then blocked the heredoc writing the documentation for that very rule,
+and later a test script whose payload contained a chained command. Worse, once installed, the
+buggy hook blocked every `cat > .claude/hooks/guard-bash.sh <<EOF` attempt to fix it — the guard
+prevented its own repair. The way out was the Write tool, which the Bash matcher does not gate.
+
+Two rules for command guards:
+
+1. **Match invocations, not mentions.** Only a line that *begins* with the command counts.
+   Splitting on `;`, `&&` and `|` sounds more thorough but re-introduces the bug, because prose
+   and JSON payloads contain those characters too.
+2. **Keep an edit path that does not go through the guard**, and remember it exists. A guard on
+   `Bash` that you can only fix with `Bash` is a trap you set for yourself.
+
+Also: `while IFS= read -r line; do ... done < <(printf '%s' "$x")` never executes the body for a
+single-line input, because `read` returns non-zero at EOF without a trailing newline. Use
+`printf '%s\n'`. This silently disables a guard rather than erroring — the tests looked like
+they passed because nothing was output at all.
+
+*Added 2026-08-28 — ADR-0014.*
+
 ---

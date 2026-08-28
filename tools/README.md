@@ -7,6 +7,7 @@
 | `ui-check.sh` | Drive the running UI in a real browser, screenshot it for agent review, and check accessibility, console errors, and layout. See [`ui/README.md`](ui/README.md). |
 | `userguide-capture.sh` | Capture annotated screenshots for the customer-facing guide in `userguide/`. |
 | `userguide-check.sh` | Find user-guide screenshots that are missing, orphaned, or older than the UI they show. |
+| `update-skills.sh` | Refresh the vendored third-party agent skills (Angular's) and show the diff to review. |
 
 ## verify.sh
 

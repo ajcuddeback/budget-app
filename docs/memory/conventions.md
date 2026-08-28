@@ -25,6 +25,14 @@ Small agreed choices. Add with `/remember`. Newest at the bottom of each section
 - Controllers are thin: validate, delegate, map. No branching on business rules.
 - Angular: routed page components are smart, everything under `components/` is presentational.
 
+## Angular
+
+- The official `angular-developer` skill is the source of truth for **framework** questions.
+  `docs/guides/angular-style.md` is the source of truth for **project** decisions, and its
+  override table names every point where we deliberately differ.
+- Never pass `--ai-config` to `ng new`. It writes a competing agent config that fights the
+  harness's routing; ours is `CLAUDE.md` at the repo root.
+
 ## Documentation
 
 - Feature docs are `kebab-case.md`, named as a user would name the feature.

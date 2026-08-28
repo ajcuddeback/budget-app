@@ -83,8 +83,9 @@ response.andExpect(status().isNotFound());
 
 ## Frontend
 
-- Jest + Angular Testing Library. Query by role, label, and text — what a user perceives —
-  never by CSS class or test-id-as-a-crutch.
+- Vitest + Angular Testing Library. Query by role, label, and text — what a user perceives —
+  never by CSS class or test-id-as-a-crutch. Vitest is Angular's own default runner; the
+  `angular-developer` skill's testing guidance assumes it (ADR-0014).
 - Test components through their public surface: inputs in, rendered output and outputs out.
 - Mock HTTP at `HttpTestingController`, not by stubbing the service under test.
 - Playwright E2E covers: sign up, log in, add a transaction, see the balance update, log out.
@@ -101,5 +102,5 @@ authorization is a gap that needs justifying. Uncovered getters are not.
 tools/verify.sh              # everything — this is the gate
 mvn -f backend test          # backend unit + slice
 mvn -f backend verify        # + integration (needs Docker)
-npm --prefix frontend test
+npm --prefix frontend test          # vitest
 ```

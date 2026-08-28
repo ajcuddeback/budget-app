@@ -8,6 +8,36 @@ and link it from here.
 
 ---
 
+### 2026-08-28 — Two sources of guidance need a stated precedence and an enumerated exception list
+
+Adopting Angular's official skills alongside our own style guide created the exact risk the
+harness exists to remove: two documents telling an agent different things.
+
+Resolved not by picking one, but by scoping them — the skill owns *framework* questions, our
+guide owns *project* questions — plus an **override table** listing every point where we
+deliberately differ.
+
+The table is the important half. "Our guide wins" alone is unusable: an agent cannot tell which
+of a hundred statements is a deliberate override and which is our guide simply being out of
+date. Enumerating the exceptions makes them countable, reviewable, and removable when upstream
+catches up.
+
+Generalises to any vendored guidance: state the precedence, then list the exceptions.
+
+See ADR-0014.
+
+---
+
+### 2026-08-28 — Switched Angular tests from Jest to Vitest
+
+Angular's skill assumes Vitest, which is now Angular's default runner; Jest needs
+`jest-preset-angular` and is drifting toward legacy. Changed while it costs nothing — no
+frontend code exists yet.
+
+An example of adopting upstream guidance actually changing our mind rather than being overridden.
+
+---
+
 ### 2026-08-28 — Prefer a mechanism over a warning, and notice when you've written a warning
 
 The first version of the capture pipeline handled the "don't screenshot real data" risk with
