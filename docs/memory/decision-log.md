@@ -8,6 +8,28 @@ and link it from here.
 
 ---
 
+### 2026-08-29 — CodeQL caught an XSS pattern in the security harness itself
+
+The first successful CodeQL run failed the PR with 2 high + 1 medium alerts, all in
+`tools/ui/specs/docs/mock-api-selfcheck.spec.ts`: a fixture page building table rows with
+`innerHTML` and string concatenation from a fetched response.
+
+Not exploitable — the data is our own fixture, served by our own mock, in a Playwright-driven
+page. Fixed anyway, with `createElement`/`textContent`, for three reasons that all outrank
+exploitability:
+
+1. A fixture is an example. Agents start new specs from existing ones, so the pattern spreads.
+2. `angular-style.md` bans `innerHTML` with response data. A fixture demonstrating what the
+   style guide forbids undermines the guide.
+3. It would have failed CodeQL on every future run, and a permanently red security check is
+   precisely how a team learns to ignore CI.
+
+Worth noting the harness caught this in the harness. The security tooling's first real find was
+its own author's code — which is the argument for having it point at everything, not just the
+application.
+
+---
+
 ### 2026-08-29 — Deleted the legacy app; the doc is what made it safe
 
 Removed `client/`, `server/`, `images/` and the root MERN `package.json`. Clean slate, no parity

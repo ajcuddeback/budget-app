@@ -28,10 +28,28 @@ const APP_SHELL = `<!doctype html><html lang="en"><head><meta charset="utf-8">
   <tbody id="rows"></tbody></table>
 </main>
 <script>
+  // Built with createElement/textContent rather than innerHTML. The data here is our own
+  // fixture, so this is not exploitable — but a fixture is read as an example, and an agent
+  // copying an innerHTML-from-response pattern into real Angular code would be a genuine XSS
+  // bug. It also keeps CodeQL green, and a permanently red security check is how teams learn
+  // to ignore CI. docs/guides/angular-style.md bans innerHTML with response data; a fixture in
+  // this repo should not model what the style guide forbids.
   fetch('/api/accounts').then(r => r.json()).then(data => {
-    document.getElementById('rows').innerHTML = data.content.map(a =>
-      '<tr><td>' + a.name + '</td><td>' + a.type + '</td>' +
-      '<td class="amount">' + a.balance + '</td></tr>').join('');
+    const rows = document.getElementById('rows');
+    for (const account of data.content) {
+      const tr = document.createElement('tr');
+      for (const cell of [
+        { value: account.name, className: '' },
+        { value: account.type, className: '' },
+        { value: account.balance, className: 'amount' },
+      ]) {
+        const td = document.createElement('td');
+        if (cell.className) td.className = cell.className;
+        td.textContent = cell.value;
+        tr.appendChild(td);
+      }
+      rows.appendChild(tr);
+    }
     document.body.dataset.loaded = 'true';
   });
 </script></body></html>`;

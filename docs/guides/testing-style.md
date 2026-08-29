@@ -91,6 +91,19 @@ response.andExpect(status().isNotFound());
 - Playwright E2E covers: sign up, log in, add a transaction, see the balance update, log out.
   Keep it to journeys — E2E is where suites go to become flaky.
 
+## Fixtures are read as examples
+
+Test fixtures and harness specs get copied. An agent writing a new spec starts from an existing
+one, so a fixture that models a bad pattern propagates it into real code.
+
+Concretely: a harness fixture once built a table with `innerHTML` and string concatenation from
+a fetched response. Harmless in itself — the data was our own fixture — but CodeQL flagged it as
+high-severity XSS, and `docs/guides/angular-style.md` bans exactly that pattern in application
+code. A fixture in this repo should not demonstrate what the style guide forbids.
+
+Write fixtures to the same standard as production code, even when the fixture cannot be
+attacked. The cost is a few extra lines; the alternative is teaching the pattern.
+
 ## Coverage
 
 We don't chase a number. Uncovered code in the domain, the service layer, or anything touching
