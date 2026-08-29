@@ -9,6 +9,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege by default. Job-level blocks REPLACE this one rather than merging with it,
+# so every job that needs anything states its full set explicitly.
 permissions:
   contents: read
 
@@ -16,6 +18,8 @@ jobs:
   gate:
     name: Verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
 
@@ -46,6 +50,8 @@ jobs:
   ui:
     name: UI validation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -68,7 +74,7 @@ jobs:
             echo "Capture guard did NOT refuse a remote target — see ADR-0013" >&2
             exit 1
           fi
-          echo "Capture guard correctly refused a remote target." 
+          echo "Capture guard correctly refused a remote target."
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,6 +86,8 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -87,24 +95,36 @@ jobs:
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
+          # Read-only by the job permissions above: this is the narrowest token the action
+          # can be given while still reading the commit range it scans.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
     permissions:
+      # `contents: read` is required as well: a job-level block replaces the workflow-level
+      # one entirely, so omitting it left checkout relying on default-token behaviour.
+      contents: read
       security-events: write
     strategy:
       fail-fast: false
       matrix:
-        # java-kotlin is added when backend/ exists — CodeQL's autobuild fails outright on a
-        # repository with no Java source, and a permanently red check trains people to ignore CI.
-        language: [javascript-typescript]
+        # `actions` analyses the workflow files themselves. It was running anyway — the input
+        # below was misspelled `language`, so the matrix was ignored and CodeQL auto-detected
+        # every language it found. Listing it explicitly makes workflow scanning intentional
+        # and keeps it on; removing it to quieten a finding would be suppressing the check.
+        #
+        # java-kotlin is added when backend/ exists — autobuild fails outright on a repository
+        # with no Java source, and a permanently red check trains people to ignore CI.
+        language: [javascript-typescript, actions]
     steps:
       - uses: actions/checkout@v5
       - uses: github/codeql-action/init@v3
         with:
-          language: ${{ matrix.language }}
+          # NOT `language:` — that input does not exist, and CodeQL only emits a warning for
+          # an unknown input, so the misspelling silently disabled the matrix.
+          languages: ${{ matrix.language }}
           queries: security-extended
       - uses: github/codeql-action/autobuild@v3
       - uses: github/codeql-action/analyze@v3

@@ -154,4 +154,36 @@ they passed because nothing was output at all.
 
 *Added 2026-08-28 — ADR-0014.*
 
+### `codeql-action/init` silently ignores an unknown input — `language` vs `languages`
+
+Our CodeQL step passed `language: ${{ matrix.language }}`. The correct input is **`languages`**
+(plural). An unknown input is only a warning, buried at the end of the job log:
+
+    ##[warning]Unexpected input(s) 'language', valid inputs are ['tools', 'languages', ...]
+
+So the matrix was silently ignored and CodeQL auto-detected everything it could find — which is
+why `actions.sarif` (workflow analysis) appeared alongside `javascript.sarif` even though the
+matrix named only `javascript-typescript`. The job still reported success.
+
+Two lessons beyond the typo. **CodeQL analyses your workflow files**, not just application code —
+`.github/workflows/*.yml` is scanned by the `actions` query pack for unpinned third-party
+actions, excessive secret exposure, and missing permissions. And **a job-level `permissions:`
+block replaces the workflow-level one rather than merging**, so a job declaring only
+`security-events: write` silently loses `contents: read`.
+
+*Added 2026-08-29 — while chasing CodeQL alerts on PR #1.*
+
+---
+
+### A green workflow run and a green PR check are different things
+
+The CI workflow run for PR #1 reported `conclusion: success` with all four jobs green, while the
+**CodeQL check on the PR failed**. They are separate objects: the workflow job runs the analysis
+(and succeeded at doing so), while the code-scanning check reports whether any *alerts* are open.
+
+When a check fails but every job succeeded, stop reading job logs for an error — there isn't
+one. Read the alerts instead.
+
+*Added 2026-08-29.*
+
 ---
