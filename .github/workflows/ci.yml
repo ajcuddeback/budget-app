@@ -93,7 +93,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        # Pinned to a commit, not the moving `v2` tag: a tag can be repointed at any commit,
+        # so `@v2` means "whatever gitleaks publishes next" — arbitrary third-party code
+        # running in CI with a token. Resolved from refs/tags/v2^{} (2025-04-16).
+        # Bump deliberately, re-resolving with:
+        #   git ls-remote --tags https://github.com/gitleaks/gitleaks-action.git 'v2*'
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           # Read-only by the job permissions above: this is the narrowest token the action
           # can be given while still reading the commit range it scans.

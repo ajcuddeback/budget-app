@@ -50,13 +50,14 @@ function currentCommit(): string {
 
 function appendManifest(shot: DocShot): void {
   fs.mkdirSync(IMAGES_DIR, { recursive: true });
+  // Read and handle failure, rather than existsSync-then-read: the check-then-use pattern
+  // is a race (the file can vanish or change in between) and buys nothing, since the read
+  // has to be guarded against malformed JSON anyway.
   let all: DocShot[] = [];
-  if (fs.existsSync(MANIFEST)) {
-    try {
-      all = JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) as DocShot[];
-    } catch {
-      all = [];
-    }
+  try {
+    all = JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) as DocShot[];
+  } catch {
+    all = []; // absent on the first capture, or unparseable — either way, start fresh
   }
   // Re-capturing replaces the entry rather than accumulating duplicates.
   all = all.filter((s) => s.name !== shot.name);

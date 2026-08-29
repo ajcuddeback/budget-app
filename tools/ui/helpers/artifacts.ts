@@ -37,9 +37,14 @@ export function record(entry: Entry): void {
 }
 
 export function readManifest(): Entry[] {
-  if (!fs.existsSync(MANIFEST)) return [];
-  return fs
-    .readFileSync(MANIFEST, 'utf8')
+  // Read-and-catch rather than exists-then-read; see the note in doc-capture.ts.
+  let raw: string;
+  try {
+    raw = fs.readFileSync(MANIFEST, 'utf8');
+  } catch {
+    return [];
+  }
+  return raw
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as Entry);

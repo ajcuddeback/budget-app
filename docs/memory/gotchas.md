@@ -186,4 +186,36 @@ one. Read the alerts instead.
 
 *Added 2026-08-29.*
 
+### CodeQL does not parse JS inside a template literal — so my first guess was unfalsifiable
+
+Chasing three CodeQL alerts, I assumed the cause was an `innerHTML` assignment in a fixture's
+inline `<script>`. It was not: that script lives inside a TypeScript **template literal**, so
+CodeQL sees an opaque string, not analysable JavaScript. It was never flagged, which is why the
+alert counts did not move after "fixing" it.
+
+The real three were `js/file-system-race` (existsSync-then-readFileSync), `js/incomplete-
+sanitization` (escaping `|` without first escaping `\`), and `actions/unpinned-tag`.
+
+Two lessons. **Don't infer an alert's location from the code you find suspicious** — the bot
+posts the file and line as a PR review comment, so read those (`pull_request_read` with
+`get_review_comments`) instead of guessing. And **HTML-in-a-template-literal is a static-analysis
+blind spot**: real application code in `.html`/`.ts` files gets analysed, fixture strings do not,
+so a fixture cannot be relied on to surface a pattern that would be caught in production code.
+
+*Added 2026-08-29 — PR #1.*
+
+---
+
+### Escaping one metacharacter without escaping the escape character is incomplete
+
+`v.replace(/\|/g, '\\|')` looked fine for markdown table cells and is what CodeQL flags as
+`js/incomplete-sanitization`. A value ending in a backslash escapes our own escape: `"C:\\"` +
+`"|"` becomes `C:\\ \|`, which markdown renders as a literal backslash followed by a **live**
+pipe — splitting the cell.
+
+Always escape the escape character first: backslashes, then the metacharacter. Same rule for
+newlines in a table row.
+
+*Added 2026-08-29.*
+
 ---

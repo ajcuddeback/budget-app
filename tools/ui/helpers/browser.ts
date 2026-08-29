@@ -25,9 +25,11 @@ export function chromiumExecutable(): string | undefined {
 
   for (const candidate of candidates) {
     try {
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+      // statSync alone: existsSync-then-stat is a check-then-use race, and stat already
+      // throws for a missing path.
+      if (fs.statSync(candidate).isFile()) return candidate;
     } catch {
-      /* keep looking */
+      /* not present, or not readable — keep looking */
     }
   }
   return undefined;

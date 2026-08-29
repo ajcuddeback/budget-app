@@ -43,7 +43,12 @@ function main(): void {
     lines.push('| Severity | Category | Finding | Where | Viewports |');
     lines.push('|---|---|---|---|---|');
     for (const { f, viewports } of grouped.values()) {
-      const esc = (v: string) => v.replace(/\|/g, '\\|');
+      // Escape backslashes BEFORE pipes. Escaping only the pipe is incomplete: a value
+      // ending in a backslash would escape our own escape character, so "a\\" + "|" renders
+      // as a literal backslash followed by a LIVE pipe, splitting the table cell.
+      // Newlines are collapsed for the same reason — one would end the table row.
+      const esc = (v: string) =>
+        v.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
       lines.push(
         `| ${f.severity} | ${f.category} | ${esc(f.summary).slice(0, 160)} | ` +
           `${esc(f.where ?? '').slice(0, 100)} | ${[...viewports].join(', ')} |`,
