@@ -27,7 +27,7 @@ else
 fi
 
 if git grep -nIE '(password|secret|api[_-]?key|access[_-]?token)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}["'"'"']' \
-     -- ':!docs' ':!client' ':!server' ':!.claude' 2>/dev/null \
+     -- ':!docs' ':!.claude' ':!.agents' 2>/dev/null \
    | grep -vE '\$\{|process\.env|System\.getenv|example|EXAMPLE|changeme|placeholder' | grep -q .; then
   fail "no hardcoded credentials in tracked source"
 else

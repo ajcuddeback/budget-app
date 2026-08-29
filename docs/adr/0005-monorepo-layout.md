@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-27
 - **Deciders:** Repository owner
+- **Amended by:** [ADR-0015](0015-delete-the-legacy-app.md) — the legacy app was deleted before
+  feature parity, not after. The layout decision itself stands.
 
 ## Context
 

@@ -19,8 +19,7 @@ Use `/vertical-slice` to work one.
 | 7 | Budgets & periods | 4, 5 | Planned |
 | 8 | Recurring transactions | 5 | Planned |
 | 9 | Reporting & insights | 5, 7 | Planned |
-| 10 | Legacy data migration | 2–7 | Planned |
-| 11 | Delete `client/`, `server/`, root MERN `package.json` | 10 | Planned |
+| 10 | Legacy data migration | 2–7 | **Needs a decision** — see below |
 
 ## Rules
 
@@ -31,4 +30,13 @@ Use `/vertical-slice` to work one.
   read**. See `guides/ui-validation.md`.
 - Any user-visible slice is not done until its guide exists in `userguide/`, written from the
   running app. See `guides/user-docs.md`.
-- Slice 11 only happens after parity is genuinely reached — not "close enough".
+## Is there any data to migrate?
+
+Slice 10 is the one open question left by the clean-slate decision (ADR-0015). Deleting the old
+code settled the *code*; it did not settle whether anyone's **data** should carry over.
+
+The original deployment was a 2021 Heroku app, so plausibly there is nothing left to migrate —
+but that is worth confirming rather than assuming. Everything needed to write a migration is
+preserved in `domain/legacy-app.md`, so the decision can wait; nothing is lost by deferring it.
+
+If the answer is no, drop slice 10 and say so here.

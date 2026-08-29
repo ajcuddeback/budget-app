@@ -38,7 +38,7 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 - [Security model](architecture/security-model.md) — read before touching auth
 - [Tech stack + versions](architecture/tech-stack.md)
 - [Domain model](domain/model.md)
-- [Legacy app behavior](domain/legacy-app.md) — so nobody reads `client/` and `server/`
+- [Legacy app behavior](domain/legacy-app.md) — what the deleted MERN app did, and why we rewrote
 - [Feature docs](features/README.md)
 - [Decision records](adr/README.md)
 - [Memory](memory/README.md)

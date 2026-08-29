@@ -42,7 +42,8 @@ Postgres runs in Docker for local dev (`tools/dev-up.sh`). Tests use Testcontain
 **real Postgres** — never H2. An in-memory database that accepts SQL Postgres would reject is
 a test that lies. See ADR-0009.
 
-## Deprecated — do not use
+## Removed
 
-The legacy stack in `client/` and `server/`: React 17, Express, Sequelize, MySQL/JawsDB,
-`express-session`, styled-components. Reference only. See `docs/domain/legacy-app.md`.
+The original stack — React 17, Express, Sequelize, MySQL/JawsDB, `express-session`,
+styled-components — was deleted in the clean-slate rewrite (ADR-0015). Do not reintroduce any of
+it. What that app did is recorded in `docs/domain/legacy-app.md`.

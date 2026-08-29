@@ -8,6 +8,36 @@ and link it from here.
 
 ---
 
+### 2026-08-29 — Deleted the legacy app; the doc is what made it safe
+
+Removed `client/`, `server/`, `images/` and the root MERN `package.json`. Clean slate, no parity
+obligation (ADR-0015).
+
+Worth noting *why* this was low-risk: `docs/domain/legacy-app.md` was written a few days earlier
+specifically so nobody would have to read the old code. That document turned out to be the thing
+that made deleting the code safe — the reference had already been extracted, so the source was
+redundant.
+
+Generalises: writing down what a system does is also what lets you delete it.
+
+---
+
+### 2026-08-29 — CI's first real run failed, and the harness could not have caught it
+
+`tools/verify.sh` passes locally and skips gracefully when `backend/` is absent. The CI job still
+died in seven seconds, because `actions/setup-java` with `cache: maven` errors outright when no
+`pom.xml` exists — it failed *before* the gate ran.
+
+The lesson is about scope: a local gate proves the repository is healthy, not that the workflow
+wrapping it is. Workflow YAML only gets tested by running on the real runner, so treat the first
+push of any new workflow as unverified regardless of how green things look locally.
+
+CodeQL had the same shape — `java-kotlin` autobuild fails on a repository with no Java source, so
+that language is added when `backend/` lands rather than sitting permanently red. A check that is
+always red teaches people to ignore CI.
+
+---
+
 ### 2026-08-28 — Two sources of guidance need a stated precedence and an enumerated exception list
 
 Adopting Angular's official skills alongside our own style guide created the exact risk the

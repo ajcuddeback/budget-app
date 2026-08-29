@@ -22,8 +22,8 @@ Budget App — session orientation (from .claude/hooks/session-start.sh)
   ADRs recorded: ${adrs}
 
 Angular + Java 21/Spring Boot + PostgreSQL. Security is the top priority.
-'client/' and 'server/' are the LEGACY MERN app: read-only, never extend, never copy.
-Their behavior is already documented in docs/domain/legacy-app.md — do not read that code.
+Clean slate: the original MERN app was deleted (ADR-0015). What it did is recorded in
+docs/domain/legacy-app.md — read that, not git history.
 
 Read CLAUDE.md before starting. It routes you to the right doc so you do not
 re-explore the codebase. Do not survey files to answer a question docs/ already answers.

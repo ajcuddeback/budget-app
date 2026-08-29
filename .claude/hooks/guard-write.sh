@@ -14,13 +14,13 @@ deny() {
 
 rel="${file#"${CLAUDE_PROJECT_DIR:-}"/}"
 
-# 1. The legacy MERN app is a read-only reference (ADR-0002, ADR-0005).
+# Recreating the deleted MERN app would silently reintroduce what ADR-0015 removed.
 case "$rel" in
   client/*|server/*)
-    deny "'$rel' is part of the LEGACY MERN app, which is read-only reference material and is being replaced. Build in backend/ (Spring) or frontend/ (Angular) instead. See CLAUDE.md and docs/domain/legacy-app.md." ;;
+    deny "'$rel' belongs to the original MERN app, which was deleted in favour of a clean-slate rewrite (ADR-0015). Angular goes in frontend/, Spring in backend/. If you genuinely need to see what the old code did, read docs/domain/legacy-app.md." ;;
 esac
 
-# 2. Likely hardcoded secrets. Placeholders (\${VAR}, <...>, changeme, example) are allowed.
+# Likely hardcoded secrets. Placeholders (\${VAR}, <...>, changeme, example) are allowed.
 content=$(printf '%s' "$payload" | jq -r '[.tool_input.content, .tool_input.new_string] | map(select(. != null)) | join("\n")')
 [ -z "$content" ] && exit 0
 

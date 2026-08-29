@@ -43,8 +43,6 @@
       "Bash(npx --yes skills*)"
     ],
     "deny": [
-      "Edit(client/**)",
-      "Edit(server/**)",
       "Read(./.env)",
       "Read(./**/.env)",
       "Read(./**/.env.*)",

@@ -39,3 +39,4 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0012](0012-customer-facing-user-guide.md) | Customer-facing user guide captured from the running app | Accepted (amended by 0013) | 2026-08-28 |
 | [0013](0013-captures-render-against-fixtures.md) | Captures render against fixtures, never a live app | Accepted | 2026-08-28 |
 | [0014](0014-adopt-official-angular-skills.md) | Adopt the official Angular agent skills | Accepted | 2026-08-28 |
+| [0015](0015-delete-the-legacy-app.md) | Delete the legacy app; rebuild from scratch | Accepted | 2026-08-29 |

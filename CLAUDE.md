@@ -24,6 +24,7 @@ Read the doc, then read only the code you are about to change.
 | Write docs for the people using the app | `docs/guides/user-docs.md`, `userguide/STYLE.md` |
 | Commit, branch, or open a PR | `docs/guides/git-style.md` |
 | Understand a domain term | `docs/domain/model.md`, `docs/memory/glossary.md` |
+| Wonder what the old app did | `docs/domain/legacy-app.md` (the code is gone) |
 | Wonder "why is it like this?" | `docs/adr/` (index in `docs/adr/README.md`) |
 | Hit something surprising | `docs/memory/gotchas.md` |
 
@@ -37,13 +38,12 @@ userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader —
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
 .agents/     Vendored third-party agent skills (Angular's). Pinned; see skills-lock.json
 .claude/     Agents, skills, hooks for this repo
-client/      LEGACY React app  — read-only reference, being replaced
-server/      LEGACY Express API — read-only reference, being replaced
 ```
 
-`client/` and `server/` are the **old** MERN app. Never add features there and never copy their
-patterns. They exist only as a behavioral reference until parity is reached; see
-`docs/domain/legacy-app.md` for what they did, so you don't have to read them.
+The original MERN app (`client/`, `server/`) was **deleted** — this is a clean-slate rewrite,
+not a migration (ADR-0015). What it did, and the ten defects that motivated the rewrite, are
+recorded in `docs/domain/legacy-app.md`. That document is now the only record: read it rather
+than digging through git history.
 
 ## Non-negotiables
 

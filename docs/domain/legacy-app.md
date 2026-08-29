@@ -1,7 +1,14 @@
-# Legacy App Behavior (reference only)
+# Legacy App Behavior (historical record)
 
-The old MERN-ish app in `client/` and `server/`. **This document exists so you never have to
-read that code.** It is being replaced wholesale (ADR-0002).
+The original MERN-ish app that this project replaced. Its code lived in `client/` and `server/`
+and was **deleted** in the clean-slate rewrite (ADR-0015).
+
+**This document is now the only record of it.** It was written while the code was still present,
+specifically so that nobody would need to read it — and that turned out to be the thing that
+made deleting the code safe. Keep it accurate; the source is no longer there to check against.
+
+If you ever do need the original source, it is in git history (`git show bd6b875:server/server.js`),
+but prefer this document.
 
 ## What it did
 
@@ -50,9 +57,17 @@ These are the concrete reasons for the rewrite. Each maps to a rule in the new s
    query internals. → RFC 7807 problem responses with a correlation id.
 10. **No tests.** → Tests ship with the change.
 
-## Data migration
+## Data migration — open question
 
-Legacy rows must be migrated, not discarded. The mapping — including parsing the string
-month/year into real dates and re-deriving ownership — belongs in its own feature doc when
-that work starts. Password hashes are BCrypt and can be carried over; `DelegatingPasswordEncoder`
-lets us upgrade the cost on next successful login.
+Deleting the code did not decide what happens to any **data** that still exists in a deployed
+instance. Those are separate questions and only the first is settled.
+
+If a migration is wanted, everything needed to write one is above: the three tables, their
+columns, and the traps (month/year stored as strings, so they need parsing into real dates;
+ownership re-derived from `user_id`). Password hashes are BCrypt and can be carried over —
+`DelegatingPasswordEncoder` upgrades the cost on next successful login — **except** for accounts
+hit by the `beforeUpdate` re-hashing bug (see `docs/memory/gotchas.md`), which are unrecoverable
+and need a password reset.
+
+The original deployment was a 2021 Heroku app, so there may well be nothing left to migrate.
+**Confirm before planning this work** — see `docs/roadmap.md`.
