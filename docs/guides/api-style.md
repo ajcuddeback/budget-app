@@ -3,6 +3,15 @@
 Read `../architecture/security-model.md` before adding an endpoint. Every rule there applies
 here first.
 
+## Two transports, one API
+
+Every endpoint is reachable by a browser with a session cookie and by the mobile app with a
+bearer token (ADR-0018). The **API surface is identical** — same paths, same payloads, same
+authorization. There is no `/api/mobile/...`, and no endpoint that exists for one client only.
+
+CSRF applies to the cookie transport only; bearer requests carry no ambient credential to forge.
+That is the one difference, and it is handled in the security configuration, not per-controller.
+
 ## Shape
 
 - Base path `/api`. Version only when we break something: `/api/v2/...`.

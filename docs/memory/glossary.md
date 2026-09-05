@@ -14,6 +14,10 @@ tiebreaker. Add with `/remember`.
 | **Category** | A classification for spending or income. Two levels maximum. |
 | **Cleared** | A transaction the bank has actually processed, as opposed to `PENDING`. |
 | **Envelope** | A budgeting metaphor for a category with a balance that carries over. We use "budget line with rollover" — the metaphor is not in the code. |
+| **Household** | The ownership root for all financial data (ADR-0017). A single-user instance is a household of one. Not a synonym for "user" or "account" |
+| **HouseholdMember** | A user's membership of a household, carrying a role: `OWNER`, `MEMBER` or `VIEWER` |
+| **Aggregator** | A third party providing bank feeds (SimpleFIN, GoCardless, Plaid). The **user** holds the credentials, not us (ADR-0020) |
+| **Self-hoster** | Our primary user: someone running Budget Owl on their own hardware. Assume no service of ours is reachable |
 | **Income** | A transaction with a positive amount in a category of kind `INCOME`. Not a separate entity — the legacy app had an `income` table; we do not. |
 | **Leftover** | Legacy term for income minus expenses in a month. New term: **net** or **available**. |
 | **Money** | The value object: `BigDecimal` + currency. Never a bare number. |

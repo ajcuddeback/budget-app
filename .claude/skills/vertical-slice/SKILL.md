@@ -51,7 +51,18 @@ overflow come back automatically; whether the screen actually looks finished is 
 can only make by opening the images. A slice with green tests and an unusable mobile layout is
 not done.
 
-## 7. Document it for users — `user-docs` agent
+## 7. Mobile — `flutter-ui` agent
+
+If the slice adds or changes API surface the mobile app uses, the Flutter client follows in the
+same slice or the one immediately after — never "later", which is how a companion app rots.
+
+Mobile does not start at all until slices 1–5 exist (ADR-0019): a client built against endpoints
+that do not exist is worse than no client.
+
+`ADR-0006` applies here too — Dart's `double` has exactly the floating-point problem the ADR
+exists to prevent. Amounts arrive as strings; keep them that way.
+
+## 8. Document it for users — `user-docs` agent
 
 If the slice is user-visible, it ships with its guide:
 
@@ -63,12 +74,12 @@ Read the screenshots, then write the guide in `userguide/` **from what you saw**
 the feature doc. Writing it is also a second review pass: a step that's hard to describe
 clearly is usually a design problem worth fixing now.
 
-## 8. Security review — `security-auditor` agent
+## 9. Security review — `security-auditor` agent
 
 Run it on the whole slice, including work you did yourself. Fix everything Critical and High
 before proceeding; record any accepted Medium in the feature doc with the reasoning.
 
-## 9. Verify
+## 10. Verify
 
 ```bash
 tools/verify.sh
@@ -77,7 +88,7 @@ tools/verify.sh
 Actually run it. If it fails, fix it — or say plainly what's broken and why. Never report a
 slice as done on an assumed-green build.
 
-## 10. Close the loop
+## 11. Close the loop
 
 - Update the feature doc: status, and any behavior that changed during implementation.
 - `/adr` for structural decisions made along the way; `/remember` for smaller ones and for

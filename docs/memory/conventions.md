@@ -33,6 +33,14 @@ Small agreed choices. Add with `/remember`. Newest at the bottom of each section
 - Never pass `--ai-config` to `ng new`. It writes a competing agent config that fights the
   harness's routing; ours is `CLAUDE.md` at the repo root.
 
+## Product invariants worth stating twice
+
+- **Email + password login is permanent.** Any change that makes an identity provider, an
+  internet connection, or an account with us *required* to log in is wrong by construction
+  (ADR-0016, ADR-0018). Optional means optional.
+- **Optional integrations default to off** — OIDC, bank connections, AI. A fresh instance does
+  nothing the user did not ask for.
+
 ## Documentation
 
 - Feature docs are `kebab-case.md`, named as a user would name the feature.

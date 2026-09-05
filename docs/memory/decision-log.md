@@ -30,6 +30,37 @@ application.
 
 ---
 
+### 2026-09-05 — Budget App became Budget Owl: a self-hosted product for households
+
+The project stopped being one person's budgeting app and became an open-source, self-hostable
+product in the shape of Immich. Recorded across ADR-0016 (product), 0017 (households), 0018
+(auth), 0019 (Flutter), 0020 (bank connections) and 0021 (licence, proposed), with the product
+strategy itself in `docs/product/vision.md` — a `docs/product/` area that did not previously
+exist, because the harness had nowhere to put "what is this and who is it for".
+
+Six ADRs in one sitting is a lot, and most were written *before* any of the code they constrain.
+That is the point: households as the ownership root and the auth transport both get much more
+expensive after slice 2 ships.
+
+---
+
+### 2026-09-05 — Self-hosting reversed an auth recommendation I had just made
+
+Asked how to handle auth once a mobile app was coming, I recommended moving to external OIDC
+(Keycloak or Auth0) — ADR-0004's own named successor. One message later, learning the product
+would be self-hosted, that answer became clearly wrong: you cannot require someone to run an
+identity provider, or pay a SaaS, to log into their own budget app on their own hardware.
+
+The correction is worth keeping because the reasoning error is a general one. I had optimised
+for the *technical* question in front of me (mobile clients need tokens) without knowing the
+*deployment* constraint, and the deployment constraint dominated. Landing point: first-party auth
+plus **optional** OIDC, with opaque server-side tokens for mobile so revocation survives.
+
+Generalises: an architecture recommendation is only as good as your knowledge of where the thing
+runs. Ask about deployment before recommending an auth model.
+
+---
+
 ### 2026-08-29 — Deleted the legacy app; the doc is what made it safe
 
 Removed `client/`, `server/`, `images/` and the root MERN `package.json`. Clean slate, no parity

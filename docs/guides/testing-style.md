@@ -19,21 +19,30 @@ not every branch.
 For **every endpoint**, without exception:
 
 1. **Unauthenticated request → `401`.**
-2. **Another user's resource → `404`.** Not `403`. This is the ADR-0008 test and it is the
-   single highest-value test in this codebase — it catches the bug class that leaked every
-   user's finances in the legacy app.
+2. **Another household's resource → `404`.** Not `403`. This is the ADR-0008 test (as amended by
+   ADR-0017) and it is the single highest-value test in this codebase — it catches the bug class
+   that leaked every user's finances in the legacy app. A cross-household leak is the worst bug
+   this app can have.
 3. **Invalid input → `400`** with a problem response naming the field.
 4. The happy path.
 
+For **every endpoint**, under **both credential transports** (ADR-0018):
+
+5. **Session cookie and bearer token behave identically.** An endpoint that authorizes correctly
+   for the web and not for mobile is a real and easy bug. Neither path may skip a check the
+   other applies.
+
 For **every state-changing endpoint**, additionally:
 
-5. **Missing or invalid CSRF token → `403`.**
+6. **Missing or invalid CSRF token → `403`** (session transport; CSRF does not apply to bearer).
+7. **A `VIEWER` gets `403`.** Roles are an authorization axis, not a UI hint (ADR-0017), and only
+   an `OWNER` may invite, remove members, or delete a household.
 
 For **anything handling money**:
 
-6. Scale and rounding: does a three-way split of `10.00` reconcile to exactly `10.00`?
-7. Currency mismatch throws.
-8. Negative, zero, and absurdly large amounts behave as specified.
+8. Scale and rounding: does a three-way split of `10.00` reconcile to exactly `10.00`?
+9. Currency mismatch throws.
+10. Negative, zero, and absurdly large amounts behave as specified.
 
 ## Naming
 

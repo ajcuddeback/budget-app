@@ -22,12 +22,24 @@ defects that motivated this rewrite — check that none have been reintroduced.
 
 **Authorization — the highest-value check**
 - Does every query touching user data filter by the authenticated user's id?
-- Any `findById` / `findAll` on a user-owned entity without an owner parameter?
+- Any `findById` / `findAll` on a financial entity without a `householdId` parameter?
+- Is the household id resolved from **verified membership**, or taken from the request? Taking
+  it from the request is the same bug as trusting a path variable, one level up.
+- **Role checks (ADR-0017):** can a `VIEWER` write? Only an `OWNER` may invite, remove members,
+  or delete a household. Is there a test proving a `VIEWER` gets `403` on each write endpoint?
 - Does the acting user come from `SecurityContext`, never from a body, path, or query param?
 - Do "not found" and "not yours" both return `404`? A `403` confirms the row exists.
 - Is there a test proving user B gets `404` on user A's resource? If not, that's a finding.
 
-**Authentication & session**
+**Authentication — both transports (ADR-0018)**
+- Endpoints must behave identically under a session cookie and a bearer token. Is either path
+  untested, or does one skip an authorization check the other applies?
+- Are mobile tokens opaque and server-side (revocable), not self-contained JWTs?
+- Is password login still reachable? It is a permanent capability — a change making OIDC
+  required is wrong by construction (ADR-0016). Can password login be disabled *before* an
+  `OWNER` has successfully logged in via OIDC? That is a lockout bug.
+
+**Session specifics**
 - Session id rotated on login? Session invalidated server-side on logout?
 - Cookie `HttpOnly`, `Secure`, `SameSite`? Timeouts enforced server-side?
 - Does login leak account existence — by message, status, or latency?

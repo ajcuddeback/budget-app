@@ -24,6 +24,22 @@ export const DEMO_USER = {
   email: 'alex@example.test',
 } as const;
 
+/**
+ * The household is the ownership root (ADR-0017). Two members with different roles, so guide
+ * screenshots and UI checks exercise the shared case rather than the single-user one — a
+ * household of one would never surface a role, and roles are where the interesting bugs are.
+ */
+export const DEMO_HOUSEHOLD = {
+  id: '22222222-2222-4222-8222-222222222222',
+  name: 'Rivera Household',
+  baseCurrency: 'USD',
+} as const;
+
+export const DEMO_MEMBERS = [
+  { id: 'mem-0001', userId: DEMO_USER.id, displayName: 'Alex Rivera', email: 'alex@example.test', role: 'OWNER' },
+  { id: 'mem-0002', userId: '33333333-3333-4333-8333-333333333333', displayName: 'Sam Rivera', email: 'sam@example.test', role: 'MEMBER' },
+] as const;
+
 export const DEMO_ACCOUNTS = [
   { id: 'acc-0001', name: 'Everyday Checking', type: 'CHECKING', currency: 'USD', balance: '2480.15' },
   { id: 'acc-0002', name: 'Emergency Fund', type: 'SAVINGS', currency: 'USD', balance: '6120.00' },
@@ -66,7 +82,9 @@ export const DEMO_BUDGET = {
 
 /** Everything the mock serves, keyed by the API path it answers. */
 export const DEMO_API: Record<string, unknown> = {
-  '/api/auth/me': DEMO_USER,
+  '/api/auth/me': { ...DEMO_USER, households: [{ ...DEMO_HOUSEHOLD, role: 'OWNER' }] },
+  '/api/households/current': DEMO_HOUSEHOLD,
+  '/api/households/current/members': { content: DEMO_MEMBERS, page: 0, size: 50, totalElements: DEMO_MEMBERS.length, totalPages: 1 },
   '/api/accounts': { content: DEMO_ACCOUNTS, page: 0, size: 50, totalElements: DEMO_ACCOUNTS.length, totalPages: 1 },
   '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 50, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
   '/api/transactions': { content: DEMO_TRANSACTIONS, page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },

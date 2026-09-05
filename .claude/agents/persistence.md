@@ -24,13 +24,15 @@ Read `docs/guides/database-style.md`, `docs/domain/model.md`, ADR-0006 (money), 
 - **Primary keys are `uuid`**, application-generated. Sequential ids leak volume and let people
   enumerate rows.
 - **Timestamps are `timestamptz`** in UTC. Dates that are genuinely dates are `date`.
-- **Every user-owned table has a direct `user_id` column** — not "reachable via a join" — so
-  the ADR-0008 predicate is one condition. Index it, usually leading a composite:
-  `(user_id, date DESC)`.
+- **Every financial table has a direct `household_id` column** — not "reachable via a join" —
+  so the ADR-0008 predicate (as amended by ADR-0017) is one condition. Index it, usually leading
+  a composite: `(household_id, date DESC)`. `users` and `household_members` are the exceptions:
+  they are the membership graph, not financial data.
 - **Constraints live in the database**: foreign keys, unique, and `CHECK`. The app validating it
   is not a substitute; the app has bugs and the constraint is the backstop.
 - **Index every foreign key.** Postgres doesn't do it for you.
-- **Repositories never expose an unscoped finder** for user-owned data.
+- **Repositories never expose an unscoped finder** for household-owned data. `findById` on a
+  financial entity is a bug; `findByIdAndHouseholdId` is the shape.
 - **Named parameters only.** Never concatenate input into JPQL or SQL, including `ORDER BY` —
   sort fields come from an allowlist enum.
 

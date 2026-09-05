@@ -1,6 +1,12 @@
-# Budget App — Agent Guide
+# Budget Owl — Agent Guide
 
-Personal budgeting app. **Angular** SPA + **Java 21 / Spring Boot** API + **PostgreSQL**.
+**Budget Owl is a self-hosted, open-source budgeting app for households.** Users run it on their
+own hardware; their financial data never leaves it. **Angular** SPA + **Java 21 / Spring Boot**
+API + **PostgreSQL**, with a **Flutter** mobile app.
+
+Read `docs/product/vision.md` before making a product judgement call. The organising principle is
+**privacy by architecture, not by policy** — if a decision would put us in possession of a user's
+financial data, it is the wrong decision (ADR-0016).
 This app handles people's financial data. **Security is the top priority, ahead of speed and
 ahead of features.** When a tradeoff appears, take the secure option and note it in the PR.
 
@@ -12,11 +18,13 @@ Read the doc, then read only the code you are about to change.
 | You are about to… | Read first |
 |---|---|
 | Anything at all | this file |
+| Decide anything product-shaped | `docs/product/vision.md` |
 | Build or change a feature | `docs/features/<feature>.md`, then `docs/features/README.md` |
 | Understand the system shape | `docs/architecture/overview.md` |
 | Touch auth, sessions, cookies, CSRF | `docs/architecture/security-model.md` (**mandatory**) |
 | Write Java | `docs/guides/java-style.md` |
 | Write Angular / TypeScript | the `angular-developer` skill, then `docs/guides/angular-style.md` |
+| Write Flutter / Dart | `docs/guides/flutter-style.md` |
 | Add or change a REST endpoint | `docs/guides/api-style.md` |
 | Write a migration or entity | `docs/guides/database-style.md` |
 | Write tests | `docs/guides/testing-style.md` |
@@ -33,6 +41,7 @@ Read the doc, then read only the code you are about to change.
 ```
 backend/     Spring Boot API (Java 21, Maven)   — not yet created
 frontend/    Angular SPA (TypeScript)           — not yet created
+mobile/      Flutter app (Dart), iOS + Android  — not yet created (ADR-0019)
 docs/        Durable knowledge for DEVELOPERS and agents. See docs/README.md
 userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader — see its STYLE.md
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
@@ -51,8 +60,10 @@ than digging through git history.
    config, tests, or docs. Configuration comes from environment variables. A hook blocks
    commits of likely secrets; do not work around it.
 2. **Every endpoint is authenticated and authorized by default.** Public routes are an explicit,
-   reviewed exception. Every query that touches user data filters by the authenticated user —
-   never trust an ID from the request body or path to imply ownership.
+   reviewed exception. Every query that touches financial data filters by a **household the
+   authenticated user is a verified member of** — never trust an ID from the request body or
+   path to imply ownership (ADR-0008, amended by ADR-0017). Roles matter too: a `VIEWER` may
+   read but never write.
 3. **Never `float`/`double` for money.** `BigDecimal` in Java, `NUMERIC(19,4)` in Postgres,
    minor-unit integers or strings over the wire. See ADR-0006.
 4. **Schema changes are Flyway migrations.** Never `ddl-auto: update`. Migrations are
@@ -64,7 +75,10 @@ than digging through git history.
 7. **`tools/verify.sh` must pass before you say you're done.** Not "should pass" — run it.
 8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and *read the
    screenshots*. A green test suite does not tell you the page renders correctly.
-9. **A user-visible feature ships with its user guide.** `userguide/` is written from the
+9. **Nothing in the core may require a service we operate.** No mandatory internet access, no
+   account with us, no third-party SaaS. A self-hoster's instance works standing alone
+   (ADR-0016). Optional integrations are opt-in and off by default.
+10. **A user-visible feature ships with its user guide.** `userguide/` is written from the
    running UI, never from the feature doc — see ADR-0012. Captures render against the demo
    fixtures in `tools/ui/fixtures/demo-data.ts` and refuse any non-local target (ADR-0013).
 
@@ -79,7 +93,7 @@ than digging through git history.
 - **Update the feature doc in the same change** that alters the behavior it describes.
   Stale docs are worse than no docs — they get trusted.
 - **Prefer the specialists.** `spring-api`, `angular-ui`, `persistence`, `security-auditor`,
-  `test-author`, `docs-curator`, `ui-validator`, `user-docs`. Use `security-auditor` on anything touching auth, money
+  `test-author`, `docs-curator`, `ui-validator`, `user-docs`, `flutter-ui`. Use `security-auditor` on anything touching auth, money
   movement, or user data boundaries — including your own work.
 - **Ask when the security answer is unclear.** Guessing at a security control is worse than
   a question.
