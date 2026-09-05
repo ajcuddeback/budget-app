@@ -24,6 +24,7 @@ Read the doc, then read only the code you are about to change.
 | Touch auth, sessions, cookies, CSRF | `docs/architecture/security-model.md` (**mandatory**) |
 | Write Java | `docs/guides/java-style.md` |
 | Write Angular / TypeScript | the `angular-developer` skill, then `docs/guides/angular-style.md` |
+| Write Flutter / Dart | `docs/guides/flutter-style.md` |
 | Add or change a REST endpoint | `docs/guides/api-style.md` |
 | Write a migration or entity | `docs/guides/database-style.md` |
 | Write tests | `docs/guides/testing-style.md` |
@@ -92,7 +93,7 @@ than digging through git history.
 - **Update the feature doc in the same change** that alters the behavior it describes.
   Stale docs are worse than no docs — they get trusted.
 - **Prefer the specialists.** `spring-api`, `angular-ui`, `persistence`, `security-auditor`,
-  `test-author`, `docs-curator`, `ui-validator`, `user-docs`. Use `security-auditor` on anything touching auth, money
+  `test-author`, `docs-curator`, `ui-validator`, `user-docs`, `flutter-ui`. Use `security-auditor` on anything touching auth, money
   movement, or user data boundaries — including your own work.
 - **Ask when the security answer is unclear.** Guessing at a security control is worse than
   a question.

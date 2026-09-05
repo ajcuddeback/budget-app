@@ -42,8 +42,9 @@ literally named `user`, which needs quoting everywhere. Use `users`.
   A purchase happened on a day, not at an instant in a timezone.
 - `NOT NULL` unless nullability carries real meaning. "Unknown" and "empty" are different;
   don't use `NULL` for both.
-- Every user-owned table has a `user_id` foreign key. Not "reachable via a join" — a direct
-  column, so the ADR-0008 scoping predicate is always one condition.
+- Every financial table has a direct `household_id` foreign key (ADR-0017). Not "reachable via
+  a join" — a direct column, so the ADR-0008 scoping predicate is always one condition.
+  `users` and `household_members` are the membership graph and are the exception.
 - `created_at` and `updated_at` on every table. The legacy app had neither, and it cost.
 
 ## Constraints belong in the database
@@ -61,8 +62,8 @@ The app has bugs; the constraint is the backstop.
 ## Indexes
 
 - Index every foreign key. Postgres does not do this for you.
-- Index the columns you actually filter and sort on — and because of ADR-0008 that almost always
-  means a composite index leading with `user_id`: `(user_id, date DESC)`.
+- Index the columns you actually filter and sort on — and because of ADR-0008/0017 that almost
+  always means a composite index leading with `household_id`: `(household_id, date DESC)`.
 - Partial indexes for sparse predicates: `WHERE archived = false`.
 - Don't index speculatively. Every index costs write throughput.
 
@@ -80,4 +81,6 @@ The app has bugs; the constraint is the backstop.
 
 - Soft-delete (`archived_at`) for anything a user might want back — accounts, categories.
 - Hard-delete where retention is a liability.
-- Deleting a user removes or anonymizes everything they own. No orphaned financial rows, ever.
+- Deleting a **household** removes or anonymizes all of its financial data. No orphaned rows.
+- Removing a **member** revokes access; it never deletes household data. Their authored rows keep
+  the attribution or are anonymized — never silently reassigned.

@@ -47,5 +47,6 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 - Style guides: [Java](guides/java-style.md) · [Angular](guides/angular-style.md) ·
   [API](guides/api-style.md) · [Database](guides/database-style.md) ·
   [Testing](guides/testing-style.md) · [Git & review](guides/git-style.md) ·
+  [Flutter](guides/flutter-style.md) ·
   [UI validation](guides/ui-validation.md) · [User docs](guides/user-docs.md)
 - [Roadmap](roadmap.md)

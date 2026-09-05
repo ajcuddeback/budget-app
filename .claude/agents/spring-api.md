@@ -29,8 +29,15 @@ Rules you enforce without being asked:
 - **Constructor injection only.** No field `@Autowired`.
 - **Entities never cross the web boundary** — not as request bodies, not as response bodies.
 - **`@Transactional` on service methods**, never controllers or repositories.
-- **Every user-scoped repository method takes the owner id** (ADR-0008). If you write
-  `findById` for a user-owned entity, you have written a bug.
+- **Every repository method touching financial data takes a `householdId`** (ADR-0008, amended by
+  ADR-0017). If you write `findById` for a financial entity, you have written a bug. The
+  household id comes from the authenticated user's **verified membership**, never from the
+  request — taking it from the body or path is the same defect one level up.
+- **Roles are enforced in the service layer.** A `VIEWER` may read but never write; only an
+  `OWNER` may invite, remove members, or delete a household.
+- **Every endpoint works under both credential transports** (ADR-0018) — session cookie for web,
+  bearer token for mobile — with identical authorization. Neither may skip a check the other
+  applies.
 - **Money is `BigDecimal`/`Money`**, serialized as a string. `double` for money is never correct.
 - **Bean Validation on every request DTO**, `@Valid` on every handler.
 - **Errors via `@RestControllerAdvice`** as RFC 7807. Controllers don't build error responses.

@@ -8,6 +8,10 @@ get something done, is possibly stressed about money, and does not care how the 
 Someone who has never seen the app, does not know what a "transaction entity" is, and wants to
 know **what to click**. They are not reading for pleasure — they have a task and a problem.
 
+Two audiences hide inside that. The person **running** Budget Owl on their server is comfortable
+with Docker and a terminal. The person **using** it — their partner, say — may not be, and should
+never need to be. Installation docs may assume a server; nothing else may.
+
 Assume: intelligent, in a hurry, not technical, possibly on a phone.
 Never assume: they know finance jargon, they read the previous page, or they will experiment.
 
@@ -26,6 +30,10 @@ leaves the reader unsure whether it worked.
 
 > 3. Select **Save**.
 >    Your new account appears in the list with a balance of 0.00.
+
+**Say which app you mean when it matters.** The web app and the mobile app differ in places. If a
+step is the same on both, do not mention it; if it differs, say "on the web" or "in the mobile
+app" rather than describing one and leaving the other reader stranded.
 
 **Name things exactly as the screen names them.** If the button says "Add account", write
 **Add account** — not "the add button" or "Create Account". Bold for anything they click or type

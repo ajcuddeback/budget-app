@@ -8,15 +8,27 @@
 > build; a user guide describes what shipped. Write each section only after running
 > `tools/userguide-capture.sh` and looking at what is actually on screen.
 
-Budget App helps you see where your money goes and plan where it should go. This walks you
-through your first fifteen minutes, from signing up to reading your first month's budget.
+Budget Owl helps you see where your money goes and plan where it should go. This walks you
+through your first fifteen minutes, from creating your household to reading your first month's
+budget.
 
-## 1. Create your account
+**Already installed?** Good — start at step 1. If not, see
+[Installing Budget Owl](installing.md) first.
 
-*Awaiting slice 2 — [users & authentication](../docs/features/accounts-and-auth.md).*
+## 1. Create your account and household
 
-Will cover: signing up, choosing a password, signing in, and what to do if you're already
-signed in elsewhere.
+*Awaiting slice 2 — [users, households & auth](../docs/features/accounts-and-auth.md).*
+
+Will cover: creating the first account, which becomes the owner of a new household; choosing a
+password; signing in. If your server is set up to use your own login provider, that option
+appears here too — but email and password always works.
+
+## 1b. Invite the rest of your household
+
+*Awaiting slice 2.*
+
+Will cover: inviting a partner or family member, and what the roles mean — who can change things
+and who can only look.
 
 ## 2. Add your accounts
 
@@ -61,9 +73,16 @@ Will cover: rent, subscriptions, and payday — entering something once so it ap
 
 ## 8. See where your money went
 
-*Awaiting slice 9.*
+*Awaiting slice 10.*
 
 Will cover: reading the reports, spotting the category that surprised you, and comparing months.
+
+## 9. Put it on your phone
+
+*Awaiting slice 11.*
+
+Will cover: installing the mobile app, pointing it at your own server, and adding a transaction
+while you are standing in the shop — which is where most budgeting actually happens.
 
 ## Where to go next
 
