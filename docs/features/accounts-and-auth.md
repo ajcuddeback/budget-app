@@ -6,6 +6,22 @@
 - **Related:** ADR-0004 (session cookies), ADR-0008 (user-scoped access),
   `../architecture/security-model.md`
 
+> ⚠️ **OUT OF DATE — do not implement from this document as written.**
+>
+> It was specified against ADR-0004 (session cookies only, single-user). Both premises changed:
+>
+> - **ADR-0017** makes the `Household` the ownership root. Registration must create a household;
+>   membership and roles do not appear here at all.
+> - **ADR-0018** supersedes ADR-0004. Web keeps sessions, **mobile uses opaque bearer tokens**,
+>   and **OIDC is an optional login route**. None of that is described below.
+> - **ADR-0016** forbids requiring any service we operate — which is *why* OIDC is optional.
+>
+> Everything about enumeration resistance, timing, rate limiting, session fixation and credential
+> handling below remains correct and should be carried forward.
+>
+> **Rewrite this with `/feature-doc` before slice 2 starts.** It is left in place rather than
+> deleted because its security rules are the most carefully-reasoned part of the spec.
+
 > This is the **worked example** of a feature doc as well as a real spec. It is the first
 > vertical slice of the rewrite: everything else depends on knowing who is asking.
 

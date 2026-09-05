@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-27
 - **Deciders:** Repository owner
+- **Amended by:** [ADR-0017](0017-households-own-financial-data.md) — the principle below is
+  unchanged; the scope is now the household rather than the individual user.
 
 ## Context
 

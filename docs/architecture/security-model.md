@@ -17,11 +17,24 @@ The failures we most care about, in order:
 4. **Injection** — SQL or template injection through unvalidated input.
 5. **Sensitive data exposure** — secrets, PII, or amounts leaking into logs, errors, or URLs.
 
-## Authentication: server-side sessions (ADR-0004)
+## Authentication: sessions for web, opaque tokens for mobile (ADR-0018)
 
-We use Spring Security with server-side sessions, **not** JWTs. Rationale and rejected
-alternatives are in ADR-0004; the short version is that a first-party SPA gains nothing from
-stateless tokens and loses instant revocation.
+Two credential transports, **one** authentication system — same user store, same authorization,
+same revocation. ADR-0018 supersedes ADR-0004; the reasoning for keeping sessions on the web is
+unchanged, and mobile is added rather than swapped in.
+
+**Web — server-side sessions.** As below. Still the most XSS-resistant option for a browser.
+
+**Mobile — opaque bearer tokens.** Deliberately opaque and stored server-side rather than JWT, so
+revocation stays a `DELETE`: a stolen phone's access dies immediately. Tokens carry a device
+label and last-used time so the user gets a revocable "logged-in devices" list. On the device
+they live in the platform secure store (Keychain / Keystore) and nowhere else.
+
+**Optional OIDC.** Off by default, configurable by self-hosters who already run an identity
+provider. It is an additional login route, never a requirement — ADR-0016 forbids depending on
+any service we operate, and that includes one the user would have to stand up.
+
+Rules below apply to both transports unless stated otherwise.
 
 Rules:
 
@@ -59,17 +72,28 @@ Because we authenticate with cookies, CSRF protection is **mandatory** and must 
   in this codebase. If a specific endpoint genuinely needs an exemption (a webhook with its own
   signature verification), exempt that one path and document why in the feature doc.
 
-## Authorization (ADR-0008)
+## Authorization (ADR-0008, amended by ADR-0017)
 
-**Every** query that reads or writes user-owned data is scoped to the authenticated principal.
+**Every** query that reads or writes financial data is scoped to a **household the authenticated
+user is a verified member of** — and then checked against their **role** in it.
 
 ```java
 // WRONG — trusts the path variable to imply ownership
 accountRepository.findById(accountId);
 
-// RIGHT — ownership is part of the query
-accountRepository.findByIdAndUserId(accountId, currentUser.id());
+// WRONG — scopes to a household id taken from the request
+accountRepository.findByIdAndHouseholdId(accountId, request.householdId());
+
+// RIGHT — household resolved from verified membership, never from the request
+accountRepository.findByIdAndHouseholdId(accountId, membership.householdId());
 ```
+
+**Two axes, both enforced in the service layer:**
+
+1. *Which household* — resolved from the authenticated user's membership. A cross-household leak
+   is the highest-severity bug this app can have.
+2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, or
+   delete the household. Every write endpoint needs a test proving a `VIEWER` gets `403`.
 
 - Never derive the acting user from a request body, query parameter, or path variable. It comes
   from the `SecurityContext`, always.

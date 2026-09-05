@@ -9,17 +9,36 @@ feature doc and migration. Changing this model is an ADR-worthy decision.
 ## Core entities
 
 ```
-User ──< Account ──< Transaction >── Category
- │                        │
- │                        └── Payee
- ├──< Budget ──< BudgetLine >── Category
- ├──< RecurringTransaction
- └──< Goal
+User >──< HouseholdMember >──< Household
+                                  │
+                                  ├──< Account ──< Transaction >── Category
+                                  │                     │
+                                  │                     └── Payee
+                                  ├──< Budget ──< BudgetLine >── Category
+                                  ├──< RecurringTransaction
+                                  └──< Goal
 ```
 
+**The `Household` is the ownership root** (ADR-0017). A single-user instance is a household of
+one — there is no special case and no second code path.
+
+### Household
+The **ownership root** for all financial data. Every account, transaction, category, budget,
+payee and goal belongs to exactly one household, and every query is scoped by it
+(ADR-0008 as amended by ADR-0017).
+
+Fields: `id` (UUID), `name`, `baseCurrency` (ISO-4217), `createdAt`, `updatedAt`.
+
+### HouseholdMember
+Joins a `User` to a `Household` with a **role**: `OWNER` (full control, may invite and remove),
+`MEMBER` (read and write financial data), `VIEWER` (read only).
+
+Authorization has two axes now: *which household*, then *what may this role do in it*. Both are
+enforced in the service layer, and both need tests.
+
 ### User
-The account holder and the **ownership root**. Every other entity below traces to exactly one
-User, and every query is scoped by it (ADR-0008).
+A person with credentials. **Not** the ownership root — a user reaches financial data only
+through a household membership.
 
 Fields: `id` (UUID), `email` (unique, citext), `displayName`, `passwordHash`, `status`,
 `createdAt`, `updatedAt`. No `firstName`/`lastName` split — a single display name avoids
@@ -95,9 +114,12 @@ A `YearMonth`. Orderable, comparable, arithmetic-capable. Serialized as `"2026-0
 
 These hold everywhere. A change that breaks one needs a very good reason and an ADR.
 
-1. Every user-owned row has a non-null owner traceable to a `User`, and every query filters on it.
+1. Every financial row has a non-null `household_id`, and every query filters on a household the
+   authenticated user is a verified member of.
 2. Account balance always equals opening balance plus the sum of its transactions.
 3. A transfer's two legs always sum to zero and always share a `transferGroupId`.
 4. `Money` arithmetic never mixes currencies.
 5. A budget period is a real date range, never a string.
-6. Deleting a user deletes or anonymizes everything they own — no orphaned financial rows.
+6. Deleting a household deletes or anonymizes all of its financial data — no orphaned rows.
+   Removing a *member* revokes their access; it never deletes household data.
+7. A user with no household membership can see no financial data at all.

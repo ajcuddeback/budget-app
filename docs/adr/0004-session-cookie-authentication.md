@@ -1,6 +1,9 @@
 # ADR-0004: Session-cookie authentication, not JWT
 
-- **Status:** Accepted
+- **Status:** **Superseded by [ADR-0018](0018-first-party-auth-with-optional-oidc.md)** — mobile
+  (ADR-0019) and self-hosting (ADR-0016) forced the revisit this ADR predicted. Web sessions are
+  kept as described here; mobile adds opaque tokens, and OIDC becomes optional rather than
+  mandatory.
 - **Date:** 2026-08-27
 - **Deciders:** Repository owner
 
