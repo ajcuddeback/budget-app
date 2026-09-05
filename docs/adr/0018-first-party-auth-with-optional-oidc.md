@@ -45,9 +45,20 @@ browser client, and ADR-0004's reasoning for it was and is correct.
   shared preferences or a file.
 - Sliding expiry with an absolute cap; both server-enforced.
 
-**Optional OIDC, off by default.** A self-hoster may point the instance at their own provider by
-configuration. When enabled it is an additional login route, not a replacement, and it changes
-nothing about how the app authorizes requests.
+**Optional OIDC, off by default.** A self-hoster may point the instance at their own provider,
+configured at runtime by an instance admin rather than by environment variable. When enabled it
+is an additional login route, not a replacement, and it changes nothing about how the app
+authorizes requests.
+
+**Email + password is permanent.** It is always present in the build — not a fallback and not a
+legacy path — because ADR-0016 requires an instance to work with no identity provider and no
+internet access. An admin may *hide* it on their own instance once OIDC is proven working; the
+capability is never removed from the software.
+
+The operational rules — the safeguard that stops an admin locking themselves out by disabling
+password login before OIDC works, the required recovery command, and the rule that an OIDC login
+never auto-joins a household — are specified in `docs/architecture/security-model.md`. They are
+elaboration of this decision, not a change to it.
 
 Password hashing, credential policy, enumeration resistance, rate limiting and session-fixation
 handling carry over from ADR-0004 and `docs/architecture/security-model.md` unchanged.

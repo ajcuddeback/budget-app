@@ -32,7 +32,43 @@ they live in the platform secure store (Keychain / Keystore) and nowhere else.
 
 **Optional OIDC.** Off by default, configurable by self-hosters who already run an identity
 provider. It is an additional login route, never a requirement — ADR-0016 forbids depending on
-any service we operate, and that includes one the user would have to stand up.
+any service we operate, and that includes one the user would have to stand up. Rules below.
+
+### Email + password is permanent
+
+**Password login is a permanent capability of Budget Owl and is always present in the build.**
+It is not a fallback, not a legacy path, and not something a future release removes. A fresh
+instance authenticates with email and password and needs nothing else configured.
+
+This is a product guarantee, not just a default (ADR-0016): a self-hoster must be able to run
+Budget Owl on a machine with no identity provider, no internet access and no account with us.
+
+### Optional OIDC, and the lockout rule
+
+- **Configured at runtime by an instance admin**, in the app, not by environment variable. A
+  typo in an env var means editing a Compose file and restarting a container; a typo in a form
+  is fixed in the browser. Self-hosters are configuring this at 11pm on a machine in a cupboard.
+- **Additive.** Enabling OIDC adds a "Sign in with…" route. It changes nothing about how
+  requests are authorized afterwards — an OIDC session and a password session are the same
+  session, and an OIDC-authenticated user gets tokens on mobile the same way.
+- **An admin may disable password login** on their own instance once they prefer their provider —
+  but only through this safeguard:
+
+  > **Password login cannot be disabled until at least one `OWNER` has completed a successful
+  > OIDC login.** The setting is refused otherwise.
+
+  This is a mechanism rather than a warning for a reason: "disable password login, then discover
+  the OIDC config is wrong" locks the owner out of their own financial records on their own
+  hardware, with no support desk to call. Proving the new route works before removing the old
+  one is the only version of this that is safe.
+
+- **Recovery path regardless.** A self-hoster has shell access to their own box, so an
+  administrative command that re-enables password login must exist and be documented. This is
+  the escape hatch when a provider changes its endpoints, a certificate expires, or a container
+  is restored from a backup with stale configuration.
+- **No auto-join.** An OIDC login may provision a *user* if the admin allows it, but never grants
+  membership of a household (ADR-0017). Household access comes from an invitation, always.
+  Otherwise anyone in the provider's directory would land inside someone's finances.
 
 Rules below apply to both transports unless stated otherwise.
 
