@@ -7,8 +7,8 @@
 ## Context
 
 The project began as a personal budgeting app for one person. The intent has changed: Budget Owl
-is to be an open-source, self-hostable product in the shape of Immich — you run it on your own
-hardware, and your data stays there.
+is to be an open-source, self-hostable product in the shape of the self-hosted applications
+people already run at home — you run it on your own hardware, and your data stays there.
 
 This is a product decision with large engineering consequences, so it is recorded before the code
 that would assume otherwise gets written. The alternative — discovering the product is

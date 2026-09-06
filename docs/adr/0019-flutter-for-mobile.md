@@ -24,14 +24,17 @@ one", and the neglected one would be the platform we are trying to win on.
 
 **Flutter**, one codebase for iOS and Android.
 
-The strongest evidence is that Immich — the reference point for this whole product direction — is
-a self-hosted app with a well-regarded mobile client, and its mobile client is Flutter. That is
-close to a controlled experiment for our exact situation: same audience, same self-hosted server
-shape, same solo-to-small team scale.
+The decisive argument is what happens to the *second* codebase. Two native apps maintained by one
+developer reliably becomes one maintained app and one that lags — and the one that lags would be
+whichever platform we are not personally carrying in our pocket. Since mobile quality is the axis
+this product competes on, a neglected half is not an acceptable outcome. One codebase removes the
+possibility.
 
-Dart is a small language and unremarkable coming from Java. A budgeting app is forms, lists,
-charts and offline sync — squarely what Flutter is good at, and well short of the platform-
-integration depth where native pulls ahead.
+The supporting arguments are ordinary but hold up. Dart is a small language and unremarkable
+coming from Java. A budgeting app is forms, lists, charts and offline sync — squarely what
+Flutter is good at, and well short of the platform-integration depth where native pulls ahead.
+Flutter is also well proven for exactly this class of application: a self-hosted server with a
+companion client, shipped by small teams, in several well-regarded open-source projects.
 
 Starting stack, to be confirmed against current versions when the app is scaffolded:
 
@@ -61,8 +64,9 @@ tempted to parse them as numbers.
 
 ## Consequences
 
-**Good:** one codebase, both platforms, from one developer. A large ecosystem for the boring parts
-(charts, date pickers, biometrics). Proven at exactly this shape by Immich.
+**Good:** one codebase, both platforms, from one developer, with no second app to neglect. A large
+ecosystem for the boring parts (charts, date pickers, biometrics), and a well-trodden path for
+self-hosted apps with a companion client.
 
 **Bad / costs:** a third language and toolchain alongside Angular and Spring. Flutter's own
 idioms are not Angular's, so `docs/guides/` gains a fourth style guide rather than reusing one.

@@ -37,7 +37,7 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 
 | Thing | Choice | Why |
 |---|---|---|
-| Framework | Flutter (iOS + Android, one codebase) | Immich's mobile client is Flutter — same audience, same self-hosted shape |
+| Framework | Flutter (iOS + Android, one codebase) | One codebase means no second app to neglect — see ADR-0019 |
 | Language | Dart | Small language, unremarkable from Java |
 | State | Riverpod | |
 | Navigation | go_router | |

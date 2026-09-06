@@ -21,7 +21,9 @@ contributors usually does not relicense at all.
 
 **AGPL-3.0-or-later.**
 
-- It is Immich's licence, and Immich is the reference point for this product.
+- It is the conventional choice for self-hosted open-source applications that want to stay
+  self-hostable — the category this product is entering — so it reads as expected rather than
+  unusual to the audience.
 - It closes the SaaS loophole: anyone offering Budget Owl as a network service must publish their
   modifications. If managed hosting ever becomes a business, this stops a larger provider taking
   the work and running a closed competing service — the specific commercial risk this project has.

@@ -13,8 +13,8 @@ with a first-class mobile experience and a modern interface. That is the gap.
 
 ## Who it is for
 
-Someone who already self-hosts — Immich, Jellyfin, Home Assistant, Paperless — and wants their
-money in the same place as their photos: on hardware they control. They will run beta software,
+Someone who already self-hosts — Jellyfin, Home Assistant, Paperless, Nextcloud — and wants their
+money in the same place as their media and documents: on hardware they control. They will run beta software,
 file good bug reports, and tell other people. They are also completely unforgiving about anything
 that phones home, and they are right to be.
 

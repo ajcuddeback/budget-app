@@ -41,6 +41,17 @@ Small agreed choices. Add with `/remember`. Newest at the bottom of each section
 - **Optional integrations default to off** — OIDC, bank connections, AI. A fresh instance does
   nothing the user did not ask for.
 
+## Naming other products
+
+- **Do not name other products as comparisons or precedents** in docs, ADRs, commit messages or
+  code comments. Describe the *shape* instead — "self-hosted applications people already run at
+  home", "the conventional licence for this category" — so the reasoning survives without
+  anchoring this project to somebody else's.
+- Naming a **competitor** in `docs/product/vision.md` is the deliberate exception: knowing who
+  else is in the category, and where they are weak, is the point of that section.
+- The rule exists because an argument that leans on "X does it" reads as derivative and stops
+  being true when X changes. An argument that stands on its own does neither.
+
 ## Documentation
 
 - Feature docs are `kebab-case.md`, named as a user would name the feature.

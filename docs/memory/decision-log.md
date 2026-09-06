@@ -33,7 +33,8 @@ application.
 ### 2026-09-05 — Budget App became Budget Owl: a self-hosted product for households
 
 The project stopped being one person's budgeting app and became an open-source, self-hostable
-product in the shape of Immich. Recorded across ADR-0016 (product), 0017 (households), 0018
+product in the shape of the self-hosted applications people already run at home. Recorded across
+ADR-0016 (product), 0017 (households), 0018
 (auth), 0019 (Flutter), 0020 (bank connections) and 0021 (licence, proposed), with the product
 strategy itself in `docs/product/vision.md` — a `docs/product/` area that did not previously
 exist, because the harness had nowhere to put "what is this and who is it for".
