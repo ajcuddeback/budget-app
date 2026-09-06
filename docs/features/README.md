@@ -27,7 +27,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 
 | Feature | Status | Doc |
 |---|---|---|
-| Users, households & auth | **Doc out of date** — rewrite before slice 2 | [accounts-and-auth.md](accounts-and-auth.md) |
+| Authentication & households | Planned — spec ready | [authentication-and-households.md](authentication-and-households.md) |
 | Household management (invites, roles) | Planned | _not written_ |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |

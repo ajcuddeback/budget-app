@@ -41,6 +41,22 @@ Small agreed choices. Add with `/remember`. Newest at the bottom of each section
 - **Optional integrations default to off** — OIDC, bank connections, AI. A fresh instance does
   nothing the user did not ask for.
 
+## Self-hosted constraints that recur
+
+These bite every feature, not just authentication. Design against them from the start rather than
+discovering them at the end:
+
+- **There is no SMTP server.** Never make email delivery a required step. Anything that would
+  "send a link" produces a link the user copies and shares; email is an optional enhancement when
+  SMTP happens to be configured. (Invitations and password reset both landed this way.)
+- **The instance may be internet-facing.** Anything open by default is open to whoever finds the
+  server. Self-service registration is closed after the first user for exactly this reason.
+- **Nobody is coming to help.** Every irreversible or lockout-capable action needs a recovery path
+  that works from the host shell — the user has a terminal and nothing else.
+- **Do not strand the last administrator.** The last `OWNER` of a household cannot be removed,
+  demoted, or leave; password login cannot be disabled before OIDC is proven. Same failure shape,
+  same answer: refuse the state that has no way back.
+
 ## Naming other products
 
 - **Do not name other products as comparisons or precedents** in docs, ADRs, commit messages or
@@ -54,7 +70,9 @@ Small agreed choices. Add with `/remember`. Newest at the bottom of each section
 
 ## Documentation
 
-- Feature docs are `kebab-case.md`, named as a user would name the feature.
+- Feature docs are `kebab-case.md`, named as a user would name the feature — and never using a
+  word the glossary has reserved. "Account" means a money container here, so the auth feature doc
+  is `authentication-and-households.md`, not `accounts-and-auth.md`.
 - ADR filenames are `NNNN-imperative-title.md`, zero-padded to four digits.
 - Every doc that states a rule links to the ADR or guide that established it, so the reader can
   find the reasoning rather than re-deriving it.

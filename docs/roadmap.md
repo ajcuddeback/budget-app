@@ -12,7 +12,7 @@ Use `/vertical-slice` to work one.
 | 0c | User-guide capture + `user-docs` agent | 0b | **Done** |
 | 0d | Product direction: self-hosted, households, mobile (ADR-0016–0021) | 0 | **Done** |
 | 1 | Backend + frontend skeletons, Compose packaging, CI proven | 0d | Next |
-| 2 | [Users, households & auth](features/accounts-and-auth.md) — **doc needs rewriting first** | 1 | Planned |
+| 2 | [Authentication & households](features/authentication-and-households.md) | 1 | Planned |
 | 3 | Accounts (money containers) | 2 | Planned |
 | 4 | Categories + defaults on household creation | 2 | Planned |
 | 5 | Transactions (create, list, edit, delete) | 3, 4 | Planned |

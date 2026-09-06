@@ -99,6 +99,7 @@ credential-handling surface with its own rate limiting. Optional OIDC is a confi
 that will be under-exercised precisely because it is optional, so it needs integration tests
 against a real provider container rather than a mock.
 
-**Follow-ups:** rewrite `docs/features/accounts-and-auth.md` around this model — it is currently
-written against ADR-0004 and is now wrong. Update `docs/architecture/security-model.md`. Add the
+**Follow-ups:** ~~rewrite the auth feature doc around this model~~ — done, as
+`docs/features/authentication-and-households.md` (renamed: "account" means a money container in
+this project). Update `docs/architecture/security-model.md`. Add the
 bearer-token and role cases to the `security-auditor` checklist.

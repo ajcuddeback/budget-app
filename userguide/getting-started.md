@@ -17,7 +17,7 @@ budget.
 
 ## 1. Create your account and household
 
-*Awaiting slice 2 — [users, households & auth](../docs/features/accounts-and-auth.md).*
+*Awaiting slice 2 — [authentication & households](../docs/features/authentication-and-households.md).*
 
 Will cover: creating the first account, which becomes the owner of a new household; choosing a
 password; signing in. If your server is set up to use your own login provider, that option
