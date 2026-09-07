@@ -53,6 +53,18 @@ else
   pass "no hardcoded credentials in tracked source"
 fi
 
+# A Claude Design export ships the design project's uploaded attachments next to the canvas, and
+# what people upload to a budgeting design project is their own budget. .gitignore covers the
+# usual shapes; this catches a `git add -f`, an unusual extension, or a file that was already
+# tracked before the rule existed. Publishing the maintainer's finances would contradict the
+# product's entire premise (ADR-0016), and git history does not forget. See design/README.md.
+if git ls-files -- design | grep -vE '(^|/)_ds/' \
+   | grep -qiE '\.(xlsx?|csv|tsv|ofx|qfx|qif|numbers|json)$|(^|/)uploads/'; then
+  fail "no financial-data files tracked under design/"
+else
+  pass "no financial-data files tracked under design/"
+fi
+
 # ---------------------------------------------------------------- backend
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
   section "Backend (Java / Spring Boot)"

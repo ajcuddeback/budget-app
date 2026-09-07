@@ -47,6 +47,7 @@ Full picture: [`docs/product/vision.md`](docs/product/vision.md).
 backend/   Spring Boot API      (not yet created)
 frontend/  Angular SPA          (not yet created)
 mobile/    Flutter app          (not yet created)
+design/    Visual source of truth, exported from Claude Design
 docs/      Architecture, decisions, specs, conventions
 userguide/ Customer-facing help, written from the running UI
 tools/     verify.sh (the gate), ui-check.sh, userguide-capture.sh

@@ -130,3 +130,14 @@ tools/ui/test-results/
 
 # user-guide capture self-check output (proof, not content)
 tools/ui/artifacts/userguide-selfcheck/
+
+# --- Design exports: never commit attachments ---
+# A Claude Design export carries whatever was uploaded to the project alongside the canvas,
+# and what gets uploaded to a budgeting design project is somebody's actual budget.
+# tools/verify.sh fails the build if one of these is tracked anyway. See design/README.md.
+design/**/uploads/
+design/**/*.xlsx
+design/**/*.xls
+design/**/*.csv
+design/**/*.ofx
+design/**/*.qif
