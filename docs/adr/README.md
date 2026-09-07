@@ -48,3 +48,4 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0021](0021-licence-agpl-3.md) | Licence — AGPL-3.0 | **Proposed** | 2026-09-05 |
 | [0022](0022-multi-currency-display.md) | Multi-currency — store in account currency, convert for display | Accepted | 2026-09-07 |
 | [0023](0023-internationalisation.md) | Internationalisation — runtime locale, codes over prose | Accepted | 2026-09-07 |
+| [0024](0024-test-quality-enforcement.md) | Measure test quality, not just coverage | Accepted | 2026-09-07 |

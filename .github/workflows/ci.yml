@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Weekly full mutation run. Scoped-to-changed-classes runs on every PR; this catches decay
+    # in code nobody has touched (ADR-0024).
+    - cron: '0 3 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -85,6 +89,56 @@ jobs:
             frontend/coverage/
             mobile/coverage/
           retention-days: 7
+          if-no-files-found: ignore
+
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # fetch-depth: 0 so PIT's SCM goal can diff against the base branch.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # NOTE: these guards are step-level, not job-level, on purpose. hashFiles() at job level
+      # is evaluated before checkout, when the workspace is empty, so it always returns '' and
+      # the job would silently never run.
+      - name: Backend mutation — changed classes (PR) or full (schedule)
+        if: hashFiles('backend/pom.xml') != ''
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Full mutation run"
+            mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
+          else
+            echo "Mutation run scoped to classes changed against ${{ github.base_ref || 'main' }}"
+            mvn -B -f backend org.pitest:pitest-maven:scmMutationCoverage \
+              -Dpit.scm.originBranch=origin/${{ github.base_ref || 'main' }}
+          fi
+
+      - name: Frontend mutation
+        if: hashFiles('frontend/package.json') != ''
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          npm --prefix frontend run test:mutation
+
+      - name: Upload mutation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-reports
+          path: |
+            backend/target/pit-reports/
+            frontend/reports/mutation/
+          retention-days: 14
           if-no-files-found: ignore
 
   ui:

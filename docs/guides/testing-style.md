@@ -133,6 +133,10 @@ alarm, not a quality measure. Code can be 100% covered by tests that assert noth
 generated code (MapStruct, `freezed`, `json_serializable`), configuration classes, and framework
 entry points.
 
+**The threshold is met, not chased.** Those two are different and both matter: the number is a
+hard gate that fails the PR, *and* meeting it proves almost nothing on its own. Do not treat
+hitting it as evidence the feature is tested.
+
 **What the gate never substitutes for:** the mandatory tests above. An endpoint with 95% coverage
 and no cross-household test is a data leak with good statistics. If you are ever choosing between
 raising coverage and writing one of the mandatory tests, write the mandatory test.
@@ -140,6 +144,45 @@ raising coverage and writing one of the mandatory tests, write the mandatory tes
 **Never** add a test purely to move the number. A test that exists to satisfy a threshold is
 noise that will be maintained forever, and it makes the metric lie about the thing it exists to
 detect.
+
+## What actually measures whether the tests are any good
+
+Coverage answers *"was this line executed?"*. It cannot answer *"would a test fail if this line
+were wrong?"* — and an assertion-free test scores identically to a thorough one. Three further
+layers close that gap (ADR-0024):
+
+**Mutation testing — the real answer.** PIT (backend) and Stryker (frontend) change the code
+deliberately — flip a conditional, drop a call, alter a return — and re-run the tests. A mutant
+that *survives* means that line is covered but unguarded. Mutation score cannot be faked by
+writing tests that assert nothing, which is exactly what coverage cannot detect.
+
+It is slow, so it runs on **changed classes on PRs** with a threshold, and fully on a schedule.
+Thresholds start achievable and ratchet up — a threshold nobody can hit gets deleted, and then
+there is no signal at all.
+
+**Architecture tests — making the dangerous shape unwritable.** ArchUnit turns rules in this
+guide into failing builds rather than review comments:
+
+- a repository method returning a financial entity **must** take a `householdId`
+- `web` never calls `persistence`
+- no `double`/`float` in any type touching money
+- entities never appear in controller signatures
+- `@Transactional` only in `service`
+
+These run in milliseconds. When one blocks legitimate code, fix the rule deliberately — do not
+delete it, because that is how the whole layer quietly goes away.
+
+**Property-based tests — for edge cases nobody enumerated.** jqwik generates the inputs you did
+not think of. Use it wherever the interesting cases are unbounded:
+
+- a split of *any* amount reconciles exactly to the original
+- rounding never creates or destroys value
+- mixed-currency arithmetic throws for *any* pair
+- period boundaries hold across month lengths, leap years and DST
+
+**And the part no tool covers.** The mandatory list above is still a checklist worked through by
+a person or an agent. Tooling narrows the gap; judgement closes it. That is what `test-author`
+and `security-auditor` are for — use them.
 
 Enforced by `jacoco:check` (backend), Vitest coverage thresholds (frontend), and
 `flutter test --coverage` (mobile), all run inside `tools/verify.sh`.

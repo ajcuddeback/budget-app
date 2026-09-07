@@ -16,6 +16,8 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 | Validation | Jakarta Bean Validation (Hibernate Validator) | |
 | Mapping | MapStruct **or** hand-written mappers | No reflection-based magic in the hot path |
 | Testing | JUnit 5, AssertJ, Mockito, Testcontainers, Spring Security Test | ADR-0009 |
+| Test quality | PIT (mutation), ArchUnit (structure), jqwik (property-based) | ADR-0024 — coverage alone cannot tell you a test would fail |
+| Coverage | JaCoCo with `jacoco:check` thresholds | A floor, gated in CI |
 | Format | Spotless (google-java-format AOSP) | Formatting is not a review topic |
 | Static analysis | Error Prone + SpotBugs (`find-sec-bugs` plugin) | |
 | API docs | springdoc-openapi | Generated, never hand-maintained |

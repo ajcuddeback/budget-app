@@ -243,4 +243,17 @@ reference something gone. `git remote prune origin`, then a plain push.
 
 *Added 2026-09-05.*
 
+### `hashFiles()` at GitHub Actions *job* level always returns empty
+
+Guarding a whole job with `if: hashFiles('backend/pom.xml') != ''` looks right and never runs.
+Job-level `if` is evaluated **before** `actions/checkout`, when the workspace is empty, so
+`hashFiles` finds nothing and the condition is always false — silently, with the job showing as
+skipped rather than failed.
+
+Put the guard on the **steps**, after checkout. (Step-level guards inside the `gate` job already
+worked for this reason; the mutation job was written with a job-level guard first and would have
+never executed.)
+
+*Added 2026-09-07 — while wiring mutation testing.*
+
 ---

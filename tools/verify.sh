@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # The gate. If this does not pass, the work is not done.
-# Usage: tools/verify.sh [backend|frontend|all]
+# Usage: tools/verify.sh [backend|frontend|mobile|all|mutation]
+#
+#   all (default)  everything fast enough to run on every change
+#   mutation       mutation testing — SLOW, opt-in, not part of `all` (ADR-0024)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -58,7 +61,10 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
   else
     run "format (spotless:check)"  mvn -q -f backend spotless:check
     run "compile"                  mvn -q -f backend compile
-    run "unit + slice tests"       mvn -q -f backend test
+    # Architecture tests (ArchUnit) run as ordinary JUnit tests inside this step: no `web` ->
+    # `persistence` calls, every financial repository method takes a householdId, no double for
+    # money, no entities in controller signatures (ADR-0024).
+    run "unit + slice + architecture tests" mvn -q -f backend test
 
     if docker info >/dev/null 2>&1; then
       run "integration tests + migrations (Testcontainers)" mvn -q -f backend verify -DskipUnitTests
@@ -84,6 +90,28 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
     run "build"       npm --prefix frontend run build
     run "npm audit (high+)" npm --prefix frontend audit --audit-level=high
   fi
+fi
+
+# ---------------------------------------------------------------- mutation
+# Deliberately NOT part of `all`: PIT and Stryker take minutes, and a slow gate is a gate people
+# stop running. Coverage says a line was executed; mutation testing says a test would FAIL if
+# that line were wrong (ADR-0024). CI runs it scoped to changed classes on PRs and fully on a
+# schedule.
+if [ "$TARGET" = "mutation" ]; then
+  section "Mutation testing (slow)"
+  if [ -f backend/pom.xml ]; then
+    run "backend mutation score (PIT)" mvn -q -f backend org.pitest:pitest-maven:mutationCoverage
+  else
+    skip "backend mutation" "backend/ does not exist yet"
+  fi
+  if [ -f frontend/package.json ]; then
+    run "frontend mutation score (Stryker)" npm --prefix frontend run test:mutation
+  else
+    skip "frontend mutation" "frontend/ does not exist yet"
+  fi
+  section "Result"
+  if [ "$FAILED" -eq 0 ]; then printf '  \033[32mPASSED\033[0m\n'; exit 0
+  else printf '  \033[31mFAILED\033[0m\n'; exit 1; fi
 fi
 
 # -------------------------------------------------------------------- ui

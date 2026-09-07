@@ -30,6 +30,32 @@ application.
 
 ---
 
+### 2026-09-07 — Keep the coverage number, and add what actually measures test quality
+
+The owner agreed coverage should not be chased but insisted the metric still be *met* — and that
+it must not displace tests that logically catch edge cases. Both halves are right, and holding
+them together needed more than prose.
+
+The gap was the familiar asymmetry: coverage had a mechanism, "write good tests" had a paragraph.
+So three layers were added (ADR-0024), each answering a question the one below it cannot:
+
+- **Mutation testing** (PIT, Stryker) — changes the code and checks a test *fails*. Not gameable
+  by assertion-free tests, which is precisely coverage's blind spot. Scoped to changed classes on
+  PRs because a slow gate is a disabled gate.
+- **ArchUnit** — makes the dangerous shape unwritable rather than reviewable: no repository
+  method returning financial data without a `householdId`, no `web` → `persistence`, no `double`
+  for money.
+- **jqwik property tests** — for money and dates, where the interesting inputs are the ones
+  nobody enumerated.
+
+Coverage stays a hard gate. What changed is that meeting it is no longer mistaken for evidence.
+
+The honest cost, recorded in the ADR: four tools where one would be normal for a project this
+size. Justified by the two conditions actually present — largely AI-generated code, and other
+people's money.
+
+---
+
 ### 2026-09-07 — CI now enforces "a skip is not a pass" instead of printing it
 
 `tools/verify.sh` had said *"a skip is NOT a pass"* in its output for weeks, and nothing enforced
