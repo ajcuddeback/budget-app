@@ -151,10 +151,61 @@ Coverage answers *"was this line executed?"*. It cannot answer *"would a test fa
 were wrong?"* — and an assertion-free test scores identically to a thorough one. Three further
 layers close that gap (ADR-0024):
 
+### If you have not met these tools before
+
+**ArchUnit** is a Java library for writing unit tests *about your architecture*. It reads your
+compiled classes, so a rule is an ordinary JUnit test that runs in milliseconds:
+
+```java
+@Test
+void webNeverCallsPersistence() {
+    noClasses().that().resideInAPackage("..web..")
+        .should().dependOnClassesThat().resideInAPackage("..persistence..")
+        .check(new ClassFileImporter().importPackages("com.budgetowl"));
+}
+```
+
+Add a repository field to a controller and that fails, naming the class. Package rules are
+near one-liners; the "every financial repository method takes a `householdId`" rule needs a
+custom predicate over method signatures — real work, written once.
+
+**PIT** does *mutation testing* for the JVM. It runs your tests, then makes small deliberate
+changes to the bytecode — `>` becomes `>=`, `return x` becomes `return null`, a call is deleted —
+and re-runs the covering tests. A test fails: the mutant is **killed**, your tests noticed. All
+tests pass: the mutant **survived**, and that code could be wrong with nothing to tell you.
+
+This example is the whole argument:
+
+```java
+Money fee(Money amount) {
+    return amount.multiply(new BigDecimal("0.02"));
+}
+
+@Test void calculatesFee() {
+    calculator.fee(Money.of("100.00", USD));   // 100% line coverage. Asserts nothing.
+}
+```
+
+Coverage says 100%. Mutation score says 0% — PIT changes `0.02`, the test still passes. That gap
+is why coverage alone is not enough.
+
+**Stryker** is the same idea for TypeScript: mutates the source, re-runs Vitest, reports killed
+and survived.
+
+**What they cost.** Both are slow — every mutant re-runs the tests covering it. And *equivalent
+mutants* (a change that produces semantically identical code) can never be killed, so 100% is not
+achievable and chasing the last few percent is wasted effort. Treat surviving mutants as questions
+worth looking at, not a list to zero out.
+
+**Neither replaces thinking.** They tell you where the tests are weak. They cannot tell you that
+you forgot "two owners removing each other simultaneously" — that is the feature doc's edge-cases
+section and your own head.
+
+### The layers
+
 **Mutation testing — the real answer.** PIT (backend) and Stryker (frontend) change the code
-deliberately — flip a conditional, drop a call, alter a return — and re-run the tests. A mutant
-that *survives* means that line is covered but unguarded. Mutation score cannot be faked by
-writing tests that assert nothing, which is exactly what coverage cannot detect.
+deliberately and re-run the tests, as above. Mutation score cannot be faked by writing tests that
+assert nothing, which is exactly what coverage cannot detect.
 
 It is slow, so it runs on **changed classes on PRs** with a threshold, and fully on a schedule.
 Thresholds start achievable and ratchet up — a threshold nobody can hit gets deleted, and then

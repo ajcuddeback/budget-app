@@ -70,15 +70,28 @@ Start at [`docs/README.md`](docs/README.md).
 - [**Product vision**](docs/product/vision.md) — what this is and who it is for
 - [Architecture overview](docs/architecture/overview.md)
 - [Security model](docs/architecture/security-model.md) — read before touching auth
-- [Decision records](docs/adr/README.md) — 21 ADRs explaining why things are the way they are
+- [Decision records](docs/adr/README.md) — 24 ADRs explaining why things are the way they are
 - [Roadmap](docs/roadmap.md)
+
+## Contributing
+
+Contributions are welcome — read [**CONTRIBUTING.md**](CONTRIBUTING.md) first. It covers the
+standards, the mandatory tests, and how to open a change.
+
+**You do not have to use AI to contribute.** By hand, with a different tool, with no tool at all —
+it does not matter, and a hand-written patch is not second-class here. What matters is that the
+result meets the same standards, because they are not "AI rules", they are the project's
+engineering standards. `docs/` holds them; `.claude/` is just one way of having them applied
+automatically, and you are free to ignore it.
+
+Found a security problem? **Do not open a public issue** — see [SECURITY.md](SECURITY.md).
 
 ## Working on this with AI
 
-The repository carries a purpose-built harness so an agent starts oriented instead of exploring:
-[`CLAUDE.md`](CLAUDE.md) routes to the right doc, `.claude/agents/` holds nine specialists,
-`.claude/skills/` holds the workflows, and three self-checking gates (`verify.sh`, `ui-check.sh`,
-`userguide-capture.sh`) run with no application present.
+If you do want the harness, the repository carries a purpose-built one so an agent starts oriented
+instead of exploring: [`CLAUDE.md`](CLAUDE.md) routes to the right doc, `.claude/agents/` holds
+nine specialists, `.claude/skills/` holds the workflows, and three self-checking gates
+(`verify.sh`, `ui-check.sh`, `userguide-capture.sh`) run with no application present.
 
 ## Licence
 
