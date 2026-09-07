@@ -18,6 +18,10 @@ tiebreaker. Add with `/remember`.
 | **HouseholdMember** | A user's membership of a household, carrying a role: `OWNER`, `MEMBER` or `VIEWER` |
 | **Aggregator** | A third party providing bank feeds (SimpleFIN, GoCardless, Plaid). The **user** holds the credentials, not us (ADR-0020) |
 | **Self-hoster** | Our primary user: someone running Budget Owl on their own hardware. Assume no service of ours is reachable |
+| **Base currency** | The household's currency for roll-ups. Not what any transaction is stored in |
+| **Display currency** | A per-member preference for what they see. Changes presentation only, never stored data (ADR-0022) |
+| **Converted** | A figure derived from a rate on a date. Always labelled as such, never persisted, never the input to stored arithmetic |
+| **Locale** | A per-member language and formatting choice. Independent of currency — English text with German number formatting is legitimate |
 | **Income** | A transaction with a positive amount in a category of kind `INCOME`. Not a separate entity — the legacy app had an `income` table; we do not. |
 | **Leftover** | Legacy term for income minus expenses in a month. New term: **net** or **available**. |
 | **Money** | The value object: `BigDecimal` + currency. Never a bare number. |

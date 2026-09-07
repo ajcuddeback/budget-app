@@ -43,6 +43,13 @@ regardless of our intentions. So:
 accounts · transactions · categories · budgets and periods · transfers · recurring items ·
 reporting · household sharing with roles · file import (CSV/OFX/QIF) · web app · mobile app
 
+**As many currencies and languages as we can support.** Not a late-stage nicety — a stated goal,
+because the self-hosting audience is global and this is software about people's money, often
+shared with family, often used while stressed. Accounts hold their own currency and each member
+picks their own display currency and language (ADR-0022, ADR-0023). Two people in one household
+seeing the same data in different currencies and different languages is a normal case, not an
+edge one. Translations are community-contributed; English is the only one we own.
+
 **Optional, user-configured:**
 bank connections via the user's own aggregator credentials · AI insights via a local model, the
 user's own API key, or a hosted endpoint

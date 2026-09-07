@@ -10,7 +10,23 @@ SKIPPED=()
 
 pass() { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$1"; FAILED=1; }
+
+# Two kinds of "did not run", deliberately distinguished.
+#
+# skip()    — legitimately absent: a stack that has not been built yet. Benign everywhere.
+# missing() — SHOULD have been available and was not (Docker, installed deps). Locally this is a
+#             warning so you can still get partial signal; in CI it is a FAILURE, because a
+#             silent skip is exactly how integration tests stop running and nobody notices.
+#             "A skip is not a pass" was printed advice until this existed; now it is enforced.
 skip() { printf '  \033[33m-\033[0m %s (skipped: %s)\n' "$1" "$2"; SKIPPED+=("$1"); }
+missing() {
+  if [ -n "${CI:-}" ]; then
+    fail "$1 — REQUIRED in CI but unavailable: $2"
+  else
+    printf '  \033[33m!\033[0m %s (unavailable: %s) — this would FAIL in CI\n' "$1" "$2"
+    SKIPPED+=("$1")
+  fi
+}
 section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 run() { # run <label> <command...>
@@ -46,8 +62,9 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
 
     if docker info >/dev/null 2>&1; then
       run "integration tests + migrations (Testcontainers)" mvn -q -f backend verify -DskipUnitTests
+      run "backend coverage threshold (JaCoCo)" mvn -q -f backend jacoco:check
     else
-      skip "integration tests" "Docker unavailable — a skip is NOT a pass (ADR-0009)"
+      missing "integration tests + coverage" "Docker not available for Testcontainers (ADR-0009)"
     fi
 
     run "dependency vulnerability scan" mvn -q -f backend dependency-check:check
@@ -63,7 +80,7 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
     [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci
     run "lint"        npm --prefix frontend run lint
     run "typecheck"   npx --prefix frontend tsc -p frontend/tsconfig.json --noEmit
-    run "unit tests"  npm --prefix frontend test -- --watch=false
+    run "unit tests + coverage threshold" npm --prefix frontend test -- --watch=false --coverage
     run "build"       npm --prefix frontend run build
     run "npm audit (high+)" npm --prefix frontend audit --audit-level=high
   fi
@@ -82,6 +99,19 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
     printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
   else
     skip "live UI checks" "app not serving — run tools/ui-check.sh --serve to include them"
+  fi
+fi
+
+# ---------------------------------------------------------------- mobile
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "mobile" ]; then
+  section "Mobile (Flutter)"
+  if [ ! -f mobile/pubspec.yaml ]; then
+    skip "mobile build" "mobile/ does not exist yet"
+  elif ! command -v flutter >/dev/null 2>&1; then
+    missing "mobile build" "flutter not on PATH"
+  else
+    run "analyze"                 flutter analyze --no-pub
+    run "tests + coverage"        flutter test --coverage
   fi
 fi
 

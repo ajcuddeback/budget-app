@@ -129,7 +129,9 @@ nothing downstream.
 users                 id, email (citext, unique), display_name, password_hash,
                       status (ACTIVE|DISABLED), is_instance_admin, created_at, updated_at
 households            id, name, base_currency, created_at, updated_at
-household_members     id, household_id, user_id, role (OWNER|MEMBER|VIEWER), joined_at
+household_members     id, household_id, user_id, role (OWNER|MEMBER|VIEWER), joined_at,
+                      display_currency (nullable — falls back to household base, ADR-0022),
+                      locale (nullable — falls back to platform locale, ADR-0023)
                       unique (household_id, user_id)
 household_invitations id, household_id, email, role, token_hash, expires_at,
                       accepted_at, revoked_at, created_by
@@ -170,6 +172,8 @@ Migrations: `V1__users.sql`, `V2__households.sql`, `V3__invitations.sql`, `V4__a
 | `DELETE` | `/api/households/current/invitations/{id}` | Revoke | `OWNER` |
 | `POST` | `/api/invitations/{token}/accept` | Join (existing or new user) | public + token |
 | `PATCH` | `/api/households/current/members/{id}` | Change role | `OWNER`, not self |
+| `PATCH` | `/api/households/current/members/me` | Own display currency and locale | authenticated, self only |
+| `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household |
 | `DELETE` | `/api/households/current/members/{id}` | Remove, or leave | `OWNER`, or self |
 
 The only public routes in the entire application are the setup pair, login, token issue, and
@@ -234,13 +238,26 @@ Deliberately not in this slice — do not re-propose without a decision:
 - **Transferring an instance to a new administrator.**
 - **Audit log UI.** Events are logged; a screen for them is later.
 
+## Resolved decisions
+
+**A user cannot delete their own account while they own a household.** The request is refused with
+a clear reason, and the way out is to transfer ownership or delete the household first. This is
+the last-owner rule seen from the other side: allowing it would leave a household with financial
+data and no administrator, which is the "weird behaviour" that has no good recovery. Deleting a
+household is out of scope for this slice, so in practice self-deletion arrives with it.
+
+**A member may set their own display currency.** It is a per-member preference on
+`household_members`, distinct from the household's base currency (ADR-0022). Amounts are always
+stored in the account's own currency and converted only for display — so this setting changes
+what a member *sees*, never what is recorded. Members of one household may each see different
+currencies over identical underlying data.
+
+**A member may set their own language and locale**, independently of currency (ADR-0023). One
+household, two people, two languages is a normal case rather than an edge one.
+
 ## Open questions
 
-- Should a user be able to delete their own account, and what happens to households they own?
-  Probably: refused while they are the last owner of any household. Needs deciding before this
-  ships, since it interacts with the last-owner rule.
-- Base currency is per household — what happens if a member wants a different display currency?
-  Deferred to the reporting slice.
+None blocking. Household deletion — and therefore self-deletion — is scoped to a later slice.
 
 ## Testing notes
 

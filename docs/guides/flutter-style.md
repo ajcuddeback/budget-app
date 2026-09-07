@@ -69,6 +69,19 @@ Hide a control a `VIEWER` cannot use, by all means — that is good UX. It is **
 control. The API enforces the role (ADR-0017), and the client assuming otherwise is how a client
 becomes the weak link.
 
+## Language and currency
+
+- **Every user-facing string comes from an ARB file.** A literal in a widget is a defect
+  (ADR-0023). `flutter_localizations`, runtime locale switching, English as the source language.
+- **Never hand-format a number, date or amount.** Use `intl` with the user's locale — `1.234,56 €`
+  and `€1,234.56` are the same value formatted for different people.
+- **RTL works or the layout is wrong.** Use directional-agnostic widgets and `EdgeInsetsDirectional`
+  rather than `EdgeInsets` with hard-coded left/right. Test with `Directionality`.
+- Amounts arrive with their currency and are displayed in it. A converted figure is labelled as
+  converted, with its rate and date (ADR-0022) — never shown as if it were the recorded amount.
+- Errors arrive as a `code` plus `params`; look up the translation. Never display the server's
+  `title` or `detail` to a user.
+
 ## Accessibility
 
 Semantics labels on every interactive widget. Respect the platform text scale — someone running

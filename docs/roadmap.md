@@ -41,6 +41,12 @@ top, and some users will never be able to obtain provider credentials at all (AD
 **Mobile (11) waits for a real API.** Building a client against endpoints that do not exist is
 worse than not building it.
 
+**Internationalisation is not a slice.** It is a constraint on every slice from 1 onwards
+(ADR-0023): strings come from translation files, amounts and dates are never hand-formatted, and
+layouts are RTL-safe. Retrofitting it after fifty screens exist is a rewrite; honouring it from
+the first component is nearly free. The same applies to currency (ADR-0022) — totals are
+currency-aware from the first sum, not after someone adds a second account.
+
 **AI is last (13)** because there is nothing to analyse until transactions and budgets exist, and
 because it is the feature most able to damage trust if rushed.
 

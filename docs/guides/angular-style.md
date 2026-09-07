@@ -25,6 +25,7 @@ project conventions, so this is the mechanism it expects.
 | **Project creation** | `ng new <app-name>` in the current directory | **`frontend/`, and only that path** | ADR-0005 fixes the monorepo layout. Never scaffold to a different directory |
 | **`--ai-config`** | Pass it to `ng new` to write an agent config | **Do not** | It writes a competing `CLAUDE.md`/`AGENTS.md` that would fight this harness's routing. Our config is `CLAUDE.md` at the repo root |
 | **SSR** | Offers SSR/prerendering | **CSR only for now** | We are a session-authenticated SPA. SSR changes the auth story and needs an ADR |
+| **i18n** | Angular's built-in build-time i18n | **Runtime i18n** (translation files loaded at run time) | Build-time i18n ships one bundle per locale, chosen at build. We ship one self-hosted image and the user picks their language at runtime (ADR-0023) |
 | **Test runner** | Vitest | **Vitest** | Agreed — we moved to it *because* of the skill (ADR-0014) |
 
 Everything the skill says that is **not** in this table applies. Signals, standalone components,

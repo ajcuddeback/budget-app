@@ -113,10 +113,53 @@ code. A fixture in this repo should not demonstrate what the style guide forbids
 Write fixtures to the same standard as production code, even when the fixture cannot be
 attacked. The cost is a few extra lines; the alternative is teaching the pattern.
 
-## Coverage
+## Coverage — a floor, not a target
 
-We don't chase a number. Uncovered code in the domain, the service layer, or anything touching
-authorization is a gap that needs justifying. Uncovered getters are not.
+Coverage is gated in CI and a drop **fails the PR**. That is not a contradiction of "we don't
+chase a number", but it does need stating precisely, because the two ideas get confused.
+
+**What the gate is for:** catching the case where tests were not written at all. It is a smoke
+alarm, not a quality measure. Code can be 100% covered by tests that assert nothing.
+
+**Where it applies:**
+
+| Scope | Line | Branch |
+|---|---|---|
+| `service/`, `domain/` — rules, money, authorization | 85% | 75% |
+| Everything else (backend, aggregate) | 70% | 60% |
+| Frontend `features/`, `core/` | 80% | 70% |
+
+**Excluded**, because covering them measures nothing: DTOs and records with no behaviour,
+generated code (MapStruct, `freezed`, `json_serializable`), configuration classes, and framework
+entry points.
+
+**What the gate never substitutes for:** the mandatory tests above. An endpoint with 95% coverage
+and no cross-household test is a data leak with good statistics. If you are ever choosing between
+raising coverage and writing one of the mandatory tests, write the mandatory test.
+
+**Never** add a test purely to move the number. A test that exists to satisfy a threshold is
+noise that will be maintained forever, and it makes the metric lie about the thing it exists to
+detect.
+
+Enforced by `jacoco:check` (backend), Vitest coverage thresholds (frontend), and
+`flutter test --coverage` (mobile), all run inside `tools/verify.sh`.
+
+## What runs in CI, and what cannot be skipped
+
+`tools/verify.sh` is the gate locally *and* in CI, but it behaves differently in the two places,
+deliberately:
+
+- **Locally**, tooling that is unavailable (no Docker, no Flutter) prints a warning marked `!`
+  and the run still passes, so you can get partial signal while working.
+- **In CI** (`CI=true`), the same condition is a **failure**. Integration tests and coverage
+  cannot silently not-run.
+
+The distinction that matters: a stack that *does not exist yet* is a benign skip in both places;
+tooling that *should have been there* is a failure in CI. "A skip is not a pass" was printed
+advice for weeks before it was enforced — the enforcement is the point.
+
+CI additionally asserts Docker is present before running the gate, so a runner without it fails
+with a message naming the reason rather than quietly skipping the tests that matter most.
 
 ## Running
 
