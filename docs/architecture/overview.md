@@ -2,12 +2,23 @@
 
 ## Shape
 
+Everything below runs **on the user's own hardware** (ADR-0016). There is no service of ours in
+this diagram, and there must never be one in the core.
+
 ```
-Browser
-  │  HTTPS only. Session cookie (HttpOnly, Secure, SameSite=Lax) + CSRF token header.
-  ▼
-Angular SPA  ── served as static assets, separate origin or same-origin reverse proxy
-  │  /api/**  JSON
+Browser                          Mobile app (Flutter, iOS + Android)
+  │  Session cookie                 │  Bearer token from the platform
+  │  (HttpOnly, Secure,             │  secure store (Keychain / Keystore)
+  │   SameSite=Lax) + CSRF          │
+  ▼                                 ▼
+Angular SPA                         │
+  │  /api/** JSON                   │  /api/** JSON
+  ▼                                 ▼
+        ┌──────────────────────────────┐
+        │   Spring Boot API (Java 21)  │
+        └──────────────────────────────┘
+  │  Two credential transports, ONE authentication system (ADR-0018):
+  │  same user store, same authorization, same revocation.
   ▼
 Spring Boot API  (Java 21)
   ├── web        controllers, request/response DTOs, validation, error mapping
@@ -51,6 +62,24 @@ Organize by **feature**, not by layer-at-the-top. `com.budgetapp.transaction.web
 `com.budgetapp.web.transaction`. Features are the unit of change; layers are the unit of
 discipline within a feature.
 
+## Deployment shape
+
+The deployable unit is a **`docker-compose.yml` plus published images** (ADR-0016): API,
+Postgres, and the SPA served as static assets behind the API or a small reverse proxy. The
+mobile app is installed from a store and **pointed at the user's own instance** — its server URL
+is user-supplied configuration, so it must cope with LAN hostnames, self-signed certificates and
+non-standard ports.
+
+Consequences that shape the code, not just the ops story:
+
+- **No component may require a service we operate.** Not for auth, not for updates, not for
+  telemetry (ADR-0016).
+- **Migrations run unattended** on a machine nobody is watching (ADR-0007). A migration that
+  needs a human is a migration that eats someone's data at 3am.
+- **First run must work** with nothing configured beyond a database password.
+- **We cannot see failing instances.** Diagnostics are things the user can run and choose to
+  share, which makes clear error messages a product feature rather than a nicety.
+
 ## Frontend shape
 
 ```
@@ -64,6 +93,21 @@ frontend/src/app
 Standalone components, signals for state, typed reactive forms, lazy routes.
 See `docs/guides/angular-style.md`.
 
+## Mobile shape
+
+```
+mobile/lib
+├── core/       config (incl. the user's server URL), http, auth, storage, theme
+├── shared/     reusable widgets, formatters
+└── features/   one directory per feature, mirroring the backend's packages
+```
+
+Flutter, one codebase for iOS and Android (ADR-0019). Riverpod for state, Drift for the offline
+cache, `flutter_secure_storage` for tokens. See `docs/guides/flutter-style.md`.
+
+Offline is a normal condition rather than an error path: reads come from the local cache and
+writes queue, because a budgeting app that is blank on a train is useless.
+
 ## Cross-cutting decisions
 
 Recorded as ADRs — read `docs/adr/README.md` for the index. The ones that shape everything:
@@ -74,4 +118,8 @@ Recorded as ADRs — read `docs/adr/README.md` for the index. The ones that shap
 - **ADR-0005** Monorepo layout
 - **ADR-0006** Money is `BigDecimal` / `NUMERIC(19,4)`, never floating point
 - **ADR-0007** Flyway migrations, never `ddl-auto`
-- **ADR-0008** Every query is scoped to the authenticated user
+- **ADR-0008** Every query is scoped to the owner — amended by ADR-0017 to the **household**
+- **ADR-0016** Self-hosted, open-source product — nothing may require a service we operate
+- **ADR-0017** Households own financial data; roles gate what a member may do
+- **ADR-0018** First-party auth, optional OIDC, opaque tokens for mobile (supersedes ADR-0004)
+- **ADR-0019** Flutter for the mobile app

@@ -17,11 +17,60 @@ The failures we most care about, in order:
 4. **Injection** — SQL or template injection through unvalidated input.
 5. **Sensitive data exposure** — secrets, PII, or amounts leaking into logs, errors, or URLs.
 
-## Authentication: server-side sessions (ADR-0004)
+## Authentication: sessions for web, opaque tokens for mobile (ADR-0018)
 
-We use Spring Security with server-side sessions, **not** JWTs. Rationale and rejected
-alternatives are in ADR-0004; the short version is that a first-party SPA gains nothing from
-stateless tokens and loses instant revocation.
+Two credential transports, **one** authentication system — same user store, same authorization,
+same revocation. ADR-0018 supersedes ADR-0004; the reasoning for keeping sessions on the web is
+unchanged, and mobile is added rather than swapped in.
+
+**Web — server-side sessions.** As below. Still the most XSS-resistant option for a browser.
+
+**Mobile — opaque bearer tokens.** Deliberately opaque and stored server-side rather than JWT, so
+revocation stays a `DELETE`: a stolen phone's access dies immediately. Tokens carry a device
+label and last-used time so the user gets a revocable "logged-in devices" list. On the device
+they live in the platform secure store (Keychain / Keystore) and nowhere else.
+
+**Optional OIDC.** Off by default, configurable by self-hosters who already run an identity
+provider. It is an additional login route, never a requirement — ADR-0016 forbids depending on
+any service we operate, and that includes one the user would have to stand up. Rules below.
+
+### Email + password is permanent
+
+**Password login is a permanent capability of Budget Owl and is always present in the build.**
+It is not a fallback, not a legacy path, and not something a future release removes. A fresh
+instance authenticates with email and password and needs nothing else configured.
+
+This is a product guarantee, not just a default (ADR-0016): a self-hoster must be able to run
+Budget Owl on a machine with no identity provider, no internet access and no account with us.
+
+### Optional OIDC, and the lockout rule
+
+- **Configured at runtime by an instance admin**, in the app, not by environment variable. A
+  typo in an env var means editing a Compose file and restarting a container; a typo in a form
+  is fixed in the browser. Self-hosters are configuring this at 11pm on a machine in a cupboard.
+- **Additive.** Enabling OIDC adds a "Sign in with…" route. It changes nothing about how
+  requests are authorized afterwards — an OIDC session and a password session are the same
+  session, and an OIDC-authenticated user gets tokens on mobile the same way.
+- **An admin may disable password login** on their own instance once they prefer their provider —
+  but only through this safeguard:
+
+  > **Password login cannot be disabled until at least one `OWNER` has completed a successful
+  > OIDC login.** The setting is refused otherwise.
+
+  This is a mechanism rather than a warning for a reason: "disable password login, then discover
+  the OIDC config is wrong" locks the owner out of their own financial records on their own
+  hardware, with no support desk to call. Proving the new route works before removing the old
+  one is the only version of this that is safe.
+
+- **Recovery path regardless.** A self-hoster has shell access to their own box, so an
+  administrative command that re-enables password login must exist and be documented. This is
+  the escape hatch when a provider changes its endpoints, a certificate expires, or a container
+  is restored from a backup with stale configuration.
+- **No auto-join.** An OIDC login may provision a *user* if the admin allows it, but never grants
+  membership of a household (ADR-0017). Household access comes from an invitation, always.
+  Otherwise anyone in the provider's directory would land inside someone's finances.
+
+Rules below apply to both transports unless stated otherwise.
 
 Rules:
 
@@ -59,17 +108,28 @@ Because we authenticate with cookies, CSRF protection is **mandatory** and must 
   in this codebase. If a specific endpoint genuinely needs an exemption (a webhook with its own
   signature verification), exempt that one path and document why in the feature doc.
 
-## Authorization (ADR-0008)
+## Authorization (ADR-0008, amended by ADR-0017)
 
-**Every** query that reads or writes user-owned data is scoped to the authenticated principal.
+**Every** query that reads or writes financial data is scoped to a **household the authenticated
+user is a verified member of** — and then checked against their **role** in it.
 
 ```java
 // WRONG — trusts the path variable to imply ownership
 accountRepository.findById(accountId);
 
-// RIGHT — ownership is part of the query
-accountRepository.findByIdAndUserId(accountId, currentUser.id());
+// WRONG — scopes to a household id taken from the request
+accountRepository.findByIdAndHouseholdId(accountId, request.householdId());
+
+// RIGHT — household resolved from verified membership, never from the request
+accountRepository.findByIdAndHouseholdId(accountId, membership.householdId());
 ```
+
+**Two axes, both enforced in the service layer:**
+
+1. *Which household* — resolved from the authenticated user's membership. A cross-household leak
+   is the highest-severity bug this app can have.
+2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, or
+   delete the household. Every write endpoint needs a test proving a `VIEWER` gets `403`.
 
 - Never derive the acting user from a request body, query parameter, or path variable. It comes
   from the `SecurityContext`, always.

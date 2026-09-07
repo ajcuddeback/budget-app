@@ -30,6 +30,97 @@ application.
 
 ---
 
+### 2026-09-07 — Keep the coverage number, and add what actually measures test quality
+
+The owner agreed coverage should not be chased but insisted the metric still be *met* — and that
+it must not displace tests that logically catch edge cases. Both halves are right, and holding
+them together needed more than prose.
+
+The gap was the familiar asymmetry: coverage had a mechanism, "write good tests" had a paragraph.
+So three layers were added (ADR-0024), each answering a question the one below it cannot:
+
+- **Mutation testing** (PIT, Stryker) — changes the code and checks a test *fails*. Not gameable
+  by assertion-free tests, which is precisely coverage's blind spot. Scoped to changed classes on
+  PRs because a slow gate is a disabled gate.
+- **ArchUnit** — makes the dangerous shape unwritable rather than reviewable: no repository
+  method returning financial data without a `householdId`, no `web` → `persistence`, no `double`
+  for money.
+- **jqwik property tests** — for money and dates, where the interesting inputs are the ones
+  nobody enumerated.
+
+Coverage stays a hard gate. What changed is that meeting it is no longer mistaken for evidence.
+
+The honest cost, recorded in the ADR: four tools where one would be normal for a project this
+size. Justified by the two conditions actually present — largely AI-generated code, and other
+people's money.
+
+---
+
+### 2026-09-07 — CI now enforces "a skip is not a pass" instead of printing it
+
+`tools/verify.sh` had said *"a skip is NOT a pass"* in its output for weeks, and nothing enforced
+it. If Docker had been unavailable on a runner, integration tests would have silently skipped and
+CI would have gone green — on the tests that matter most (ADR-0009).
+
+Fixed by distinguishing two kinds of not-run. `skip()` stays benign for a stack that does not
+exist yet. New `missing()` — for tooling that *should* have been there — warns locally so you
+still get partial signal, and **fails when `CI` is set**. Proven both ways before committing.
+
+CI additionally asserts Docker before running the gate, so the failure names its reason.
+
+The general shape, for the third time this project: **when you find yourself writing the same
+caution in output or prose, you are missing a control.** Same lesson as the demo-data warning that
+needed fixtures, and the scaffolding rules that needed a hook.
+
+---
+
+### 2026-09-07 — Coverage gates, and reconciling them with "we don't chase a number"
+
+Added JaCoCo and Vitest coverage thresholds that fail the PR. That contradicted the existing
+guidance, so the guidance was rewritten rather than quietly ignored: coverage is **a floor, not a
+target** — a smoke alarm for "no tests were written", not a quality measure, since code can be
+fully covered by tests asserting nothing.
+
+Thresholds are higher on `service/` and `domain/` where the rules and money live, and DTOs,
+generated code and config are excluded because covering them measures nothing. Stated explicitly:
+if you are choosing between raising coverage and writing one of the mandatory security tests,
+write the mandatory test. An endpoint with 95% coverage and no cross-household test is a data
+leak with good statistics.
+
+---
+
+### 2026-09-05 — Budget App became Budget Owl: a self-hosted product for households
+
+The project stopped being one person's budgeting app and became an open-source, self-hostable
+product in the shape of the self-hosted applications people already run at home. Recorded across
+ADR-0016 (product), 0017 (households), 0018
+(auth), 0019 (Flutter), 0020 (bank connections) and 0021 (licence, proposed), with the product
+strategy itself in `docs/product/vision.md` — a `docs/product/` area that did not previously
+exist, because the harness had nowhere to put "what is this and who is it for".
+
+Six ADRs in one sitting is a lot, and most were written *before* any of the code they constrain.
+That is the point: households as the ownership root and the auth transport both get much more
+expensive after slice 2 ships.
+
+---
+
+### 2026-09-05 — Self-hosting reversed an auth recommendation I had just made
+
+Asked how to handle auth once a mobile app was coming, I recommended moving to external OIDC
+(Keycloak or Auth0) — ADR-0004's own named successor. One message later, learning the product
+would be self-hosted, that answer became clearly wrong: you cannot require someone to run an
+identity provider, or pay a SaaS, to log into their own budget app on their own hardware.
+
+The correction is worth keeping because the reasoning error is a general one. I had optimised
+for the *technical* question in front of me (mobile clients need tokens) without knowing the
+*deployment* constraint, and the deployment constraint dominated. Landing point: first-party auth
+plus **optional** OIDC, with opaque server-side tokens for mobile so revocation survives.
+
+Generalises: an architecture recommendation is only as good as your knowledge of where the thing
+runs. Ask about deployment before recommending an auth model.
+
+---
+
 ### 2026-08-29 — Deleted the legacy app; the doc is what made it safe
 
 Removed `client/`, `server/`, `images/` and the root MERN `package.json`. Clean slate, no parity

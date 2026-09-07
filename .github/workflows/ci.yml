@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Weekly full mutation run. Scoped-to-changed-classes runs on every PR; this catches decay
+    # in code nobody has touched (ADR-0024).
+    - cron: '0 3 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,8 +48,98 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Set up Flutter
+        if: hashFiles('mobile/pubspec.yaml') != ''
+        # Pinned to a commit, not the moving v2 tag (see the gitleaks note below for why).
+        # Resolved from refs/tags/v2.9.1^{}.
+        uses: subosito/flutter-action@1508160852fb97248640997f7cfb38da241df0ba # v2.9.1
+        with:
+          channel: stable
+
+      - name: Require Docker for integration tests
+        # Testcontainers runs the real PostgreSQL the integration tests and Flyway migrations
+        # need (ADR-0009). Asserted explicitly so a runner without Docker fails HERE, with a
+        # message that says why, rather than silently skipping the tests that matter most.
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            echo "::error::Docker is unavailable on this runner. Integration tests use" \
+                 "Testcontainers against real PostgreSQL (ADR-0009) and cannot be skipped in CI." >&2
+            exit 1
+          fi
+          docker --version
+
       - name: Run the gate
+        # CI=true is set by GitHub Actions and makes tools/verify.sh strict: anything that
+        # SHOULD have run but could not (Docker, missing toolchain, uninstalled deps) becomes a
+        # failure rather than a skip. Unit tests, integration tests and coverage thresholds all
+        # run inside this one gate, so a failure in any of them fails the PR.
+        env:
+          CI: 'true'
         run: tools/verify.sh
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+            backend/target/site/jacoco/
+            frontend/coverage/
+            mobile/coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # fetch-depth: 0 so PIT's SCM goal can diff against the base branch.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # NOTE: these guards are step-level, not job-level, on purpose. hashFiles() at job level
+      # is evaluated before checkout, when the workspace is empty, so it always returns '' and
+      # the job would silently never run.
+      - name: Backend mutation — changed classes (PR) or full (schedule)
+        if: hashFiles('backend/pom.xml') != ''
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Full mutation run"
+            mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
+          else
+            echo "Mutation run scoped to classes changed against ${{ github.base_ref || 'main' }}"
+            mvn -B -f backend org.pitest:pitest-maven:scmMutationCoverage \
+              -Dpit.scm.originBranch=origin/${{ github.base_ref || 'main' }}
+          fi
+
+      - name: Frontend mutation
+        if: hashFiles('frontend/package.json') != ''
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          npm --prefix frontend run test:mutation
+
+      - name: Upload mutation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-reports
+          path: |
+            backend/target/pit-reports/
+            frontend/reports/mutation/
+          retention-days: 14
+          if-no-files-found: ignore
 
   ui:
     name: UI validation

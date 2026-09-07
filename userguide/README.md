@@ -1,6 +1,9 @@
-# Budget App — Help
+# Budget Owl — Help
 
-Everything you can do in Budget App, one task at a time.
+Everything you can do in Budget Owl, one task at a time — on the web and on your phone.
+
+**Budget Owl runs on your own hardware.** If you have not installed it yet, start with
+[Installing Budget Owl](installing.md); everything else assumes it is running.
 
 **New here?** Start with [Getting started](getting-started.md) — it walks you from creating an
 account to seeing your first month's budget.
@@ -9,7 +12,10 @@ account to seeing your first month's budget.
 
 | Guide | What it covers |
 |---|---|
-| [Getting started](getting-started.md) | Set up your account and see your first budget — start to finish |
+| [Installing Budget Owl](installing.md) | Get it running on your own server |
+| [Getting started](getting-started.md) | Set up your household and see your first budget |
+| _Using the mobile app_ | Not written yet |
+| _Sharing with your household_ | Not written yet |
 | _Accounts_ | Not written yet |
 | _Transactions_ | Not written yet |
 | _Categories_ | Not written yet |

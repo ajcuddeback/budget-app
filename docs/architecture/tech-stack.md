@@ -16,6 +16,8 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 | Validation | Jakarta Bean Validation (Hibernate Validator) | |
 | Mapping | MapStruct **or** hand-written mappers | No reflection-based magic in the hot path |
 | Testing | JUnit 5, AssertJ, Mockito, Testcontainers, Spring Security Test | ADR-0009 |
+| Test quality | PIT (mutation), ArchUnit (structure), jqwik (property-based) | ADR-0024 — coverage alone cannot tell you a test would fail |
+| Coverage | JaCoCo with `jacoco:check` thresholds | A floor, gated in CI |
 | Format | Spotless (google-java-format AOSP) | Formatting is not a review topic |
 | Static analysis | Error Prone + SpotBugs (`find-sec-bugs` plugin) | |
 | API docs | springdoc-openapi | Generated, never hand-maintained |
@@ -32,6 +34,35 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 | Styling | SCSS + design tokens | No component library lock-in yet |
 | Testing | Vitest + Angular Testing Library; Playwright for E2E | Angular's default runner (ADR-0014) |
 | Lint/format | ESLint + Prettier | |
+
+## Mobile (ADR-0019)
+
+| Thing | Choice | Why |
+|---|---|---|
+| Framework | Flutter (iOS + Android, one codebase) | One codebase means no second app to neglect — see ADR-0019 |
+| Language | Dart | Small language, unremarkable from Java |
+| State | Riverpod | |
+| Navigation | go_router | |
+| HTTP | Dio, bearer-token interceptor | ADR-0018 |
+| Models | freezed + json_serializable | No `dynamic` maps threaded through the app |
+| Offline cache | Drift (SQLite) | Phones lose signal; blank screens are unacceptable |
+| Secure storage | flutter_secure_storage → Keychain / Keystore | Tokens live nowhere else |
+| Money | `decimal` package. **Never `double`** | ADR-0006 applies to every client |
+| Testing | flutter_test, mocktail, integration_test | |
+
+Versions to be confirmed when the app is scaffolded — this table predates it.
+
+## Deployment (ADR-0016)
+
+| Thing | Choice | Why |
+|---|---|---|
+| Distribution | Docker Compose + published images | The self-hoster's first experience |
+| Database | PostgreSQL 16 in the same Compose stack | |
+| Migrations | Flyway, run unattended on startup | Nobody is watching the machine |
+| Config | Environment variables, sane defaults | First run needs only a database password |
+| Reverse proxy | The user's (Traefik, Caddy, nginx) — we do not ship one | Self-hosters already have one and opinions about it |
+
+Nothing here may require a service we operate — no auth server, no update check, no telemetry.
 
 ## Local environment
 

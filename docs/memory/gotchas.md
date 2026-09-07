@@ -218,4 +218,42 @@ newlines in a table row.
 
 *Added 2026-08-29.*
 
+### My own push-retry loop hid a failed push — pipes mask exit codes
+
+The retry loop used throughout this project was `if git push 2>&1 | tail -2; then echo "PUSH OK"`.
+A pipeline's exit status is the **last** command's, so it reported success from `tail`, not from
+`git push`. A rejected push printed its rejection and was announced as OK in the same breath.
+
+Capture the status explicitly:
+
+```bash
+out=$(git push 2>&1); rc=$?
+printf '%s\n' "$out" | tail -2
+[ "$rc" -eq 0 ] || { echo "failed (exit $rc)"; }
+```
+
+This is the same class as the `while read` bug already recorded here: a shell construct that
+silently reports success. Both were found only because the *visible output* disagreed with the
+*claimed result* — which is the argument for always printing the real output next to the verdict
+rather than just the verdict.
+
+Related: `--force-with-lease` fails with "stale info" when the remote branch no longer exists —
+GitHub deletes the branch on merge, so a stale `origin/<branch>` tracking ref makes the lease
+reference something gone. `git remote prune origin`, then a plain push.
+
+*Added 2026-09-05.*
+
+### `hashFiles()` at GitHub Actions *job* level always returns empty
+
+Guarding a whole job with `if: hashFiles('backend/pom.xml') != ''` looks right and never runs.
+Job-level `if` is evaluated **before** `actions/checkout`, when the workspace is empty, so
+`hashFiles` finds nothing and the condition is always false — silently, with the job showing as
+skipped rather than failed.
+
+Put the guard on the **steps**, after checkout. (Step-level guards inside the `gate` job already
+worked for this reason; the mutation job was written with a job-level guard first and would have
+never executed.)
+
+*Added 2026-09-07 — while wiring mutation testing.*
+
 ---

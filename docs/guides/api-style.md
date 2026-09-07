@@ -3,6 +3,15 @@
 Read `../architecture/security-model.md` before adding an endpoint. Every rule there applies
 here first.
 
+## Two transports, one API
+
+Every endpoint is reachable by a browser with a session cookie and by the mobile app with a
+bearer token (ADR-0018). The **API surface is identical** — same paths, same payloads, same
+authorization. There is no `/api/mobile/...`, and no endpoint that exists for one client only.
+
+CSRF applies to the cookie transport only; bearer requests carry no ambient credential to forge.
+That is the one difference, and it is handled in the security configuration, not per-controller.
+
 ## Shape
 
 - Base path `/api`. Version only when we break something: `/api/v2/...`.
@@ -38,7 +47,12 @@ here first.
 
 ## Responses
 
-- Amounts are **strings** (ADR-0006): `{"amount": "1234.56", "currency": "USD"}`.
+- Amounts are **strings** (ADR-0006) and always carry their currency:
+  `{"amount": "1234.56", "currency": "USD"}`. The currency is the account's, never a converted
+  one — conversion is display-only and never leaves the client's read path (ADR-0022).
+- A converted figure, where the API provides one, is a separate clearly-named field alongside the
+  original, with its rate and date. Never in place of it.
+- **Never return a formatted amount or date.** `1.234,56 €` is a locale decision the client makes.
 - Dates are ISO-8601: `2026-08-27`. Timestamps are UTC instants: `2026-08-27T14:03:00Z`.
   Periods are `2026-08`.
 - Enums are `SCREAMING_SNAKE_CASE` strings, never ordinals — an ordinal breaks the moment
@@ -72,6 +86,11 @@ Every collection endpoint is paginated from day one — retrofitting pagination 
 ```
 
 - `Content-Type: application/problem+json`.
+- **Carry a stable `code` and structured `params`; the client renders the sentence** (ADR-0023).
+  `title` and `detail` are English developer-facing fallbacks for logs — never the string a user
+  sees. This is what lets a translation ship without a backend release.
+- An error `code` is part of the API contract. Renaming one is a breaking change, so pick
+  carefully and keep a registry.
 - Handled centrally in a `@RestControllerAdvice`. Controllers don't build error responses.
 - **Never** leak stack traces, SQL, class names, or framework internals. The `correlationId` is
   what ties the user's report to the real error in the logs.

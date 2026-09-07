@@ -9,6 +9,7 @@ that an agent can find the answer without reading code.
 
 | Directory | Holds | Lifetime | Write it with |
 |---|---|---|---|
+| `product/` | What Budget Owl is, who it is for, and why | Changes rarely | by hand |
 | `architecture/` | How the system is shaped, and how it defends itself | Changes rarely | by hand |
 | `domain/` | What the words mean and how the data is modeled | Changes with the model | by hand |
 | `features/` | One doc per user-facing feature: intent, rules, API, edge cases, status | Lives with the feature | `/feature-doc` |
@@ -34,6 +35,7 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 
 ## Index
 
+- [**Product vision**](product/vision.md) — start here for what we are building and why
 - [Architecture overview](architecture/overview.md)
 - [Security model](architecture/security-model.md) — read before touching auth
 - [Tech stack + versions](architecture/tech-stack.md)
@@ -45,5 +47,6 @@ next session. Ten seconds in `memory/gotchas.md` saves that forever.
 - Style guides: [Java](guides/java-style.md) · [Angular](guides/angular-style.md) ·
   [API](guides/api-style.md) · [Database](guides/database-style.md) ·
   [Testing](guides/testing-style.md) · [Git & review](guides/git-style.md) ·
+  [Flutter](guides/flutter-style.md) ·
   [UI validation](guides/ui-validation.md) · [User docs](guides/user-docs.md)
 - [Roadmap](roadmap.md)

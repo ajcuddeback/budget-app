@@ -1,7 +1,11 @@
 # UI Validation Guide
 
-How to check that the UI actually works and actually looks right — as an agent, without a human
-watching the screen.
+How to check that the **web** UI actually works and actually looks right — as an agent, without a
+human watching the screen.
+
+**Mobile is not covered here.** The Flutter app is verified with `flutter test` and
+`integration_test`, and looked at on a simulator — see `flutter-style.md`. The principle carries
+over unchanged: a green test suite does not tell you the screen renders correctly, so look at it.
 
 Tests prove logic. They do not prove the page isn't a stack of overlapping divs. This closes
 that gap.
