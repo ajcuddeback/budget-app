@@ -65,6 +65,17 @@ else
   pass "no financial-data files tracked under design/"
 fi
 
+# A font CDN is a mandatory internet dependency and an IP leak to a third party on every page
+# load (non-negotiable #9). Fonts are vendored in design/fonts/. design/canvas/ is exempt: it is
+# a verbatim Claude Design export we preserve as-is, and a re-export would reintroduce the link
+# there — this check is what stops it spreading into our own code.
+if git grep -nI -E 'fonts\.(googleapis|gstatic)\.com|use\.typekit|fonts\.bunny\.net' \
+     -- ':!design/canvas' ':!*.md' ':!tools/verify.sh' 2>/dev/null | grep -q .; then
+  fail "no webfont CDN references outside design/canvas/"
+else
+  pass "no webfont CDN references outside design/canvas/"
+fi
+
 # ---------------------------------------------------------------- backend
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
   section "Backend (Java / Spring Boot)"

@@ -8,6 +8,7 @@ The visual source of truth for Budget Owl, exported from Claude Design.
 ## What is in here
 
 ```
+fonts/                          Self-hosted webfonts — see Fonts below
 canvas/
   Budget Owl.dc.html            The canvas — 26 artboards across three sections
   support.js                    Canvas runtime (needed to open the file in a browser)
@@ -62,12 +63,13 @@ These are recorded rather than fixed, because the frontend does not exist yet (s
 - **Dark mode is not in the token sheet.** `styles.css` carries only the light theme; the dark
   palette exists as inline styles inside the canvas's dark-mode artboards. The tokens need a dark
   block before any component is written against them, or every screen will re-invent it.
-- **The token sheet pulls fonts from Google.** `styles.css` opens with an `@import` of
-  `fonts.googleapis.com`, and the canvas links it too. That is fine for a design tool and **not
-  fine for this product**: it makes a page load require the public internet and tells a third
-  party the user's IP address every time they open their own budget. Both fonts (Caprasimo,
-  Figtree) are Open Font License, so they get vendored into the app and served locally. This is
-  non-negotiable #9, and it is a privacy leak, not just an availability one.
+- **Neither font covers a non-Latin script.** Caprasimo and Figtree ship `latin` and
+  `latin-ext` only — no Cyrillic, Greek, Hebrew, Arabic, Devanagari, Thai or CJK. ADR-0023 asks
+  for as many languages as possible, so `fonts/fonts.css` falls through to Noto and then the
+  system UI font for anything they cannot draw. A Russian or Greek speaker gets a readable page
+  in a different face rather than a page of boxes, which is the right trade, but the *heading*
+  face is Latin-only and there is no getting around that — a Cyrillic UI will not look like the
+  designs. Worth deciding before launch whether that matters enough to change the display face.
 - **The design-system export is partial.** `readme.md` refers to `theme.json`, `components/*.html`,
   `foundations/*.html`, `templates/` and `assets/photo.jpg`; the export contains none of them. The
   token sheet and the written guidance are the parts that matter, so this is not blocking.
@@ -91,6 +93,32 @@ attachments *before* handing an export over.
 Screens are populated with invented figures. If a design ever needs realistic data, take it from
 `tools/ui/fixtures/demo-data.ts` — the same fixtures the UI harness and the user guide render
 against (ADR-0013).
+
+## Fonts
+
+`fonts/` holds the two families **served from the instance**, never from a CDN:
+
+```
+fonts/
+  fonts.css                       @font-face rules + the token overrides. Import this.
+  caprasimo-latin.woff2           Display face, headings
+  caprasimo-latin-ext.woff2
+  figtree-variable-latin.woff2    Body face — ONE variable file covers 400-700
+  figtree-variable-latin-ext.woff2
+  OFL-Caprasimo.txt               SIL Open Font License 1.1
+  OFL-Figtree.txt
+```
+
+53 KB total. The design system's `styles.css` `@import`s these from `fonts.googleapis.com`;
+`fonts.css` replaces that import and must be loaded **before** it. Loading them from Google would
+make opening your own budget require the public internet and hand a third party your IP address
+every time — non-negotiable #9, and a privacy leak rather than merely an availability one.
+
+`tools/verify.sh` fails on any webfont CDN reference outside `design/canvas/`. The canvas is
+exempt because it is a verbatim export and a refresh would reintroduce the link there; the check
+is what stops it spreading into application code.
+
+This directory is **ours**, outside `canvas/`, so re-exporting the design project does not touch it.
 
 ## Refreshing the designs
 
