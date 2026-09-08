@@ -6,6 +6,12 @@ code, in the API, and in conversation. Terms are defined in `../memory/glossary.
 Status: **proposed**. Entities become real one feature at a time; each arrives with its own
 feature doc and migration. Changing this model is an ADR-worthy decision.
 
+**Derived from the designs, not from first principles.** An earlier draft of this document was
+written before any design existed and guessed at the shape of the product. The canvas in
+`design/` is the authoritative statement of what Budget Owl is; where the two disagreed, the
+designs won. Anything the designs do not settle is marked **open** below rather than invented —
+if you are about to answer one of those in code, it needs a decision first.
+
 ## Core entities
 
 ```
@@ -14,10 +20,28 @@ User >──< HouseholdMember >──< Household
                                   ├──< Account ──< Transaction >── Category
                                   │                     │
                                   │                     └── Payee
-                                  ├──< Budget ──< BudgetLine >── Category
-                                  ├──< RecurringTransaction
-                                  └──< Goal
+                                  │
+                                  │   ── what is planned ──
+                                  ├──< IncomeSource        money arriving on a schedule
+                                  ├──< Bill ── ChargeRule   money leaving on a date
+                                  ├──< Envelope ──< EnvelopeEntry
+                                  │                        money you decided on and spend down
+                                  ├──< Debt ──< DebtPayment
+                                  ├──< Goal
+                                  └──< CheckIn             the weekly pass over all of it
 ```
+
+Three planning entities, deliberately distinct, because they answer different questions:
+
+| | What it is | Example |
+|---|---|---|
+| `Bill` | An amount you **owe on a date** | Rent, 1st, $1,650 |
+| `Envelope` | An amount you **decided on and spend down** | Groceries, $750 this month |
+| `Debt` | A **balance you are reducing**, with terms | Visa •8823, $6,180 at 22.9% |
+
+They all feed the same left-over figure, which is why the designs put bills and envelopes on one
+page. Do not collapse them into one table — the design tried that and separated them for a
+reason (see `Envelope`).
 
 **The `Household` is the ownership root** (ADR-0017). A single-user instance is a household of
 one — there is no special case and no second code path.
@@ -81,25 +105,162 @@ A hierarchy (parent → children, max two levels) used to classify spending. `ki
 or `EXPENSE`. Users get a sensible default set on signup and can edit it. Deleting a category
 in use re-assigns its transactions to "Uncategorized" — it never orphans or deletes them.
 
-### Budget and BudgetLine
-A `Budget` covers one `YearMonth` **period** for one user. Each `BudgetLine` allocates a
-planned `Money` amount to a `Category`.
+### Envelope and EnvelopeEntry
+**The planning primitive for variable spending**, and the thing a spreadsheet cannot do well.
 
-This is where the legacy app's month/year strings are replaced by a real, orderable period.
-Rollover behavior — whether an unspent line carries into next month — is per-line configuration
-and needs its own feature doc.
+An `Envelope` holds a set `amount` for a `Period` and a `Category`; an `EnvelopeEntry` is one
+purchase logged against it. `remaining` is **computed as entries arrive**, not backfilled at
+month end — that is the whole point, because the remaining figure is the number a person acts on
+while standing in a shop.
 
-### RecurringTransaction
-A template plus a schedule (RRULE-ish: frequency, interval, day-of-month, end condition) that
-generates future `Transaction` rows. Generated instances are real transactions marked
-`PENDING`, so a user can edit a single occurrence without breaking the series.
+Fields: `id`, `householdId`, `name`, `categoryId`, `period` (`YearMonth`), `amount` (`Money`),
+`rollover` (boolean), `archived`.
+
+`EnvelopeEntry`: `envelopeId`, `date`, `amount` (`Money`), `payeeId` (**nullable — an amount
+alone is a valid entry**), `note`, `source` (`MANUAL` | `SYNCED`), `transactionId` (nullable,
+set when an entry came from or was matched to a real transaction).
+
+Three rules that come straight from the designs and are easy to get wrong:
+
+- **Envelopes work fully unsynced.** Manual entry is the primary path, not a fallback. Nothing
+  about an envelope may require a connected account.
+- **Every entry says where it came from.** `MANUAL` and `SYNCED` are visually distinct in the
+  log, so a person can tell what they typed from what arrived.
+- **Envelopes are separate from bills, and separate from each other.** "Groceries" and "Adhoc"
+  are two envelopes, not one mixed column — a $12 Publix run and a $299 Home Depot run are not
+  the same decision, and averaging them together destroys the signal.
+
+An envelope is **not** a `Bill`: a bill is owed on a date and is largely not your choice this
+month; an envelope is an amount you chose and can spend down early.
+
+> **Open:** rollover. The field is here because the designs show a `rollover` affordance
+> ("Roll into next week / Target becomes $543"), but the designs do not say whether an unspent
+> envelope carries forward automatically, on request, or not at all — nor what happens to an
+> *overspent* one. Needs a feature doc before implementation.
+
+> **Open:** `Budget`/`BudgetLine` are gone from this model. The designs have no budget page —
+> planning happens on Bills & Income (bills, income, envelopes) and on the debt plan. If a
+> distinct monthly budget document is still wanted, it needs its own decision; right now nothing
+> in the designs asks for one.
+
+### Bill and ChargeRule
+A `Bill` is a named obligation that recurs: `name`, `amount` (`Money`), `dueDay`, `categoryId`,
+`schedule`, `amountVaries` (with a tolerance, e.g. "varies ±$22"), `active`.
+
+A `ChargeRule` maps a bill to the **real charge** that pays it — the bit that turns a list of
+intentions into a reconciled ledger. It carries the matched `payeeId`/descriptor, the
+`accountId` it lands on, a `matchKind` (`EXACT` | `VARIES_WITHIN_TOLERANCE`), and a
+`standing` flag meaning "label this every month without asking again".
+
+An unmapped bill is a **first-class state**, not an error: the designs show "Not mapped" beside
+a suggestion ("COMCAST XFINITY $71.99 looks likely") with `Link` / `Different bill` actions. A
+bill you typed in by hand with nothing connected is entirely normal and stays that way forever
+if you like.
+
+> **Open:** whether `Bill` generates `PENDING` `Transaction` rows ahead of time, or stays a
+> projection until a real charge matches. The earlier draft of this document assumed generated
+> rows (as `RecurringTransaction`); the designs show bills as their own list with a *status*
+> (Cleared / In 3 days) rather than as pre-created transactions, which suggests projection. This
+> materially changes the ledger, so it is an ADR, not a coding decision.
+
+### IncomeSource
+Money arriving on a schedule: `name`, `amount` (`Money`), `schedule` (`Every other Wednesday`,
+`Irregular`), `accountId` it lands in, and a **`sourceOfTruth`** — `AUTO` (derived from history,
+e.g. "Auto · 12 mo history") or `MANUAL_ESTIMATE` (e.g. "Variable · averaged over 6 months").
+
+Irregular income is averaged rather than assumed fixed. The average window is part of the record,
+because a number derived from six months means something different from a number someone typed.
+
+### Debt and DebtPayment
+First-class, and the most arithmetically demanding part of the product.
+
+`Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `currentBalance`,
+`apr`, `minimumPayment`, `accountId` (nullable — a debt need not be linked), `rung` (its place
+in the plan), plus a **`balanceSource`**: `LINKED_STATEMENT` | `CONFIRMED` | `ESTIMATED`.
+
+`balanceSource` is not decoration. The designs show a student loan whose balance is Owl's
+*estimate* ("I've assumed three $118 payments since June — if that's right, tap confirm"), and
+that estimate must never be presented as fact. A figure the app inferred and a figure a statement
+confirmed are different kinds of number and the UI says which.
+
+`DebtPayment`: `date`, `amount`, `interest`, `principal`, `balanceAfter`, and `provenance`
+(`AUTO_MATCHED` | `USER_LOGGED` | `STATEMENT_CORRECTION`). This is the audit trail the balance
+is derived from — the same append-mostly discipline as `Transaction`.
+
+Interest is `balance × APR ÷ 12` **until a statement says otherwise, and then the statement
+wins**; the difference is recorded as a `STATEMENT_CORRECTION` row rather than silently adjusting
+history. Money arithmetic here is exactly why `NUMERIC(19,4)` and `BigDecimal` are
+non-negotiable (ADR-0006).
+
+**The terms solver.** The designs state it plainly: *"Give me any four and I'll solve the
+rest."* Original balance, APR, current balance, minimum payment, months left, payoff date, and
+payment amount are mutually constrained; entering four derives the others, and each derived field
+is labelled `Solved`. Overriding a solved field makes it entered and re-solves around it. Every
+field therefore needs an `entered` / `solved` flag — this is a real modelling requirement, not UI
+sugar.
+
+A debt's **minimum payment appears in Bills & Income as a bill row** and is counted once. The
+designs are explicit: *"Minimums · each counted once in Bills & Income (the car payment is its
+bill row)."* Double-counting it is the obvious bug here.
+
+### PayoffPlan
+The ordering strategy over debts: `strategy` (`AVALANCHE` | `SNOWBALL` | `CUSTOM`), the monthly
+amount committed, and the derived projection (debt-free date, total interest). Both strategies
+are computed and **compared**, never one silently chosen — the designs present them side by side
+and say "Either is a good answer."
+
+### CheckIn
+The weekly pass: `period` (week), `status`, and per-step outcomes. Four steps — what's new,
+categorize, bills, next week — each of which **writes something** (income confirmed, a category
+and payee rule, a bill↔charge mapping, an allocation and weekly target).
+
+A step with nothing to answer is **skipped, not shown empty**, which is why a quiet week is
+much shorter than four steps implies. Only "next week" is never skipped.
+
+> **Open:** whether a check-in is a persisted entity with its own rows, or a view computed from
+> what is currently unresolved. The designs show progress state ("2 of 4 answered", "Nothing is
+> saved until you finish at the bottom") which implies persistence of a draft.
 
 ### Payee
 Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" reconcile to
 one payee, which makes reporting and auto-categorization possible.
 
 ### Goal
-A savings target: `name`, `targetAmount`, `targetDate`, linked `accountId`, computed progress.
+A savings target: `name`, `targetAmount`, `targetDate`, linked `accountId`, `monthlyContribution`,
+computed progress. The designs show goals absorbing surplus from the weekly check-in and being
+adjusted by the assistant ("Japan trip: $110 → $165 per month, starting Sep 1").
+
+## Derived figures
+
+None of these are stored. They are computed, and the designs make each one a headline, which
+means an off-by-one here is a product bug rather than a rounding nit.
+
+**Safe to spend** — the number the mobile home screen leads with. Money on hand, minus bills
+still due this period, minus what envelopes still hold, divided across the days remaining. The
+designs render it as both a total and a per-day rate (`$412 · ≈ $41/day`, `10 days left`), and
+show its parts underneath (`Spent $2,180 · Bills left $706 · Free $412`) — it is never a bare
+number with no way to see how it was reached.
+
+**Debt-free date** and **total interest** — from the `PayoffPlan` projection, per strategy.
+Shown with the delta against the previous plan ("4 months earlier"), so the projection must be
+snapshotted when a plan changes or that comparison has nothing to compare against.
+
+**Envelope remaining** — the envelope amount minus its entries, live.
+
+**Monthly committed** — bills plus debt minimums, counted once each. See the note under `Debt`.
+
+## Instance administration
+
+The designs include a nine-page admin console for the person running the container. It is not
+household financial data and does not belong in the model above; it is instance-level state —
+users and invites, connections and API keys, the job queue, storage, backups, logs, instance
+settings, and the update channel. Its entities land with its feature doc.
+
+One piece of it is a **data-protection control rather than a screen**: a first-run
+acknowledgement that gates the Connections page. Three statements, ticked individually, and
+`Continue` stays inert until all three are — which is the mechanism behind ADR-0020's shifting of
+aggregator liability onto the operator. That acknowledgement needs to be recorded with a
+timestamp and the acknowledging user, or it does not do its job.
 
 ## Value objects
 

@@ -28,16 +28,20 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Feature | Status | Doc |
 |---|---|---|
 | Authentication & households | Planned — spec ready | [authentication-and-households.md](authentication-and-households.md) |
+| Envelopes | Planned — spec ready | [envelopes.md](envelopes.md) |
 | Household management (invites, roles) | Planned | _not written_ |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
 | Accounts (money containers) | Planned | _not written_ |
 | Transactions | Planned | _not written_ |
 | Categories | Planned | _not written_ |
-| Budgets & periods | Planned | _not written_ |
+| Bills & income (incl. charge mapping) | Planned | _not written_ |
 | Transfers | Planned | _not written_ |
-| Recurring transactions | Planned | _not written_ |
+| Admin console (instance operation) | Planned | _not written_ |
+| Debt plan & debt detail | Planned | _not written_ |
+| Goals | Planned | _not written_ |
 | Reporting & insights | Planned | _not written_ |
-| Legacy data migration | Planned | _not written_ |
+| Weekly check-in | Planned | _not written_ |
+| Owl chat (AI insights) | Planned | _not written_ |
 
 Keep this table current — it is the index an agent scans first.

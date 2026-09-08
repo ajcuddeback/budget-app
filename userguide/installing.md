@@ -35,7 +35,7 @@ Will cover: the first account you create is the owner of a new household, and wh
 
 ## 4. Reach it from your phone
 
-*Awaiting slice 11.*
+*Awaiting slice 15.*
 
 Will cover: pointing the mobile app at your server, what to do about certificates on a local
 network, and reaching it from outside your house safely.
@@ -47,6 +47,13 @@ network, and reaching it from outside your house safely.
 Will cover: what to back up, how to restore, and testing the restore — because a backup nobody
 has restored is a hope, not a backup. This matters more here than in most apps: nobody else has a
 copy of your data.
+
+## 5b. Run the instance
+
+*Awaiting slice 9.*
+
+Will cover: the admin console — checking the instance is healthy, inviting the rest of your
+household, watching the sync queue, and where the logs are when something looks wrong.
 
 ## 6. Keep it up to date
 
