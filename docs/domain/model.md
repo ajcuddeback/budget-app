@@ -133,6 +133,12 @@ Three rules that come straight from the designs and are easy to get wrong:
 An envelope is **not** a `Bill`: a bill is owed on a date and is largely not your choice this
 month; an envelope is an amount you chose and can spend down early.
 
+**A transaction never becomes an envelope entry on its own.** Assigning spending to an envelope
+is a decision the person makes; the app may suggest, but it does not file. `SYNCED` means the
+user attached an entry to a real transaction, not that the app did it unprompted. This keeps the
+envelope a record of intent rather than a guess, and it is the same principle as marking a bill
+paid by hand (ADR-0025).
+
 > **Open:** rollover. The field is here because the designs show a `rollover` affordance
 > ("Roll into next week / Target becomes $543"), but the designs do not say whether an unspent
 > envelope carries forward automatically, on request, or not at all — nor what happens to an
@@ -143,9 +149,27 @@ month; an envelope is an amount you chose and can spend down early.
 > distinct monthly budget document is still wanted, it needs its own decision; right now nothing
 > in the designs asks for one.
 
-### Bill and ChargeRule
-A `Bill` is a named obligation that recurs: `name`, `amount` (`Money`), `dueDay`, `categoryId`,
-`schedule`, `amountVaries` (with a tolerance, e.g. "varies ±$22"), `active`.
+### Bill, BillOccurrence and ChargeRule
+A `Bill` is a named obligation that recurs: `name`, `expectedAmount` (`Money`), `dueDay`,
+`categoryId`, `schedule`, `amountVaries` (with a tolerance, e.g. "varies ±$22"), `active`.
+
+A **`BillOccurrence`** is one instance of it in one period — and this, not a generated
+transaction, is what the app records (ADR-0025). Fields: `billId`, `period`, `dueDate`,
+`expectedAmount`, `status` (`DUE` | `PAID` | `SKIPPED`), `actualAmount` (nullable), `paidDate`
+(nullable), `transactionId` (nullable), `statusSource` (`MANUAL` | `AUTO_MATCHED`).
+
+Three consequences worth stating plainly:
+
+- **Planned and actual are both kept.** You budget an amount, and fill in what you actually paid
+  as the month goes on. The difference is the useful number, and a variable bill is
+  unrepresentable without it.
+- **Marking a bill paid by hand is the primary path**, not a fallback. It needs no connection, no
+  import, and no match. Where an account *is* connected, a confident `ChargeRule` match sets the
+  status, the actual amount and the paid date automatically — `statusSource` records which
+  happened, so a figure the user asserted never looks like one the app inferred.
+- **An occurrence is not a ledger entry.** It contributes to the plan; only the real
+  `Transaction` it matched contributes to income and expense. Counting both is the obvious bug
+  this model invites.
 
 A `ChargeRule` maps a bill to the **real charge** that pays it — the bit that turns a list of
 intentions into a reconciled ledger. It carries the matched `payeeId`/descriptor, the
@@ -157,11 +181,11 @@ a suggestion ("COMCAST XFINITY $71.99 looks likely") with `Link` / `Different bi
 bill you typed in by hand with nothing connected is entirely normal and stays that way forever
 if you like.
 
-> **Open:** whether `Bill` generates `PENDING` `Transaction` rows ahead of time, or stays a
-> projection until a real charge matches. The earlier draft of this document assumed generated
-> rows (as `RecurringTransaction`); the designs show bills as their own list with a *status*
-> (Cleared / In 3 days) rather than as pre-created transactions, which suggests projection. This
-> materially changes the ledger, so it is an ADR, not a coding decision.
+**Overdue is derived** from `dueDate`, never stored. A status that needs a nightly job to stay
+true will eventually be wrong.
+
+`RecurringTransaction` is gone: nothing generates speculative ledger rows. See ADR-0025 for why,
+and for the alternatives rejected.
 
 ### IncomeSource
 Money arriving on a schedule: `name`, `amount` (`Money`), `schedule` (`Every other Wednesday`,
@@ -217,9 +241,10 @@ and payee rule, a bill↔charge mapping, an allocation and weekly target).
 A step with nothing to answer is **skipped, not shown empty**, which is why a quiet week is
 much shorter than four steps implies. Only "next week" is never skipped.
 
-> **Open:** whether a check-in is a persisted entity with its own rows, or a view computed from
-> what is currently unresolved. The designs show progress state ("2 of 4 answered", "Nothing is
-> saved until you finish at the bottom") which implies persistence of a draft.
+A check-in **is persisted**, as a draft. The designs show progress across a session ("2 of 4
+answered") alongside "Nothing is saved until you finish at the bottom", so the draft holds the
+answers and nothing it decides takes effect until the check-in is completed. A half-finished
+check-in on a phone must be resumable on a laptop.
 
 ### Payee
 Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" reconcile to

@@ -2,8 +2,9 @@
 
 - **Status:** Planned — this is slice 6
 - **Owner:** Repository owner
-- **Last updated:** 2026-09-08
-- **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0023 (i18n)
+- **Last updated:** 2026-09-09
+- **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0023 (i18n),
+  ADR-0025 (bills are occurrences)
 - **Designs:** `design/canvas/` section `spend` — Quick add, Envelope log, and Envelopes in
   Bills & Income, each at 390 and at desktop width
 
@@ -55,6 +56,12 @@ told itself; a figure you entered and a figure inferred from a bank feed are dif
 claim and are never presented identically.
 
 An envelope with no connected account is not a degraded envelope. It is the default.
+
+**Assigning spending to an envelope is user-managed.** A transaction never files itself, however
+confident the category match looks. The app may surface a suggestion; the person decides. So
+`SYNCED` means *the user attached this entry to a real transaction* — not that the app did it
+while they were not looking. An envelope is a record of what someone decided, and an app that
+quietly fills it in has taken that away.
 
 ### Envelopes are not bills
 
@@ -131,10 +138,7 @@ These are genuinely undecided. Answer them before building, not during.
    an envelope does with an unspent amount at period end — carry forward automatically, offer to,
    or reset. And an *overspent* envelope is the harder half: does the overspend come out of next
    period, out of the left-over figure, or just sit as a negative?
-2. **Where a synced entry comes from.** When a transaction is categorized into an envelope's
-   category, does it become an entry automatically, on confirmation, or never? The designs mark
-   entries as synced but do not show the moment one is created.
-3. **Period boundary.** Envelopes are per-`YearMonth`, but the instance has a configurable period
+2. **Period boundary.** Envelopes are per-`YearMonth`, but the instance has a configurable period
    start (admin Settings — "it decides what a month means everywhere in the app"). Envelopes have
    to honour that, which means "August" is not necessarily the 1st to the 31st.
 

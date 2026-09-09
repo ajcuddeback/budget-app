@@ -49,3 +49,4 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0022](0022-multi-currency-display.md) | Multi-currency — store in account currency, convert for display | Accepted | 2026-09-07 |
 | [0023](0023-internationalisation.md) | Internationalisation — runtime locale, codes over prose | Accepted | 2026-09-07 |
 | [0024](0024-test-quality-enforcement.md) | Measure test quality, not just coverage | Accepted | 2026-09-07 |
+| [0025](0025-bills-are-occurrences-not-generated-transactions.md) | Bills are occurrences with a status, not generated transactions | Accepted | 2026-09-09 |
