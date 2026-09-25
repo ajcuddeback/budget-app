@@ -4,6 +4,7 @@
 - **Owner:** Repository owner
 - **Last updated:** 2026-09-06
 - **Related:** ADR-0016 (self-hosted), ADR-0017 (households), ADR-0018 (auth),
+  ADR-0026 (one household per instance; owner is operator),
   `../architecture/security-model.md` (**read it before implementing any of this**)
 
 > Renamed from `accounts-and-auth.md`. "Account" in this project means a container where money
@@ -89,6 +90,20 @@ recovery path that works from the host shell, because that is all the user has.
 - **A household always has at least one `OWNER`.** The last owner cannot be removed, demoted, or
   leave. The only way out is to transfer ownership first, or delete the household.
 - **Nobody may change their own role**, and only an `OWNER` may change anyone's.
+
+
+### Joining tells you what you are joining
+
+**Before an invited person's account exists**, the acceptance screen states plainly that the
+person running this instance can see everything they record: every transaction, every balance,
+every note. Not in a linked policy, not in small print — in the flow, in those words, above the
+button.
+
+This is a security control, not copy (ADR-0026). One household per instance and no encryption
+against the operator is an honest model *only if the person joining knows it*. Without the
+disclosure it is the same weak model with better documentation, and someone shares their finances
+with a housemate's server believing otherwise. A change that weakens or buries this wording is a
+security change and needs review as one.
 
 ### Invitations
 

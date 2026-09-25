@@ -53,27 +53,60 @@ else
   pass "no hardcoded credentials in tracked source"
 fi
 
+# A Claude Design export ships the design project's uploaded attachments next to the canvas, and
+# what people upload to a budgeting design project is their own budget. .gitignore covers the
+# usual shapes; this catches a `git add -f`, an unusual extension, or a file that was already
+# tracked before the rule existed. Publishing the maintainer's finances would contradict the
+# product's entire premise (ADR-0016), and git history does not forget. See design/README.md.
+if git ls-files -- design | grep -vE '(^|/)_ds/' \
+   | grep -qiE '\.(xlsx?|csv|tsv|ofx|qfx|qif|numbers|json)$|(^|/)uploads/'; then
+  fail "no financial-data files tracked under design/"
+else
+  pass "no financial-data files tracked under design/"
+fi
+
+# A font CDN is a mandatory internet dependency and an IP leak to a third party on every page
+# load (non-negotiable #9). Fonts are vendored in design/fonts/. design/canvas/ is exempt: it is
+# a verbatim Claude Design export we preserve as-is, and a re-export would reintroduce the link
+# there — this check is what stops it spreading into our own code.
+if git grep -nI -E 'fonts\.(googleapis|gstatic)\.com|use\.typekit|fonts\.bunny\.net' \
+     -- ':!design/canvas' ':!*.md' ':!tools/verify.sh' 2>/dev/null | grep -q .; then
+  fail "no webfont CDN references outside design/canvas/"
+else
+  pass "no webfont CDN references outside design/canvas/"
+fi
+
 # ---------------------------------------------------------------- backend
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
   section "Backend (Java / Spring Boot)"
   if [ ! -f backend/pom.xml ]; then
     skip "backend build" "backend/ does not exist yet"
   else
-    run "format (spotless:check)"  mvn -q -f backend spotless:check
-    run "compile"                  mvn -q -f backend compile
-    # Architecture tests (ArchUnit) run as ordinary JUnit tests inside this step: no `web` ->
-    # `persistence` calls, every financial repository method takes a householdId, no double for
-    # money, no entities in controller signatures (ADR-0024).
-    run "unit + slice + architecture tests" mvn -q -f backend test
+    run "format (spotless:check)" mvn -q -f backend spotless:check
 
     if docker info >/dev/null 2>&1; then
-      run "integration tests + migrations (Testcontainers)" mvn -q -f backend verify -DskipUnitTests
-      run "backend coverage threshold (JaCoCo)" mvn -q -f backend jacoco:check
+      # One pass: compile, unit + architecture tests, then integration tests against a real
+      # PostgreSQL via Testcontainers (ADR-0009). ArchUnit runs inside the unit phase.
+      run "compile + unit + architecture + integration tests" mvn -q -f backend verify
+      run "coverage threshold (JaCoCo)" mvn -q -f backend jacoco:check
     else
+      # Without Docker the integration tests cannot run at all, and a coverage number taken
+      # without them is meaningless rather than merely lower.
+      run "compile + unit + architecture tests" mvn -q -f backend test
       missing "integration tests + coverage" "Docker not available for Testcontainers (ADR-0009)"
     fi
 
-    run "dependency vulnerability scan" mvn -q -f backend dependency-check:check
+    run "static analysis (SpotBugs)" mvn -q -f backend com.github.spotbugs:spotbugs-maven-plugin:4.10.4.1:check
+    run "static analysis (PMD)"      mvn -q -f backend org.apache.maven.plugins:maven-pmd-plugin:check
+
+    # The NVD feed needs an API key to be usable; without one the scan is rate-limited into
+    # uselessness and would report "no vulnerabilities" because it never finished. Silence is
+    # not a pass, so say which happened.
+    if [ -n "${NVD_API_KEY:-}" ]; then
+      run "dependency vulnerabilities (OWASP)" mvn -q -f backend dependency-check:check
+    else
+      missing "dependency vulnerabilities (OWASP)" "NVD_API_KEY is not set"
+    fi
   fi
 fi
 
@@ -83,12 +116,39 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   if [ ! -f frontend/package.json ]; then
     skip "frontend build" "frontend/ does not exist yet"
   else
-    [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci
-    run "lint"        npm --prefix frontend run lint
-    run "typecheck"   npx --prefix frontend tsc -p frontend/tsconfig.json --noEmit
-    run "unit tests + coverage threshold" npm --prefix frontend test -- --watch=false --coverage
-    run "build"       npm --prefix frontend run build
-    run "npm audit (high+)" npm --prefix frontend audit --audit-level=high
+    [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci --no-audit --no-fund
+    run "lint"                            npm --prefix frontend run lint
+    run "typecheck"                       npm --prefix frontend run typecheck
+    run "unit tests + coverage threshold" npm --prefix frontend run test:coverage
+    run "build"                           npm --prefix frontend run build
+    run "npm audit (high+)"               npm --prefix frontend audit --audit-level=high
+  fi
+fi
+
+# ------------------------------------------------------------- packaging
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "packaging" ]; then
+  section "Packaging (Docker Compose)"
+  if [ ! -f docker-compose.yml ]; then
+    skip "compose validation" "docker-compose.yml does not exist yet"
+  else
+    # The compose file IS the product for a self-hoster (ADR-0016), so a typo in it is a shipped
+    # bug. A dummy password only satisfies interpolation; nothing is started.
+    run "compose file is valid" env DB_PASSWORD=verify-only docker compose config --quiet
+
+    # First run must fail loudly with no password rather than defaulting to something weak.
+    if DB_PASSWORD= docker compose config --quiet >/dev/null 2>&1; then
+      fail "compose refuses to start without DB_PASSWORD"
+    else
+      pass "compose refuses to start without DB_PASSWORD"
+    fi
+
+    # Only the web port reaches the host, and only on loopback by default.
+    published=$(env DB_PASSWORD=verify-only docker compose config 2>/dev/null | grep -c 'published:' || true)
+    if [ "$published" -eq 1 ]; then
+      pass "only one port is published to the host"
+    else
+      fail "only one port is published to the host (found $published)"
+    fi
   fi
 fi
 

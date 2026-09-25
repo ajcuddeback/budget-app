@@ -108,7 +108,7 @@ Because we authenticate with cookies, CSRF protection is **mandatory** and must 
   in this codebase. If a specific endpoint genuinely needs an exemption (a webhook with its own
   signature verification), exempt that one path and document why in the feature doc.
 
-## Authorization (ADR-0008, amended by ADR-0017)
+## Authorization (ADR-0008, amended by ADR-0017 and ADR-0026)
 
 **Every** query that reads or writes financial data is scoped to a **household the authenticated
 user is a verified member of** — and then checked against their **role** in it.
@@ -126,10 +126,17 @@ accountRepository.findByIdAndHouseholdId(accountId, membership.householdId());
 
 **Two axes, both enforced in the service layer:**
 
-1. *Which household* — resolved from the authenticated user's membership. A cross-household leak
-   is the highest-severity bug this app can have.
-2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, or
-   delete the household. Every write endpoint needs a test proving a `VIEWER` gets `403`.
+1. *Which household* — resolved from the authenticated user's membership, never from the request.
+2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, delete
+   the household, **or reach the admin console**. Every write endpoint needs a test proving a
+   `VIEWER` gets `403`; every admin endpoint needs one proving a `MEMBER` does.
+
+**An instance holds exactly one household (ADR-0026), and its `OWNER` is the instance operator.**
+That is who the admin console belongs to — there is no separate instance-admin role. Read the
+consequences of that ADR before relying on axis 1 for anything: with one household there is no
+second household to leak to, so *role enforcement and authentication now carry the weight that
+household scoping used to share*. Keep writing the scoped query anyway — the shape is what makes
+the dangerous call unwritable, and it is what a managed deployment would need.
 
 - Never derive the acting user from a request body, query parameter, or path variable. It comes
   from the `SecurityContext`, always.
@@ -137,8 +144,38 @@ accountRepository.findByIdAndHouseholdId(accountId, membership.householdId());
   both return `404`. Returning `403` for "exists but not yours" tells an attacker the row exists.
 - Authorization lives in the service layer. Method security (`@PreAuthorize`) is fine as an
   additional gate, not as the only one.
-- Every new endpoint needs a test proving user B gets `404` on user A's resource. This is the
-  single highest-value test in the codebase — see `docs/guides/testing-style.md`.
+- Every new endpoint needs a test proving a lower-privileged role is refused: a `VIEWER` gets
+  `403` on any write, a `MEMBER` gets `403` on anything administrative. Since ADR-0026 this is the
+  single highest-value authorization test in the codebase — it replaces the cross-household test,
+  which no longer has a second household to prove anything against. See
+  `docs/guides/testing-style.md`.
+
+### The members of a household can see each other's finances
+
+This is by design (ADR-0026), and it is the honest consequence of not encrypting data against the
+person who runs the server. The security requirement is therefore a **disclosure** one: anyone
+accepting an invitation must be told, in plain words and before the account exists, that the
+person hosting the instance can see everything they record. An invitation flow that omits that is
+a security defect, not a copy problem.
+
+## The assistant (ADR-0027)
+
+The assistant needs the whole financial picture to answer anything useful, which makes it the
+largest privacy surface in the product. It is constrained structurally rather than by policy:
+
+- It runs **on the instance, in a separate optional container**. There is no configuration in
+  which financial data is sent to a third-party model or to any endpoint we operate — those
+  options were removed, not deferred.
+- The sidecar is reachable **only on the internal container network**. It is never published to
+  the host or the internet, and the Compose file must not expose its port.
+- **Prompts and responses are not logged.** A prompt contains the user's finances by construction,
+  so logging one writes financial data into a file that outlives the request and often leaves the
+  box in a bug report. Log that a request happened, its duration and its outcome — never content.
+- The assistant reads through the same **household-scoped, role-checked services** as everything
+  else. It is not given a privileged database connection because it is "internal", and a `VIEWER`
+  asking it a question must not receive data a `VIEWER` could not otherwise see.
+- Anything it **proposes** — a changed goal contribution, a moved envelope amount — is a proposal
+  until a human confirms it. The model never writes to financial data directly.
 
 ## Input validation and output encoding
 

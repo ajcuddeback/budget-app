@@ -48,7 +48,7 @@ to a controller.
 ## Package layout (backend)
 
 ```
-com.budgetapp
+com.budgetowl
 ├── config/            security, jackson, web, flyway configuration
 ├── common/            error handling, Money, pagination, base types
 └── <feature>/         one package per bounded feature — vertical slices
@@ -58,8 +58,8 @@ com.budgetapp
     └── persistence/   <Feature>Repository
 ```
 
-Organize by **feature**, not by layer-at-the-top. `com.budgetapp.transaction.web` — not
-`com.budgetapp.web.transaction`. Features are the unit of change; layers are the unit of
+Organize by **feature**, not by layer-at-the-top. `com.budgetowl.transaction.web` — not
+`com.budgetowl.web.transaction`. Features are the unit of change; layers are the unit of
 discipline within a feature.
 
 ## Deployment shape

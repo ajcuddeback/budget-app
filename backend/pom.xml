@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.1</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.budgetowl</groupId>
+  <artifactId>budget-owl-api</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <name>Budget Owl API</name>
+  <description>Self-hosted budgeting for your household</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Pin versions. No ranges, no latest (docs/architecture/tech-stack.md). -->
+    <testcontainers.version>1.21.4</testcontainers.version>
+    <archunit.version>1.5.1</archunit.version>
+    <jqwik.version>1.10.1</jqwik.version>
+    <spotless.version>3.2.0</spotless.version>
+    <jacoco.version>0.8.14</jacoco.version>
+    <pitest.version>1.20.5</pitest.version>
+    <pitest-junit5.version>1.2.3</pitest-junit5.version>
+    <spotbugs.version>4.10.4.1</spotbugs.version>
+    <pmd.version>3.28.0</pmd.version>
+    <dependency-check.version>12.1.9</dependency-check.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Spring Boot 4's parent no longer manages Testcontainers versions. Import its BOM so the
+           modules stay in step with each other rather than being pinned one by one. -->
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- Spring Boot 4 split autoconfiguration into per-technology modules. flyway-core on the
+         classpath is NOT enough any more — without spring-boot-flyway the app starts happily and
+         simply never migrates, which is a silent failure rather than a loud one. The integration
+         test caught it; nothing else would have. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Test -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Architecture tests: the dangerous shapes are unwritable, not merely reviewable (ADR-0024) -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Property-based tests for money and dates, where the interesting inputs are unenumerated -->
+    <dependency>
+      <groupId>net.jqwik</groupId>
+      <artifactId>jqwik</artifactId>
+      <version>${jqwik.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- Formatting is not a matter of opinion: google-java-format AOSP (docs/guides/java-style.md) -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <java>
+            <googleJavaFormat>
+              <style>AOSP</style>
+            </googleJavaFormat>
+            <removeUnusedImports/>
+            <trimTrailingWhitespace/>
+            <endWithNewline/>
+          </java>
+        </configuration>
+      </plugin>
+
+      <!-- Unit + slice + architecture tests. Integration tests are *IT and belong to failsafe. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*IT.java</include>
+          </includes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Coverage is a FLOOR, not a target (docs/guides/testing-style.md). -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals><goal>prepare-agent</goal></goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals><goal>report</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <!-- Covering these measures nothing: no branches, no rules. -->
+            <exclude>**/BudgetOwlApplication.class</exclude>
+            <exclude>**/config/**</exclude>
+            <exclude>**/*Request.class</exclude>
+            <exclude>**/*Response.class</exclude>
+          </excludes>
+          <rules>
+            <rule>
+              <element>BUNDLE</element>
+              <limits>
+                <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.70</minimum></limit>
+                <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>0.60</minimum></limit>
+              </limits>
+            </rule>
+            <rule>
+              <!-- Higher where the rules, the money and the authorization live. -->
+              <element>PACKAGE</element>
+              <includes>
+                <include>com.budgetowl.*.service</include>
+                <include>com.budgetowl.*.domain</include>
+                <include>com.budgetowl.common</include>
+              </includes>
+              <limits>
+                <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.85</minimum></limit>
+                <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>0.75</minimum></limit>
+              </limits>
+            </rule>
+          </rules>
+        </configuration>
+      </plugin>
+
+      <!-- Static analysis. Not bound to a phase: verify.sh and CI invoke them by goal. -->
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs.version}</version>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Medium</threshold>
+          <failOnError>true</failOnError>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${pmd.version}</version>
+        <configuration>
+          <printFailingErrors>true</printFailingErrors>
+          <failOnViolation>true</failOnViolation>
+        </configuration>
+      </plugin>
+
+      <!-- Mutation testing (ADR-0024). Deliberately NOT part of `all` — slow. -->
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <version>${pitest.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-junit5-plugin</artifactId>
+            <version>${pitest-junit5.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <targetClasses><param>com.budgetowl.*</param></targetClasses>
+          <targetTests><param>com.budgetowl.*</param></targetTests>
+          <excludedClasses>
+            <param>com.budgetowl.config.*</param>
+            <param>com.budgetowl.BudgetOwlApplication</param>
+          </excludedClasses>
+          <mutationThreshold>60</mutationThreshold>
+          <outputFormats>
+            <param>HTML</param>
+            <param>XML</param>
+          </outputFormats>
+        </configuration>
+      </plugin>
+
+      <!-- Dependency vulnerabilities. Invoked by goal; needs an NVD key to be fast. -->
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>${dependency-check.version}</version>
+        <configuration>
+          <failBuildOnCVSS>7</failBuildOnCVSS>
+          <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+          <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

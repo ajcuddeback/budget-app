@@ -20,6 +20,7 @@ Read the doc, then read only the code you are about to change.
 | Anything at all | this file |
 | Decide anything product-shaped | `docs/product/vision.md` |
 | Build or change a feature | `docs/features/<feature>.md`, then `docs/features/README.md` |
+| Build a screen, or need a colour/size | `design/README.md` — tokens, never hard-coded values |
 | Understand the system shape | `docs/architecture/overview.md` |
 | Touch auth, sessions, cookies, CSRF | `docs/architecture/security-model.md` (**mandatory**) |
 | Write Java | `docs/guides/java-style.md` |
@@ -42,6 +43,7 @@ Read the doc, then read only the code you are about to change.
 backend/     Spring Boot API (Java 21, Maven)   — not yet created
 frontend/    Angular SPA (TypeScript)           — not yet created
 mobile/      Flutter app (Dart), iOS + Android  — not yet created (ADR-0019)
+design/      Visual source of truth, exported from Claude Design. See design/README.md
 docs/        Durable knowledge for DEVELOPERS and agents. See docs/README.md
 userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader — see its STYLE.md
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
@@ -78,7 +80,12 @@ than digging through git history.
 9. **Nothing in the core may require a service we operate.** No mandatory internet access, no
    account with us, no third-party SaaS. A self-hoster's instance works standing alone
    (ADR-0016). Optional integrations are opt-in and off by default.
-10. **A user-visible feature ships with its user guide.** `userguide/` is written from the
+10. **Design values come from tokens, never from your head.** Colours, spacing, type sizes and
+   radii are CSS variables from the design system (`design/README.md`). Never hard-code a hex or
+   a px a token already carries, and never read the 465 KB canvas wholesale — the feature doc
+   describes the screen. Every screen exists in **both** viewports, and dark mode is a
+   requirement, not a later pass.
+11. **A user-visible feature ships with its user guide.** `userguide/` is written from the
    running UI, never from the feature doc — see ADR-0012. Captures render against the demo
    fixtures in `tools/ui/fixtures/demo-data.ts` and refuse any non-local target (ADR-0013).
 

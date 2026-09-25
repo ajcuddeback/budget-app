@@ -51,35 +51,43 @@ your money, and adding your own.
 Will cover: adding an expense, adding income, categorising as you go, and how your account
 balance updates.
 
-## 5. Move money between your own accounts
+## 5. Give your spending an envelope
 
 *Awaiting slice 6.*
+
+Will cover: setting an amount for groceries, logging what you spend against it as you go, and
+reading the one number that matters — what is left. Works whether or not you ever connect a bank.
+
+## 6. Put in your bills and income
+
+*Awaiting slice 7.*
+
+Will cover: rent, subscriptions and payday — entering something once so it appears every month,
+and letting Budget Owl match a bill to the real charge that pays it.
+
+## 7. Move money between your own accounts
+
+*Awaiting slice 8.*
 
 Will cover: recording a transfer, and why a transfer is neither income nor an expense — the
 thing people most often get wrong and then wonder why their totals look off.
 
-## 6. Build your first budget
-
-*Awaiting slice 7.*
-
-Will cover: choosing a month, allocating amounts to categories, and reading the difference
-between what you planned and what you spent.
-
-## 7. Set up the things that repeat
-
-*Awaiting slice 8.*
-
-Will cover: rent, subscriptions, and payday — entering something once so it appears every month.
-
-## 8. See where your money went
+## 8. Make a plan for what you owe
 
 *Awaiting slice 10.*
 
+Will cover: entering a debt's terms, choosing between paying the highest rate first or the
+smallest balance first, and seeing what each one does to the date you are finally clear.
+
+## 9. See where your money went
+
+*Awaiting slice 13.*
+
 Will cover: reading the reports, spotting the category that surprised you, and comparing months.
 
-## 9. Put it on your phone
+## 10. Put it on your phone
 
-*Awaiting slice 11.*
+*Awaiting slice 15.*
 
 Will cover: installing the mobile app, pointing it at your own server, and adding a transaction
 while you are standing in the shop — which is where most budgeting actually happens.

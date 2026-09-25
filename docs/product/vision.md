@@ -40,8 +40,9 @@ regardless of our intentions. So:
 ## What we are building
 
 **Core, always free and open source:**
-accounts · transactions · categories · budgets and periods · transfers · recurring items ·
-reporting · household sharing with roles · file import (CSV/OFX/QIF) · web app · mobile app
+envelopes · bills & income · debt plan · the weekly check-in · accounts · transactions ·
+categories · transfers · goals · reporting · file import (CSV/OFX/QIF) · household sharing with
+roles · the instance console · web app · mobile app
 
 **As many currencies and languages as we can support.** Not a late-stage nicety — a stated goal,
 because the self-hosting audience is global and this is software about people's money, often
@@ -51,12 +52,16 @@ seeing the same data in different currencies and different languages is a normal
 edge one. Translations are community-contributed; English is the only one we own.
 
 **Optional, user-configured:**
-bank connections via the user's own aggregator credentials · AI insights via a local model, the
-user's own API key, or a hosted endpoint
+bank connections via the user's own aggregator credentials (ADR-0020) · the Owl assistant, which
+runs in a container on the user's own hardware or does not exist on that instance (ADR-0027)
+
+**Not offered, and not deferred:** an assistant endpoint we operate, or a bring-your-own-key path
+to a commercial model. Both would send a household's complete financial picture off their machine,
+which is the thing this product exists not to do. That was a real commercial option and ADR-0027
+rejects it.
 
 **Possible commercial layer, deliberately undecided:**
-managed hosting for people who want the product without the server. Not an LLM endpoint that
-processes other people's transactions — see the liability note in ADR-0020.
+managed hosting for people who want the product without the server — and only that.
 
 ## Where we differ from the incumbents
 
@@ -89,9 +94,12 @@ Recorded in full in the ADRs; the short version:
 
 ## Open questions
 
-- **Licence** — AGPL-3.0 proposed in ADR-0021, awaiting a decision. It gates nothing yet but
-  gets harder to change with every contributor.
+- ~~**Licence**~~ — settled: AGPL-3.0 (ADR-0021, accepted 2026-09-25).
 - **Commercial layer** — whether managed hosting happens at all. No decision needed for a long
   time; the architecture does not depend on it.
-- **AI delivery** — deferred until there is data to analyse. The privacy posture above is
-  settled; the mechanism is not.
+- **AI delivery** — the shape is settled by ADR-0027 (self-hosted sidecar or nothing). Which
+  model, and how it is packaged and updated, is still open.
+- **Charging for it** — AGPL permits selling the software, support and hosting, but compels
+  nobody to pay; most self-hosters will run it free. If a paid tier is ever wanted, open core is
+  still reachable — but only while the owner holds all the copyright, so the first accepted
+  outside contribution is the real deadline (ADR-0021).

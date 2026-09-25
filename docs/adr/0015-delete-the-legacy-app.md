@@ -42,7 +42,8 @@ prevents an agent *recreating* those paths, which would silently reintroduce wha
 removed.
 
 **Explicitly not decided here: what happens to any data** in a deployed instance. Deleting code
-does not delete a database. That question is tracked as slice 10 in `docs/roadmap.md`; the
+does not delete a database. That question is no longer a roadmap slice (see "The old legacy-data question" in
+`docs/roadmap.md` — it was dropped as out of product scope); the
 information needed to write a migration is preserved in `legacy-app.md`, so deferring it costs
 nothing.
 
@@ -68,5 +69,5 @@ kept accurate. Recovering original source now means a git-history archaeology st
 (`git show bd6b875:<path>`) rather than opening a file. And if data migration is eventually
 wanted, it will be written from a description rather than from working code.
 
-**Follow-ups:** answer the data question in `docs/roadmap.md` slice 10 — most likely by
-confirming there is nothing to migrate and dropping it.
+**Follow-ups:** none outstanding — the data question was answered by dropping it from product
+scope, as `docs/roadmap.md` now records.

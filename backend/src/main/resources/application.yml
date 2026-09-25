@@ -1,0 +1,51 @@
+# Configuration comes from the environment. No secrets in this file, ever (non-negotiable #1).
+# First run must work with nothing set beyond a database password.
+spring:
+  application:
+    name: budget-owl
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:budgetowl}
+    username: ${DB_USER:budgetowl}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # NEVER `update`. Schema changes are Flyway migrations (ADR-0007, non-negotiable #4).
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    # Migrations run unattended on a machine nobody is watching.
+    locations: classpath:db/migration
+    validate-on-migrate: true
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    # Stack traces are for logs, not for HTTP clients.
+    include-stacktrace: never
+    include-message: never
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Health only. Anything more is an information-disclosure decision, not a default.
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+logging:
+  level:
+    root: INFO
+    com.budgetowl: INFO

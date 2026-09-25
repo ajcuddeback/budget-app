@@ -257,3 +257,48 @@ never executed.)
 *Added 2026-09-07 — while wiring mutation testing.*
 
 ---
+
+## Spring Boot 4 split autoconfiguration into per-technology modules
+
+`flyway-core` on the classpath is no longer enough. Without
+`org.springframework.boot:spring-boot-flyway`, the application **starts perfectly happily and
+simply never migrates** — no warning, no error, just no tables.
+
+This is the dangerous shape: a silent failure, not a loud one. It was caught only because the
+slice-1 integration test asserts a row exists in `schema_metadata`, not merely that the context
+loads. A context-loads test would have been green.
+
+The same split applies elsewhere — `@AutoConfigureMockMvc` and `TestRestTemplate` are no longer on
+`spring-boot-starter-test`'s classpath either. When something that "should just be there" is
+missing under Boot 4, look for a `spring-boot-<technology>` module rather than assuming a version
+problem.
+
+**Lesson worth keeping:** assert the *effect*, not the *wiring*. "The context loaded" proves
+almost nothing; "the migration ran" proves the thing you cared about.
+
+## Spring Security answers an unauthenticated API request with 403, not 401
+
+With `httpBasic` and `formLogin` both disabled there is no authentication entry point, so Spring
+Security has nowhere to send the caller and falls back to `403`. Our own mandatory test list says
+unauthenticated must be `401`.
+
+Fix is one line — an explicit `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)` — but nothing tells
+you it is missing until a test asserts the status, and `403` looks close enough to correct to slip
+through a review.
+
+## ArchUnit fails a rule that matched nothing, and the obvious fix disables it forever
+
+`failOnEmptyShould` is on by default, so a layering rule written before the packages exist fails
+the build. `allowEmptyShould(true)` makes it pass — and keeps passing silently if a later feature
+names its packages differently (`..controller..` instead of `..web..`), at which point every
+layering rule is checking zero classes and protecting nothing.
+
+`ArchitectureTest.every_feature_class_is_in_a_known_layer` is the guard: it fails the moment a
+class appears outside the documented layer packages, so emptiness can only ever be genuine. Same
+failure mode as the `while read` bug in `guard-bash.sh` — a control that quietly stops applying is
+worse than no control, because the green tick is still there.
+
+## Angular 22 needs Node >= 22.22.3
+
+The dev container ships 22.22.2 and `ng new` refuses outright. CI pins Node 24. If the CLI
+complains about the Node version, that is the reason — not a corrupt install.

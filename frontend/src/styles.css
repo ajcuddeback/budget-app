@@ -1,0 +1,52 @@
+/* Global stylesheet. Order matters: fonts, then tokens, then the base layer. */
+@import './assets/fonts/fonts.css';
+@import './styles/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Tells the browser which theme the page is painting, so form controls and scrollbars match. */
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* Keyboard focus is themed, never the browser default (design/canvas/_ds/…/readme.md). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* Layout uses logical properties so RTL works without a second stylesheet (ADR-0023). */
+.page {
+  max-inline-size: 60rem;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+  padding-block: var(--space-8);
+}

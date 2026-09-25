@@ -1,0 +1,59 @@
+/* Every value here is a token. A hex or a raw px in this file is non-negotiable #10. */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-6);
+}
+
+.masthead h1 {
+  font-size: 2.5rem;
+}
+
+.lede {
+  max-inline-size: 60ch;
+  margin-block: 0 var(--space-8);
+  color: var(--color-muted);
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.card h2 {
+  font-size: 1.5rem;
+  margin-block-end: var(--space-3);
+}
+
+.card p {
+  margin: 0;
+  max-inline-size: 60ch;
+}
+
+.btn {
+  font: inherit;
+  border: 0;
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-accent-text);
+  border: 1px solid var(--color-divider);
+}
+
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.btn-ghost:active {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
