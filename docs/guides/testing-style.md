@@ -19,10 +19,10 @@ not every branch.
 For **every endpoint**, without exception:
 
 1. **Unauthenticated request → `401`.**
-2. **Another household's resource → `404`.** Not `403`. This is the ADR-0008 test (as amended by
-   ADR-0017) and it is the single highest-value test in this codebase — it catches the bug class
-   that leaked every user's finances in the legacy app. A cross-household leak is the worst bug
-   this app can have.
+2. **A resource that is not the caller's → `404`.** Not `403` — `403` confirms the row exists.
+   An instance holds one household (ADR-0026), so this is now mostly about ids that belong to
+   nothing: a random UUID, a deleted row, an id from another entity's table. Keep writing the
+   household-scoped query anyway; the shape is what makes the dangerous call unwritable.
 3. **Invalid input → `400`** with a problem response naming the field.
 4. The happy path.
 
@@ -35,8 +35,13 @@ For **every endpoint**, under **both credential transports** (ADR-0018):
 For **every state-changing endpoint**, additionally:
 
 6. **Missing or invalid CSRF token → `403`** (session transport; CSRF does not apply to bearer).
-7. **A `VIEWER` gets `403`.** Roles are an authorization axis, not a UI hint (ADR-0017), and only
-   an `OWNER` may invite, remove members, or delete a household.
+7. **A `VIEWER` gets `403`, and on anything administrative a `MEMBER` does too.** Since ADR-0026
+   removed multi-household deployments, **this is the single highest-value authorization test in
+   the codebase** — it replaces the cross-household test, which no longer has a second household
+   to prove anything against. Do not read that removal as one less thing to check: the same total
+   risk now rests on fewer controls, so role enforcement and authentication carry what household
+   scoping used to share. Only an `OWNER` may invite, remove members, delete the household, or
+   reach the admin console.
 
 For **anything handling money**:
 
@@ -50,7 +55,7 @@ Method names are sentences describing behavior:
 
 ```java
 @Test
-void returns404WhenAccountBelongsToAnotherUser() { }
+void returns403WhenViewerAttemptsToCreateTransaction() { }
 
 @Test
 void rejectsTransferWhenCurrenciesDiffer() { }

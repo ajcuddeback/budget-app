@@ -40,8 +40,8 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0013](0013-captures-render-against-fixtures.md) | Captures render against fixtures, never a live app | Accepted | 2026-08-28 |
 | [0014](0014-adopt-official-angular-skills.md) | Adopt the official Angular agent skills | Accepted | 2026-08-28 |
 | [0015](0015-delete-the-legacy-app.md) | Delete the legacy app; rebuild from scratch | Accepted | 2026-08-29 |
-| [0016](0016-self-hosted-open-source-product.md) | Budget Owl is a self-hosted, open-source product | Accepted | 2026-09-05 |
-| [0017](0017-households-own-financial-data.md) | Households, not users, own financial data | Accepted | 2026-09-05 |
+| [0016](0016-self-hosted-open-source-product.md) | Budget Owl is a self-hosted, open-source product | Accepted (amended by 0027) | 2026-09-05 |
+| [0017](0017-households-own-financial-data.md) | Households, not users, own financial data | Accepted (amended by 0026) | 2026-09-05 |
 | [0018](0018-first-party-auth-with-optional-oidc.md) | First-party auth, optional OIDC, opaque tokens for mobile | Accepted | 2026-09-05 |
 | [0019](0019-flutter-for-mobile.md) | Flutter for the mobile app | Accepted | 2026-09-05 |
 | [0020](0020-bank-connections-use-user-credentials.md) | Bank connections use the user's own credentials | Accepted | 2026-09-05 |
@@ -50,3 +50,5 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0023](0023-internationalisation.md) | Internationalisation — runtime locale, codes over prose | Accepted | 2026-09-07 |
 | [0024](0024-test-quality-enforcement.md) | Measure test quality, not just coverage | Accepted | 2026-09-07 |
 | [0025](0025-bills-are-occurrences-not-generated-transactions.md) | Bills are occurrences with a status, not generated transactions | Accepted | 2026-09-09 |
+| [0026](0026-one-household-per-instance.md) | One household per instance; the owner is the operator | Accepted | 2026-09-25 |
+| [0027](0027-llm-is-an-optional-self-hosted-sidecar.md) | The assistant is an optional self-hosted sidecar, or absent | Accepted | 2026-09-25 |

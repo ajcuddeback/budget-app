@@ -26,7 +26,7 @@ is a migration — never a change to `ddl-auto`.
 | Foreign key constraint | `fk_<table>_<ref>` | `fk_transactions_account` |
 | Unique constraint | `uq_<table>_<cols>` | `uq_users_email` |
 | Check constraint | `ck_<table>_<rule>` | `ck_transactions_amount_scale` |
-| Index | `ix_<table>_<cols>` | `ix_transactions_user_id_date` |
+| Index | `ix_<table>_<cols>` | `ix_transactions_household_id_date` |
 
 Never reserved words as identifiers (`user`, `order`, `end`). The legacy app used a table
 literally named `user`, which needs quoting everywhere. Use `users`.

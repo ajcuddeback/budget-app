@@ -16,7 +16,7 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 0c | User-guide capture + `user-docs` agent | 0b | **Done** |
 | 0d | Product direction: self-hosted, households, mobile (ADR-0016–0021) | 0 | **Done** |
 | 0e | Designs imported; docs reconciled to them | 0d | **Done** |
-| 1 | Backend + frontend skeletons, design tokens, Compose packaging, CI proven | 0e | Next |
+| 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | Next |
 | 2 | [Authentication & households](features/authentication-and-households.md) | 1 | Planned |
 | 3 | Accounts (money containers) | 2 | Planned |
 | 4 | Categories + defaults on household creation | 2 | Planned |
@@ -52,6 +52,33 @@ before it.
 categorization, bills, allocation — so every one of those has to exist and be trustworthy first.
 Built early it would be a wizard over empty tables.
 
+**CI is built in slice 1, properly, and grows with the code.** What exists today runs secret
+scanning and CodeQL against a repository with no application in it — it proves the workflow file
+is valid, not that the code is sound. Every check below is cheap to add while there is one class
+to fix and expensive once there are four hundred, so they go in as the code they check appears,
+not "eventually":
+
+| Check | Backend | Frontend | From |
+|---|---|---|---|
+| Build | `mvn verify` | `ng build` | slice 1 |
+| Format / lint | Spotless | ESLint + Prettier | slice 1 |
+| Unit tests | JUnit | Vitest | slice 1 |
+| Integration tests + migrations | Testcontainers, real Postgres (ADR-0009) | — | slice 1 |
+| Coverage thresholds | JaCoCo | Vitest c8 | slice 1 |
+| Architecture rules | ArchUnit (ADR-0024) | — | slice 1 |
+| Static analysis / code smells | SpotBugs + PMD | ESLint rulesets | slice 2 |
+| Dependency vulnerabilities | OWASP dependency-check | `npm audit` | slice 1 |
+| Container image scan | Trivy on the published images | slice 1 (with Compose) |
+| Mutation testing | PIT (ADR-0024) | Stryker | slice 2 |
+| Secret scanning | gitleaks | ✓ already |
+| SAST | CodeQL | ✓ already |
+| UI validation + a11y | Playwright + axe (ADR-0011) | ✓ already |
+
+Docker is required on the runner and a missing one fails the job rather than skipping the tests it
+would have run — `tools/verify.sh` distinguishes "not built yet" from "should have run and could
+not", and CI makes the second fatal. A red PR is the point: tests and coverage failing must block
+the merge.
+
 **Slice 1 now includes the Compose packaging.** Under ADR-0016 the deployable unit is a
 `docker-compose.yml` plus published images; if that is bolted on at the end it will be bad, and
 it is the first thing a self-hoster touches.
@@ -74,7 +101,9 @@ layouts are RTL-safe. Retrofitting it after fifty screens exist is a rewrite; ho
 the first component is nearly free. The same applies to currency (ADR-0022) — totals are
 currency-aware from the first sum, not after someone adds a second account.
 
-**AI is last (17)** because there is nothing to analyse until transactions and budgets exist, and
+**The assistant is last (17)** and is now a separate optional container that most instances will
+never run (ADR-0027) — which is also why it can be last without holding anything up. It is still
+last because there is nothing to analyse until transactions and budgets exist, and
 because it is the feature most able to damage trust if rushed.
 
 ## The old legacy-data question
