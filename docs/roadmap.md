@@ -16,8 +16,8 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 0c | User-guide capture + `user-docs` agent | 0b | **Done** |
 | 0d | Product direction: self-hosted, households, mobile (ADR-0016–0021) | 0 | **Done** |
 | 0e | Designs imported; docs reconciled to them | 0d | **Done** |
-| 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | Next |
-| 2 | [Authentication & households](features/authentication-and-households.md) | 1 | Planned |
+| 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | **Done** |
+| 2 | [Authentication & households](features/authentication-and-households.md) | 1 | Next |
 | 3 | Accounts (money containers) | 2 | Planned |
 | 4 | Categories + defaults on household creation | 2 | Planned |
 | 5 | Transactions (create, list, edit, delete) | 3, 4 | Planned |

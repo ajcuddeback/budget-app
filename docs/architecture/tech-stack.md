@@ -7,7 +7,7 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 | Thing | Choice | Why |
 |---|---|---|
 | Language | Java 21 (LTS) | Records, pattern matching, virtual threads |
-| Framework | Spring Boot 3.x | Spring Security 6, Jakarta EE 10 |
+| Framework | Spring Boot 4.1.1 | Spring Framework 7, Spring Security 7, Jakarta EE 11 |
 | Build | Maven | Verified available: 3.9.x |
 | Security | Spring Security 6 + Spring Session JDBC | ADR-0004 |
 | Persistence | Spring Data JPA / Hibernate | |
@@ -26,7 +26,7 @@ Pin versions. No ranges, no `latest`. When you bump something, note it here.
 
 | Thing | Choice | Why |
 |---|---|---|
-| Framework | Angular (latest stable major) | |
+| Framework | Angular 22.2.0 | Needs Node >= 22.22.3 — see gotchas |
 | Language | TypeScript, `strict: true` | Non-negotiable |
 | Components | Standalone (no NgModules) | |
 | State | Angular signals; RxJS at the HTTP boundary | |

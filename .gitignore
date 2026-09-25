@@ -141,3 +141,13 @@ design/**/*.xls
 design/**/*.csv
 design/**/*.ofx
 design/**/*.qif
+
+# Local instance configuration — holds a real database password
+.env
+
+# Build output
+backend/target/
+frontend/dist/
+frontend/coverage/
+frontend/.angular/
+.jqwik-database

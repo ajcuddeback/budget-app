@@ -18,43 +18,27 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  JAVA_VERSION: '21'
+  # Angular 22 requires >= 22.22.3. Pinning the minor avoids a runner picking up 22.22.2 and
+  # failing with a message about Node rather than about the code.
+  NODE_VERSION: '24'
+
 jobs:
-  gate:
-    name: Verify
+  backend:
+    name: Backend
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-          # No `cache: maven` here: it fails the job outright when no pom.xml exists, which
-          # is the state until the backend lands. Cached explicitly below instead.
-
-      - name: Cache Maven packages
-        if: hashFiles('backend/pom.xml') != ''
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('backend/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven-
-
-      - name: Set up Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-
-      - name: Set up Flutter
-        if: hashFiles('mobile/pubspec.yaml') != ''
-        # Pinned to a commit, not the moving v2 tag (see the gitleaks note below for why).
-        # Resolved from refs/tags/v2.9.1^{}.
-        uses: subosito/flutter-action@1508160852fb97248640997f7cfb38da241df0ba # v2.9.1
-        with:
-          channel: stable
+          cache: maven
 
       - name: Require Docker for integration tests
         # Testcontainers runs the real PostgreSQL the integration tests and Flyway migrations
@@ -63,33 +47,188 @@ jobs:
         run: |
           if ! docker info >/dev/null 2>&1; then
             echo "::error::Docker is unavailable on this runner. Integration tests use" \
-                 "Testcontainers against real PostgreSQL (ADR-0009) and cannot be skipped in CI." >&2
+                 "Testcontainers against real PostgreSQL (ADR-0009) and cannot be skipped." >&2
             exit 1
           fi
-          docker --version
 
-      - name: Run the gate
-        # CI=true is set by GitHub Actions and makes tools/verify.sh strict: anything that
-        # SHOULD have run but could not (Docker, missing toolchain, uninstalled deps) becomes a
-        # failure rather than a skip. Unit tests, integration tests and coverage thresholds all
-        # run inside this one gate, so a failure in any of them fails the PR.
-        env:
-          CI: 'true'
-        run: tools/verify.sh
+      - name: Format
+        run: mvn -B -f backend spotless:check
+
+      - name: Compile, unit + architecture + integration tests
+        run: mvn -B -f backend verify
+
+      - name: Coverage threshold
+        run: mvn -B -f backend jacoco:check
+
+      - name: Static analysis (SpotBugs)
+        run: mvn -B -f backend com.github.spotbugs:spotbugs-maven-plugin:4.10.4.1:check
+
+      - name: Static analysis (PMD)
+        run: mvn -B -f backend org.apache.maven.plugins:maven-pmd-plugin:check
 
       - name: Upload test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: backend-reports
           path: |
             backend/target/surefire-reports/
             backend/target/failsafe-reports/
             backend/target/site/jacoco/
-            frontend/coverage/
-            mobile/coverage/
           retention-days: 7
           if-no-files-found: ignore
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      - run: npm --prefix frontend run lint
+      - run: npm --prefix frontend run typecheck
+      - run: npm --prefix frontend run test:coverage
+      - run: npm --prefix frontend run build
+      - run: npm --prefix frontend audit --audit-level=high
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  packaging:
+    name: Packaging
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compose file is valid, and refuses to start without a password
+        run: |
+          DB_PASSWORD=ci-only docker compose config --quiet
+          if DB_PASSWORD= docker compose config --quiet >/dev/null 2>&1; then
+            echo "::error::compose accepted an empty DB_PASSWORD" >&2
+            exit 1
+          fi
+
+      - name: Build images
+        run: |
+          docker build -t budget-owl-api:ci ./backend
+          docker build -t budget-owl-web:ci ./frontend
+
+      - name: Scan images for known vulnerabilities
+        # Pinned to a commit, not a moving tag: a tag can be repointed at any commit, which means
+        # arbitrary third-party code running in CI. Resolved from refs/tags/0.33.1^{}.
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: budget-owl-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Scan the web image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: budget-owl-web:ci
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+  dependencies:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Cache the NVD database
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: nvd-${{ github.run_id }}
+          restore-keys: nvd-
+
+      - name: OWASP dependency-check
+        # Without an NVD API key the feed is rate-limited into uselessness and the scan reports
+        # nothing because it never finished — silence that looks like a pass. Fail loudly instead
+        # and tell the maintainer what to add.
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          if [ -z "$NVD_API_KEY" ]; then
+            echo "::error::NVD_API_KEY repository secret is not set. Without it this scan" \
+                 "cannot complete, and a scan that does not finish is not a passing scan." \
+                 "Get a free key at https://nvd.nist.gov/developers/request-an-api-key" >&2
+            exit 1
+          fi
+          mvn -B -f backend dependency-check:check
+
+  ui:
+    name: UI validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install UI harness
+        working-directory: tools/ui
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Install the app
+        run: npm --prefix frontend ci --no-audit --no-fund
+
+      - name: Prove the harness works with no app present
+        run: tools/ui-check.sh --selfcheck
+
+      - name: Drive the real UI, screenshot it, check accessibility
+        run: tools/ui-check.sh --serve
+
+      - name: Prove the user-guide capture pipeline works
+        run: tools/userguide-capture.sh --selfcheck
+
+      - name: Check the user guide for rot
+        run: tools/userguide-check.sh
+
+      - name: Prove captures refuse a non-local target
+        run: |
+          if tools/userguide-capture.sh --url https://budget.example.com >/dev/null 2>&1; then
+            echo "Capture guard did NOT refuse a remote target — see ADR-0013" >&2
+            exit 1
+          fi
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-artifacts
+          path: tools/ui/artifacts/
+          retention-days: 7
 
   mutation:
     name: Mutation testing
@@ -103,79 +242,27 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
+          cache: maven
 
-      # NOTE: these guards are step-level, not job-level, on purpose. hashFiles() at job level
-      # is evaluated before checkout, when the workspace is empty, so it always returns '' and
-      # the job would silently never run.
       - name: Backend mutation — changed classes (PR) or full (schedule)
-        if: hashFiles('backend/pom.xml') != ''
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "Full mutation run"
             mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
           else
-            echo "Mutation run scoped to classes changed against ${{ github.base_ref || 'main' }}"
             mvn -B -f backend org.pitest:pitest-maven:scmMutationCoverage \
               -Dpit.scm.originBranch=origin/${{ github.base_ref || 'main' }}
           fi
-
-      - name: Frontend mutation
-        if: hashFiles('frontend/package.json') != ''
-        run: |
-          npm --prefix frontend ci --no-audit --no-fund
-          npm --prefix frontend run test:mutation
 
       - name: Upload mutation reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mutation-reports
-          path: |
-            backend/target/pit-reports/
-            frontend/reports/mutation/
+          path: backend/target/pit-reports/
           retention-days: 14
           if-no-files-found: ignore
-
-  ui:
-    name: UI validation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - name: Install UI harness
-        working-directory: tools/ui
-        run: |
-          npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
-      - name: Prove the UI harness works
-        run: tools/ui-check.sh --selfcheck
-      - name: Prove the user-guide capture pipeline works
-        run: tools/userguide-capture.sh --selfcheck
-      - name: Check the user guide for rot
-        run: tools/userguide-check.sh
-      - name: Prove captures refuse a non-local target
-        run: |
-          if tools/userguide-capture.sh --url https://budget.example.com >/dev/null 2>&1; then
-            echo "Capture guard did NOT refuse a remote target — see ADR-0013" >&2
-            exit 1
-          fi
-          echo "Capture guard correctly refused a remote target."
-      - name: Upload screenshots and report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-artifacts
-          path: tools/ui/artifacts/
-          retention-days: 7
 
   secret-scan:
     name: Secret scan
@@ -190,12 +277,8 @@ jobs:
         # Pinned to a commit, not the moving `v2` tag: a tag can be repointed at any commit,
         # so `@v2` means "whatever gitleaks publishes next" — arbitrary third-party code
         # running in CI with a token. Resolved from refs/tags/v2^{} (2025-04-16).
-        # Bump deliberately, re-resolving with:
-        #   git ls-remote --tags https://github.com/gitleaks/gitleaks-action.git 'v2*'
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
-          # Read-only by the job permissions above: this is the narrowest token the action
-          # can be given while still reading the commit range it scans.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   codeql:
@@ -209,16 +292,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `actions` analyses the workflow files themselves. It was running anyway — the input
-        # below was misspelled `language`, so the matrix was ignored and CodeQL auto-detected
-        # every language it found. Listing it explicitly makes workflow scanning intentional
-        # and keeps it on; removing it to quieten a finding would be suppressing the check.
-        #
-        # java-kotlin is added when backend/ exists — autobuild fails outright on a repository
-        # with no Java source, and a permanently red check trains people to ignore CI.
-        language: [javascript-typescript, actions]
+        # `actions` analyses the workflow files themselves. java-kotlin arrived with backend/.
+        language: [javascript-typescript, java-kotlin, actions]
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        if: matrix.language == 'java-kotlin'
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
       - uses: github/codeql-action/init@v3
         with:
           # NOT `language:` — that input does not exist, and CodeQL only emits a warning for

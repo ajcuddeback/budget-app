@@ -1,0 +1,22 @@
+<main class="page">
+  <header class="masthead">
+    <h1>Budget Owl</h1>
+    <button type="button" class="btn btn-ghost" (click)="toggleTheme()">
+      {{ nextModeLabel() }}
+    </button>
+  </header>
+
+  <p class="lede">
+    Self-hosted budgeting for your household. Your financial data never leaves this machine.
+  </p>
+
+  <section class="card" aria-labelledby="status-heading">
+    <h2 id="status-heading">Nothing to budget yet</h2>
+    <p>
+      This instance is running, but no features have been built. Accounts, envelopes and bills
+      arrive slice by slice — see the roadmap.
+    </p>
+  </section>
+
+  <router-outlet />
+</main>
