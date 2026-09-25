@@ -94,12 +94,12 @@ Recorded in full in the ADRs; the short version:
 
 ## Open questions
 
-- **Licence** — AGPL-3.0 proposed in ADR-0021, awaiting a decision. It gates nothing yet but
-  gets harder to change with every contributor.
+- ~~**Licence**~~ — settled: AGPL-3.0 (ADR-0021, accepted 2026-09-25).
 - **Commercial layer** — whether managed hosting happens at all. No decision needed for a long
   time; the architecture does not depend on it.
 - **AI delivery** — the shape is settled by ADR-0027 (self-hosted sidecar or nothing). Which
   model, and how it is packaged and updated, is still open.
-- **Charging for it** — the owner has raised wanting people to pay for, or be encouraged to pay
-  for, an install. That is a licence question as much as a commercial one and it is what ADR-0021
-  is actually waiting on.
+- **Charging for it** — AGPL permits selling the software, support and hosting, but compels
+  nobody to pay; most self-hosters will run it free. If a paid tier is ever wanted, open core is
+  still reachable — but only while the owner holds all the copyright, so the first accepted
+  outside contribution is the real deadline (ADR-0021).

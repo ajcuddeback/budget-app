@@ -118,5 +118,7 @@ run with no application present.
 
 ## Licence
 
-**Not yet chosen.** [ADR-0021](docs/adr/0021-licence-agpl-3.md) proposes AGPL-3.0 and is still
-open. Until a `LICENSE` file exists, no rights are granted and contributions cannot be accepted.
+[**GNU AGPL-3.0**](LICENSE) — free to use, run, modify and share. If you modify Budget Owl and run
+it as a network service, you publish your changes ([ADR-0021](docs/adr/0021-licence-agpl-3.md)).
+
+Running it for yourself, your household, or anyone you like costs nothing and always will.

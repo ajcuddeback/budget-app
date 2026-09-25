@@ -4,10 +4,9 @@ Thanks for considering it. This is software about people's money that they run o
 hardware, so the standards here are higher than a typical side project — but they are written
 down, and none of them are secret.
 
-> **⚠️ No licence has been chosen yet** ([ADR-0021](docs/adr/0021-licence-agpl-3.md) proposes
-> AGPL-3.0). Until a `LICENSE` file exists, **no rights are granted and contributions cannot be
-> accepted**. If you are reading this before that lands, feel free to open an issue — but hold
-> off on code.
+Budget Owl is licensed [**AGPL-3.0**](LICENSE) ([ADR-0021](docs/adr/0021-licence-agpl-3.md)).
+Contributing means licensing your work under it too — that is what the sign-off below certifies.
+There is no CLA and no copyright assignment: you keep your copyright.
 
 ## You do not have to use AI
 

@@ -1,6 +1,7 @@
 # ADR-0021: Licence — AGPL-3.0
 
-- **Status:** **Proposed** — awaiting the repository owner's decision
+- **Status:** Accepted
+- **Decided:** 2026-09-25
 - **Date:** 2026-09-05
 - **Deciders:** Repository owner
 
@@ -63,3 +64,21 @@ in-product terms discussed in ADR-0020.
 
 **Follow-ups on acceptance:** add `LICENSE`, an SPDX header convention, `CONTRIBUTING.md` with
 the DCO, and a licence section in the README.
+
+## Decision recorded
+
+Accepted on 2026-09-25. `LICENSE` holds the canonical AGPL-3.0 text (SPDX `AGPL-3.0-only`).
+
+The owner's goal of being paid for, or encouraging payment for, an install was weighed here and
+does not change the answer. AGPL does not prevent charging — it permits selling the software,
+support and hosting — but neither does it *compel* payment: anyone may run it free forever, and
+most self-hosters will. Revenue under this licence comes from service, not from the software.
+
+What AGPL does buy is that nobody can take Budget Owl closed and run it as a competing service
+without publishing their changes, which is the risk that actually matters for a product whose
+whole proposition is that you can run it yourself.
+
+**Open core stays reachable from here, but only while the owner holds all the copyright.** There
+is no CLA and no copyright assignment (see `CONTRIBUTING.md`), so the first accepted outside
+contribution makes relicensing require that contributor's agreement. If a paid tier is ever
+wanted, that is the deadline — not a technical one.
