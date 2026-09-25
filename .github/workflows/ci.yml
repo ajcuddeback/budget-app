@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Run the whole gate on demand, on any branch. Useful for checking a change to CI itself, or a
+  # job that only fires on a schedule, without opening a pull request to find out.
+  workflow_dispatch:
   schedule:
     # Weekly full mutation run. Scoped-to-changed-classes runs on every PR; this catches decay
     # in code nobody has touched (ADR-0024).
