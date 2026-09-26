@@ -90,10 +90,28 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
     </dependency>
+    <!-- Compile scope, not runtime: the global error handler reads the violated constraint's
+         NAME out of a PSQLException's ServerErrorMessage, and must never touch the message —
+         PostgreSQL puts the entire rejected row in the error DETAIL, which for `users` means the
+         plaintext password (docs/memory/gotchas.md). Hibernate's own constraint-name extractor
+         cannot help: it scrapes "violates check constraint" out of the message text, and the
+         last-owner rule arrives as a custom RAISE from a trigger. PostgreSQL is the only database
+         this product supports (ADR-0009). -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Web sessions live in PostgreSQL (security-model.md): they survive a restart and revoking
+         one is a DELETE. Spring Boot 4 splits autoconfiguration per technology, so the starter is
+         not enough — without spring-boot-session-jdbc the sessions silently stay in memory. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-session-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-jdbc</artifactId>
     </dependency>
 
     <!-- Test -->

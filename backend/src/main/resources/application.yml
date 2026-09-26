@@ -24,9 +24,32 @@ spring:
   threads:
     virtual:
       enabled: true
+  jackson:
+    deserialization:
+      # A typo'd field is an error, not a silently ignored value (docs/guides/api-style.md), and
+      # it is also what stops a request body carrying a property nobody meant to accept.
+      fail-on-unknown-properties: true
+  session:
+    # Idle timeout, server-enforced (docs/architecture/security-model.md). The absolute cap is
+    # budgetowl.security.session.absolute-timeout below — Spring Session has no notion of one.
+    timeout: 30m
+    jdbc:
+      # Flyway owns the schema (ADR-0007). V7 creates Spring Session's tables verbatim.
+      initialize-schema: never
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        name: BUDGETOWL_SESSION
+        http-only: true
+        # Never readable from JS, never sent over plain HTTP. A self-hoster terminating TLS at a
+        # reverse proxy keeps the default; one on a LAN with no certificate at all has to opt out
+        # explicitly, because doing it silently is how a session cookie ends up on the wire.
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+        path: /
   error:
     # Stack traces are for logs, not for HTTP clients.
     include-stacktrace: never
@@ -44,6 +67,29 @@ management:
       probes:
         enabled: true
       show-details: never
+
+# Everything below is ours. No secrets here: these are shapes and durations, not credentials.
+budgetowl:
+  security:
+    # BCrypt via DelegatingPasswordEncoder, strength >= 12 (security-model.md). Configurable only
+    # so the test suite can run a cheap factor; a deployment has no reason to lower it.
+    bcrypt-strength: ${BCRYPT_STRENGTH:12}
+    session:
+      # Absolute cap, server-enforced, independent of activity.
+      absolute-timeout: 12h
+    token:
+      # Mobile bearer tokens: sliding expiry with an absolute cap (ADR-0018).
+      idle-timeout: 30d
+      absolute-timeout: 180d
+    rate-limit:
+      # Per IP and per email, exponential backoff, never a permanent lock — a permanent lock is a
+      # denial of service against the real user.
+      permitted-failures: 5
+      initial-delay: 2s
+      maximum-delay: 15m
+  invitations:
+    # Default 7 days. The link is a credential, so its lifetime is a security setting.
+    time-to-live: 7d
 
 logging:
   level:
