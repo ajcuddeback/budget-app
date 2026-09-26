@@ -74,6 +74,18 @@ not "eventually":
 | SAST | CodeQL | ✓ already |
 | UI validation + a11y | Playwright + axe (ADR-0011) | ✓ already |
 
+**The jobs below are required status checks on `main`.** The branch ruleset names each one as a
+literal string, which creates a trap: **renaming a job in `ci.yml` does not rename the rule.** The
+ruleset then waits forever for a check that will never report, and the pull request blocks with
+"Expected — waiting for status" rather than failing with a reason. Rename in both places, in the
+same change. The required set is:
+
+`Backend` · `Frontend` · `Packaging` · `Dependency vulnerabilities` · `UI validation` ·
+`Mutation testing` · `Secret scan` · `CodeQL (javascript-typescript)` · `CodeQL (java-kotlin)` ·
+`CodeQL (actions)`
+
+Adding a job means adding it to the ruleset too, or it runs and nobody is required to care.
+
 Docker is required on the runner and a missing one fails the job rather than skipping the tests it
 would have run — `tools/verify.sh` distinguishes "not built yet" from "should have run and could
 not", and CI makes the second fatal. A red PR is the point: tests and coverage failing must block

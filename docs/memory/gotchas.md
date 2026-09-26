@@ -302,3 +302,16 @@ worse than no control, because the green tick is still there.
 
 The dev container ships 22.22.2 and `ng new` refuses outright. CI pins Node 24. If the CLI
 complains about the Node version, that is the reason — not a corrupt install.
+
+## A renamed CI job silently stops being a required check
+
+GitHub branch rulesets require status checks by literal job name. Rename a job in `ci.yml` and
+the ruleset keeps requiring the old name — which never reports — so the pull request blocks
+forever showing "Expected — waiting for status" rather than failing with a reason. The new job
+runs, passes, and is required by nobody.
+
+Rename in both places in the same change. The required set is listed in `docs/roadmap.md`.
+
+Two related settings that make a ruleset decorative if you get them wrong: enforcement status
+defaults to **Disabled**, and the repository owner is bypassable unless the bypass list is empty.
+A rule that does not apply to the only person who pushes is not a rule.
