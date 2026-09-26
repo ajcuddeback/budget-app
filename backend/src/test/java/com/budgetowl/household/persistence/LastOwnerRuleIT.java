@@ -212,6 +212,50 @@ class LastOwnerRuleIT extends PersistenceTestBase {
     }
 
     @Test
+    void theRuleHoldsEvenWhenTheCounterHasBeenDesynchronisedFromTheMemberships() {
+        // owner_count is an ordinary integer column, and the deferred check used to read it and
+        // believe it. Anything that writes it directly — a restored backup, a TRUNCATE, a psql
+        // session, a later slice that decides to map the column — could therefore turn the whole
+        // rule off, permanently and silently: the counter never finds its way back to the truth
+        // on its own, so every later removal is checked against a number that means nothing.
+        //
+        // Two owners, a counter claiming five, and every OWNER membership deleted at once.
+        assertThatThrownBy(
+                        () ->
+                                transaction.executeWithoutResult(
+                                        status -> {
+                                            jdbc.update(
+                                                    "UPDATE households SET owner_count = 5 WHERE id = ?",
+                                                    HOUSEHOLD);
+                                            jdbc.update(
+                                                    """
+                                                    DELETE FROM household_members
+                                                     WHERE household_id = ? AND role = 'OWNER'
+                                                    """,
+                                                    HOUSEHOLD);
+                                        }))
+                .hasMessageContaining("would be left without an OWNER");
+
+        // Aborted whole: both owners are still there, and so is the household.
+        assertThat(remainingOwners()).hasSize(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM households", Long.class))
+                .isEqualTo(1L);
+    }
+
+    @Test
+    void anInflatedCounterCannotBeUsedToRemoveTheLastOwner() {
+        // The same defect in its smallest form: one legitimate removal, then the last one — which
+        // the counter alone would wave through because it was set to a number nobody earned.
+        jdbc.update("DELETE FROM household_members WHERE id = ?", OWNER_A);
+        jdbc.update("UPDATE households SET owner_count = 5 WHERE id = ?", HOUSEHOLD);
+
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM household_members WHERE id = ?", OWNER_B))
+                .hasMessageContaining("would be left without an OWNER");
+
+        assertThat(remainingOwners()).hasSize(1);
+    }
+
+    @Test
     void deletingTheWholeHouseholdIsAllowed() {
         // The rule protects a household that still exists. Deleting one is a different decision
         // (out of scope for this slice) and must not be blocked by this trigger.
