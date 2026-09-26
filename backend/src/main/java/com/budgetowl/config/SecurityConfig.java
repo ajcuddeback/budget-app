@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -29,6 +30,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -144,6 +146,13 @@ public class SecurityConfig {
                                                 hsts ->
                                                         hsts.includeSubDomains(true)
                                                                 .maxAgeInSeconds(31_536_000)))
+                // No saved-request cache. Its only purpose is replaying a request after a form
+                // login, which this API does not have — and the default implementation CREATES A
+                // SESSION for every unauthenticated request in order to store it. On a box facing
+                // the internet that is an unauthenticated write to the session table, repeatable
+                // as fast as an attacker can send requests, and it was doing exactly that until a
+                // logout test noticed a stray row.
+                .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable())
@@ -166,8 +175,12 @@ public class SecurityConfig {
                                                                 request,
                                                                 response,
                                                                 deniedCode(denied))))
+                // Before the anonymous filter, not merely before authorization: that filter puts
+                // a non-null Authentication in the context for every unauthenticated request, and
+                // an authentication filter that runs after it has to un-pick its work.
                 .addFilterBefore(
-                        new BearerTokenAuthenticationFilter(tokens), AuthorizationFilter.class)
+                        new BearerTokenAuthenticationFilter(tokens),
+                        AnonymousAuthenticationFilter.class)
                 .addFilterBefore(
                         new AbsoluteSessionTimeoutFilter(
                                 properties.session().absoluteTimeout(), clock),

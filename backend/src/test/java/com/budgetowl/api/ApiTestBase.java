@@ -1,5 +1,6 @@
 package com.budgetowl.api;
 
+import com.budgetowl.auth.service.AuthRateLimiter;
 import com.budgetowl.smoke.PostgresTestBase;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -46,10 +47,18 @@ public abstract class ApiTestBase extends PostgresTestBase {
 
     @Autowired private DataSource dataSource;
 
+    /**
+     * The rate limiter is in memory and one instance serves the whole application context, which
+     * the whole suite shares. Without this, a test that deliberately triggers backoff would lock
+     * the loopback address for every test that ran after it.
+     */
+    @Autowired private AuthRateLimiter rateLimiter;
+
     protected JdbcTemplate jdbc;
 
     @BeforeEach
     void resetDatabase() {
+        rateLimiter.clearAll();
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute(
                 """

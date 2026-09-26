@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -35,6 +37,18 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
     public BearerTokenAuthenticationFilter(AuthTokenService tokens) {
         this.tokens = tokens;
+    }
+
+    /**
+     * Anonymous counts as "nobody yet".
+     *
+     * <p>{@code AnonymousAuthenticationFilter} puts a non-null {@code Authentication} in the
+     * context for every unauthenticated request, so a null check alone silently skips this filter
+     * and every bearer request is refused with a 401 that looks exactly like a bad token.
+     */
+    private static boolean notYetAuthenticated() {
+        Authentication current = SecurityContextHolder.getContext().getAuthentication();
+        return current == null || current instanceof AnonymousAuthenticationToken;
     }
 
     /** Whether a request carries a bearer credential, used to exempt it from CSRF. */

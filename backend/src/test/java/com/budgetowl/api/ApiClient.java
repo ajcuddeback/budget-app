@@ -52,6 +52,12 @@ public final class ApiClient {
         return this;
     }
 
+    /** Replays one cookie, which is what a stolen session cookie is. */
+    public ApiClient withCookie(String name, String value) {
+        this.cookies.put(name, value);
+        return this;
+    }
+
     /** Sends no CSRF header at all, whatever is in the jar. */
     public ApiClient withoutCsrfToken() {
         this.sendCsrfToken = false;

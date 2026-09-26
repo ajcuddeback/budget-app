@@ -105,6 +105,18 @@ public class AuthRateLimiter {
                 : previous.failures;
     }
 
+    /**
+     * Forgets every tracked key.
+     *
+     * <p>There is no HTTP route to this and there must not be: an attacker who could clear the
+     * backoff would not be rate-limited at all. It exists because a backoff sometimes has to be
+     * lifted from the host shell — a member locked out by somebody spraying their address should
+     * not have to wait — and because the test suite runs many logins against one instance.
+     */
+    public void clearAll() {
+        attempts.clear();
+    }
+
     /** A successful attempt clears the backoff on every key it used. */
     public void recordSuccess(List<String> keys) {
         keys.forEach(attempts::remove);
