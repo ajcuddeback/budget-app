@@ -16,6 +16,7 @@ import com.budgetowl.household.domain.HouseholdMember;
 import com.budgetowl.household.domain.HouseholdRole;
 import com.budgetowl.household.persistence.HouseholdInvitationRepository;
 import com.budgetowl.household.persistence.HouseholdMemberRepository;
+import com.budgetowl.household.persistence.HouseholdRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +47,7 @@ public class InvitationService {
     private static final Logger log = LoggerFactory.getLogger(InvitationService.class);
 
     private final HouseholdInvitationRepository invitations;
+    private final HouseholdRepository households;
     private final HouseholdMemberRepository members;
     private final UserAccountRepository users;
     private final MembershipService memberships;
@@ -56,6 +58,7 @@ public class InvitationService {
 
     public InvitationService(
             HouseholdInvitationRepository invitations,
+            HouseholdRepository households,
             HouseholdMemberRepository members,
             UserAccountRepository users,
             MembershipService memberships,
@@ -64,6 +67,7 @@ public class InvitationService {
             InvitationProperties properties,
             Clock clock) {
         this.invitations = invitations;
+        this.households = households;
         this.members = members;
         this.users = users;
         this.memberships = memberships;
@@ -131,11 +135,13 @@ public class InvitationService {
     /**
      * Joins the household, creating the user if this is their first sight of the instance.
      *
-     * <p>Single-use and expiry are enforced <em>in this transaction</em>: the invitation is marked
-     * accepted alongside the membership insert, so the two cannot diverge, and a second attempt
-     * finds it spent. Two simultaneous attempts are stopped by the database as well — {@code
-     * uq_household_members_household_id_user_id} for an existing user, {@code uq_users_email} for a
-     * new one.
+     * <p>Single-use is a <b>conditional UPDATE</b> taken before anything else happens in this
+     * transaction ({@code HouseholdInvitationRepository.markAccepted}), for the same reason
+     * first-run setup is claimed that way: reading the invitation and then writing it cannot be
+     * single-use, because two holders of one link read it at the same instant and both see it
+     * unused. The loser blocks on the row lock, matches nothing, and is answered exactly as if the
+     * link had never existed. The membership insert is in the same transaction, so a failure later
+     * un-spends the invitation rather than stranding it.
      *
      * @param currentUserId the signed-in caller, if any. Accepting while signed in is refused:
      *     "join as whoever happens to be logged in" is how a forwarded link adds the wrong person
@@ -160,40 +166,60 @@ public class InvitationService {
         }
 
         Instant now = clock.instant();
-        HouseholdInvitation invitation =
+        HouseholdInvitation found =
                 invitations
                         .findByTokenHash(tokenHash)
-                        .filter(found -> found.isUsableAt(now))
-                        .orElseThrow(
-                                () -> {
-                                    rateLimiter.recordFailure(keys);
-                                    return new NotFoundException(
-                                            ErrorCode.INVITATION_UNUSABLE,
-                                            "invitation is not usable");
-                                });
+                        .filter(invitation -> invitation.isUsableAt(now))
+                        .orElseThrow(() -> unusable(keys));
 
-        Household household = invitation.household();
-        Optional<UserAccount> existing = users.findByEmail(invitation.email());
-        UserAccount joining =
-                existing.orElseGet(() -> register(invitation.email(), displayName, rawPassword));
+        UUID invitationId = found.id();
+        UUID householdId = found.household().id();
+        HouseholdRole role = found.role();
+        String invitedEmail = found.email();
 
-        if (members.existsByHouseholdIdAndUserId(household.id(), joining.id())) {
+        // Claim it before anything else happens, and take the row lock as the claim. The read
+        // above cannot be the check: two holders of the same link read it at the same instant,
+        // both see an unused invitation, and both join on one single-use token. The loser of the
+        // conditional UPDATE is answered exactly as if the link had never existed.
+        if (invitations.markAccepted(invitationId, now) == 0) {
+            throw unusable(keys);
+        }
+
+        Optional<UserAccount> existing = users.findByEmail(invitedEmail);
+        UUID joiningId =
+                existing.map(UserAccount::id)
+                        .orElseGet(() -> register(invitedEmail, displayName, rawPassword).id());
+
+        if (members.existsByHouseholdIdAndUserId(householdId, joiningId)) {
             throw new ConflictException(
                     ErrorCode.INVITATION_REFUSED, "the address cannot be invited");
         }
 
-        invitation.acceptAt(now);
-        members.save(HouseholdMember.of(household, joining, invitation.role()));
+        // Re-read both: claiming the invitation and registering the user are bulk statements that
+        // clear the persistence context, so anything loaded before them is detached by now.
+        Household household = households.findById(householdId).orElseThrow(() -> unusable(keys));
+        UserAccount joining = users.findById(joiningId).orElseThrow(() -> unusable(keys));
+
+        members.save(HouseholdMember.of(household, joining, role));
         rateLimiter.recordSuccess(keys);
 
         log.info(
                 "invitation accepted householdId={} invitationId={} userId={} created={}",
-                household.id(),
-                invitation.id(),
-                joining.id(),
+                householdId,
+                invitationId,
+                joiningId,
                 existing.isEmpty());
-        return new AcceptedInvitation(
-                household.id(), household.name(), invitation.role(), existing.isEmpty());
+        return new AcceptedInvitation(household.id(), household.name(), role, existing.isEmpty());
+    }
+
+    /**
+     * The one answer to every unusable link: expired, revoked, already accepted, never existed, and
+     * lost the race to accept. Telling them apart tells whoever found a link in a chat backup what
+     * happened to it, and "already accepted" in particular confirms that somebody joined.
+     */
+    private NotFoundException unusable(List<String> rateLimiterKeys) {
+        rateLimiter.recordFailure(rateLimiterKeys);
+        return new NotFoundException(ErrorCode.INVITATION_UNUSABLE, "invitation is not usable");
     }
 
     /**
