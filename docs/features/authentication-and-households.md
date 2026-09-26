@@ -168,8 +168,30 @@ Plus Spring Session's tables for the web transport.
 - `household_members` is the membership graph, not financial data, so it carries `user_id` rather
   than the `household_id`-only rule that applies to financial tables.
 
-Migrations: `V1__users.sql`, `V2__households.sql`, `V3__invitations.sql`, `V4__auth_tokens.sql`,
-`V5__instance_settings.sql`, `V6__spring_session.sql`.
+Migrations: `V2__users.sql`, `V3__households.sql`, `V4__invitations.sql`, `V5__auth_tokens.sql`,
+`V6__instance_settings.sql`, `V7__spring_session.sql`. Numbered from 2 because `V1__baseline.sql`
+shipped with slice 1 and is frozen (ADR-0007).
+
+Three invariants are enforced by the **schema**, not by a service, because a service cannot
+enforce them without racing:
+
+- **The last-owner rule.** `households.owner_count` is maintained by a trigger on
+  `household_members`, and a `DEFERRABLE INITIALLY DEFERRED` constraint trigger re-reads it at
+  `COMMIT`. Two concurrent removals must update the same `households` row, so the second blocks and
+  then recomputes against the committed value; exactly one succeeds. Deferred rather than a `CHECK`
+  because a household is legitimately created with no owner and given one a statement later in the
+  same transaction — and because PostgreSQL cannot defer a `CHECK`. Failure arrives at `COMMIT` as
+  SQLSTATE `23514` with constraint `ck_households_at_least_one_owner`.
+- **One household per instance** (ADR-0026): `uq_households_singleton`, a unique index on a
+  constant expression.
+- **One instance administrator**: `uq_users_single_instance_admin`, the same trick restricted to
+  admin rows. With `instance_settings.setup_completed_at`, which the setup transaction claims with
+  a conditional `UPDATE`, this is what stops two simultaneous callers of
+  `/api/setup/first-user` both winning.
+
+Invitation and bearer tokens are stored as a lowercase-hex SHA-256 and the columns are constrained
+to that shape, so a plaintext credential cannot be written at all. `users.password_hash` is
+constrained to an encoded form for the same reason.
 
 ## API
 

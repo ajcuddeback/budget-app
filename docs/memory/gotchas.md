@@ -335,3 +335,56 @@ proxy (`server certificate not trusted`), and a docker build cannot reach the np
 image changes are verified by CI rather than locally. Check the package version in the base with
 `docker run --rm --entrypoint sh <image> -c "apk list --installed"` — that much does work, and it
 is how the libexpat finding was confirmed.
+
+## `citext` is compared case-SENSITIVELY when the parameter comes from JDBC
+
+`users.email` is `citext`, so `'Ada@Example.com' = 'ada@example.com'` is true in psql. It is
+**false** from Java. Hibernate binds a `String` as a JDBC `varchar`, and the `citext` extension
+creates `varchar → citext` as an *assignment* cast rather than an implicit one — so PostgreSQL
+resolves `citext = varchar` by casting both sides to `text` and calling `texteq`.
+
+Proven against PostgreSQL 16:
+
+```sql
+PREPARE p(varchar) AS SELECT count(*) FROM users WHERE email = $1;
+EXECUTE p('B@Example.com');   -- 0 rows, with the row present
+PREPARE q(varchar) AS SELECT count(*) FROM users WHERE email = CAST($1 AS citext);
+EXECUTE q('B@Example.com');   -- 1 row
+```
+
+A derived `findByEmail(String)` therefore looks right, passes any test that types the address the
+same way twice, and fails for the one user who capitalises their own name — at login, which is
+where it is worst. Every email lookup in `com.budgetowl.auth.persistence` and
+`com.budgetowl.household.persistence` is a native query with an explicit `CAST(:email AS citext)`
+for this reason, and `UserAccountRepositoryIT` asserts the case-insensitive behaviour directly.
+Uniqueness is unaffected: the unique index is on the `citext` column and is case-insensitive.
+
+*Added 2026-09-26 — slice 2.*
+
+## A PostgreSQL CHECK violation puts the whole failing row in the error DETAIL
+
+`ck_users_password_hash_encoded` exists so a plaintext password cannot be stored. When it fires,
+PostgreSQL's `DETAIL` line contains the entire failing row — *including the plaintext password
+that was rejected*. pgjdbc puts that in the exception message, and Spring's translator carries it
+into `DataIntegrityViolationException.getMessage()`.
+
+So: **never log the message or cause of a `DataIntegrityViolationException` raised by `users`.**
+Log the constraint name (`getServerErrorMessage().getConstraint()`) and nothing else. This applies
+to any `CHECK` on a column holding a secret and is not specific to that one constraint; there is
+no way to suppress `DETAIL` per constraint.
+
+*Added 2026-09-26 — slice 2.*
+
+## ArchUnit's `..persistence..` also matches `jakarta.persistence`
+
+`domain_is_plain_java` forbade `..domain..` from depending on `..persistence..`. That pattern
+matches any package with a `persistence` segment, so it fired on `@Entity`, `@Table` and
+`@Column` — 112 violations the moment the first entity was written, for a rule whose intent is
+"domain must not depend on *our* repositories". It had been silently passing because there were no
+entities yet.
+
+Qualify layer patterns with the root package when the rule looks at *dependency targets*:
+`com.budgetowl..persistence..`. The `that()` selector does not need it, because `@AnalyzeClasses`
+only imports `com.budgetowl`.
+
+*Added 2026-09-26 — slice 2.*
