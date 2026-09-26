@@ -315,3 +315,23 @@ Rename in both places in the same change. The required set is listed in `docs/ro
 Two related settings that make a ruleset decorative if you get them wrong: enforcement status
 defaults to **Disabled**, and the repository owner is bypassable unless the bypass list is empty.
 A rule that does not apply to the only person who pushes is not a rule.
+
+## Bumping a base image tag does not fix OS-package CVEs for long
+
+An image's rebuild cadence lags the distro's package updates, so even the newest `nginx:alpine`
+ships packages that already have patches published. Chasing the tag is a treadmill:
+
+- `nginx:1.27-alpine` → scan failed on openssl, libxml2, musl, nghttp2, zlib
+- `nginx:1.31-alpine` → cleared all five, and failed on libexpat, patched after 1.31 was built
+
+`RUN apk upgrade --no-cache` in the runtime stage takes the current patches at build time and
+ends the cycle. The cost is that two builds of the same commit can contain different package
+versions. For an image gated on a vulnerability scan and holding financial data, that trade is
+worth taking — but it is a real trade, so it is written in both Dockerfiles rather than left as
+a line someone deletes while tidying.
+
+**This cannot be verified in the dev container.** `apk` cannot validate TLS through the agent
+proxy (`server certificate not trusted`), and a docker build cannot reach the npm registry, so
+image changes are verified by CI rather than locally. Check the package version in the base with
+`docker run --rm --entrypoint sh <image> -c "apk list --installed"` — that much does work, and it
+is how the libexpat finding was confirmed.
