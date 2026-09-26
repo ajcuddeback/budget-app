@@ -104,6 +104,65 @@ class InstanceSettingsTest {
     }
 
     @Test
+    void turningOidcOffBringsPasswordLoginBackRatherThanLeavingNoLoginRouteAtAll() {
+        // The finding this test exists for: enable OIDC, prove it with an OWNER login, hide
+        // password login (legitimate), then turn OIDC off — and the instance had no way in at
+        // all, on somebody's own hardware, holding their own financial records.
+        InstanceSettings settings = fresh();
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
+        settings.recordOwnerOidcLoginAt(NOW);
+        settings.disablePasswordLogin();
+
+        settings.disableOidc();
+
+        assertThat(settings.isOidcEnabled()).isFalse();
+        assertThat(settings.isPasswordLoginEnabled()).isTrue();
+    }
+
+    @Test
+    void turningOidcOffDiscardsTheOwnerLoginItAttestedTo() {
+        // The timestamp means "an OWNER signed in through the provider that is switched on". With
+        // the provider switched off it means nothing, and leaving it behind would let password
+        // login be hidden again the moment OIDC came back — on the strength of a login against
+        // whatever was configured before.
+        InstanceSettings settings = fresh();
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
+        settings.recordOwnerOidcLoginAt(NOW);
+
+        settings.disableOidc();
+
+        assertThat(settings.oidcOwnerLoginAt()).isNull();
+    }
+
+    @Test
+    void pointingOidcAtADifferentProviderDiscardsTheOldProof() {
+        InstanceSettings settings = fresh();
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
+        settings.recordOwnerOidcLoginAt(NOW);
+        settings.disablePasswordLogin();
+
+        settings.configureOidc("https://attacker.example.net", "budget-owl", "not-a-real-secret");
+
+        assertThat(settings.oidcOwnerLoginAt()).isNull();
+        assertThat(settings.isPasswordLoginEnabled()).isTrue();
+    }
+
+    @Test
+    void reconfiguringTheSameProviderKeepsTheProof() {
+        // Rotating the client secret is not a change of provider, and forcing password login back
+        // on for it would train an administrator to ignore the setting.
+        InstanceSettings settings = fresh();
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
+        settings.recordOwnerOidcLoginAt(NOW);
+        settings.disablePasswordLogin();
+
+        settings.configureOidc("https://idp.example.com", "budget-owl", "rotated-not-a-secret");
+
+        assertThat(settings.oidcOwnerLoginAt()).isEqualTo(NOW);
+        assertThat(settings.isPasswordLoginEnabled()).isFalse();
+    }
+
+    @Test
     void recordsWhenAnOwnerFirstSignedInThroughOidc() {
         // The evidence that disabling password login will not lock everyone out.
         InstanceSettings settings = fresh();

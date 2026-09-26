@@ -304,14 +304,81 @@ class SchemaConstraintsIT extends PersistenceTestBase {
     }
 
     @Test
-    void allowsDisablingPasswordLoginOnceAnOwnerHasSignedInThroughOidc() {
-        jdbc.update("UPDATE instance_settings SET oidc_owner_login_at = now() WHERE id = 1");
+    void allowsDisablingPasswordLoginOnceAnOwnerHasSignedInThroughOidcThatIsStillOn() {
+        enableOidcWithAnOwnerLogin();
 
         assertThatCode(
                         () ->
                                 jdbc.update(
                                         "UPDATE instance_settings SET password_login_enabled = false WHERE id = 1"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void refusesToDisablePasswordLoginOnTheStrengthOfALoginThroughAProviderThatIsSwitchedOff() {
+        // The V6 constraint looked at oidc_owner_login_at alone, so a stale timestamp left over
+        // from an OIDC configuration that has since been switched off was enough to hide the only
+        // remaining login route. The timestamp is a proof only while the provider it attests to
+        // is still on.
+        jdbc.update("UPDATE instance_settings SET oidc_owner_login_at = now() WHERE id = 1");
+
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE instance_settings SET password_login_enabled = false WHERE id = 1"))
+                .hasMessageContaining("ck_instance_settings_password_login_lockout");
+    }
+
+    @Test
+    void refusesToSwitchOidcOffWhileItIsTheOnlyWayIn() {
+        // The lockout, step by step, each step individually legitimate: switch OIDC on, sign an
+        // OWNER in through it, hide password login — and then switch OIDC off. Before V8 the last
+        // step was permitted and the instance had no login route at all. Recovery was psql on the
+        // host, on a box holding the household's entire financial record.
+        enableOidcWithAnOwnerLogin();
+        jdbc.update("UPDATE instance_settings SET password_login_enabled = false WHERE id = 1");
+
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        """
+                                        UPDATE instance_settings
+                                           SET oidc_enabled = false, oidc_provisioning_enabled = false
+                                         WHERE id = 1
+                                        """))
+                .hasMessageContaining("ck_instance_settings_password_login_lockout");
+    }
+
+    @Test
+    void allowsSwitchingOidcOffWhenPasswordLoginComesBackInTheSameStatement() {
+        // The supported way out, and what InstanceSettings.disableOidc() now does.
+        enableOidcWithAnOwnerLogin();
+        jdbc.update("UPDATE instance_settings SET password_login_enabled = false WHERE id = 1");
+
+        assertThatCode(
+                        () ->
+                                jdbc.update(
+                                        """
+                                        UPDATE instance_settings
+                                           SET oidc_enabled = false,
+                                               oidc_provisioning_enabled = false,
+                                               oidc_owner_login_at = NULL,
+                                               password_login_enabled = true
+                                         WHERE id = 1
+                                        """))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void refusesToClearTheOwnerLoginProofWhilePasswordLoginIsOff() {
+        enableOidcWithAnOwnerLogin();
+        jdbc.update("UPDATE instance_settings SET password_login_enabled = false WHERE id = 1");
+
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE instance_settings SET oidc_owner_login_at = NULL WHERE id = 1"))
+                .hasMessageContaining("ck_instance_settings_password_login_lockout");
     }
 
     @Test
@@ -333,6 +400,19 @@ class SchemaConstraintsIT extends PersistenceTestBase {
     }
 
     // ---------------------------------------------------------------------------------- helpers
+
+    /** A working, switched-on OIDC configuration that an {@code OWNER} has signed in through. */
+    private void enableOidcWithAnOwnerLogin() {
+        jdbc.update(
+                """
+                UPDATE instance_settings
+                   SET oidc_enabled = true,
+                       oidc_issuer_uri = 'https://idp.example.com',
+                       oidc_client_id = 'budget-owl',
+                       oidc_owner_login_at = now()
+                 WHERE id = 1
+                """);
+    }
 
     private UUID insertUser(String email) {
         UUID id = UUID.randomUUID();
