@@ -3,6 +3,7 @@ package com.budgetowl.common;
 import java.sql.SQLException;
 import java.util.Optional;
 import org.postgresql.util.PSQLException;
+import org.postgresql.util.ServerErrorMessage;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
@@ -61,8 +62,11 @@ public final class RedactedThrowable extends RuntimeException {
      */
     public static Optional<String> violatedConstraint(Throwable original) {
         for (Throwable link = original; link != null; link = link.getCause()) {
-            if (link instanceof PSQLException psql && psql.getServerErrorMessage() != null) {
-                return Optional.ofNullable(psql.getServerErrorMessage().getConstraint());
+            if (link instanceof PSQLException psql) {
+                ServerErrorMessage serverError = psql.getServerErrorMessage();
+                return serverError == null
+                        ? Optional.empty()
+                        : Optional.ofNullable(serverError.getConstraint());
             }
             if (link.getCause() == link) {
                 break;

@@ -266,6 +266,8 @@
           <effort>Max</effort>
           <threshold>Medium</threshold>
           <failOnError>true</failOnError>
+          <!-- Two argued exclusions, both explained in the file itself. -->
+          <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
         </configuration>
       </plugin>
       <plugin>

@@ -99,7 +99,7 @@ public class AuthenticationService {
             log.info(
                     "authentication failed transport={} userId={} ip={}",
                     transport,
-                    user.map(found -> found.id().toString()).orElse("unknown"),
+                    user.map(found -> String.valueOf(found.id())).orElse("unknown"),
                     clientIp);
             throw new AuthenticationFailedException("credentials refused");
         }

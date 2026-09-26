@@ -160,7 +160,7 @@ public class DeviceService {
     }
 
     private static String labelOf(Session session) {
-        return Optional.ofNullable(session.<String>getAttribute(DeviceService.LABEL_ATTRIBUTE))
+        return Optional.ofNullable(session.<String>getAttribute(LABEL_ATTRIBUTE))
                 .filter(label -> !label.isBlank())
                 .orElse(UNLABELLED);
     }

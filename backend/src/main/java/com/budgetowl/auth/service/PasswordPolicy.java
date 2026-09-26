@@ -37,11 +37,12 @@ public class PasswordPolicy {
 
     private static final String BREACHED_LIST = "security/breached-passwords.txt";
 
-    private final Set<String> breached;
-
-    public PasswordPolicy() {
-        this.breached = loadBreachedList();
-    }
+    /**
+     * Loaded once, statically: a constructor that throws leaves a partially built object reachable
+     * (SpotBugs {@code CT_CONSTRUCTOR_THROW}), and a missing list still has to fail loudly rather
+     * than quietly accepting every password in the world.
+     */
+    private static final Set<String> BREACHED = loadBreachedList();
 
     /**
      * Whether an encoder will accept this value at all.
@@ -66,7 +67,7 @@ public class PasswordPolicy {
         if (!isEncodable(rawPassword)) {
             throw refusal("too-long");
         }
-        if (breached.contains(rawPassword.toLowerCase(Locale.ROOT))) {
+        if (BREACHED.contains(rawPassword.toLowerCase(Locale.ROOT))) {
             throw refusal("breached");
         }
     }
