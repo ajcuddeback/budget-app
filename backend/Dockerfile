@@ -13,6 +13,11 @@ RUN mvn -B -q package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
+# Same reasoning as the web image: take Alpine's current security patches rather than whatever
+# the base image happened to freeze. This one passed its scan today; it is the same treadmill
+# tomorrow.
+RUN apk upgrade --no-cache
+
 # Never root. A container escape should not start from uid 0.
 RUN addgroup -S owl && adduser -S -G owl owl
 WORKDIR /app

@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Run the whole gate on demand, on any branch. Useful for checking a change to CI itself, or a
+  # job that only fires on a schedule, without opening a pull request to find out.
+  workflow_dispatch:
   schedule:
     # Weekly full mutation run. Scoped-to-changed-classes runs on every PR; this catches decay
     # in code nobody has touched (ADR-0024).
@@ -246,14 +249,18 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Backend mutation — changed classes (PR) or full (schedule)
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
-          else
-            mvn -B -f backend org.pitest:pitest-maven:scmMutationCoverage \
-              -Dpit.scm.originBranch=origin/${{ github.base_ref || 'main' }}
-          fi
+      - name: Backend mutation
+        # PIT 1.20 removed the scmMutationCoverage goal, so the scoped-to-changed-classes run
+        # ADR-0024 describes is no longer available out of the box. Running the full analysis
+        # everywhere instead: the codebase is small enough that it costs seconds, and a scoped
+        # run that does not exist is worse than a full one that does. Revisit when this gets
+        # slow — that is the point at which the ADR's reasoning starts to bite.
+        #
+        # test-compile is NOT optional. PIT mutates target/classes and runs target/test-classes;
+        # on a clean checkout both are empty, and PIT's response is "No mutations found", which
+        # reads like a filter problem rather than a missing build. It passed locally only
+        # because a previous `mvn verify` had left the output behind.
+        run: mvn -B -f backend test-compile org.pitest:pitest-maven:mutationCoverage
 
       - name: Upload mutation reports
         if: always()

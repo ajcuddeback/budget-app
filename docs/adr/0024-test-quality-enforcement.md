@@ -111,3 +111,17 @@ that make assertion-free tests both likely and expensive.
 **Follow-ups:** wire PIT, ArchUnit and jqwik with the backend skeleton (slice 1) so the rules
 exist before there is code to violate them. Stryker with the frontend. Start thresholds low and
 ratchet.
+
+## Amendment — 2026-09-26: the scoped mutation run no longer exists
+
+PIT 1.20 removed the `scmMutationCoverage` goal, so "scoped to changed classes on PRs, full on a
+schedule" is no longer available from the plugin. CI runs the full analysis on every trigger
+instead.
+
+That is currently free — 40 mutations, a few seconds — and a scoped run that does not exist is
+worse than a full one that does. The reasoning in this ADR still holds, though: when the full run
+starts costing minutes, it will need scoping again, either by computing changed classes in the
+workflow and passing `-DtargetClasses`, or by a plugin that provides it. The first person to find
+this job slow should treat that as the signal, not as an annoyance.
+
+First recorded score: **70% mutation, 80% test strength**, threshold 60%.
