@@ -388,3 +388,70 @@ Qualify layer patterns with the root package when the rule looks at *dependency 
 only imports `com.budgetowl`.
 
 *Added 2026-09-26 — slice 2.*
+
+## Spring MVC logs the request body at DEBUG, and a record prints every component
+
+`Read "application/json;charset=UTF-8" to [LoginRequest[email=ada@example.com, password=...]]`.
+
+That is one DEBUG line from `AbstractMessageConverterMethodArgumentResolver`, and the value in it
+is a real password, because a record's generated `toString` prints all of its components. Turning
+on debug logging to chase an unrelated bug would have collected every password anyone typed —
+which is how credentials are actually stolen: not by breaking the hash, but by reading a log or a
+bug report somebody pasted into an issue.
+
+**Any record that holds a credential must override `toString`.** `SecretsAreNotPrintableTest`
+enforces it: it constructs every record in the codebase with a component named like a secret,
+asks it to print itself, and fails naming the class if the sentinel comes back.
+
+*Added 2026-09-26 — slice 2, found by the disclosure test rather than by review.*
+
+## Spring Security's request cache creates a session for every unauthenticated request
+
+`ExceptionTranslationFilter` saves the request before invoking the entry point, so a form login can
+replay it afterwards. Saving it means `request.getSession(true)`. With Spring Session JDBC that is
+an **INSERT**, on an unauthenticated request, as fast as an attacker can send them.
+
+This API has no form login and nothing to replay, so the cache is pure cost:
+`.requestCache(cache -> cache.requestCache(new NullRequestCache()))`.
+
+Noticed only because a logout test asserted the session table was empty afterwards and found a row
+with a null principal. A test that asserted "the old cookie is rejected" alone would have passed.
+
+*Added 2026-09-26 — slice 2.*
+
+## A filter added before `AuthorizationFilter` runs after `AnonymousAuthenticationFilter`
+
+Our bearer-token filter checked `SecurityContextHolder.getContext().getAuthentication() == null`
+before doing anything — the obvious guard — and never ran, because the anonymous filter has already
+put an `AnonymousAuthenticationToken` there for every unauthenticated request.
+
+The symptom is the worst kind: every bearer request answered `401`, which is exactly what a wrong
+token looks like. Add an authentication filter **before `AnonymousAuthenticationFilter`**, and treat
+anonymous as "nobody yet" rather than as somebody.
+
+*Added 2026-09-26 — slice 2.*
+
+## BCrypt refuses a password over 72 bytes by throwing — from `matches` as well as `encode`
+
+Spring Security 6.3+ validates the length rather than silently truncating, so an over-long password
+is an `IllegalArgumentException` and therefore a **500 on a login attempt**, where the answer should
+have been "no". Every path that hands a submitted password to the encoder has to check the byte
+length first (`PasswordPolicy.isEncodable`).
+
+The first thing it broke was this feature's own dummy hash for the constant-response login, which
+was two UUIDs — 73 bytes — and took the whole application context down at startup.
+
+*Added 2026-09-26 — slice 2.*
+
+## RFC 7807's `instance` is the request URI, and a token can be in the URI
+
+`POST /api/invitations/{token}/accept` carries a credential in its path, so an error response built
+with `request.getRequestURI()` as its `instance` hands the link back inside the problem body — and
+made four failures that must be indistinguishable (used, revoked, expired, never existed) tell
+themselves apart by their instance.
+
+Use the handler's matched pattern (`HandlerMapping.bestMatchingPattern`), which is template-shaped.
+Before routing there is no pattern, so redact long opaque path segments; leave UUIDs alone, because
+an id is not a credential and support needs to see which row was asked for.
+
+*Added 2026-09-26 — slice 2.*

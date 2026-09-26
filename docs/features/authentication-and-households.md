@@ -1,6 +1,7 @@
 # Feature: Authentication & households
 
-- **Status:** In progress — this is slice 2
+- **Status:** In progress — this is slice 2. Schema, services, endpoints and their tests are
+  built; the Angular and Flutter clients are not, and neither is OIDC.
 - **Owner:** Repository owner
 - **Last updated:** 2026-09-26
 - **Related:** ADR-0016 (self-hosted), ADR-0017 (households), ADR-0018 (auth),
@@ -201,7 +202,7 @@ constrained to an encoded form for the same reason.
 | `POST` | `/api/setup/first-user` | Create the first user + household | public, only while no user exists |
 | `POST` | `/api/auth/login` | Start a session (web) | public, rate-limited |
 | `POST` | `/api/auth/token` | Issue a bearer token (mobile) | public, rate-limited |
-| `POST` | `/api/auth/logout` | End the current session/token | authenticated |
+| `POST` | `/api/auth/logout` | End the current session/token | authenticated (401 when not — see below) |
 | `GET` | `/api/auth/me` | Current user + households + current role | authenticated |
 | `GET` | `/api/auth/devices` | This user's sessions and tokens | authenticated |
 | `DELETE` | `/api/auth/devices/{id}` | Revoke one | authenticated, own only |
@@ -214,7 +215,7 @@ constrained to an encoded form for the same reason.
 | `POST` | `/api/invitations/{token}/accept` | Join (existing or new user) | public + token |
 | `PATCH` | `/api/households/current/members/{id}` | Change role | `OWNER`, not self |
 | `PATCH` | `/api/households/current/members/me` | Own display currency and locale | authenticated, self only |
-| `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household |
+| `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household — **not built**, see below |
 | `DELETE` | `/api/households/current/members/{id}` | Remove, or leave | `OWNER`, or self |
 
 The only public routes in the entire application are the setup pair, login, token issue, and
@@ -338,7 +339,7 @@ listed as ruled out — that is what stops this analysis being redone.
 | First-user-only setup | database check in the same transaction as the insert |
 | Password hashing | Spring Security `PasswordEncoder`, adaptive (argon2/bcrypt) |
 | Constant-response login | service layer: dummy-hash compare when no user found |
-| Rate limiting per IP and per email | filter in front of the auth endpoints |
+| Rate limiting per IP and per email | `AuthRateLimiter`, called first in the auth services (see below) |
 | CSRF token on state-changing session requests | `SecurityConfig`, session transport only |
 | Session id rotation on login | `SecurityConfig` |
 | Hashes unreturnable | projections in the persistence layer, not DTO annotations |
@@ -349,23 +350,42 @@ listed as ruled out — that is what stops this analysis being redone.
 ### Tests proving each control
 
 Every one of these must fail if its control is removed. That is the whole point of listing them.
+The backend tests that do it are named alongside each; `*IT` are end-to-end over real HTTP against
+a Testcontainers PostgreSQL, `*Test` are unit tests.
 
 1. `401` unauthenticated on **every** non-public endpoint, enumerated — not a sample.
+   → `AuthorizationIT.answers401ToAnUnauthenticatedBrowser`, and the same list under a bearer token.
 2. `VIEWER` gets `403` on every write; `MEMBER` gets `403` on every owner-only endpoint.
+   → `AuthorizationIT.answers403ToAViewerOnEveryWrite`, `...ToAMemberOnEveryOwnerOnlyEndpoint`.
 3. Nobody can change their own role, including an `OWNER`.
+   → `AuthorizationIT.refusesAnOwnerChangingTheirOwnRole`, `...refusesAMemberPromotingThemselves`.
 4. Unknown email and wrong password return the same status, same body, and comparable latency.
+   → `AuthenticationIT.answersIdenticallyForAnUnknownEmailAndAWrongPassword` and
+   `...takesComparableTimeFor...`; `AuthenticationServiceTest` proves the dummy comparison runs.
 5. `/api/setup/first-user` is refused once a user exists — including two concurrent callers.
+   → `SetupIT.refusesASecondFirstUser`, `...exactlyOneOfTwoSimultaneousCallersBecomesTheAdministrator`.
 6. Last-owner rule holds with two concurrent transactions; exactly one succeeds.
-7. Session id changes across login.
+   → `LastOwnerRuleIT` (database), `HouseholdIT.refusesToLetTheLastOwnerLeave` (the answer a caller gets).
+7. Session id changes across login. → `AuthenticationIT.changesTheSessionIdAcrossLogin`.
 8. Missing or wrong CSRF token → `403` on the session transport.
+   → `TransportIT.refusesAStateChangingSessionRequestWithNoCsrfToken`, `...WithTheWrongCsrfToken`.
 9. The same endpoint behaves identically under session and bearer transports (ADR-0018).
+   → `TransportIT.answersIdenticallyOnBothTransportsFor...`, compared on the bytes.
 10. Invitation: expired, revoked and already-used all produce an identical response.
+    → `InvitationIT.answersIdenticallyForUsedRevokedExpiredAndUnknownLinks` (four cases, not three).
 11. Invitation accepted twice → second attempt fails.
+    → `InvitationIT.refusesASecondAcceptanceOfTheSameLink`.
 12. **Raw JSON assertions** that no response body contains `password_hash`, `token_hash`, or any
     token value — asserted on the serialized string, not on the DTO type.
+    → `CredentialDisclosureIT.neverPutsACredentialInAResponseBody` and `...returnsATokenExactlyOnceAndNeverAgain`;
+    a token necessarily appears in the one response that issues it, so "never" is "exactly once".
 13. Log output contains no token, hash, or `Authorization` value after a full login/logout cycle.
+    → `CredentialDisclosureIT.logsNoCredentialDuringAFullSignInAndSignOut`, and the same at `DEBUG`.
+    `SecretsAreNotPrintableTest` makes the leak that test found unwritable again.
 14. Revoked token and logged-out session are rejected on the very next request.
+    → `AuthenticationIT.rejectsARevokedTokenOnTheVeryNextRequest`, `...rejectsTheOldSessionImmediatelyAfterLogout`.
 15. A signed-in user with no membership gets `403` from a household endpoint, not a crash.
+    → `AuthorizationIT.answers403NotACrashForASignedInUserWithNoMembership`.
 
 ### Accepted risks
 
@@ -381,6 +401,93 @@ Every one of these must fail if its control is removed. That is the whole point 
   addition to this feature, and it needs its own ADR.
 - **Rate limiting is per-instance and in-memory.** Adequate for one household on one box;
   it would not survive a multi-instance deployment, which this product does not have.
+
+## What the backend actually does, where it differs from the text above
+
+Decisions taken while building the service and web layers. Each one is a deviation, a resolution
+of something ambiguous, or a consequence worth knowing before reading the code.
+
+**Logout is authenticated, and answers `401` when it is not.** The API table says authenticated and
+the threat model's first test enumerates every non-public endpoint, so it cannot also be the
+"succeeds when not logged in" endpoint the *Sessions and devices* section describes. What is
+idempotent is the effect: logging out twice, or with a token that is already revoked, reveals
+nothing beyond the ordinary `401`.
+
+**Nothing hands out a credential except login and token issue.** Neither `POST
+/api/setup/first-user` nor `POST /api/invitations/{token}/accept` signs anybody in; both create the
+account and the caller signs in afterwards. An endpoint that both creates an administrator and
+issues a credential has two chances to be wrong instead of one, and an invitation that handed out
+a session would turn a forwarded link into an account takeover.
+
+**Accepting an invitation is refused for any signed-in caller** with
+`invitation-requires-sign-out`, not only for one signed in "as somebody else". Comparing the
+invited address with the signed-in one would answer a question about who the link is for, and the
+address on an invitation is a label rather than an authorization. Sign out, then accept.
+
+**The invitation response returns the token and a relative `acceptPath`, not an absolute link.**
+The only origin the server has is the `Host` header, which the caller sets; a credential-bearing
+URL assembled from it is a phishing link with our name on it. The client composes the link from
+its own origin.
+
+**The invitation token is in the path, and that has a cost.** `POST
+/api/invitations/{token}/accept` is the API the spec asks for, so a request line containing a live
+invitation token exists. Nothing this application logs contains it — asserted in
+`CredentialDisclosureIT` against our own loggers — but Spring's request-line logging at `DEBUG`
+does, and so would any reverse proxy's access log. The shipped level is `INFO`. A deployment that
+fronts the API with nginx should exclude that path from its access log.
+
+**There is no endpoint that lists invitations.** The API table has create and revoke-by-id only, so
+the id comes from the creation response. Not an oversight to fix silently: adding a list endpoint
+is a new row in that table and a new `401`/role test.
+
+**A `VIEWER` may change their own password and their own display preferences.** "A `VIEWER` may
+read but never write" is about household data. `PATCH /api/households/current/members/me` and
+`POST /api/auth/password` are self-scoped and carry no role requirement, exactly as the API table
+says.
+
+**Changing a password revokes every session and token of that user, including the one that made the
+request.** Changing a password you believe has leaked and staying signed in everywhere it leaked to
+would be worth very little. The UI signs in again afterwards.
+
+**Rate limiting lives in the services, not in a filter.** The threat model's table says "filter in
+front of the auth endpoints"; a filter can key on the IP but not on the email, because the email is
+in a request body a filter would have to buffer and parse before the framework does. `AuthRateLimiter`
+is called as the first statement of `AuthenticationService.authenticate`, `AuthTokenService`'s issue
+path and `InvitationService.accept`, and is keyed on the IP **and** the submitted email — submitted,
+not found, so an address that does not exist is throttled exactly like one that does.
+
+**CSRF is exempted for exactly two shapes**, and disabled for none: a request carrying an
+`Authorization: Bearer` header, and `POST /api/auth/token`, which is how a cookie-less mobile client
+obtains a bearer token in the first place. Login, first-user setup and invitation acceptance all
+require the token, because browsers reach them.
+
+**The devices list identifies a session by a SHA-256 of its id.** The session id *is* the cookie, so
+a devices screen listing real ids would hand over every live credential the user has. Tokens are
+identified by their row id, which is useless without the token.
+
+**Session timeouts are split.** The idle timeout is Spring Session's (`spring.session.timeout`,
+30 minutes); the absolute one is ours, because Spring Session has no notion of it —
+`AbsoluteSessionTimeoutFilter` ends a session older than `budgetowl.security.session.absolute-timeout`
+(12 hours) however active it has been.
+
+**Passwords are checked against a bundled list**, `backend/src/main/resources/security/breached-passwords.txt`.
+A file rather than a breach API: nothing in the core may require a service we operate or an internet
+connection (ADR-0016). An operator who wants a real corpus mounts a larger file over it.
+
+**Maximum password length is 72 bytes**, which is BCrypt's limit rather than a policy choice. Spring
+Security's encoder throws past it — from `matches` as well as `encode` — so every path that hands a
+submitted password to the encoder checks the length first and refuses rather than failing.
+
+**`DELETE /api/auth/me` is not built.** Self-deletion is refused while owning a household, and the
+way out is to transfer ownership or delete the household — and household deletion is out of scope
+for this slice, so self-deletion arrives with it. The row stays in the API table as the record of
+where it will live.
+
+**Test 12 is implemented as "once, and never again".** Its literal wording — no response body
+contains any token value — cannot hold: a bearer token and an invitation link have to come back
+exactly once, or there is no way to have one. `CredentialDisclosureIT` asserts that each appears in
+exactly one body across a full journey, and that no body ever contains a password hash, a token
+hash or a session id.
 
 ## Edge cases
 
