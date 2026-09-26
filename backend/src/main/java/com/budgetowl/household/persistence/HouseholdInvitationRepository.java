@@ -102,7 +102,7 @@ public interface HouseholdInvitationRepository extends Repository<HouseholdInvit
             order by i.createdAt desc
             """)
     List<HouseholdInvitationSummary> findPendingSummariesByHouseholdId(
-            @Param("householdId") UUID householdId, @Param("now") java.time.Instant now);
+            @Param("householdId") UUID householdId, @Param("now") Instant now);
 
     /**
      * Whether this address already has a live invitation.
@@ -127,5 +127,5 @@ public interface HouseholdInvitationRepository extends Repository<HouseholdInvit
     boolean existsPendingForEmail(
             @Param("householdId") UUID householdId,
             @Param("email") String email,
-            @Param("now") java.time.Instant now);
+            @Param("now") Instant now);
 }
