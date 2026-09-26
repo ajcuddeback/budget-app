@@ -8,7 +8,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * The constraints, exercised against the database rather than against the code that is supposed to
@@ -25,6 +27,8 @@ class SchemaConstraintsIT extends PersistenceTestBase {
             "0000000000000000000000000000000000000000000000000000000000000001";
     private static final String SHA256_B =
             "0000000000000000000000000000000000000000000000000000000000000002";
+
+    @Autowired private PasswordEncoder passwordEncoder;
 
     private UUID owner;
     private UUID household;
@@ -107,6 +111,96 @@ class SchemaConstraintsIT extends PersistenceTestBase {
     }
 
     @Test
+    void refusesAPlaintextPasswordThatHappensToStartWithADollarSign() {
+        // The constraint used to ask only for 20 characters and a leading '{' or '$'. A dollar
+        // sign is a perfectly ordinary character to start a passphrase with, and the one defect
+        // this column exists to make impossible walked straight through.
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE users SET password_hash = ? WHERE id = ?",
+                                        "$uperSecretPassw0rd!",
+                                        owner))
+                .hasMessageContaining("ck_users_password_hash_encoded");
+    }
+
+    @Test
+    void refusesAPlaintextPasswordDressedUpAsAnUnknownAlgorithm() {
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE users SET password_hash = ? WHERE id = ?",
+                                        "$money$makes$the$world$go$round",
+                                        owner))
+                .hasMessageContaining("ck_users_password_hash_encoded");
+    }
+
+    @Test
+    void acceptsWhatTheApplicationsOwnEncoderActuallyProduces() {
+        // Tested with the real bean rather than a literal, because a constraint that rejects the
+        // encoder the application ships with would take down registration and password change.
+        String encoded = passwordEncoder.encode("ada-example-passphrase");
+
+        assertThatCode(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE users SET password_hash = ? WHERE id = ?",
+                                        encoded,
+                                        owner))
+                .doesNotThrowAnyException();
+        assertThat(encoded).startsWith("{bcrypt}$2a$");
+    }
+
+    @Test
+    void acceptsTheOtherEncodedFormsAnUpgradeCouldProduce() {
+        // Bare BCrypt and bare Argon2 (no {id} prefix), and a pbkdf2 hash carrying its prefix —
+        // pbkdf2 is registered for verification, and its output is bare hex with no '$' anywhere.
+        for (String encoded :
+                new String[] {
+                    "$2a$12$Xf7QeQoMhRz7ljV0.3G8PuT6sFf0v5nq2mG0zR3xW3Qo6q1qP1G2y",
+                    "$2b$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRS",
+                    "$argon2id$v=19$m=16384,t=2,p=1$c29tZXNhbHQ$aGFzaGhhc2hoYXNoaGFzaA",
+                    "{pbkdf2}5c7a1b2d3e4f5061728394a5b6c7d8e9f0112233445566778899aabbccddeeff"
+                }) {
+            assertThatCode(
+                            () ->
+                                    jdbc.update(
+                                            "UPDATE users SET password_hash = ? WHERE id = ?",
+                                            encoded,
+                                            owner))
+                    .as(encoded)
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void refusesADisplayNameLongerThanTheEdgeAllows() {
+        // `text` is a gigabyte. Bean Validation caps this at 100 on every request DTO today, and
+        // the database is the half of that agreement which a new caller cannot opt out of.
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE users SET display_name = ? WHERE id = ?",
+                                        "n".repeat(101),
+                                        owner))
+                .hasMessageContaining("ck_users_display_name_length");
+    }
+
+    @Test
+    void refusesAnEmailLongerThanRfc5321Allows() {
+        assertThatThrownBy(() -> insertUser("a".repeat(243) + "@example.com"))
+                .hasMessageContaining("ck_users_email_length");
+    }
+
+    @Test
+    void acceptsAnEmailRightUpToTheLimit() {
+        String address = "a".repeat(242) + "@example.com";
+
+        assertThatCode(() -> insertUser(address)).doesNotThrowAnyException();
+        assertThat(address).hasSize(254);
+    }
+
+    @Test
     void allowsAUserWithNoPasswordAtAll() {
         // An OIDC-provisioned user. NULL is the honest representation, and it must stay legal.
         assertThat(
@@ -126,6 +220,17 @@ class SchemaConstraintsIT extends PersistenceTestBase {
                                         "blank@example.com",
                                         "   "))
                 .hasMessageContaining("ck_users_display_name_present");
+    }
+
+    @Test
+    void refusesAHouseholdNameLongerThanTheEdgeAllows() {
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "UPDATE households SET name = ? WHERE id = ?",
+                                        "h".repeat(101),
+                                        household))
+                .hasMessageContaining("ck_households_name_length");
     }
 
     // ---------------------------------------------------------------------- household_members
@@ -281,6 +386,20 @@ class SchemaConstraintsIT extends PersistenceTestBase {
         jdbc.update("DELETE FROM users WHERE id = ?", other);
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM auth_tokens", Long.class)).isZero();
+    }
+
+    @Test
+    void refusesADeviceLabelLongerThanTheEdgeAllows() {
+        // The label is the user's own words for their phone, typed at login, and it is stored
+        // next to a live credential.
+        assertThatThrownBy(() -> insertToken(SHA256_A, "d".repeat(101)))
+                .hasMessageContaining("ck_auth_tokens_device_label_length");
+    }
+
+    @Test
+    void refusesAnInvitationEmailLongerThanRfc5321Allows() {
+        assertThatThrownBy(() -> insertInvitation("a".repeat(243) + "@example.com", SHA256_A))
+                .hasMessageContaining("ck_household_invitations_email_length");
     }
 
     // -------------------------------------------------------------------- instance_settings

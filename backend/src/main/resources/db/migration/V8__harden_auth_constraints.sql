@@ -109,3 +109,62 @@ BEGIN
     RETURN NULL;
 END;
 $$;
+
+-- ---------------------------------------------------------------------------------------------
+-- 3. A plaintext password that happens to start with '$' is still a plaintext password.
+--
+-- The V2 constraint asked for 20 characters and a leading '{id}' or '$'. It is the backstop
+-- against the worst defect this table could have — a user's typed password written into the
+-- column in the clear — and '$uperSecretPassw0rd!' satisfied it. So did any other passphrase
+-- somebody chose to start with a dollar sign.
+--
+-- A leading '$' is not evidence of anything. What is evidence is the algorithm naming itself:
+-- DelegatingPasswordEncoder writes '{bcrypt}$2a$12$...' and a bare encoder writes '$2a$...' or
+-- '$argon2id$...'. The accepted set is deliberately the encoders this application registers or
+-- could plausibly register, and nothing else; a new one arrives with a migration, which is the
+-- right amount of friction for a change to how credentials are stored.
+--
+-- The length floor stays: it is what stops a short string that merely looks like a prefix.
+-- ---------------------------------------------------------------------------------------------
+
+ALTER TABLE users
+    DROP CONSTRAINT ck_users_password_hash_encoded;
+
+ALTER TABLE users
+    ADD CONSTRAINT ck_users_password_hash_encoded
+        CHECK (password_hash IS NULL
+               OR (length(password_hash) >= 20
+                   AND (
+                       -- DelegatingPasswordEncoder's form: a registered algorithm id, then that
+                       -- encoder's own output. Pbkdf2 emits bare hex, so no '$' is required here.
+                       password_hash ~ '^\{(bcrypt|pbkdf2|argon2|scrypt|sha256)\}[^{}[:space:]]+$'
+                       -- A bare hash from a single encoder. It has to name its algorithm.
+                       OR password_hash ~ '^\$(2[abxy]?|argon2(id|i|d))\$')));
+
+-- ---------------------------------------------------------------------------------------------
+-- 4. Bounds on the text an attacker can choose the length of.
+--
+-- `text` in PostgreSQL is up to a gigabyte. `display_name`, `device_label`, the household's
+-- `name` and both `citext` email columns had no ceiling at all, so the only thing standing
+-- between a 100 MB display name and the table was Bean Validation at the edge — which does hold
+-- today (every @RequestBody is @Valid and the DTOs carry @Size), and which is exactly the kind of
+-- guarantee that a new endpoint, a CLI, an import or a future OIDC provisioning path silently
+-- opts out of. Invitation acceptance in particular is UNAUTHENTICATED.
+--
+-- The numbers match the DTOs on purpose: 100 for a human-chosen label, 254 for an email address
+-- (RFC 5321's limit on a forward path). The database and the edge agreeing is the point; the
+-- database is the half that cannot be bypassed by adding a caller.
+-- ---------------------------------------------------------------------------------------------
+
+ALTER TABLE users
+    ADD CONSTRAINT ck_users_display_name_length CHECK (length(display_name) BETWEEN 1 AND 100),
+    ADD CONSTRAINT ck_users_email_length CHECK (length(email) BETWEEN 3 AND 254);
+
+ALTER TABLE households
+    ADD CONSTRAINT ck_households_name_length CHECK (length(name) BETWEEN 1 AND 100);
+
+ALTER TABLE household_invitations
+    ADD CONSTRAINT ck_household_invitations_email_length CHECK (length(email) BETWEEN 3 AND 254);
+
+ALTER TABLE auth_tokens
+    ADD CONSTRAINT ck_auth_tokens_device_label_length CHECK (length(device_label) BETWEEN 1 AND 100);

@@ -203,6 +203,21 @@ class InvitationIT extends ApiTestBase {
     }
 
     @Test
+    void refusesAnOversizedDisplayNameOnTheUnauthenticatedAcceptEndpoint() {
+        // Acceptance is one of the five public routes: no session, no token, no rate limit on
+        // body size beyond the container's. `users.display_name` is `text`, which is a gigabyte,
+        // so the only thing between this endpoint and a table full of somebody's junk is the
+        // @Size on the DTO — and, since V8, a CHECK behind it.
+        Household household = seedHousehold();
+        String token = invite(household.owner(), JOINER_EMAIL, "MEMBER");
+
+        ApiResponse response = acceptInvitation(token, "C".repeat(101), JOINER_SECRET);
+
+        assertThat(response.status()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Long.class)).isEqualTo(3L);
+    }
+
+    @Test
     void revokesALinkBeforeItIsUsed() {
         Household household = seedHousehold();
         String token = invite(household.owner(), JOINER_EMAIL, "MEMBER");
