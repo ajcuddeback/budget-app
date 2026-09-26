@@ -12,11 +12,16 @@ import java.util.UUID;
  * the codebase.
  *
  * <p><b>The hash goes in and a boolean comes out.</b> There is no getter, no record component and
- * no {@code toString} that can reach it, so it cannot be copied into a DTO, a log line, a problem
- * response or a debugger-friendly string by accident. That is what
- * docs/features/authentication-and-households.md means by "projections that cannot carry them
- * rather than relying on annotations to hide them" — an annotation is a thing somebody has to
- * remember, and this is a thing nobody can forget.
+ * no {@code toString} that can reach it, so once one of these is loaded the value cannot be copied
+ * into a DTO, a log line, a problem response or a debugger-friendly string. That part is structural
+ * — an annotation is a thing somebody has to remember, and this is a thing nobody can forget.
+ *
+ * <p><b>What it does not guarantee.</b> {@code passwordHash} is still a persistent attribute, so a
+ * query can ask for it directly: {@code select c.passwordHash from PasswordCredential c} returns a
+ * {@code String} and never touches this class's API. Nothing does that, and {@code
+ * SecretsAreNotProjectedTest} reads every query string under {@code com.budgetowl..persistence} to
+ * keep it that way. Matching the column in a {@code WHERE} and writing it in a {@code SET} are
+ * fine; selecting it is not.
  *
  * <p>Mapped onto the {@code users} table alongside {@link UserAccount}, which deliberately has no
  * password field at all. The split is the point: the entity every service touches cannot leak what

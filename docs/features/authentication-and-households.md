@@ -162,8 +162,16 @@ instance_settings     registration_open, oidc_* , password_login_enabled
 
 Plus Spring Session's tables for the web transport.
 
-- `password_hash` and `token_hash` are **never** selected into a DTO. Use projections that cannot
-  carry them rather than relying on annotations to hide them.
+- `password_hash` and `token_hash` are **never** selected into a DTO. What is *structural* is the
+  object model: `PasswordCredential` and `AuthToken` are the only mappings of those columns, they
+  expose no accessor for them, and no DTO has a field one could land in — so a secret cannot be
+  copied out of an object that has been loaded (`SecretsAreUnreadableTest`). What is *not*
+  structural is the query: both are persistent attributes, so one line of JPQL
+  (`select c.passwordHash from PasswordCredential c`) would return a `String`, and no test that
+  inspects instances can see a query written in an annotation. `SecretsAreNotProjectedTest` reads
+  every query string under `com.budgetowl..persistence` and fails on a projection; a hash may be
+  matched in a `WHERE` and written in a `SET`, never selected. The only query that selects
+  `password_hash` is `PasswordCredentialRepository.findByEmail`, which hydrates the entity.
 - Invitation and auth tokens are stored **hashed**, never in plaintext — a database dump must not
   yield working credentials.
 - `household_members` is the membership graph, not financial data, so it carries `user_id` rather
