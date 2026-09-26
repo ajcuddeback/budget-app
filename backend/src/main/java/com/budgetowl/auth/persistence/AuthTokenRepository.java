@@ -52,9 +52,14 @@ public interface AuthTokenRepository extends Repository<AuthToken, UUID> {
      * has to be immediate — "a removed member keeps using a mobile token" is only mitigated if the
      * very next request fails.
      *
+     * <p><b>{@code clearAutomatically}.</b> A bulk update bypasses the persistence context. An
+     * {@link AuthToken} already loaded in this transaction — the caller's own, touched by {@code
+     * markUsedAt} on the way in — would keep a snapshot with {@code revokedAt = null} and flush it
+     * back, quietly un-revoking the token this call exists to kill.
+     *
      * @return how many were revoked
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             update AuthToken t

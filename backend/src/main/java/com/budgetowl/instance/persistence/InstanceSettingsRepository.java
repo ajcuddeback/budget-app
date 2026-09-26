@@ -35,9 +35,19 @@ public interface InstanceSettingsRepository extends Repository<InstanceSettings,
      * caller forgets this method: {@code uq_households_singleton} permits one household ever, and
      * {@code uq_users_single_instance_admin} permits one instance administrator ever.
      *
+     * <p><b>{@code clearAutomatically}.</b> This is a bulk JPQL update: it goes straight to the
+     * database and the persistence context never hears about it. An {@link InstanceSettings} loaded
+     * earlier in the same transaction would keep a snapshot saying {@code setupCompletedAt = null},
+     * and any later dirty-check flush of that instance would write the null back — re-opening
+     * {@code POST /api/setup/first-user} to whoever finds the instance next. The javadoc above
+     * tells callers to take this claim first, in the transaction that does the insert, which is
+     * exactly the ordering that would set that trap. A caller that needs to write settings
+     * afterwards must re-read them; {@code save()} on the instance it held before the claim would
+     * merge the pre-claim snapshot back over the row.
+     *
      * @return 1 for the single caller that won, 0 for everyone else
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             update InstanceSettings s

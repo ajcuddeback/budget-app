@@ -3,6 +3,7 @@ package com.budgetowl.instance.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.budgetowl.instance.domain.InstanceSettings;
 import com.budgetowl.persistence.PersistenceTestBase;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -88,6 +89,38 @@ class FirstUserSetupIT extends PersistenceTestBase {
                         jdbc.queryForObject(
                                 "SELECT count(*) FROM users WHERE is_instance_admin", Long.class))
                 .isEqualTo(1L);
+    }
+
+    @Test
+    void aSettingsEntityLoadedBeforeTheClaimCannotUndoIt() {
+        // The claim is a bulk JPQL update, and a bulk update bypasses the persistence context.
+        // An InstanceSettings loaded earlier in the same transaction still believes
+        // setup_completed_at is NULL, and Hibernate writes every column when it flushes a dirty
+        // entity — so one unrelated change to that instance reverts the claim and re-opens
+        // POST /api/setup/first-user to whoever finds the instance next. The ordering that sets
+        // the trap is the one the repository tells callers to use: claim first, then work.
+        transaction.executeWithoutResult(
+                status -> {
+                    InstanceSettings loadedBefore = settings.findCurrent().orElseThrow();
+                    assertThat(settings.claimFirstUserSetup(Instant.now())).isEqualTo(1);
+                    // Anything at all that marks the row dirty. Opening registration is a real
+                    // thing the setup transaction might plausibly do, and dirty checking alone is
+                    // enough — nobody has to call save() for Hibernate to write the whole row.
+                    loadedBefore.openRegistration();
+                });
+
+        assertThat(setupCompletedAt())
+                .as("setup stays claimed; nothing may re-open the first-user endpoint")
+                .isNotNull();
+        // The other half of the bargain: the instance loaded before the claim is now detached, so
+        // its change went nowhere either. A caller that wants to write settings in the same
+        // transaction must re-read them after claiming — and `save()` on the stale instance is not
+        // the way, because merge would copy the pre-claim snapshot straight back over the row.
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT registration_open FROM instance_settings WHERE id = 1",
+                                Boolean.class))
+                .isFalse();
     }
 
     @Test

@@ -40,9 +40,14 @@ public interface PasswordCredentialRepository extends Repository<PasswordCredent
      * @param encodedPassword output of a {@code PasswordEncoder}. A plaintext value is refused by
      *     {@code ck_users_password_hash_encoded}, so this cannot quietly store a credential in the
      *     clear.
+     *     <p><b>{@code clearAutomatically}.</b> A bulk update the persistence context knows nothing
+     *     about. {@code PasswordService} loads the credential to verify the current password and
+     *     then calls this; without the clear, a re-read in the same transaction returns the same
+     *     instance with the old hash still in it, and any flush of that instance writes the old
+     *     hash back — the password change appears to succeed and the old password still works.
      * @return 1 when the user exists, 0 otherwise
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             update PasswordCredential c

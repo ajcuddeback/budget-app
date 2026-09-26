@@ -37,7 +37,8 @@ class SchemaMigrationIT extends PersistenceTestBase {
                         "V4__invitations.sql",
                         "V5__auth_tokens.sql",
                         "V6__instance_settings.sql",
-                        "V7__spring_session.sql");
+                        "V7__spring_session.sql",
+                        "V8__harden_auth_constraints.sql");
 
         Integer failures =
                 jdbc.queryForObject(
