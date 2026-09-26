@@ -1,11 +1,10 @@
 package com.budgetowl.common.web;
 
 import com.budgetowl.common.ErrorCode;
-import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.http.ProblemDetail;
 
 /**
  * Builds the one error shape this API returns: RFC 7807 {@code application/problem+json}.
@@ -14,6 +13,12 @@ import org.springframework.http.ProblemDetail;
  * sentence</b> (ADR-0023), so a translation ships without a backend release. {@code title} and
  * {@code detail} are English developer-facing fallbacks for logs and are never the string a user
  * sees.
+ *
+ * <p>A plain map rather than Spring's {@code ProblemDetail} for one reason: not every error is
+ * produced by a controller. An unauthenticated request is refused by the filter chain, before any
+ * {@code @RestControllerAdvice} exists to handle it, and that response has to be byte-identical in
+ * shape to the ones the advice builds. Two renderers of "the same" object drift; one builder
+ * cannot.
  *
  * <p>Nothing here ever carries a stack trace, a SQL fragment, a class name or a value the caller
  * submitted. The {@code correlationId} is what ties a user's report to the real error in the logs,
@@ -29,12 +34,12 @@ public final class ApiProblem {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    public static ProblemDetail of(
+    public static Map<String, Object> of(
             ErrorCode errorCode,
             String instancePath,
             Map<String, Object> params,
             String correlationId) {
-        ProblemDetail problem =
+        Map<String, Object> problem =
                 build(
                         errorCode.status(),
                         errorCode.code(),
@@ -42,35 +47,36 @@ public final class ApiProblem {
                         instancePath,
                         correlationId);
         if (!params.isEmpty()) {
-            problem.setProperty("params", params);
+            problem.put("params", params);
         }
         return problem;
     }
 
-    public static ProblemDetail ofFieldErrors(
+    public static Map<String, Object> ofFieldErrors(
             String instancePath, List<FieldProblem> errors, String correlationId) {
-        ProblemDetail problem =
+        Map<String, Object> problem =
                 build(
                         ErrorCode.VALIDATION_FAILED.status(),
                         ErrorCode.VALIDATION_FAILED.code(),
                         ErrorCode.VALIDATION_FAILED.title(),
                         instancePath,
                         correlationId);
-        problem.setProperty("errors", errors);
+        problem.put("errors", errors);
         return problem;
     }
 
-    public static ProblemDetail build(
+    public static Map<String, Object> build(
             int status, String code, String title, String instancePath, String correlationId) {
-        ProblemDetail problem = ProblemDetail.forStatus(status);
-        problem.setType(URI.create(TYPE_PREFIX + code));
-        problem.setTitle(title);
-        problem.setDetail(title + ".");
+        Map<String, Object> problem = new LinkedHashMap<>();
+        problem.put("type", TYPE_PREFIX + code);
+        problem.put("title", title);
+        problem.put("status", status);
+        problem.put("detail", title + ".");
         if (instancePath != null) {
-            problem.setInstance(URI.create(instancePath));
+            problem.put("instance", instancePath);
         }
-        problem.setProperty("code", code);
-        problem.setProperty("correlationId", correlationId);
+        problem.put("code", code);
+        problem.put("correlationId", correlationId);
         return problem;
     }
 

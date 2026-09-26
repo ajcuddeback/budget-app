@@ -44,13 +44,26 @@ public class PasswordPolicy {
     }
 
     /**
+     * Whether an encoder will accept this value at all.
+     *
+     * <p>BCrypt ignores everything past 72 bytes and Spring Security's encoder <b>throws</b> rather
+     * than silently truncating — including from {@code matches}. Every path that hands a submitted
+     * password to the encoder checks this first, because the alternative is a 500 on a login
+     * attempt: an unhandled exception where the answer should have been "no".
+     */
+    public static boolean isEncodable(String rawPassword) {
+        return rawPassword != null
+                && rawPassword.getBytes(StandardCharsets.UTF_8).length <= MAXIMUM_BYTES;
+    }
+
+    /**
      * @throws InvalidRequestException when the password may not be used
      */
     public void requireAcceptable(String rawPassword) {
         if (rawPassword == null || rawPassword.length() < MINIMUM_LENGTH) {
             throw refusal("too-short");
         }
-        if (rawPassword.getBytes(StandardCharsets.UTF_8).length > MAXIMUM_BYTES) {
+        if (!isEncodable(rawPassword)) {
             throw refusal("too-long");
         }
         if (breached.contains(rawPassword.toLowerCase(Locale.ROOT))) {

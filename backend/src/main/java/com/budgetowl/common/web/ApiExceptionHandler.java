@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -56,17 +56,17 @@ public class ApiExceptionHandler {
     private static final String LAST_OWNER_CONSTRAINT = "ck_households_at_least_one_owner";
 
     @ExceptionHandler(DomainException.class)
-    ResponseEntity<ProblemDetail> handleDomain(
+    ResponseEntity<Map<String, Object>> handleDomain(
             DomainException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         log(exception.errorCode(), correlationId, exception);
-        ProblemDetail problem =
+        Map<String, Object> problem =
                 ApiProblem.of(
                         exception.errorCode(),
                         request.getRequestURI(),
                         exception.params(),
                         correlationId);
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = problemHeaders();
         if (exception instanceof RateLimitedException rateLimited) {
             headers.add(
                     HttpHeaders.RETRY_AFTER, Long.toString(rateLimited.retryAfter().toSeconds()));
@@ -75,7 +75,7 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ProblemDetail> handleInvalidBody(
+    ResponseEntity<Map<String, Object>> handleInvalidBody(
             MethodArgumentNotValidException exception, HttpServletRequest request) {
         List<ApiProblem.FieldProblem> errors =
                 exception.getBindingResult().getFieldErrors().stream()
@@ -90,7 +90,7 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
-    ResponseEntity<ProblemDetail> handleInvalidParameter(
+    ResponseEntity<Map<String, Object>> handleInvalidParameter(
             HandlerMethodValidationException exception, HttpServletRequest request) {
         List<ApiProblem.FieldProblem> errors =
                 exception.getParameterValidationResults().stream()
@@ -114,7 +114,7 @@ public class ApiExceptionHandler {
      * which is the request body, which on these endpoints is a password. It is never included.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ProblemDetail> handleUnreadableBody(
+    ResponseEntity<Map<String, Object>> handleUnreadableBody(
             HttpMessageNotReadableException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.MALFORMED_REQUEST, correlationId, null);
@@ -134,7 +134,7 @@ public class ApiExceptionHandler {
      * message text, because a message is prose that PostgreSQL may reword and this is a contract.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
-    ResponseEntity<ProblemDetail> handleIntegrityViolation(
+    ResponseEntity<Map<String, Object>> handleIntegrityViolation(
             DataIntegrityViolationException exception, HttpServletRequest request) {
         String constraint = RedactedThrowable.violatedConstraint(exception).orElse("");
         ErrorCode code =
@@ -148,7 +148,7 @@ public class ApiExceptionHandler {
 
     /** Reached when authorization is refused past the filter chain — method security, mostly. */
     @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ProblemDetail> handleAccessDenied(
+    ResponseEntity<Map<String, Object>> handleAccessDenied(
             AccessDeniedException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.FORBIDDEN, correlationId, null);
@@ -158,7 +158,7 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    ResponseEntity<ProblemDetail> handleAuthentication(
+    ResponseEntity<Map<String, Object>> handleAuthentication(
             AuthenticationException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.NOT_AUTHENTICATED, correlationId, null);
@@ -180,7 +180,7 @@ public class ApiExceptionHandler {
      * nothing else.
      */
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ProblemDetail> handleUnexpected(
+    ResponseEntity<Map<String, Object>> handleUnexpected(
             Exception exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         if (exception instanceof ErrorResponse refusal) {
@@ -193,6 +193,7 @@ public class ApiExceptionHandler {
                             "Request rejected",
                             request.getRequestURI(),
                             correlationId),
+                    problemHeaders(),
                     status(status));
         }
         log(ErrorCode.INTERNAL_ERROR, correlationId, exception);
@@ -204,8 +205,15 @@ public class ApiExceptionHandler {
                         correlationId));
     }
 
-    private static ResponseEntity<ProblemDetail> problem(ProblemDetail problem) {
-        return new ResponseEntity<>(problem, status(problem.getStatus()));
+    private static ResponseEntity<Map<String, Object>> problem(Map<String, Object> problem) {
+        return new ResponseEntity<>(
+                problem, problemHeaders(), status((Integer) problem.get("status")));
+    }
+
+    private static HttpHeaders problemHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PROBLEM_JSON);
+        return headers;
     }
 
     private static org.springframework.http.HttpStatusCode status(int status) {

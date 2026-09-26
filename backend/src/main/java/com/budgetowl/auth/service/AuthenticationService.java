@@ -51,6 +51,9 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthRateLimiter rateLimiter;
 
+    /** Stands in for a password too long to hash, so the comparison still happens. */
+    private static final String OVERLONG_SUBSTITUTE = "not-a-password";
+
     /**
      * A real encoded password nobody knows, so the no-user path does the same work as the found
      * path. Computed once at startup from fresh randomness: a constant in the source would be a
@@ -69,7 +72,8 @@ public class AuthenticationService {
         this.settings = settings;
         this.passwordEncoder = passwordEncoder;
         this.rateLimiter = rateLimiter;
-        this.dummyHash = passwordEncoder.encode(UUID.randomUUID() + ":" + UUID.randomUUID());
+        // One UUID, not two: BCrypt refuses anything over 72 bytes, and two of them is 73.
+        this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     /**
@@ -117,6 +121,13 @@ public class AuthenticationService {
      * internet.
      */
     private boolean comparePassword(Optional<PasswordCredential> credential, String rawPassword) {
+        if (!PasswordPolicy.isEncodable(rawPassword)) {
+            // Over BCrypt's 72-byte limit, which the encoder refuses by throwing. That has to be
+            // an ordinary authentication failure rather than a 500: no stored password is longer
+            // than the limit, so nothing this long can be right.
+            passwordEncoder.matches(OVERLONG_SUBSTITUTE, dummyHash);
+            return false;
+        }
         if (credential.isPresent() && credential.get().isSet()) {
             return credential.get().matches(rawPassword, passwordEncoder::matches);
         }

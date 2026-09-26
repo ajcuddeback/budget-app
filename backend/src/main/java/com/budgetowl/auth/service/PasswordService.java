@@ -51,7 +51,8 @@ public class PasswordService {
                 credentials
                         .findById(userId)
                         .orElseThrow(() -> new NotFoundException("no such user"));
-        if (!credential.matches(currentPassword, passwordEncoder::matches)) {
+        if (!PasswordPolicy.isEncodable(currentPassword)
+                || !credential.matches(currentPassword, passwordEncoder::matches)) {
             // 403 rather than 401: the caller is authenticated and stays authenticated. Answering
             // 401 here would sign a user out for mistyping their old password.
             throw new ForbiddenException(
