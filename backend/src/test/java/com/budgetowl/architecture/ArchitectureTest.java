@@ -49,7 +49,7 @@ class ArchitectureTest {
                     .resideInAPackage("..web..")
                     .should()
                     .dependOnClassesThat()
-                    .resideInAPackage("..persistence..")
+                    .resideInAPackage("com.budgetowl..persistence..")
                     .allowEmptyShould(true)
                     .because(
                             "a controller that calls a repository directly skips the layer that"
@@ -62,9 +62,18 @@ class ArchitectureTest {
                     .resideInAPackage("..domain..")
                     .should()
                     .dependOnClassesThat()
-                    .resideInAnyPackage("..web..", "..service..", "..persistence..")
+                    .resideInAnyPackage(
+                            "com.budgetowl..web..",
+                            "com.budgetowl..service..",
+                            "com.budgetowl..persistence..")
                     .allowEmptyShould(true)
-                    .because("dependencies point inward only");
+                    .because(
+                            "dependencies point inward only. Qualified with com.budgetowl on"
+                                    + " purpose: `..persistence..` also matches"
+                                    + " `jakarta.persistence`, so the unqualified form failed every"
+                                    + " entity the moment the first one was written — and the"
+                                    + " overview puts entities in ..domain.. with their JPA"
+                                    + " mapping annotations");
 
     @ArchTest
     static final ArchRule transactional_only_in_service =
@@ -77,6 +86,35 @@ class ArchitectureTest {
                     .resideInAPackage("..service..")
                     .allowEmptyShould(true)
                     .because("services own transactions, not controllers or repositories");
+
+    @ArchTest
+    static final ArchRule repositories_expose_no_inherited_unscoped_finder =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..persistence..")
+                    .should()
+                    .beAssignableTo(org.springframework.data.repository.CrudRepository.class)
+                    .orShould()
+                    .beAssignableTo(
+                            org.springframework.data.repository.PagingAndSortingRepository.class)
+                    .allowEmptyShould(true)
+                    .because(
+                            "CrudRepository brings findById, findAll and deleteAll with it, and a"
+                                    + " household-owned findById is the bug ADR-0008 exists to"
+                                    + " prevent. Extend the bare Repository marker and write out"
+                                    + " the scoped methods (docs/guides/database-style.md)");
+
+    @ArchTest
+    static final ArchRule entities_live_in_domain =
+            classes()
+                    .that()
+                    .areAnnotatedWith(jakarta.persistence.Entity.class)
+                    .should()
+                    .resideInAPackage("..domain..")
+                    .allowEmptyShould(true)
+                    .because(
+                            "an entity in ..web.. is an entity one step from being a response body"
+                                    + " (docs/architecture/overview.md)");
 
     // These two check every class in the codebase, so they are never empty and need no exemption.
 
