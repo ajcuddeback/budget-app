@@ -249,14 +249,13 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Backend mutation — changed classes (PR) or full (schedule)
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
-          else
-            mvn -B -f backend org.pitest:pitest-maven:scmMutationCoverage \
-              -Dpit.scm.originBranch=origin/${{ github.base_ref || 'main' }}
-          fi
+      - name: Backend mutation
+        # PIT 1.20 removed the scmMutationCoverage goal, so the scoped-to-changed-classes run
+        # ADR-0024 describes is no longer available out of the box. Running the full analysis
+        # everywhere instead: the codebase is small enough that it costs seconds, and a scoped
+        # run that does not exist is worse than a full one that does. Revisit when this gets
+        # slow — that is the point at which the ADR's reasoning starts to bite.
+        run: mvn -B -f backend org.pitest:pitest-maven:mutationCoverage
 
       - name: Upload mutation reports
         if: always()
