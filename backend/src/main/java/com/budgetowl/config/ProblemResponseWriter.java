@@ -34,7 +34,7 @@ public class ProblemResponseWriter {
         Map<String, Object> problem =
                 ApiProblem.of(
                         errorCode,
-                        request.getRequestURI(),
+                        ApiProblem.instanceOf(request),
                         Map.of(),
                         ApiProblem.newCorrelationId());
         response.setStatus(errorCode.status());

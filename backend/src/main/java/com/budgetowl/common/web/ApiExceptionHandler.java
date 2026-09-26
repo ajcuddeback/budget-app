@@ -63,7 +63,7 @@ public class ApiExceptionHandler {
         Map<String, Object> problem =
                 ApiProblem.of(
                         exception.errorCode(),
-                        request.getRequestURI(),
+                        ApiProblem.instanceOf(request),
                         exception.params(),
                         correlationId);
         HttpHeaders headers = problemHeaders();
@@ -86,7 +86,8 @@ public class ApiExceptionHandler {
                         .toList();
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.VALIDATION_FAILED, correlationId, null);
-        return problem(ApiProblem.ofFieldErrors(request.getRequestURI(), errors, correlationId));
+        return problem(
+                ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
@@ -106,7 +107,8 @@ public class ApiExceptionHandler {
                         .toList();
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.VALIDATION_FAILED, correlationId, null);
-        return problem(ApiProblem.ofFieldErrors(request.getRequestURI(), errors, correlationId));
+        return problem(
+                ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
     }
 
     /**
@@ -121,7 +123,7 @@ public class ApiExceptionHandler {
         return problem(
                 ApiProblem.of(
                         ErrorCode.MALFORMED_REQUEST,
-                        request.getRequestURI(),
+                        ApiProblem.instanceOf(request),
                         Map.of(),
                         correlationId));
     }
@@ -143,7 +145,8 @@ public class ApiExceptionHandler {
                         : ErrorCode.CONFLICT;
         String correlationId = ApiProblem.newCorrelationId();
         log(code, correlationId, exception);
-        return problem(ApiProblem.of(code, request.getRequestURI(), Map.of(), correlationId));
+        return problem(
+                ApiProblem.of(code, ApiProblem.instanceOf(request), Map.of(), correlationId));
     }
 
     /** Reached when authorization is refused past the filter chain — method security, mostly. */
@@ -154,7 +157,10 @@ public class ApiExceptionHandler {
         log(ErrorCode.FORBIDDEN, correlationId, null);
         return problem(
                 ApiProblem.of(
-                        ErrorCode.FORBIDDEN, request.getRequestURI(), Map.of(), correlationId));
+                        ErrorCode.FORBIDDEN,
+                        ApiProblem.instanceOf(request),
+                        Map.of(),
+                        correlationId));
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -165,7 +171,7 @@ public class ApiExceptionHandler {
         return problem(
                 ApiProblem.of(
                         ErrorCode.NOT_AUTHENTICATED,
-                        request.getRequestURI(),
+                        ApiProblem.instanceOf(request),
                         Map.of(),
                         correlationId));
     }
@@ -191,7 +197,7 @@ public class ApiExceptionHandler {
                             status,
                             "request-rejected",
                             "Request rejected",
-                            request.getRequestURI(),
+                            ApiProblem.instanceOf(request),
                             correlationId),
                     problemHeaders(),
                     status(status));
@@ -200,7 +206,7 @@ public class ApiExceptionHandler {
         return problem(
                 ApiProblem.of(
                         ErrorCode.INTERNAL_ERROR,
-                        request.getRequestURI(),
+                        ApiProblem.instanceOf(request),
                         Map.of(),
                         correlationId));
     }

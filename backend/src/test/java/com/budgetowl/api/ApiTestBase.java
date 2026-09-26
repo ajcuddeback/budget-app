@@ -25,11 +25,7 @@ import org.springframework.test.context.TestPropertySource;
  * asserts the shipped default is the opposite.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestPropertySource(
-        properties = {
-            "budgetowl.security.bcrypt-strength=4",
-            "server.servlet.session.cookie.secure=false"
-        })
+@TestPropertySource(properties = "budgetowl.security.bcrypt-strength=4")
 public abstract class ApiTestBase extends PostgresTestBase {
 
     protected static final String OWNER_EMAIL = "ada@example.com";

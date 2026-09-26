@@ -1,6 +1,7 @@
 package com.budgetowl.common.web;
 
 import com.budgetowl.common.ErrorCode;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,52 @@ public final class ApiProblem {
     private static final String TYPE_PREFIX = "https://budgetapp.dev/errors/";
 
     private ApiProblem() {}
+
+    /** A path segment this long that is not an id is almost certainly a secret. */
+    private static final int OPAQUE_SEGMENT_LENGTH = 20;
+
+    private static final java.util.regex.Pattern UUID_SEGMENT =
+            java.util.regex.Pattern.compile(
+                    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+
+    /**
+     * The path to report as {@code instance} — <b>never the raw request URI</b>.
+     *
+     * <p>{@code POST /api/invitations/{token}/accept} carries a credential in its path, so echoing
+     * the URI would put a working invitation link in an error body, and from there into whatever
+     * logs or bug reports the body reaches. It would also make four failures that must be
+     * indistinguishable (used, revoked, expired, never existed) distinguishable by their instance.
+     *
+     * <p>The handler's matched pattern is used when there is one, which is already template-shaped
+     * and cannot contain a secret. Before routing — a CSRF refusal, an unauthenticated request —
+     * there is no pattern, so any long opaque segment is redacted instead. Ids are left alone: a
+     * UUID in a path is not a credential, and support needs to see which row was asked for.
+     */
+    public static String instanceOf(HttpServletRequest request) {
+        Object pattern =
+                request.getAttribute(
+                        "org.springframework.web.servlet.HandlerMapping.bestMatchingPattern");
+        if (pattern instanceof String matched && !matched.isBlank()) {
+            return matched;
+        }
+        return redactOpaqueSegments(request.getRequestURI());
+    }
+
+    static String redactOpaqueSegments(String uri) {
+        String[] segments = uri.split("/", -1);
+        StringBuilder redacted = new StringBuilder(uri.length());
+        for (int index = 0; index < segments.length; index++) {
+            if (index > 0) {
+                redacted.append('/');
+            }
+            String segment = segments[index];
+            boolean opaque =
+                    segment.length() >= OPAQUE_SEGMENT_LENGTH
+                            && !UUID_SEGMENT.matcher(segment).matches();
+            redacted.append(opaque ? "{redacted}" : segment);
+        }
+        return redacted.toString();
+    }
 
     public static String newCorrelationId() {
         return UUID.randomUUID().toString().replace("-", "");
