@@ -1,8 +1,8 @@
 # Feature: Authentication & households
 
-- **Status:** Planned — this is slice 2
+- **Status:** In progress — this is slice 2
 - **Owner:** Repository owner
-- **Last updated:** 2026-09-06
+- **Last updated:** 2026-09-26
 - **Related:** ADR-0016 (self-hosted), ADR-0017 (households), ADR-0018 (auth),
   ADR-0026 (one household per instance; owner is operator),
   `../architecture/security-model.md` (**read it before implementing any of this**)
@@ -83,8 +83,12 @@ recovery path that works from the host shell, because that is all the user has.
 
 ### Households and membership
 
-- A user belongs to **one or more** households; every session has a **current household**, which
-  the user can switch. All financial APIs resolve scope from it (ADR-0017).
+- **An instance holds exactly one household** (ADR-0026). Every user who has a membership has it
+  in that household; there is no switcher, and no way to create a second. All financial APIs
+  resolve scope from the caller's verified membership (ADR-0017), which is why the endpoints are
+  named `/current` — the shape survives if a managed deployment ever needs more.
+- A user may exist **without** a membership (an OIDC-provisioned user before invitation). They
+  sign in successfully and see an empty state, not an error.
 - Roles: **`OWNER`** (everything, including invites, role changes, removal, deletion),
   **`MEMBER`** (read and write financial data), **`VIEWER`** (read only).
 - **A household always has at least one `OWNER`.** The last owner cannot be removed, demoted, or
@@ -196,32 +200,165 @@ invitation acceptance. Everything else denies by default (ADR-0016 non-negotiabl
 
 ## UI
 
-**Web:** first-run setup · login · household switcher in the header · household settings with
-members and roles · invitation dialog that produces a copyable link · logged-in devices.
+**Web:** first-run setup · login · household settings with members and roles · invitation dialog
+that produces a copyable link · logged-in devices. **No household switcher** — there is one
+household (ADR-0026).
 
 **Mobile:** a server URL field before anything else — the instance is the user's, so this is
 step one and must handle LAN hostnames, self-signed certificates and non-standard ports
-(`../guides/flutter-style.md`). Then login, household switcher, devices.
+(`../guides/flutter-style.md`). Then login and devices.
 
-## Security considerations
+## Threat model
 
-This feature *is* the security boundary; everything in `../architecture/security-model.md`
-applies. The parts specific to it:
+Worked through before implementation (`/threat-model`, 2026-09-26). This feature *is* the security
+boundary — everything in `../architecture/security-model.md` applies; below is what is specific to
+it.
 
-- **Enumeration:** login, invitation acceptance, and password reset must all be non-committal
-  about whether an address exists.
-- **Timing:** always hash-compare on login, even for an unknown user.
-- **Session fixation:** rotate the session id on login. Test it explicitly.
-- **Invitation tokens are credentials:** high entropy, hashed at rest, single-use, expiring,
-  never logged, never in a `Referer`-visible URL we control.
-- **Privilege escalation:** a `MEMBER` must not be able to change any role, including their own;
-  a `VIEWER` must not be able to write anything. Both need explicit tests on every endpoint.
-- **Cross-household leakage** is the highest-severity bug available here. The household comes
-  from verified membership, never from the request.
-- **Lockout:** the last-owner rule and the OIDC safeguard both exist to stop a user locking
-  themselves out of their own financial records with nobody to call.
-- **Credential leakage:** no hash, token, or invitation token in any DTO, log line, error or
-  trace. Assert on raw JSON in tests, not on DTO types.
+### Assets
+
+| Asset | Why it is worth taking |
+|---|---|
+| **Password hashes** | Offline cracking yields credentials people reuse elsewhere |
+| **Session cookies / bearer tokens** | Direct impersonation, no cracking needed |
+| **Invitation tokens** | Possession *is* the authorization — a link is a credential |
+| **The household's financial record** | The reason the product exists. Auth is the only gate in front of it |
+| **Member email addresses** | PII, and a target list for whoever finds the instance |
+| **Instance-admin capability** | Reaches logs, backups, exports — i.e. everyone's data (ADR-0026) |
+
+### Actors
+
+1. **An unauthenticated stranger who found the instance.** The primary adversary: a self-hosted
+   box may be internet-facing with no WAF, no rate-limiting proxy, and nobody watching.
+2. **An invited `MEMBER` or `VIEWER`** trying to act beyond their role.
+3. **Someone holding a leaked invitation link** — forwarded, screenshotted, in a chat backup.
+4. **A hostile page in a member's browser** (CSRF; XSS if we ever allow injection).
+5. **Someone with a stolen cookie or token**, from a shared machine or a backup.
+6. *Not* an adversary: **the instance operator.** See Accepted risks.
+
+### Attacks considered
+
+Each written as a finishable sentence. Attacks that could not be finished were dropped, and are
+listed as ruled out — that is what stops this analysis being redone.
+
+**Live, and mitigated:**
+
+- *An attacker POSTs `/api/auth/login` with a list of addresses and reads the response to learn
+  which exist.* → identical status, body and comparable latency for unknown-email and
+  wrong-password; always hash-compare, against a dummy hash when no user was found.
+- *An attacker finds an internet-facing fresh-looking instance and POSTs `/api/setup/first-user`
+  to become its administrator.* → the endpoint is refused the moment any user exists, checked in
+  the same transaction as the insert so two simultaneous callers cannot both win.
+- *An attacker brute-forces one account, or sprays one password across many accounts.* → rate
+  limiting per IP **and** per email with exponential backoff; never a permanent lock, which
+  would be a DoS against the real user.
+- *A `VIEWER` sends `PATCH /api/households/current/members/{id}` to promote themselves.* → role
+  checked in the service layer; nobody may change their own role at all, and only an `OWNER` may
+  change anyone's.
+- *A `MEMBER` sends `POST /api/households/current/invitations` to add an accomplice.* → owner-only,
+  enforced in the service, with a `MEMBER`-gets-`403` test.
+- *An attacker replays a used or expired invitation link.* → single-use and expiring, both
+  enforced in the accept transaction; expired, revoked and already-used all return an identical
+  generic failure so the link's history is not disclosed.
+- *An attacker brute-forces the invitation token space.* → high-entropy token, hashed at rest,
+  and acceptance is rate-limited like login.
+- *A hostile page makes a member's browser POST an invitation or a role change.* → session
+  transport requires a CSRF token on every state-changing request; `SameSite=Lax` is defence in
+  depth, not the control.
+- *An attacker who has stolen a cookie keeps using it after the member logs out.* → sessions and
+  tokens are server-side and revocable; logout invalidates server-side, and revocation is
+  immediate. This is why bearer tokens are opaque rather than self-contained.
+- *An attacker fixes a session id before login and reuses it afterwards.* → session id rotates on
+  login, with an explicit test.
+- *A removed member keeps using a mobile token.* → removal revokes that user's sessions and
+  tokens for the household immediately.
+- *Two owners remove each other simultaneously, leaving the household with no administrator.* →
+  the last-owner rule is enforced as a database constraint inside the transaction, not as
+  application logic that races.
+- *A user deletes their own account while owning the household, stranding its data.* → refused,
+  with a specific reason (one of the few places a specific message is correct).
+- *An attacker reads a password hash or token out of an API response.* → hashes are never
+  selected into a DTO; projections that cannot carry them, rather than annotations that must be
+  remembered. Tests assert on raw JSON, not on DTO types.
+- *An attacker harvests credentials from logs or a bug report.* → no hash, token, invitation token
+  or `Authorization` header value is ever logged. Authentication events log user, source IP and
+  outcome only.
+- *An OIDC-provisioned user from the provider's whole directory lands inside the household.* →
+  OIDC may provision a *user*, never a membership. No membership means no financial data.
+- *An administrator disables password login before OIDC works and locks everyone out.* → refused
+  until at least one `OWNER` has completed a successful OIDC login; a CLI command re-enables it.
+- *An unauthenticated caller enumerates members via `GET /api/households/current/members`.* →
+  authenticated and member-only; the only public routes in the entire application are the setup
+  pair, login, token issue, and invitation acceptance.
+
+**Ruled out, with reasons:**
+
+- *Cross-household data leakage.* There is one household per instance (ADR-0026), so there is no
+  second household to leak to. **This removed what used to be the highest-value test in the
+  codebase**, and the risk did not disappear with it — it moved onto role enforcement and
+  authentication, which is why those carry explicit tests on every endpoint below.
+- *Tampering with a `householdId` in a request body.* The household is never read from the
+  request; it is resolved from verified membership. The parameter does not exist to tamper with.
+- *Timing attacks on the token comparison.* Tokens are looked up by hash, so the comparison is a
+  database index lookup, not a byte loop over a secret.
+- *Privilege escalation via the invited email address.* The email on an invitation is a label,
+  not an authorization — possession of the link grants access. Which is exactly why the link is
+  treated as a credential.
+
+### Controls, and where each is enforced
+
+| Control | Layer |
+|---|---|
+| Deny by default; four public routes, explicitly listed | `SecurityConfig` |
+| Unauthenticated → `401` (not `403`) | `HttpStatusEntryPoint`, already in place from slice 1 |
+| Role checks (`OWNER` / `MEMBER` / `VIEWER`) | service layer, never the controller |
+| Household resolved from verified membership | service layer |
+| Last-owner rule | **database constraint**, inside the transaction |
+| First-user-only setup | database check in the same transaction as the insert |
+| Password hashing | Spring Security `PasswordEncoder`, adaptive (argon2/bcrypt) |
+| Constant-response login | service layer: dummy-hash compare when no user found |
+| Rate limiting per IP and per email | filter in front of the auth endpoints |
+| CSRF token on state-changing session requests | `SecurityConfig`, session transport only |
+| Session id rotation on login | `SecurityConfig` |
+| Hashes unreturnable | projections in the persistence layer, not DTO annotations |
+| Credentials never logged | logging config + an explicit test |
+| Invitation single-use and expiring | accept transaction |
+| Join-time disclosure (ADR-0026) | the acceptance UI, above the button |
+
+### Tests proving each control
+
+Every one of these must fail if its control is removed. That is the whole point of listing them.
+
+1. `401` unauthenticated on **every** non-public endpoint, enumerated — not a sample.
+2. `VIEWER` gets `403` on every write; `MEMBER` gets `403` on every owner-only endpoint.
+3. Nobody can change their own role, including an `OWNER`.
+4. Unknown email and wrong password return the same status, same body, and comparable latency.
+5. `/api/setup/first-user` is refused once a user exists — including two concurrent callers.
+6. Last-owner rule holds with two concurrent transactions; exactly one succeeds.
+7. Session id changes across login.
+8. Missing or wrong CSRF token → `403` on the session transport.
+9. The same endpoint behaves identically under session and bearer transports (ADR-0018).
+10. Invitation: expired, revoked and already-used all produce an identical response.
+11. Invitation accepted twice → second attempt fails.
+12. **Raw JSON assertions** that no response body contains `password_hash`, `token_hash`, or any
+    token value — asserted on the serialized string, not on the DTO type.
+13. Log output contains no token, hash, or `Authorization` value after a full login/logout cycle.
+14. Revoked token and logged-out session are rejected on the very next request.
+15. A signed-in user with no membership gets `403` from a household endpoint, not a crash.
+
+### Accepted risks
+
+- **The instance operator can read everything.** Deliberate (ADR-0026): encrypting against the
+  person who holds the database, the volume and the backups would be theatre. Mitigated by
+  *disclosure* rather than by cryptography — the acceptance screen says so in plain words before
+  an invited person's account exists. That disclosure is therefore a security control, and
+  weakening or burying its wording is a security change.
+- **An invitation link in a chat backup is a live credential** until it expires or is used. Bounded
+  by single-use and a 7-day default expiry, and revocable. Not eliminated: any shareable-link
+  invitation has this property, and SMTP cannot be assumed (ADR-0016).
+- **No MFA in this slice.** Out of scope and recorded as such. It is the most valuable future
+  addition to this feature, and it needs its own ADR.
+- **Rate limiting is per-instance and in-memory.** Adequate for one household on one box;
+  it would not survive a multi-instance deployment, which this product does not have.
 
 ## Edge cases
 
@@ -230,9 +367,10 @@ applies. The parts specific to it:
 - Expired, revoked, or already-used invitation → identical generic failure for all three.
 - Last owner tries to leave, be removed, or demote themselves → refused with a clear reason
   (this is the one place a specific message is right; it is not an enumeration surface).
-- A user in three households switching between them mid-session.
+- A signed-in user with **no** membership (OIDC-provisioned, not yet invited) calling a
+  financial endpoint → `403`, not a crash and not an empty success.
 - A member removed while they have an active mobile token → next request fails cleanly, app
-  routes to household selection rather than crashing.
+  routes to a signed-out state rather than crashing.
 - OIDC user with no household membership → signs in successfully and sees an empty state
   explaining they need an invitation. Not an error.
 - Registration re-opened, then closed, with an invitation outstanding → the invitation still works.

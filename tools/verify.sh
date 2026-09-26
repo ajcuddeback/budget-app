@@ -116,12 +116,22 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   if [ ! -f frontend/package.json ]; then
     skip "frontend build" "frontend/ does not exist yet"
   else
+    # The Angular CLI refuses to run at all on an unsupported Node and says so in its own words,
+    # which surfaces here as three separate red checks that look like code failures. Check it once,
+    # up front, and name the actual problem.
+    required_node=$(node -p "require('./frontend/node_modules/@angular/cli/package.json').engines.node" 2>/dev/null || echo '')
+    running_node=$(node -v 2>/dev/null || echo 'none')
+    if [ -n "$required_node" ] && ! npx --prefix frontend semver -r "$required_node" "${running_node#v}" >/dev/null 2>&1; then
+      missing "frontend toolchain" "Node $running_node does not satisfy Angular's requirement ($required_node)"
+    else
+
     [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci --no-audit --no-fund
     run "lint"                            npm --prefix frontend run lint
     run "typecheck"                       npm --prefix frontend run typecheck
     run "unit tests + coverage threshold" npm --prefix frontend run test:coverage
     run "build"                           npm --prefix frontend run build
     run "npm audit (high+)"               npm --prefix frontend audit --audit-level=high
+    fi
   fi
 fi
 
