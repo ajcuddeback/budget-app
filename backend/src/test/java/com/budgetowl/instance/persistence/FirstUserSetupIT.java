@@ -55,6 +55,12 @@ class FirstUserSetupIT extends PersistenceTestBase {
 
         assertThat(first).isEqualTo(1);
         assertThat(second).isZero();
+        assertThat(settings.findCurrent())
+                .hasValueSatisfying(
+                        current -> {
+                            assertThat(current.isSetupComplete()).isTrue();
+                            assertThat(current.setupCompletedAt()).isNotNull();
+                        });
     }
 
     @RepeatedTest(5)

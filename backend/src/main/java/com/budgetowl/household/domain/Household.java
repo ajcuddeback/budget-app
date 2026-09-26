@@ -95,7 +95,10 @@ public class Household {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof Household that && id != null && id.equals(that.id);
+        // Reflexive even before the row exists: an unsaved entity must still equal
+        // itself, or putting one in a Set loses it.
+        return this == other
+                || (other instanceof Household that && id != null && id.equals(that.id));
     }
 
     @Override

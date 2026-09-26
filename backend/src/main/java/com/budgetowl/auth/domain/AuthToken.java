@@ -131,7 +131,10 @@ public class AuthToken {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof AuthToken that && id != null && id.equals(that.id);
+        // Reflexive even before the row exists: an unsaved entity must still equal
+        // itself, or putting one in a Set loses it.
+        return this == other
+                || (other instanceof AuthToken that && id != null && id.equals(that.id));
     }
 
     @Override

@@ -65,16 +65,24 @@ public class UserAccount {
         // for JPA
     }
 
-    private UserAccount(String email, String displayName, boolean instanceAdmin) {
-        this.email = Objects.requireNonNull(email, "email");
-        this.displayName = Objects.requireNonNull(displayName, "displayName");
-        this.status = UserStatus.ACTIVE;
-        this.instanceAdmin = instanceAdmin;
+    /**
+     * Validation lives in the factories rather than here because SpotBugs' {@code
+     * CT_CONSTRUCTOR_THROW} is right: a constructor that throws leaves a partially built object
+     * reachable, and this class cannot be {@code final} — Hibernate needs to proxy it for the lazy
+     * associations that point at it.
+     */
+    private static UserAccount create(String email, String displayName, boolean instanceAdmin) {
+        UserAccount user = new UserAccount();
+        user.email = Objects.requireNonNull(email, "email");
+        user.displayName = Objects.requireNonNull(displayName, "displayName");
+        user.status = UserStatus.ACTIVE;
+        user.instanceAdmin = instanceAdmin;
+        return user;
     }
 
     /** An ordinary user: no instance-administrator capability. */
     public static UserAccount member(String email, String displayName) {
-        return new UserAccount(email, displayName, false);
+        return create(email, displayName, false);
     }
 
     /**
@@ -83,7 +91,7 @@ public class UserAccount {
      * /api/setup/first-user} arrive at the same instant.
      */
     public static UserAccount instanceAdministrator(String email, String displayName) {
-        return new UserAccount(email, displayName, true);
+        return create(email, displayName, true);
     }
 
     public UUID id() {
@@ -132,7 +140,10 @@ public class UserAccount {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof UserAccount that && id != null && id.equals(that.id);
+        // Reflexive even before the row exists: an unsaved entity must still equal
+        // itself, or putting one in a Set loses it.
+        return this == other
+                || (other instanceof UserAccount that && id != null && id.equals(that.id));
     }
 
     @Override

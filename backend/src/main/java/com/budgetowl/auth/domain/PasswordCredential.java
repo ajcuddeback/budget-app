@@ -83,9 +83,12 @@ public class PasswordCredential {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof PasswordCredential that
-                && userId != null
-                && userId.equals(that.userId);
+        // Reflexive even before the row exists: an unsaved entity must still equal
+        // itself, or putting one in a Set loses it.
+        return this == other
+                || (other instanceof PasswordCredential that
+                        && userId != null
+                        && userId.equals(that.userId));
     }
 
     @Override
