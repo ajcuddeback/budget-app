@@ -361,19 +361,43 @@ Uniqueness is unaffected: the unique index is on the `citext` column and is case
 
 *Added 2026-09-26 — slice 2.*
 
-## A PostgreSQL CHECK violation puts the whole failing row in the error DETAIL
+## A PostgreSQL constraint violation puts the failing row, or the failing key, in the error DETAIL
 
 `ck_users_password_hash_encoded` exists so a plaintext password cannot be stored. When it fires,
 PostgreSQL's `DETAIL` line contains the entire failing row — *including the plaintext password
 that was rejected*. pgjdbc puts that in the exception message, and Spring's translator carries it
 into `DataIntegrityViolationException.getMessage()`.
 
-So: **never log the message or cause of a `DataIntegrityViolationException` raised by `users`.**
-Log the constraint name (`getServerErrorMessage().getConstraint()`) and nothing else. This applies
-to any `CHECK` on a column holding a secret and is not specific to that one constraint; there is
-no way to suppress `DETAIL` per constraint.
+It is not one constraint, and not only `CHECK`. Verified against real PostgreSQL:
 
-*Added 2026-09-26 — slice 2.*
+| Constraint | What `DETAIL` contains |
+|---|---|
+| `ck_users_password_hash_encoded` | the whole row, including the rejected plaintext password |
+| `ck_household_invitations_token_hash_sha256` | the whole row, including the invitation token |
+| `ck_auth_tokens_token_hash_sha256` | the whole row, including the bearer token |
+| `uq_users_email` | `Key (email)=(ada@example.com) already exists.` |
+
+The two token cases are worse than the password one: the token is the credential itself, so a
+line in a log file is a working credential with no cracking required. And `uq_users_email` is not
+an edge case at all — a duplicate registration is a routine path, and every one of them wants to
+write somebody's address into the log.
+
+So: **never log the message or the cause of a `DataIntegrityViolationException`.** Not for `users`,
+not for anything. There is no way to suppress `DETAIL` per constraint, and no way to tell a safe
+failure from an unsafe one at the call site — the two calls look identical, which is why
+documenting it is not enough.
+
+`common/RedactedThrowable` is the mechanism, and its shape is the only safe one: it keeps the
+class names in the cause chain and the *name* of the violated constraint, and throws away
+everything else — message, cause, server error text. An allowlist of "safe constraints" would be
+wrong, because the row is in `DETAIL` regardless of which constraint failed and a later migration
+can add a secret to a table whose constraints were on the list. A denylist would be worse: it
+fails open for every constraint nobody thought about. The constraint name is the one field that is
+a fixed identifier chosen by us rather than data supplied by a user, so it is the one field that
+can be kept — and it is enough for both the operator reading the log and
+`ApiExceptionHandler`, which branches on `ck_households_at_least_one_owner`.
+
+*Added 2026-09-26 — slice 2. Extended after the slice-2 security audit.*
 
 ## ArchUnit's `..persistence..` also matches `jakarta.persistence`
 
@@ -455,3 +479,20 @@ Before routing there is no pattern, so redact long opaque path segments; leave U
 an id is not a credential and support needs to see which row was asked for.
 
 *Added 2026-09-26 — slice 2.*
+
+## `SET CONSTRAINTS ALL IMMEDIATE` makes first-run setup fail, confusingly
+
+The last-owner rule is a `DEFERRABLE INITIALLY DEFERRED` constraint trigger
+(`ck_households_at_least_one_owner`, `V3__households.sql`), and it is deferred for a reason: a
+household is legitimately created with no owner and given its `OWNER` a statement later in the
+same transaction. First-run setup does exactly that.
+
+A session that runs `SET CONSTRAINTS ALL IMMEDIATE` — a pooled connection carrying it over, a
+psql session, a test helper, a future tool trying to "fail fast" — turns that into an error on the
+`INSERT INTO households` itself, saying the household would be left without an `OWNER` when the
+owner is two lines further down. The transaction is correct; the session is not.
+
+If setup or a test fails that way, look at the session's constraint mode before looking at the
+code. V3 cannot say so in its own header comment: merged migrations are frozen (ADR-0007).
+
+*Added 2026-09-26 — from the slice-2 security audit.*

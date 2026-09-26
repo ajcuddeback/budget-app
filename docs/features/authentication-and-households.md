@@ -178,15 +178,22 @@ Plus Spring Session's tables for the web transport.
   than the `household_id`-only rule that applies to financial tables.
 
 Migrations: `V2__users.sql`, `V3__households.sql`, `V4__invitations.sql`, `V5__auth_tokens.sql`,
-`V6__instance_settings.sql`, `V7__spring_session.sql`. Numbered from 2 because `V1__baseline.sql`
-shipped with slice 1 and is frozen (ADR-0007).
+`V6__instance_settings.sql`, `V7__spring_session.sql`, `V8__harden_auth_constraints.sql`. Numbered
+from 2 because `V1__baseline.sql` shipped with slice 1 and is frozen (ADR-0007). `V8` is the
+slice-2 security audit: it tightens four rules that V2–V6 already meant to state, and where it
+drops and recreates a constraint the name is kept, because the name is what
+`RedactedThrowable.violatedConstraint` surfaces and `ApiExceptionHandler` branches on. Read V2/V6
+for the intent and V8 for what is enforced.
 
 Three invariants are enforced by the **schema**, not by a service, because a service cannot
 enforce them without racing:
 
 - **The last-owner rule.** `households.owner_count` is maintained by a trigger on
   `household_members`, and a `DEFERRABLE INITIALLY DEFERRED` constraint trigger re-reads it at
-  `COMMIT`. Two concurrent removals must update the same `households` row, so the second blocks and
+  `COMMIT` — and, since `V8`, also checks that an `OWNER` membership actually exists. The counter
+  is what makes the concurrent case safe; it is not the invariant, and anything that writes it
+  directly (a restored backup, a `TRUNCATE`, psql) could otherwise switch the rule off silently
+  and permanently. Two concurrent removals must update the same `households` row, so the second blocks and
   then recomputes against the committed value; exactly one succeeds. Deferred rather than a `CHECK`
   because a household is legitimately created with no owner and given one a statement later in the
   same transaction — and because PostgreSQL cannot defer a `CHECK`. Failure arrives at `COMMIT` as
@@ -491,11 +498,50 @@ way out is to transfer ownership or delete the household — and household delet
 for this slice, so self-deletion arrives with it. The row stays in the API table as the record of
 where it will live.
 
+**An instance can never be left with no way to log in.** Password login may be hidden only while
+OIDC is *switched on* and an `OWNER` has completed a login through it —
+`ck_instance_settings_password_login_lockout`, tightened in `V8`. Checking the owner-login
+timestamp alone let OIDC be switched off afterwards, which is the operator locked out of their own
+financial records on their own hardware. `InstanceSettings.disableOidc()` restores password login
+and discards the timestamp, and `configureOidc` discards it when the issuer or client id changes:
+a login against a different provider proves nothing about this one.
+
+**Invitation acceptance claims the invitation with a conditional UPDATE**
+(`HouseholdInvitationRepository.markAccepted`), before it does anything else, exactly as first-run
+setup claims `setup_completed_at`. Read-check-write cannot be single-use: two holders of one link
+read it in the same instant and both join. A rowcount of 0 is answered with the same generic
+`invitation-unusable` as expired, revoked and never-existed — losing the race must not become a
+fifth, distinguishable outcome.
+
+**Every bulk `@Modifying` query sets `clearAutomatically` and `flushAutomatically`.** A bulk update
+goes round the persistence context, and Hibernate writes *every* column when it flushes a dirty
+entity — so an instance loaded before the update does not merely hold a stale value, it restores
+it. Left alone that un-revokes a token, reverts a password change, or writes
+`setup_completed_at` back to `NULL` and re-opens `POST /api/setup/first-user`. A caller that needs
+the row afterwards must re-read it; `save()` on the instance it held before would merge the old
+snapshot back over the row.
+
 **Test 12 is implemented as "once, and never again".** Its literal wording — no response body
 contains any token value — cannot hold: a bearer token and an invitation link have to come back
 exactly once, or there is no way to have one. `CredentialDisclosureIT` asserts that each appears in
 exactly one body across a full journey, and that no body ever contains a password hash, a token
 hash or a session id.
+
+## Deployment notes
+
+**The runtime connection must not be the database owner.** It currently is, and while it is, every
+database-level guarantee in this document is advisory: a superuser or table owner can `TRUNCATE`
+past row triggers, set `session_replication_role = replica` to switch triggers off for the
+session, or `ALTER TABLE ... DISABLE TRIGGER`. The last-owner rule, the owner-count trigger and
+the one-household index are all bypassable from the application's own connection pool.
+
+The fix is a deployment change rather than a migration, which is why it is recorded here and not
+done: **Flyway migrates as the owning role, and the runtime pool connects as a separate,
+non-owning role with `SELECT, INSERT, UPDATE, DELETE` on the application tables and nothing
+else.** That also makes `REVOKE UPDATE (owner_count) ON households` mean something — as things
+stand it would read like protection and provide none, which is why `V8` deliberately does not
+include it. Scope this with the deployment/packaging work; it needs a second role in the compose
+file and the Helm chart, and a decision about who runs migrations in a self-hosted upgrade.
 
 ## Edge cases
 
@@ -513,6 +559,10 @@ hash or a session id.
 - Registration re-opened, then closed, with an invitation outstanding → the invitation still works.
 - Two owners removing each other simultaneously → the last-owner rule must hold under
   concurrency, which means enforcing it in a transaction, not in application logic that races.
+- One invitation link presented twice at the same instant → exactly one acceptance succeeds; the
+  other gets the same generic failure as a link that never existed.
+- An administrator switches OIDC off while password login is hidden → password login comes back
+  with it, rather than the instance having no login route.
 
 ## Out of scope
 
@@ -560,10 +610,14 @@ Beyond the mandatory set in `../guides/testing-style.md`:
   authorizes correctly for web but not mobile is a real and easy bug.
 - **`VIEWER` gets `403` on every write endpoint**; `MEMBER` gets `403` on every `OWNER` endpoint.
 - Cross-household: a member of household A gets `404` on household B's resources.
-- The last-owner rule holds under **concurrent** removal attempts.
-- An invitation is single-use: the second acceptance fails.
-- Password login cannot be disabled before an `OWNER` has completed an OIDC login.
+- The last-owner rule holds under **concurrent** removal attempts, and when `owner_count` has been
+  desynchronised from the memberships it is supposed to count.
+- An invitation is single-use: the second acceptance fails, and so does a **simultaneous** one.
+- Password login cannot be disabled before an `OWNER` has completed an OIDC login, and OIDC cannot
+  be switched off while it is the only route in.
 - No `password_hash`, `token_hash` or invitation token appears in any response — asserted against
-  the raw JSON, not the DTO type.
+  the raw JSON, not the DTO type — and no query under `..persistence` selects one into a
+  projection, asserted against the query strings themselves.
+- A bulk `@Modifying` update is not silently undone by an entity loaded before it.
 - Registration is closed after the first user: `POST /api/setup/first-user` fails on a
   non-empty instance.
