@@ -102,9 +102,10 @@ public class HouseholdService {
             throw new ForbiddenException(
                     ErrorCode.OWN_ROLE_UNCHANGEABLE, "a member may not change their own role");
         }
-        if (target.role().isOwner() && !newRole.isOwner() && onlyOwner(actor.household().id())) {
-            throw new ConflictException(ErrorCode.LAST_OWNER, "the last owner may not be demoted");
-        }
+        // No last-owner pre-check here, deliberately. Demoting the last owner can only ever be
+        // self-demotion, which the rule above already refuses — and if that ever stops being true,
+        // ck_households_at_least_one_owner still fires at COMMIT and the error handler still
+        // answers 409 last-owner. A guard that cannot be reached is a guard nobody can trust.
 
         target.changeRoleTo(newRole);
         log.info(

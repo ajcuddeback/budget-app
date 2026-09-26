@@ -24,5 +24,19 @@ public final class SetupRequests {
             @NotBlank @Size(min = PasswordPolicy.MINIMUM_LENGTH, max = PasswordPolicy.MAXIMUM_BYTES)
                     String password,
             @NotBlank @Size(max = 100) String householdName,
-            @NotBlank @Pattern(regexp = "^[A-Za-z]{3}$") String baseCurrency) {}
+            @NotBlank @Pattern(regexp = "^[A-Za-z]{3}$") String baseCurrency) {
+
+        /**
+         * Redacted, all of it.
+         *
+         * <p>Spring MVC logs the deserialized request body at DEBUG ("Read ... to
+         * [CreateFirstUserRequest...]"), and a record's generated toString prints every component —
+         * which on this endpoint means a password in a log file. Emails are PII and a target list,
+         * so they do not go in either.
+         */
+        @Override
+        public String toString() {
+            return "CreateFirstUserRequest[redacted]";
+        }
+    }
 }

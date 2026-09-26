@@ -18,7 +18,21 @@ public final class AuthRequests {
      */
     public record LoginRequest(
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(max = PasswordPolicy.MAXIMUM_BYTES) String password) {}
+            @NotBlank @Size(max = PasswordPolicy.MAXIMUM_BYTES) String password) {
+
+        /**
+         * Redacted, all of it.
+         *
+         * <p>Spring MVC logs the deserialized request body at DEBUG ("Read ... to
+         * [LoginRequest...]"), and a record's generated toString prints every component — which on
+         * this endpoint means a password in a log file. Emails are PII and a target list, so they
+         * do not go in either.
+         */
+        @Override
+        public String toString() {
+            return "LoginRequest[redacted]";
+        }
+    }
 
     /**
      * @param deviceLabel the user's own words for the phone, shown on their devices screen so they
@@ -27,10 +41,38 @@ public final class AuthRequests {
     public record IssueTokenRequest(
             @NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(max = PasswordPolicy.MAXIMUM_BYTES) String password,
-            @NotBlank @Size(max = 100) String deviceLabel) {}
+            @NotBlank @Size(max = 100) String deviceLabel) {
+
+        /**
+         * Redacted, all of it.
+         *
+         * <p>Spring MVC logs the deserialized request body at DEBUG ("Read ... to
+         * [IssueTokenRequest...]"), and a record's generated toString prints every component —
+         * which on this endpoint means a password in a log file. Emails are PII and a target list,
+         * so they do not go in either.
+         */
+        @Override
+        public String toString() {
+            return "IssueTokenRequest[redacted]";
+        }
+    }
 
     public record ChangePasswordRequest(
             @NotBlank @Size(max = PasswordPolicy.MAXIMUM_BYTES) String currentPassword,
             @NotBlank @Size(min = PasswordPolicy.MINIMUM_LENGTH, max = PasswordPolicy.MAXIMUM_BYTES)
-                    String newPassword) {}
+                    String newPassword) {
+
+        /**
+         * Redacted, all of it.
+         *
+         * <p>Spring MVC logs the deserialized request body at DEBUG ("Read ... to
+         * [ChangePasswordRequest...]"), and a record's generated toString prints every component —
+         * which on this endpoint means a password in a log file. Emails are PII and a target list,
+         * so they do not go in either.
+         */
+        @Override
+        public String toString() {
+            return "ChangePasswordRequest[redacted]";
+        }
+    }
 }

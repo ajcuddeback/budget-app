@@ -49,5 +49,19 @@ public final class HouseholdRequests {
     public record AcceptInvitationRequest(
             @Size(max = 100) String displayName,
             @Size(min = PasswordPolicy.MINIMUM_LENGTH, max = PasswordPolicy.MAXIMUM_BYTES)
-                    String password) {}
+                    String password) {
+
+        /**
+         * Redacted, all of it.
+         *
+         * <p>Spring MVC logs the deserialized request body at DEBUG ("Read ... to
+         * [AcceptInvitationRequest...]"), and a record's generated toString prints every component
+         * — which on this endpoint means a password in a log file. Emails are PII and a target
+         * list, so they do not go in either.
+         */
+        @Override
+        public String toString() {
+            return "AcceptInvitationRequest[redacted]";
+        }
+    }
 }
