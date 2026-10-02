@@ -1,0 +1,54 @@
+<div class="page-narrow stack">
+  @if (!auth.loaded()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (joined(); as done) {
+    <div>
+      <h1 class="page-title">{{ 'join.joinedTitle' | t }}</h1>
+    </div>
+    <section class="card" aria-labelledby="joined-heading" role="status">
+      <h2 class="card-title" id="joined-heading">
+        {{ 'join.joinedHeading' | t: { household: done.householdName } }}
+      </h2>
+      <p class="card-note">
+        {{ 'join.joinedRole' | t: { role: (roleKey[done.role] | t) } }}
+        @if (done.userCreated) {
+          {{ 'join.joinedAccountCreated' | t }}
+        }
+      </p>
+      <a class="btn btn-primary" routerLink="/login" [queryParams]="{ reason: 'joined' }">{{
+        'join.signInNow' | t
+      }}</a>
+    </section>
+  } @else if (unusable()) {
+    <div>
+      <h1 class="page-title">{{ 'join.unusableTitle' | t }}</h1>
+    </div>
+    <app-error-alert [error]="error()" />
+    <div>
+      <a class="btn btn-secondary" routerLink="/login">{{ 'join.toSignIn' | t }}</a>
+    </div>
+  } @else if (mustSignOut()) {
+    <div>
+      <h1 class="page-title">{{ 'join.title' | t }}</h1>
+    </div>
+    <section class="card" aria-labelledby="signed-in-heading">
+      <h2 class="card-title" id="signed-in-heading">{{ 'join.signedInHeading' | t }}</h2>
+      <p class="card-note">{{ 'join.signedInBody' | t }}</p>
+      <button type="button" class="btn btn-primary" [disabled]="signingOut()" (click)="signOut()">
+        {{ 'nav.signOut' | t }}
+      </button>
+    </section>
+  } @else {
+    <div>
+      <h1 class="page-title">{{ 'join.title' | t }}</h1>
+      <p class="page-lede">{{ 'join.lede' | t }}</p>
+    </div>
+
+    <app-error-alert [error]="error()" />
+
+    <section class="card" aria-labelledby="join-heading">
+      <h2 class="visually-hidden" id="join-heading">{{ 'join.formHeading' | t }}</h2>
+      <app-join-form [busy]="busy()" (submitted)="accept($event)" />
+    </section>
+  }
+</div>

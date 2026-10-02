@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadChildren: () => import('./features/login/login.routes').then((m) => m.LOGIN_ROUTES),
   },
   {
+    path: 'join',
+    title: 'title.join',
+    loadChildren: () => import('./features/join/join.routes').then((m) => m.JOIN_ROUTES),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     children: [
@@ -22,6 +27,18 @@ export const routes: Routes = [
         title: 'title.household',
         loadChildren: () =>
           import('./features/household/household.routes').then((m) => m.HOUSEHOLD_ROUTES),
+      },
+      {
+        path: 'devices',
+        title: 'title.devices',
+        loadChildren: () =>
+          import('./features/devices/devices.routes').then((m) => m.DEVICES_ROUTES),
+      },
+      {
+        path: 'preferences',
+        title: 'title.preferences',
+        loadChildren: () =>
+          import('./features/preferences/preferences.routes').then((m) => m.PREFERENCES_ROUTES),
       },
     ],
   },

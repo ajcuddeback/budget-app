@@ -1,0 +1,43 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'devices.title' | t }}</h1>
+    <p class="page-lede">{{ 'devices.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">{{ 'common.retry' | t }}</button>
+    </div>
+  } @else {
+    <section class="card" aria-labelledby="devices-heading">
+      <h2 class="card-title" id="devices-heading">{{ 'devices.heading' | t }}</h2>
+      <div class="stack">
+        <app-error-alert [error]="revokeError()" />
+        @if (revokedNotice()) {
+          <div class="alert alert-success" role="status">
+            <p>{{ 'devices.revoked' | t }}</p>
+          </div>
+        }
+        <app-device-list
+          [devices]="devices()"
+          [busyId]="busyId()"
+          (revokeRequested)="requestRevoke($event)"
+        />
+      </div>
+    </section>
+  }
+</div>
+
+@if (confirmingCurrent(); as device) {
+  <app-confirm-dialog
+    [heading]="i18n.t('devices.confirmHeading')"
+    [message]="i18n.t('devices.confirmMessage')"
+    [confirmLabel]="i18n.t('devices.signOutHere')"
+    [busy]="busyId() !== null"
+    (confirmed)="revoke(device)"
+    (cancelled)="cancelConfirm()"
+  />
+}

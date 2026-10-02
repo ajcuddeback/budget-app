@@ -72,7 +72,7 @@ export class AuthService {
    * the server answers: a `401` means the session was already gone, and a network failure must
    * not leave someone staring at a household they asked to leave.
    */
-  async logout(): Promise<void> {
+  async logout(options: { redirect: boolean } = { redirect: true }): Promise<void> {
     try {
       await firstValueFrom(this.http.post<void>('/api/auth/logout', null));
     } catch {
@@ -80,7 +80,9 @@ export class AuthService {
     }
     this.current.set(null);
     await this.i18n.use(null);
-    await this.router.navigate(['/login']);
+    if (options.redirect) {
+      await this.router.navigate(['/login']);
+    }
   }
 
   /**

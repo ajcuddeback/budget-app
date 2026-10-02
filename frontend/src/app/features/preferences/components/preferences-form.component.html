@@ -1,0 +1,32 @@
+<form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <app-currency-field
+    fieldId="pref-currency"
+    [control]="form.controls.displayCurrency"
+    [label]="'preferences.currency' | t"
+    [hint]="'preferences.currencyHint' | t: { currency: membership().baseCurrency }"
+    [emptyLabel]="'preferences.followHousehold' | t: { currency: membership().baseCurrency }"
+  />
+
+  <div class="field">
+    <label for="pref-locale">{{ 'preferences.locale' | t }}</label>
+    <select
+      id="pref-locale"
+      class="input"
+      formControlName="locale"
+      aria-describedby="pref-locale-hint pref-locale-error"
+    >
+      <option value="">{{ 'preferences.followDevice' | t }}</option>
+      @for (tag of locales(); track tag) {
+        <option [value]="tag">{{ tag | localeName }}</option>
+      }
+    </select>
+    <p class="field-hint" id="pref-locale-hint">{{ 'preferences.localeHint' | t }}</p>
+    <app-field-error [control]="form.controls.locale" errorId="pref-locale-error" />
+  </div>
+
+  <div>
+    <button type="submit" class="btn btn-primary" [disabled]="busy()">
+      {{ (busy() ? 'common.saving' : 'common.save') | t }}
+    </button>
+  </div>
+</form>

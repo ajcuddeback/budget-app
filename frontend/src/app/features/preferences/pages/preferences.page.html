@@ -1,0 +1,23 @@
+<div class="page-narrow stack">
+  <div>
+    <h1 class="page-title">{{ 'preferences.title' | t }}</h1>
+    <p class="page-lede">{{ 'preferences.lede' | t }}</p>
+  </div>
+
+  @if (auth.membership(); as membership) {
+    <section class="card" aria-labelledby="preferences-heading">
+      <h2 class="card-title" id="preferences-heading">{{ 'preferences.heading' | t }}</h2>
+      <div class="stack">
+        <app-error-alert [error]="error()" />
+        @if (saved()) {
+          <div class="alert alert-success" role="status">
+            <p>{{ 'preferences.saved' | t }}</p>
+          </div>
+        }
+        <app-preferences-form [membership]="membership" [busy]="saving()" (saved)="save($event)" />
+      </div>
+    </section>
+  } @else {
+    <app-no-household />
+  }
+</div>
