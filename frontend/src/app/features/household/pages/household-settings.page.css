@@ -1,0 +1,8 @@
+.section-head {
+  justify-content: space-between;
+  margin-block-end: var(--space-3);
+}
+
+.section-head .card-title {
+  margin-block-end: 0;
+}

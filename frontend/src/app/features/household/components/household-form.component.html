@@ -1,0 +1,32 @@
+<form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="field">
+    <label for="household-name">{{ 'household.name' | t }}</label>
+    <input
+      id="household-name"
+      class="input"
+      type="text"
+      formControlName="name"
+      autocomplete="off"
+      aria-describedby="household-name-error"
+      [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched ? 'true' : null"
+    />
+    <app-field-error [control]="form.controls.name" errorId="household-name-error" />
+  </div>
+
+  <app-currency-field
+    fieldId="household-currency"
+    [control]="form.controls.baseCurrency"
+    [label]="'household.baseCurrency' | t"
+    [hint]="'household.baseCurrencyHint' | t"
+  />
+
+  @if (canEdit()) {
+    <div>
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+    </div>
+  } @else {
+    <p class="field-hint">{{ 'household.ownerOnlyEdit' | t }}</p>
+  }
+</form>
