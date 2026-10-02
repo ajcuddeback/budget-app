@@ -23,6 +23,15 @@
   --color-accent-text: var(--color-accent-700);
   --color-muted: var(--color-neutral-700);
 
+  /* Solid-fill action colour and the text on it. The design system's own .btn-primary puts the
+     ground colour on --color-accent, which is ~2.9:1 in light mode and fails AA for text, so the
+     fill steps to a deep ramp stop on a light ground and a light one on a dark ground — the same
+     rule as --color-accent-text, for the same reason. Roles, not new colours. */
+  --color-primary: var(--color-accent-700);
+  --color-primary-hover: var(--color-accent-800);
+  --color-primary-active: var(--color-accent-900);
+  --color-on-primary: var(--color-neutral-100);
+
   /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
      same step of any role matches the others in visual value. */
   --color-neutral-100: #f9f4ed;
@@ -97,6 +106,10 @@
   --color-divider: color-mix(in srgb, #f2e8da 16%, transparent);
   --color-accent-text: var(--color-accent-300);
   --color-muted: var(--color-neutral-400);
+  --color-primary: var(--color-accent-400);
+  --color-primary-hover: var(--color-accent-300);
+  --color-primary-active: var(--color-accent-200);
+  --color-on-primary: var(--color-neutral-900);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -108,7 +121,11 @@
     --color-accent: var(--color-accent-400);
     --color-accent-2: var(--color-accent-2-400);
     --color-divider: color-mix(in srgb, #f2e8da 16%, transparent);
-  --color-accent-text: var(--color-accent-300);
-  --color-muted: var(--color-neutral-400);
+    --color-accent-text: var(--color-accent-300);
+    --color-muted: var(--color-neutral-400);
+    --color-primary: var(--color-accent-400);
+    --color-primary-hover: var(--color-accent-300);
+    --color-primary-active: var(--color-accent-200);
+    --color-on-primary: var(--color-neutral-900);
   }
 }

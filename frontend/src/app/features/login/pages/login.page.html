@@ -1,0 +1,19 @@
+<div class="page-narrow stack">
+  <div>
+    <h1 class="page-title">{{ 'login.title' | t }}</h1>
+    <p class="page-lede">{{ 'login.lede' | t }}</p>
+  </div>
+
+  @if (notice(); as key) {
+    <div class="alert alert-success" role="status">
+      <p>{{ key | t }}</p>
+    </div>
+  }
+
+  <app-error-alert [error]="error()" />
+
+  <section class="card" aria-labelledby="login-heading">
+    <h2 class="card-title" id="login-heading">{{ 'login.heading' | t }}</h2>
+    <app-login-form [busy]="busy()" (submitted)="signIn($event)" />
+  </section>
+</div>

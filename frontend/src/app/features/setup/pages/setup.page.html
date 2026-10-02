@@ -1,0 +1,17 @@
+<div class="page-narrow stack">
+  <div>
+    <h1 class="page-title">{{ 'setup.title' | t }}</h1>
+    <p class="page-lede">{{ 'setup.lede' | t }}</p>
+  </div>
+
+  <div class="alert alert-success" role="note">
+    <p>{{ 'setup.operatorNote' | t }}</p>
+  </div>
+
+  <app-error-alert [error]="error()" />
+
+  <section class="card" aria-labelledby="setup-account-heading">
+    <h2 class="card-title" id="setup-account-heading">{{ 'setup.accountHeading' | t }}</h2>
+    <app-setup-form [busy]="busy()" (submitted)="create($event)" />
+  </section>
+</div>
