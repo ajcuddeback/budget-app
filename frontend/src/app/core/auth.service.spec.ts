@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { OWNER } from '../testing/helpers';
+import { OWNER, PASSPHRASE } from '../testing/helpers';
 import { AuthService } from './auth.service';
 import { apiErrorInterceptor, credentialsInterceptor } from './http.interceptors';
 import { I18nService } from './i18n/i18n.service';
@@ -93,7 +93,7 @@ describe('AuthService', () => {
 
   it('logs in with credentials, takes the profile, and applies the member\'s language', async () => {
     const use = vi.spyOn(TestBed.inject(I18nService), 'use').mockResolvedValue();
-    const login = auth.login({ email: 'alex@example.test', password: 'a fixture password' });
+    const login = auth.login({ email: 'alex@example.test', password: PASSPHRASE });
     const request = http.expectOne('/api/auth/login');
     expect(request.request.withCredentials).toBe(true);
     expect(request.request.method).toBe('POST');
@@ -117,7 +117,7 @@ describe('AuthService', () => {
 
   it('never writes a credential to browser storage', async () => {
     const before = { local: localStorage.length, session: sessionStorage.length };
-    const login = auth.login({ email: 'alex@example.test', password: 'a fixture password' });
+    const login = auth.login({ email: 'alex@example.test', password: PASSPHRASE });
     http.expectOne('/api/auth/login').flush(OWNER);
     await login;
 
@@ -125,7 +125,7 @@ describe('AuthService', () => {
     for (const store of [localStorage, sessionStorage]) {
       for (let i = 0; i < store.length; i++) {
         const key = store.key(i) ?? '';
-        expect(`${key}=${store.getItem(key)}`).not.toContain('fixture password');
+        expect(`${key}=${store.getItem(key)}`).not.toContain(PASSPHRASE);
       }
     }
   });

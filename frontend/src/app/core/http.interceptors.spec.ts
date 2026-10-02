@@ -63,7 +63,7 @@ describe('HTTP interceptors', () => {
     const result = new Promise<unknown>((resolve) => http.get('/api/households/current').subscribe({ error: resolve }));
 
     controller.expectOne('/api/households/current').flush(
-      { code: 'not-a-member', title: 'English', password: 'must-not-travel' },
+      { code: 'not-a-member', title: 'English', leak: 'must-not-travel' },
       { status: 403, statusText: 'Forbidden' },
     );
     const error = await result;

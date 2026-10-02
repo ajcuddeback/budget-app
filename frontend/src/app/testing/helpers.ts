@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { signal, computed, WritableSignal } from '@angular/core';
 import { ComponentFixture } from '@angular/core/testing';
 import { CurrentUser, Membership } from '../core/auth.models';
@@ -10,6 +11,9 @@ export async function settle(fixture: ComponentFixture<unknown>): Promise<void> 
   await new Promise((resolve) => setTimeout(resolve));
   await fixture.whenStable();
 }
+
+/** A throwaway value for tests; it opens nothing. */
+export const PASSPHRASE = 'a long fixture passphrase';
 
 export const OWNER_MEMBERSHIP: Membership = {
   householdId: 'h1',

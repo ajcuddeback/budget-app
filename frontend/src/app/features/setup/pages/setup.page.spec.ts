@@ -5,7 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
 import { SetupService } from '../../../core/setup.service';
-import { apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
+import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
 import { SetupPage } from './setup.page';
 
 describe('SetupPage', () => {
@@ -68,11 +68,11 @@ describe('SetupPage', () => {
     expect(createFirstUser).toHaveBeenCalledWith({
       email: 'alex@example.test',
       displayName: 'Alex Rivera',
-      password: 'a long fixture passphrase',
+      password: PASSPHRASE,
       householdName: 'Rivera Household',
       baseCurrency: 'USD',
     });
-    expect(auth.login).toHaveBeenCalledWith({ email: 'alex@example.test', password: 'a long fixture passphrase' });
+    expect(auth.login).toHaveBeenCalledWith({ email: 'alex@example.test', password: PASSPHRASE });
     expect(router.navigate).toHaveBeenCalledWith(['/']);
   });
 

@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth.service';
-import { apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
+import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
 import { LoginPage } from './login.page';
 
 describe('LoginPage', () => {
@@ -29,9 +29,9 @@ describe('LoginPage', () => {
     return harness.fixture;
   }
 
-  function signIn(root: HTMLElement, password = 'a fixture password'): void {
+  function signIn(root: HTMLElement, passphrase = PASSPHRASE): void {
     typeInto(root, '#login-email', ' alex@example.test ');
-    typeInto(root, '#login-password', password);
+    typeInto(root, '#login-password', passphrase);
     buttonNamed(root, 'Sign in').click();
   }
 
@@ -41,7 +41,7 @@ describe('LoginPage', () => {
     signIn(fixture.nativeElement);
     await settle(fixture);
 
-    expect(auth.login).toHaveBeenCalledWith({ email: 'alex@example.test', password: 'a fixture password' });
+    expect(auth.login).toHaveBeenCalledWith({ email: 'alex@example.test', password: PASSPHRASE });
     expect(router.navigate).toHaveBeenCalledWith(['/']);
   });
 

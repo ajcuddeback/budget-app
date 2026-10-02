@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
-import { apiError, buttonNamed, fakeAuth, FakeAuth, OWNER, settle, type as typeInto } from '../../../testing/helpers';
+import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, OWNER, settle, type as typeInto } from '../../../testing/helpers';
 import { InvitationService } from '../data/invitation.service';
 import { JoinPage } from './join.page';
 
@@ -141,7 +141,7 @@ describe('JoinPage', () => {
     buttonNamed(root, 'Accept and join').click();
     await settle(fixture);
 
-    expect(accept).toHaveBeenCalledWith('tok-123', { displayName: 'Riley Okafor', password: 'a long fixture passphrase' });
+    expect(accept).toHaveBeenCalledWith('tok-123', { displayName: 'Riley Okafor', password: PASSPHRASE });
     expect(root.textContent).toContain('Welcome to Rivera Household');
     expect(root.textContent).toContain('Your account has been created.');
     expect(root.querySelector('a[href="/login?reason=joined"]')).not.toBeNull();
