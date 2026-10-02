@@ -20,3 +20,11 @@
   accent-color: var(--color-primary);
   flex: none;
 }
+
+/* The whole link stays readable so it can be checked before it is shared. */
+.link-box {
+  border-radius: var(--radius-md);
+  resize: none;
+  overflow-wrap: anywhere;
+  font-size: 0.9375rem;
+}

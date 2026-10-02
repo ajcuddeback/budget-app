@@ -64,7 +64,7 @@ export class InviteDialogComponent {
   protected readonly roleKey = ROLE_KEY;
   protected readonly roleDescriptionKey = ROLE_DESCRIPTION_KEY;
   protected readonly copyState = signal<CopyState>('idle');
-  private readonly linkField = viewChild<ElementRef<HTMLInputElement>>('linkField');
+  private readonly linkField = viewChild<ElementRef<HTMLTextAreaElement>>('linkField');
 
   readonly form = this.fb.group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
@@ -115,6 +115,6 @@ export class InviteDialogComponent {
   }
 
   protected selectLink(event: Event): void {
-    (event.target as HTMLInputElement).select();
+    (event.target as HTMLTextAreaElement).select();
   }
 }

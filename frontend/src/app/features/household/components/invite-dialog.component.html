@@ -13,16 +13,17 @@
 
           <div class="field">
             <label for="invite-link">{{ 'invite.linkLabel' | t }}</label>
-            <input
+            <textarea
               #linkField
               id="invite-link"
-              class="input"
-              type="text"
+              class="input link-box"
+              rows="3"
               readonly
               dir="ltr"
+              spellcheck="false"
               [value]="link() ?? ''"
               (focus)="selectLink($event)"
-            />
+            ></textarea>
           </div>
 
           <div class="cluster">
