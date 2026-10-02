@@ -1,9 +1,10 @@
 # Feature: Authentication & households
 
 - **Status:** In progress — this is slice 2. Schema, services, endpoints and their tests are
-  built; the Angular and Flutter clients are not, and neither is OIDC.
+  built, and so is the Angular client (see *What the web client does*). The Flutter client is not,
+  and neither is OIDC.
 - **Owner:** Repository owner
-- **Last updated:** 2026-09-26
+- **Last updated:** 2026-10-02
 - **Related:** ADR-0016 (self-hosted), ADR-0017 (households), ADR-0018 (auth),
   ADR-0026 (one household per instance; owner is operator),
   `../architecture/security-model.md` (**read it before implementing any of this**)
@@ -239,8 +240,8 @@ invitation acceptance. Everything else denies by default (ADR-0016 non-negotiabl
 ## UI
 
 **Web:** first-run setup · login · household settings with members and roles · invitation dialog
-that produces a copyable link · logged-in devices. **No household switcher** — there is one
-household (ADR-0026).
+that produces a copyable link · invitation acceptance · logged-in devices · own preferences.
+**No household switcher** — there is one household (ADR-0026). Built; behaviour is below.
 
 **Mobile:** a server URL field before anything else — the instance is the user's, so this is
 step one and must handle LAN hostnames, self-signed certificates and non-standard ports
@@ -526,6 +527,54 @@ contains any token value — cannot hold: a bearer token and an invitation link 
 exactly once, or there is no way to have one. `CredentialDisclosureIT` asserts that each appears in
 exactly one body across a full journey, and that no body ever contains a password hash, a token
 hash or a session id.
+
+## What the web client does
+
+`frontend/src/app/features/{setup,login,household,join,devices,preferences}`, with the session,
+CSRF, error and i18n plumbing in `core/`.
+
+| Route | Screen | Notes |
+|---|---|---|
+| `/setup` | First-run setup | Only while `GET /api/setup/status` says the instance is fresh. Creates the user, then signs in with the same credentials (the server hands out none). Tells the *operator* they can see everything the household records. |
+| `/login` | Sign in | Email + password. A fresh instance is sent to `/setup`. `?reason=expired\|created\|joined` shows a note. One sentence for every bad credential; a `429` says how long to wait. |
+| `/join/:token` | Accept an invitation | **Public.** Carries the join-time disclosure. See below. |
+| `/household` | Household settings | Owner: rename, base currency, invite, change roles, remove. Member/viewer: read-only, and may leave. The only owner is told why they cannot leave. A user with no membership sees "you are not part of a household yet" — never an error. |
+| `/devices` | Logged-in devices | Browsers (summarised as "Chrome on Linux") and phones, each revocable. Signing out the browser in use asks first. |
+| `/preferences` | Own preferences | Display currency and locale, via `PATCH …/members/me`. "Follow the default" is sent as `null`, which is a meaning rather than a gap. |
+
+**The disclosure is in `JoinFormComponent`'s template**, ahead of the fields and the button, as
+full-size body text — not a link, not collapsed. The submit button's `aria-describedby` points at
+it, so a screen-reader user hears it at the button. `join.page.spec.ts` asserts it is present,
+visible (not hidden, not inside `<details>`/`<dialog>`), in the flow (no link), and above the
+button; the Playwright `join.spec.ts` asserts the same by rendered position and font size. Each of
+removing it, collapsing it, moving it below the button and shortening its wording was checked to
+fail the suite. Editing the wording is a security change.
+
+**Credentials.** The client holds none: the session is an `HttpOnly` cookie, nothing is written to
+`localStorage`/`sessionStorage` except the theme, and nothing sensitive is logged. Every `/api/`
+request gets `withCredentials` from one interceptor. CSRF uses Angular's `withXsrfConfiguration`
+with `XSRF-TOKEN` / `X-XSRF-TOKEN`, spelled out and matching `SecurityConfig`. A `401` on a request
+made while signed in routes to `/login?reason=expired`; the profile probe, login, logout and the
+public endpoints are exempt, or a wrong password would redirect instead of explaining itself.
+
+**Invitation links** are built in the browser from `window.location.origin` and the server's
+relative `acceptPath`, and refused if the path is not same-origin. The token is held in memory
+while the dialog is open and dropped when it closes. Copy falls back to selecting the text, because
+a self-hosted instance on `http://` has no async clipboard.
+
+**The join page cannot know whether the invited address already has an account** (there is no
+preview endpoint, and one would be an oracle). It asks for a name and password and says that an
+existing user leaves both empty. If the server answers `validation-failed` for a bare acceptance,
+the fields are marked.
+
+**i18n** is runtime (ADR-0023): English is `frontend/src/i18n/en.json`, compiled in and typed, so a
+template that asks for a missing key fails to build; other languages are the same file shape served
+from `/i18n/<language>.json` and fall back to English per key. Errors render from the API's `code`.
+Dates, numbers and currency names come from `Intl`. `dir` follows the language. Only English ships.
+
+**Not built in the web client:** change-own-password (`POST /api/auth/password`), leaving via the
+API is built but self-deletion is not, OIDC login, and any reaction to `registrationOpen` /
+`passwordLoginEnabled` from the status endpoint (nothing can set them yet).
 
 ## Deployment notes
 

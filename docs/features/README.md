@@ -27,7 +27,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 
 | Feature | Status | Doc |
 |---|---|---|
-| Authentication & households | Planned — spec ready | [authentication-and-households.md](authentication-and-households.md) |
+| Authentication & households | In progress — backend and web client built | [authentication-and-households.md](authentication-and-households.md) |
 | Envelopes | Planned — spec ready | [envelopes.md](envelopes.md) |
 | Household management (invites, roles) | Planned | _not written_ |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |

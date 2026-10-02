@@ -496,3 +496,31 @@ If setup or a test fails that way, look at the session's constraint mode before 
 code. V3 cannot say so in its own header comment: merged migrations are frozen (ADR-0007).
 
 *Added 2026-09-26 — from the slice-2 security audit.*
+
+## Angular guards: `inject()` after an `await` has no injection context
+
+An `async` route guard that awaits something and *then* calls `inject(Router)` throws NG0203 —
+and only on the branch that reaches the `inject`, so a signed-in visitor sails through and every
+signed-out one gets a blank page and a console error. Unit tests that only exercise the happy
+branch will not see it; the UI harness did. Inject everything on the first lines of the guard,
+before the first `await` (`core/auth.guards.ts`).
+
+*Added 2026-10-02 — slice 2 frontend.*
+
+## Chromium logs every 4xx as a console error, and the app is meant to receive some
+
+`GET /api/auth/me` answers `401` to anyone not signed in — it is how the SPA finds out — so every
+signed-out page load puts "Failed to load resource … 401" in the console. `ui.noErrors()` used to
+fail on that. It now ignores 4xx `Failed to load resource` lines (an answer the app handles) and
+still fails on 5xx and on real page errors. Do not "fix" it by making the app skip the probe: the
+session cookie is `HttpOnly`, so the client cannot know whether it has one.
+
+*Added 2026-10-02 — slice 2 frontend.*
+
+## `ng test` needs `--coverage`; `npm test` alone fails schema validation
+
+`angular.json` configures `coverage` as an object (thresholds), which the unit-test builder rejects
+unless the flag is on the command line. Use `npm run test:coverage` — it is what `tools/verify.sh`
+runs. Pre-existing from slice 1.
+
+*Added 2026-10-02 — slice 2 frontend.*
