@@ -52,7 +52,7 @@ join.
 
    ![The Sign in screen with a green message: "You have joined the household. Sign in to continue."](../images/join-a-household--join-sign-in.png)
 
-7. Sign in with your email address and the password you just chose.
+7. Sign in with your email address and the password you chose.
 
    Use the email address your invitation was made for. If you are not sure which one that is, ask
    the person who invited you which address they typed. Joining does not sign you in by itself —

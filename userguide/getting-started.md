@@ -1,8 +1,8 @@
 # Getting started
 
-> **Status: outline.** The app is being rewritten and these screens do not exist yet. This file
-> is the planned shape of the walkthrough — each section gets written, with real screenshots,
-> as its slice ships. See `docs/roadmap.md` for the order.
+> **Status: partly written.** Steps 1 and 1b below are written from the running app. Steps 2
+> onward are still outlines: their screens do not exist yet, and each gets written, with real
+> screenshots, as its slice ships. See `docs/roadmap.md` for the order.
 >
 > **Do not write steps here from the feature docs.** Feature docs describe what we intend to
 > build; a user guide describes what shipped. Write each section only after running
@@ -17,18 +17,63 @@ budget.
 
 ## 1. Create your account and household
 
-*Awaiting slice 2 — [authentication & households](../docs/features/authentication-and-households.md).*
+The first time Budget Owl starts, it asks you to create one account. That account becomes the
+**owner** of a new household — the shared space everything else lives in.
 
-Will cover: creating the first account, which becomes the owner of a new household; choosing a
-password; signing in. If your server is set up to use your own login provider, that option
-appears here too — but email and password always works.
+1. Open Budget Owl in your web browser, at the address of your server.
+
+   You'll see **Set up Budget Owl**.
+
+2. Fill in **Your name**, **Email address**, **Password** and **Household name**.
+
+   The password needs at least 12 characters. **Base currency** starts as **USD — US Dollar**;
+   change it if your household uses another.
+
+3. Select **Create account**.
+
+   You are signed in, and you land on the **Household** screen with yourself listed as **Owner**.
+
+![The Set up Budget Owl screen: a notice about who can see what, then the form for your name, email address, password, household name and base currency.](images/create-your-account--setup-form.png)
+
+**You will be able to see everything anyone in your household records.** You are the person
+running this instance, so every transaction, every balance and every note in it is visible to you.
+Budget Owl does not hide it, and anyone you invite is told this before they join.
+
+Full steps, and what to do when something goes wrong:
+[Create your account and household](features/create-your-account.md). Next time, you
+[sign in](features/sign-in.md) instead. If your server is set up to use your own login provider,
+that option is not covered here yet — email and password is.
 
 ## 1b. Invite the rest of your household
 
-*Awaiting slice 2.*
+Budget Owl does not send email. You create an invitation link and send it to the person yourself.
 
-Will cover: inviting a partner or family member, and what the roles mean — who can change things
-and who can only look.
+1. Go to **Household** and select **Invite someone**.
+
+2. Enter their email address, choose their role, and select **Create link**.
+
+   You'll see the link, and a warning: **Treat this link like a password.**
+
+3. Select **Copy link**, and send it to them.
+
+   ![The Invite someone window showing the invitation link, with the warning "Treat this link like a password" outlined.](images/invite-someone--invite-link.png)
+
+**The link works like a password.** Anyone who has it can join your household, so send it only to the
+person you mean, and revoke it if it reaches anyone else. It works once and expires on the date shown
+under it.
+
+**The roles:**
+
+- **Owner** — everything, including inviting and removing people.
+- **Member** — can see and change the household's money.
+- **Viewer** — can see the household's money, but not change it.
+
+The person who runs the server can see everything your household records, whatever anyone's role.
+The person you invite is told this before they join.
+
+Full steps: [Invite someone to your household](features/invite-someone.md). What the person you
+invite goes through: [Join a household](features/join-a-household.md). Changing roles, removing
+people, and leaving: [See who is in your household](features/manage-members.md).
 
 ## 2. Add your accounts
 

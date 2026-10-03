@@ -29,9 +29,27 @@ database password, and starting it for the first time.
 
 ## 3. Create the first account
 
-*Awaiting slice 2.*
+Open Budget Owl in a web browser at the address of your server. A new instance shows **Set up
+Budget Owl**.
 
-Will cover: the first account you create is the owner of a new household, and what that means.
+1. Fill in **Your name**, **Email address**, **Password** (at least 12 characters) and **Household
+   name**.
+
+2. Select **Create account**.
+
+   You are signed in and land on the **Household** screen. Your account is the **owner** of a new
+   household.
+
+![The Set up Budget Owl screen with an empty form and a notice that you will be able to see everything anyone in your household records.](images/create-your-account--setup-form.png)
+
+**You are now the person who runs this instance, and you can see everything.** Every transaction,
+every balance and every note anyone in your household records is stored on your server, and you
+can see all of it. Budget Owl does not hide it from you. Anyone you invite is told this before
+they join; it is worth telling them yourself too.
+
+This screen only appears on a new instance. After the first account exists, everyone else joins
+by invitation: see [Invite someone to your household](features/invite-someone.md). The full
+walkthrough is in [Create your account and household](features/create-your-account.md).
 
 ## 4. Reach it from your phone
 
