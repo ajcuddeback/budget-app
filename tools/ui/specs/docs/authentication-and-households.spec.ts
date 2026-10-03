@@ -109,6 +109,12 @@ test('@doc invite someone to your household', async ({ page, doc }) => {
         highlight: dialog.getByText(/Treat this link like a password/),
     });
 
+    await dialog.getByRole('button', { name: 'Copy link' }).click();
+    await doc.capture('invite-copied', 'The Invite someone window just after selecting Copy link, with "Link copied." beside the button.', {
+        highlight: dialog.getByRole('button', { name: 'Copy link' }),
+        step: 5,
+    });
+
     await dialog.getByRole('button', { name: 'Revoke link' }).click();
     await expect(dialog.getByText('This link has been revoked')).toBeVisible();
     await doc.capture('invite-revoked', 'The Invite someone window after the link has been revoked.');
@@ -122,7 +128,7 @@ test('@doc join a household', async ({ page, doc }) => {
     await doc.capture('join-form', 'The invitation screen, with the notice about who can see what you record.', {
         fullPage: true,
         highlight: page.locator('#join-disclosure'),
-        step: 1,
+        step: 2,
     });
 
     await page.getByRole('button', { name: 'Accept and join' }).click();
@@ -135,12 +141,16 @@ test('@doc join a household', async ({ page, doc }) => {
     await expect(page.getByRole('heading', { name: 'Welcome to Rivera Household' })).toBeVisible();
     await doc.capture('join-done', 'The welcome screen after joining.', { fullPage: true });
 
+    await page.getByRole('link', { name: 'Sign in' }).click();
+    await expect(page.getByText('You have joined the household. Sign in to continue.')).toBeVisible();
+    await doc.capture('join-sign-in', 'The Sign in screen after joining, with a message that you have joined the household.', { fullPage: true });
+
     await page.goto(`/join/${DEMO_TOKENS.valid}`);
     await expect(page.getByRole('button', { name: 'Accept and join' })).toBeVisible();
     await doc.capture('join-existing', 'The invitation screen as someone who already has an account on this instance.', {
         fullPage: true,
         highlight: page.getByRole('button', { name: 'Accept and join' }),
-        step: 2,
+        step: 4,
     });
     await page.getByRole('button', { name: 'Accept and join' }).click();
     await expect(page.getByRole('heading', { name: 'Welcome to Rivera Household' })).toBeVisible();
@@ -246,4 +256,12 @@ test('@doc your display currency and language', async ({ page, doc }) => {
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Preferences saved.')).toBeVisible();
     await doc.capture('preferences-saved', 'The preferences screen confirming that they were saved.', { fullPage: true });
+});
+
+test('@doc what you see with no household', async ({ page, doc }) => {
+    doc.guide('manage-members');
+    await mockApi(page, { session: 'no-household' });
+    await page.goto('/household');
+    await expect(page.getByRole('heading', { name: 'You are not part of a household yet' })).toBeVisible();
+    await doc.capture('members-no-household', 'The screen shown to someone who is signed in but belongs to no household.', { fullPage: true });
 });
