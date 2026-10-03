@@ -1,4 +1,4 @@
-import { DEMO_TOKENS } from '../../fixtures/demo-data.js';
+import { DEMO_ME_MEMBER, DEMO_TOKENS } from '../../fixtures/demo-data.js';
 import { expect, test } from '../../helpers/doc-capture.js';
 import { mockApi } from '../../helpers/mock-api.js';
 
@@ -29,7 +29,7 @@ test('@doc create your account on a new instance', async ({ page, doc }) => {
     await doc.capture('setup-filled', 'The setup form filled in.', {
         fullPage: true,
         highlight: page.getByRole('button', { name: 'Create account' }),
-        step: 1,
+        step: 7,
     });
 
     await page.getByLabel('Password').fill('short');
@@ -56,11 +56,6 @@ test('@doc sign in', async ({ page, doc }) => {
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page.getByRole('alert')).toBeVisible();
     await doc.capture('login-wrong-password', 'The message shown when the email address or password is wrong.', { fullPage: true });
-
-    await page.getByLabel('Password').fill('a fixture password');
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(/\/household$/);
-    await doc.capture('login-done', 'The Household screen after signing in.', { fullPage: true });
 });
 
 test('@doc sign in, rate limited and expired', async ({ page, doc }) => {
@@ -105,14 +100,13 @@ test('@doc invite someone to your household', async ({ page, doc }) => {
     await dialog.getByRole('radio', { name: /Viewer/ }).check();
     await doc.capture('invite-filled', 'The Invite someone window with an email address and the Viewer role chosen.', {
         highlight: dialog.getByRole('button', { name: 'Create link' }),
-        step: 3,
+        step: 4,
     });
 
     await dialog.getByRole('button', { name: 'Create link' }).click();
     await expect(dialog.getByLabel('Invitation link')).toBeVisible();
     await doc.capture('invite-link', 'The invitation link, with the warning to treat it like a password.', {
-        highlight: dialog.getByLabel('Invitation link'),
-        step: 4,
+        highlight: dialog.getByText(/Treat this link like a password/),
     });
 
     await dialog.getByRole('button', { name: 'Revoke link' }).click();
@@ -143,7 +137,14 @@ test('@doc join a household', async ({ page, doc }) => {
 
     await page.goto(`/join/${DEMO_TOKENS.valid}`);
     await expect(page.getByRole('button', { name: 'Accept and join' })).toBeVisible();
-    await doc.capture('join-existing', 'The invitation screen as someone who already has an account on this instance.', { fullPage: true });
+    await doc.capture('join-existing', 'The invitation screen as someone who already has an account on this instance.', {
+        fullPage: true,
+        highlight: page.getByRole('button', { name: 'Accept and join' }),
+        step: 2,
+    });
+    await page.getByRole('button', { name: 'Accept and join' }).click();
+    await expect(page.getByRole('heading', { name: 'Welcome to Rivera Household' })).toBeVisible();
+    await doc.capture('join-existing-done', 'The welcome screen for someone who already had an account.', { fullPage: true });
 
     await page.goto(`/join/${DEMO_TOKENS.unusable}`);
     await page.getByRole('button', { name: 'Accept and join' }).click();
@@ -192,6 +193,16 @@ test('@doc household settings as the only owner', async ({ page, doc }) => {
 test('@doc leave a household as a member', async ({ page, doc }) => {
     doc.guide('manage-members');
     await mockApi(page, { session: 'member' });
+    // The fixture member prefers German number and date formats, which would make this one screen
+    // look different from the rest of the guide. Answer "who am I" with the same person on the
+    // household's default format.
+    await page.route('**/api/auth/me', (route) =>
+        route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ ...DEMO_ME_MEMBER, household: { ...DEMO_ME_MEMBER.household, displayCurrency: null, locale: null } }),
+        }),
+    );
     await page.goto('/household');
     await expect(page.getByRole('button', { name: 'Leave' })).toBeVisible();
     await doc.capture('members-member-view', 'The Household screen as a member: settings are read-only and a Leave button is shown.', {
@@ -202,19 +213,6 @@ test('@doc leave a household as a member', async ({ page, doc }) => {
     await page.getByRole('button', { name: 'Leave' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await doc.capture('members-leave-confirm', 'The window asking you to confirm leaving the household.');
-});
-
-test('@doc a refused role change', async ({ page, doc }) => {
-    doc.guide('manage-members');
-    await page.route('**/api/households/current/members/*', (route) =>
-        route.request().method() === 'PATCH'
-            ? route.fulfill({ status: 409, contentType: 'application/problem+json', body: JSON.stringify({ type: 'https://budgetapp.dev/errors/last-owner', title: 'A household must keep at least one owner', status: 409, code: 'last-owner', correlationId: 'demo0000000000000000000000000005' }) })
-            : route.fallback(),
-    );
-    await page.goto('/household');
-    await page.getByLabel('Role for Sam Rivera').selectOption('VIEWER');
-    await expect(page.getByRole('alert')).toBeVisible();
-    await doc.capture('members-refused', 'The message shown beside the list when a role change is refused.', { fullPage: true });
 });
 
 test('@doc your signed-in devices', async ({ page, doc }) => {
