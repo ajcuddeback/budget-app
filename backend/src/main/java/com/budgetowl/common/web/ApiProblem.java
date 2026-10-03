@@ -27,7 +27,7 @@ import java.util.UUID;
  */
 public final class ApiProblem {
 
-    private static final String TYPE_PREFIX = "https://budgetapp.dev/errors/";
+    private static final String TYPE_PREFIX = "https://budgetowl.app/errors/";
 
     private ApiProblem() {}
 

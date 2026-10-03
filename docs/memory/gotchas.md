@@ -524,3 +524,27 @@ unless the flag is on the command line. Use `npm run test:coverage` — it is wh
 runs. Pre-existing from slice 1.
 
 *Added 2026-10-02 — slice 2 frontend.*
+
+## nginx resolves a literal upstream hostname once, at startup
+
+`proxy_pass http://api:8080;` with the hostname written inline is resolved when nginx loads its
+config and then cached forever. On a self-hosted Compose stack that gives two failures, both of
+which look like the app is broken rather than the proxy:
+
+- `docker compose up` leaves the **web container dead** if the API is still starting, because
+  nginx refuses to boot on an unresolvable upstream. `depends_on` without a health condition does
+  not prevent this.
+- An API that restarts comes back on a **new IP that nginx never notices**, so every request 502s
+  until the web container is restarted too.
+
+Going through a variable forces per-request resolution, which is why the resolver line is
+required rather than decorative:
+
+```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;   # Docker's embedded DNS
+set $api_upstream http://api:8080;
+proxy_pass $api_upstream;
+```
+
+Caught by running `nginx -t` with no `api` host present — which is exactly the state a
+self-hoster's first `up` is in. `nginx -t` against the real config is worth doing in CI.
