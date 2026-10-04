@@ -472,10 +472,37 @@ is called as the first statement of `AuthenticationService.authenticate`, `AuthT
 path and `InvitationService.accept`, and is keyed on the IP **and** the submitted email — submitted,
 not found, so an address that does not exist is throttled exactly like one that does.
 
-**CSRF is exempted for exactly two shapes**, and disabled for none: a request carrying an
-`Authorization: Bearer` header, and `POST /api/auth/token`, which is how a cookie-less mobile client
-obtains a bearer token in the first place. Login, first-user setup and invitation acceptance all
-require the token, because browsers reach them.
+**CSRF is exempted for exactly two shapes**, and disabled for none:
+
+1. `POST /api/auth/token` — how a cookie-less mobile client obtains a bearer token in the first
+   place, and so the one route that cannot be asked for a token it has no way to hold.
+2. A request carrying an `Authorization: Bearer` header **that is not one of the public writes**
+   (`POST /api/auth/login`, `POST /api/setup/first-user`, `POST /api/invitations/{token}/accept`).
+
+**Both are conditional on the request not carrying the session cookie.** That clause is the
+control, and it is stated here because the code one reads is `SecurityConfig.csrfExempt` and the
+reason is not local to it. Two bypasses lived in the gap between this paragraph and that method,
+both found and closed in slice 2, both now pinned by tests in `TransportIT`:
+
+- The exemption fired on the mere *presence* of an `Authorization` header, which the caller
+  chooses. A request with the victim's session cookie, no CSRF token and
+  `Authorization: Bearer anything` skipped the check and was then authenticated by the cookie —
+  a proven `201` creating an `OWNER` invitation, returning a working invite link.
+- With no cookie at all, the same header turned CSRF off on the public writes: `POST /api/auth/login`
+  answered `200` and signed the caller in. Login CSRF puts a visitor into the attacker's account,
+  where they then type.
+
+Neither was reachable from a browser, because setting `Authorization` cross-origin needs a
+preflight and this server has no CORS configuration at all. **That is not a control.** The first
+allowed origin anyone adds would have made both live, with nothing in the CSRF code to stop it.
+
+**A bearer request leaves no session behind.** Setting the security context was enough for
+`SessionManagementFilter` to persist it and return `Set-Cookie: BUDGETOWL_SESSION` — a second,
+independent credential for the same user that `revokeOwn` never touched, so a revoked or logged-out
+token still had `OWNER` write access until the session idled out. It also minted one session row
+per request and filled the devices screen with indistinguishable `Web browser` entries. The filter
+now blocks session *creation* for a token-authenticated request; an existing session stays
+readable, so a browser request that also carries a token is unaffected.
 
 **The devices list identifies a session by a SHA-256 of its id.** The session id *is* the cookie, so
 a devices screen listing real ids would hand over every live credential the user has. Tokens are

@@ -613,3 +613,51 @@ script now prints what it does not cover, but the habit matters more than the li
 work is security-relevant, check the PR, not the terminal.
 
 *Added 2026-10-04 — slice 2 CI.*
+
+## A bearer-authenticated request will mint a session cookie unless you stop it
+
+Setting `SecurityContextHolder` in a per-request authentication filter is not inert. With
+`sessionManagement` configured, `SessionManagementFilter` sits downstream, sees an authentication
+the `SecurityContextRepository` has no record of, and persists it — with
+`HttpSessionSecurityContextRepository` that creates a real session and returns
+`Set-Cookie: BUDGETOWL_SESSION`.
+
+For a bearer transport that is a second credential nobody asked for, and it is **not** revoked
+with the token: `AuthTokenService.revokeOwn` deletes the token row, so the token answers `401`
+while the minted session keeps answering `200` with full `OWNER` access until it idles out. It
+also grows `spring_session` by a row per request and fills the devices screen with identical
+`Web browser` entries.
+
+The symptom is invisible from the test suite if the harness clears cookies when a bearer token is
+set — `ApiClient.withBearerToken` did exactly that, so no test in the suite could express "bearer
+client that also has cookies", which is why a green build shipped it.
+
+Blocking creation beats deleting afterwards; by the time a session exists its cookie is already on
+the response:
+
+```java
+chain.doFilter(authenticatedByToken ? withoutSessionCreation(request) : request, response);
+// wrapper overrides getSession(boolean) to super.getSession(false)
+```
+
+Assert the effect, not the wiring: `TransportIT.leavesNoSessionBehindOnABearerRequest` checks both
+that no `Set-Cookie` names the session cookie and that `spring_session` gained no authenticated row.
+
+*Added 2026-10-04 — slice 2 security audit.*
+
+## A security control described in prose is not a security control
+
+Two CSRF bypasses in slice 2 lived in the gap between a method's own javadoc and what it did. The
+comment said the exemptions were "both of them requests with no ambient credential". The code
+tested for the presence of an `Authorization` header — a value the caller picks. Proven: `201`
+creating an `OWNER` invitation with the victim's cookie and no CSRF token.
+
+Both were unreachable from a browser only because there is no CORS configuration, so setting
+`Authorization` cross-origin needs a preflight that never succeeds. Incidental protection from an
+unrelated subsystem is not a control, and it reads exactly like one in a review.
+
+When a comment states an invariant, check that something *tests* the invariant. If the sentence is
+true and the code is right, the test costs nothing; if it is wrong, the test is the only thing that
+will ever say so.
+
+*Added 2026-10-04 — slice 2 security audit.*

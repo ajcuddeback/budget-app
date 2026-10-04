@@ -1,11 +1,15 @@
 package com.budgetowl.auth.web;
 
 import com.budgetowl.auth.service.AuthTokenService;
+import com.budgetowl.auth.service.TransportAuthentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -53,17 +57,30 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         // step, which is what CodeQL's user-controlled-bypass rule is looking for. A request with
         // no bearer header presents an empty credential, which AuthTokenService rejects without
         // touching the database, so this costs a non-bearer request nothing.
+        boolean authenticatedByToken = false;
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            tokens.authenticate(bearerCredential(request))
-                    .ifPresent(
-                            authentication -> {
-                                SecurityContext context =
-                                        SecurityContextHolder.createEmptyContext();
-                                context.setAuthentication(authentication);
-                                SecurityContextHolder.setContext(context);
-                            });
+            Optional<TransportAuthentication> authentication =
+                    tokens.authenticate(bearerCredential(request));
+            if (authentication.isPresent()) {
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(authentication.get());
+                SecurityContextHolder.setContext(context);
+                authenticatedByToken = true;
+            }
         }
-        chain.doFilter(request, response);
+        // A bearer request must not leave a session behind. Setting the context here was enough for
+        // SessionManagementFilter downstream to treat it as a fresh authentication and persist it
+        // through HttpSessionSecurityContextRepository, which created a real Spring Session and
+        // returned it as Set-Cookie: BUDGETOWL_SESSION. That cookie was a second, independent
+        // credential for the same user — and revoking the token did not touch it, so a revoked or
+        // logged-out token still had a live session with OWNER write access until it idled out.
+        // It also minted one session row per request, which buries the devices list in
+        // indistinguishable "Web browser" entries and grows spring_session without bound.
+        //
+        // Creation is blocked rather than the session deleted afterwards: by the time one exists
+        // its cookie is already on the response. An existing session stays readable, so a browser
+        // request that also carries a token is unaffected.
+        chain.doFilter(authenticatedByToken ? withoutSessionCreation(request) : request, response);
     }
 
     /**
@@ -74,5 +91,24 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
             return "";
         }
         return request.getHeader(HttpHeaders.AUTHORIZATION).substring(SCHEME.length()).strip();
+    }
+
+    /**
+     * The same request, but nothing downstream can start a session on it. An existing one is still
+     * returned, so this withholds a new credential rather than breaking a request that already had
+     * one.
+     */
+    private static HttpServletRequest withoutSessionCreation(HttpServletRequest request) {
+        return new HttpServletRequestWrapper(request) {
+            @Override
+            public HttpSession getSession(boolean create) {
+                return super.getSession(false);
+            }
+
+            @Override
+            public HttpSession getSession() {
+                return super.getSession(false);
+            }
+        };
     }
 }

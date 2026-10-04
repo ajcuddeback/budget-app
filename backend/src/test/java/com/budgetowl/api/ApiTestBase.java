@@ -21,8 +21,9 @@ import org.springframework.test.context.TestPropertySource;
  *
  * <p>Two properties are overridden, both to make the suite runnable rather than to make it pass:
  * BCrypt's cost, because a 250ms hash per login turns this into a suite nobody runs; and the
- * session cookie's {@code Secure} flag, because the tests speak plain HTTP. {@code SessionCookieIT}
- * asserts the shipped default is the opposite.
+ * session cookie's {@code Secure} flag, because the tests speak plain HTTP. {@code
+ * TransportIT.givesTheBrowserASessionCookieABrowserCanDefend} asserts the shipped default is the
+ * opposite.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = "budgetowl.security.bcrypt-strength=4")

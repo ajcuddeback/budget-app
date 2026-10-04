@@ -131,6 +131,73 @@ class TransportIT extends ApiTestBase {
     }
 
     @Test
+    void leavesNoSessionBehindOnABearerRequest() throws Exception {
+        seedHousehold();
+        String token = issueToken(OWNER_EMAIL, OWNER_SECRET, "Ada's phone");
+        // Seeding signs in over HTTP, so the baseline is whatever those browser logins left.
+        long before = sessionRows();
+
+        java.net.http.HttpResponse<String> response =
+                java.net.http.HttpClient.newHttpClient()
+                        .send(
+                                java.net.http.HttpRequest.newBuilder(
+                                                java.net.URI.create(baseUrl() + "/api/auth/me"))
+                                        .header("Authorization", "Bearer " + token)
+                                        .GET()
+                                        .build(),
+                                java.net.http.HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        // The bearer transport used to be handed a session cookie it never asked for: a second
+        // credential for the same user that revoking the token did not touch, so a revoked token
+        // still had OWNER write access until the session idled out. It also grew spring_session by
+        // a row per request and filled the devices screen with identical "Web browser" entries.
+        assertThat(response.headers().allValues("set-cookie"))
+                .as("a bearer request must not be issued a session cookie")
+                .noneMatch(header -> header.startsWith(SESSION_COOKIE + "="));
+        assertThat(sessionRows())
+                .as("and must not leave an authenticated session row behind")
+                .isEqualTo(before);
+    }
+
+    private long sessionRows() {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM spring_session WHERE principal_name IS NOT NULL", Long.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/auth/login", "/api/setup/first-user"})
+    void refusesToTradeABearerHeaderForACsrfExemptionOnAPublicWrite(String path) throws Exception {
+        seedHousehold();
+
+        // No cookies at all, so the session-cookie clause cannot be what refuses this. The header
+        // is the attacker's own, and it authenticates nothing. Before this was closed, login
+        // answered 200 and signed the caller in — login CSRF puts a visitor into the attacker's
+        // account, where they then type.
+        java.net.http.HttpResponse<String> response =
+                java.net.http.HttpClient.newHttpClient()
+                        .send(
+                                java.net.http.HttpRequest.newBuilder(
+                                                java.net.URI.create(baseUrl() + path))
+                                        .header("Content-Type", "application/json")
+                                        .header("Authorization", "Bearer attacker-chosen-nonsense")
+                                        .POST(
+                                                java.net.http.HttpRequest.BodyPublishers.ofString(
+                                                        "{\"email\":\""
+                                                                + OWNER_EMAIL
+                                                                + "\",\"password\":\""
+                                                                + OWNER_SECRET
+                                                                + "\"}"))
+                                        .build(),
+                                java.net.http.HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode())
+                .as("a public write a browser can reach always needs a CSRF token")
+                .isEqualTo(403);
+        assertThat(response.body()).contains("csrf-token-required");
+    }
+
+    @Test
     void asksNoCsrfTokenOfTheBearerTransport() {
         seedHousehold();
 

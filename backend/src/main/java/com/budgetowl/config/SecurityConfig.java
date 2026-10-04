@@ -35,6 +35,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
@@ -249,10 +250,23 @@ public class SecurityConfig {
     private static RequestMatcher csrfExempt(
             PathPatternRequestMatcher.Builder route, String sessionCookieName) {
         RequestMatcher tokenIssue = route.matcher(HttpMethod.POST, "/api/auth/token");
+        // The public writes a browser can be made to perform. A bearer client never calls these —
+        // it authenticates at /api/auth/token — so the bearer exemption has no business covering
+        // them, and covering them meant `Authorization: Bearer <anything>` logged a CSRF check off
+        // POST /api/auth/login (a proven 200, a full login) and POST /api/setup/first-user (201,
+        // the instance claimed). Login CSRF signs a visitor into the attacker's account, and they
+        // then type into it. Same bug class as the cookie half, and unreachable from a browser for
+        // the same incidental reason — no CORS — which is not a control.
+        RequestMatcher publicWrite =
+                new OrRequestMatcher(
+                        route.matcher(HttpMethod.POST, "/api/auth/login"),
+                        route.matcher(HttpMethod.POST, "/api/setup/first-user"),
+                        route.matcher(HttpMethod.POST, "/api/invitations/{token}/accept"));
         return request ->
                 !carriesSessionCookie(request, sessionCookieName)
-                        && (BearerTokenAuthenticationFilter.isBearerRequest(request)
-                                || tokenIssue.matches(request));
+                        && (tokenIssue.matches(request)
+                                || (BearerTokenAuthenticationFilter.isBearerRequest(request)
+                                        && !publicWrite.matches(request)));
     }
 
     /**
