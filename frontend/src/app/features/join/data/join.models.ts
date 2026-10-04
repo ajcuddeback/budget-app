@@ -18,4 +18,10 @@ export interface AcceptedInvitation {
   householdName: string;
   role: HouseholdRole;
   userCreated: boolean;
+  /**
+   * The address of the account now in the household. Shown to a joiner who was just registered:
+   * the inviter typed it, nothing emails it to them, so this screen is the only place they learn
+   * what to sign in with.
+   */
+  email: string;
 }

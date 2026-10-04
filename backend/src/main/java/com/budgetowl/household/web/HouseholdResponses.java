@@ -68,5 +68,9 @@ public final class HouseholdResponses {
      * link, not of the account, so they sign in afterwards like anybody else.
      */
     public record AcceptInvitationResponse(
-            UUID householdId, String householdName, HouseholdRole role, boolean userCreated) {}
+            UUID householdId,
+            String householdName,
+            HouseholdRole role,
+            boolean userCreated,
+            String email) {}
 }

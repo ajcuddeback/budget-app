@@ -5,7 +5,7 @@
     "guide": "create-your-account",
     "caption": "The Household screen you land on after creating your account.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -14,7 +14,7 @@
     "guide": "create-your-account",
     "caption": "The setup form filled in.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -23,7 +23,7 @@
     "guide": "create-your-account",
     "caption": "The Set up Budget Owl screen with an empty form.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -32,7 +32,7 @@
     "guide": "create-your-account",
     "caption": "The password field asking for at least 12 characters.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -40,8 +40,8 @@
     "file": "userguide/images/invite-someone--household.png",
     "guide": "invite-someone",
     "caption": "The Household screen as an owner, with the Invite someone button.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -49,8 +49,8 @@
     "file": "userguide/images/invite-someone--invite-copied.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window just after selecting Copy link, with \"Link copied.\" beside the button.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -58,8 +58,8 @@
     "file": "userguide/images/invite-someone--invite-filled.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window with an email address and the Viewer role chosen.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -67,8 +67,8 @@
     "file": "userguide/images/invite-someone--invite-form.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window, before anything is filled in.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -76,8 +76,8 @@
     "file": "userguide/images/invite-someone--invite-link.png",
     "guide": "invite-someone",
     "caption": "The invitation link, with the warning to treat it like a password.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -85,8 +85,8 @@
     "file": "userguide/images/invite-someone--invite-revoked.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window after the link has been revoked.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -94,8 +94,8 @@
     "file": "userguide/images/join-a-household--join-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen after joining.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -103,8 +103,8 @@
     "file": "userguide/images/join-a-household--join-existing.png",
     "guide": "join-a-household",
     "caption": "The invitation screen as someone who already has an account on this instance.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -112,8 +112,8 @@
     "file": "userguide/images/join-a-household--join-existing-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen for someone who already had an account.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -121,8 +121,8 @@
     "file": "userguide/images/join-a-household--join-form.png",
     "guide": "join-a-household",
     "caption": "The invitation screen, with the notice about who can see what you record.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -130,8 +130,8 @@
     "file": "userguide/images/join-a-household--join-needs-details.png",
     "guide": "join-a-household",
     "caption": "The invitation screen asking for a name and password.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -139,8 +139,8 @@
     "file": "userguide/images/join-a-household--join-sign-in.png",
     "guide": "join-a-household",
     "caption": "The Sign in screen after joining, with a message that you have joined the household.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -148,8 +148,8 @@
     "file": "userguide/images/join-a-household--join-signed-in.png",
     "guide": "join-a-household",
     "caption": "The screen asking you to sign out before you accept an invitation.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -157,8 +157,8 @@
     "file": "userguide/images/join-a-household--join-unusable.png",
     "guide": "join-a-household",
     "caption": "The message shown when an invitation link has expired, been used, or been cancelled.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -166,8 +166,8 @@
     "file": "userguide/images/manage-members--members-leave-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm leaving the household.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -175,8 +175,8 @@
     "file": "userguide/images/manage-members--members-member-view.png",
     "guide": "manage-members",
     "caption": "The Household screen as a member: settings are read-only and a Leave button is shown.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -184,8 +184,8 @@
     "file": "userguide/images/manage-members--members-no-household.png",
     "guide": "manage-members",
     "caption": "The screen shown to someone who is signed in but belongs to no household.",
-    "capturedAt": "2026-10-03",
-    "commit": "13b3f79",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -193,8 +193,8 @@
     "file": "userguide/images/manage-members--members-only-owner.png",
     "guide": "manage-members",
     "caption": "The note shown to the only owner, explaining why there is no Leave button.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -202,8 +202,8 @@
     "file": "userguide/images/manage-members--members-owner.png",
     "guide": "manage-members",
     "caption": "The Household screen as an owner, listing three people and their roles.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -211,8 +211,8 @@
     "file": "userguide/images/manage-members--members-remove-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm removing Sam Rivera.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -220,8 +220,8 @@
     "file": "userguide/images/manage-members--members-role-changed.png",
     "guide": "manage-members",
     "caption": "Jordan Rivera now shown with the Member role.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -230,7 +230,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen explaining that your session ended.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -239,7 +239,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -248,7 +248,7 @@
     "guide": "sign-in",
     "caption": "The message asking you to wait before trying to sign in again.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -257,7 +257,7 @@
     "guide": "sign-in",
     "caption": "The message shown when the email address or password is wrong.",
     "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -265,8 +265,8 @@
     "file": "userguide/images/your-devices--devices.png",
     "guide": "your-devices",
     "caption": "The Devices screen listing this browser, another browser, and a phone.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -274,8 +274,8 @@
     "file": "userguide/images/your-devices--devices-confirm-current.png",
     "guide": "your-devices",
     "caption": "The window warning that you are about to sign out of the browser you are using.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -283,8 +283,8 @@
     "file": "userguide/images/your-devices--devices-revoked.png",
     "guide": "your-devices",
     "caption": "The Devices screen after signing the other browser out.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -292,8 +292,8 @@
     "file": "userguide/images/your-display-settings--preferences.png",
     "guide": "your-display-settings",
     "caption": "The Your preferences screen.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -301,8 +301,8 @@
     "file": "userguide/images/your-display-settings--preferences-chosen.png",
     "guide": "your-display-settings",
     "caption": "Euro and German chosen, before saving.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   },
   {
@@ -310,8 +310,8 @@
     "file": "userguide/images/your-display-settings--preferences-saved.png",
     "guide": "your-display-settings",
     "caption": "The preferences screen confirming that they were saved.",
-    "capturedAt": "2026-10-03",
-    "commit": "dfc98f7",
+    "capturedAt": "2026-10-04",
+    "commit": "df6b36c",
     "viewport": "1280x720"
   }
 ]

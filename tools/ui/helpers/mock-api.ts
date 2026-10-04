@@ -125,9 +125,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const token = decodeURIComponent(accept[1]);
       if (token === DEMO_TOKENS.unusable) return problem(route, DEMO_PROBLEMS.invitationUnusable);
       if (token === DEMO_TOKENS.newAccount && !field('password')) {
-        return json(route, 400, { type: 'https://budgetapp.dev/errors/validation-failed', title: 'Validation failed', status: 400, code: 'validation-failed', params: { fields: ['displayName', 'password'] }, correlationId: 'demo0000000000000000000000000008' }, 'application/problem+json');
+        return json(route, 400, { type: 'https://budgetowl.app/errors/validation-failed', title: 'Validation failed', status: 400, code: 'validation-failed', params: { fields: ['displayName', 'password'] }, correlationId: 'demo0000000000000000000000000008' }, 'application/problem+json');
       }
-      return json(route, 200, { householdId: DEMO_HOUSEHOLD.id, householdName: DEMO_HOUSEHOLD.name, role: 'MEMBER', userCreated: Boolean(field('password')) });
+      return json(route, 200, { householdId: DEMO_HOUSEHOLD.id, householdName: DEMO_HOUSEHOLD.name, role: 'MEMBER', userCreated: Boolean(field('password')), email: DEMO_INVITATION.email });
     }
     if (at === 'POST /api/households/current/invitations') {
       return json(route, 201, { ...DEMO_INVITATION, email: field('email') ?? DEMO_INVITATION.email, role: field('role') ?? DEMO_INVITATION.role });

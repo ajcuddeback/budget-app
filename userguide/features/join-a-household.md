@@ -54,9 +54,9 @@ join.
 
 7. Sign in with your email address and the password you chose.
 
-   Use the email address your invitation was made for. If you are not sure which one that is, ask
-   the person who invited you which address they typed. Joining does not sign you in by itself —
-   this step does. See [Sign in](sign-in.md).
+   If your account was just created, the **You have joined** screen named the address to use —
+   **Sign in with …**. Use that one. Joining does not sign you in by itself — this step does.
+   See [Sign in](sign-in.md).
 
 ## If you already have an account on this server
 

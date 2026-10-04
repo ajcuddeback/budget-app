@@ -162,13 +162,13 @@ export const DEMO_TOKENS = {
 
 /** The RFC 7807 bodies the API sends, by stable code. The client renders the sentence. */
 export const DEMO_PROBLEMS = {
-  authenticationFailed: { type: 'https://budgetapp.dev/errors/authentication-failed', title: 'Authentication failed', status: 401, code: 'authentication-failed', correlationId: 'demo0000000000000000000000000001' },
-  notAuthenticated: { type: 'https://budgetapp.dev/errors/not-authenticated', title: 'Not authenticated', status: 401, code: 'not-authenticated', correlationId: 'demo0000000000000000000000000002' },
-  notAMember: { type: 'https://budgetapp.dev/errors/not-a-member', title: 'Not a member of this household', status: 403, code: 'not-a-member', correlationId: 'demo0000000000000000000000000003' },
-  invitationUnusable: { type: 'https://budgetapp.dev/errors/invitation-unusable', title: 'This invitation cannot be used', status: 404, code: 'invitation-unusable', correlationId: 'demo0000000000000000000000000004' },
-  lastOwner: { type: 'https://budgetapp.dev/errors/last-owner', title: 'A household must keep at least one owner', status: 409, code: 'last-owner', correlationId: 'demo0000000000000000000000000005' },
-  rateLimited: { type: 'https://budgetapp.dev/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' },
-  internal: { type: 'https://budgetapp.dev/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
+  authenticationFailed: { type: 'https://budgetowl.app/errors/authentication-failed', title: 'Authentication failed', status: 401, code: 'authentication-failed', correlationId: 'demo0000000000000000000000000001' },
+  notAuthenticated: { type: 'https://budgetowl.app/errors/not-authenticated', title: 'Not authenticated', status: 401, code: 'not-authenticated', correlationId: 'demo0000000000000000000000000002' },
+  notAMember: { type: 'https://budgetowl.app/errors/not-a-member', title: 'Not a member of this household', status: 403, code: 'not-a-member', correlationId: 'demo0000000000000000000000000003' },
+  invitationUnusable: { type: 'https://budgetowl.app/errors/invitation-unusable', title: 'This invitation cannot be used', status: 404, code: 'invitation-unusable', correlationId: 'demo0000000000000000000000000004' },
+  lastOwner: { type: 'https://budgetowl.app/errors/last-owner', title: 'A household must keep at least one owner', status: 409, code: 'last-owner', correlationId: 'demo0000000000000000000000000005' },
+  rateLimited: { type: 'https://budgetowl.app/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' },
+  internal: { type: 'https://budgetowl.app/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
 } as const;
 
 export const DEMO_ACCOUNTS = [

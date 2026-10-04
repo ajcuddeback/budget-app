@@ -69,7 +69,36 @@ class InvitationIT extends ApiTestBase {
         assertThat(response.status()).isEqualTo(200);
         assertThat(response.stringField("role")).isEqualTo("VIEWER");
         assertThat(response.body()).contains("\"userCreated\":true");
-        assertThat(signIn(JOINER_EMAIL, JOINER_SECRET).get("/api/households/current").status())
+
+        // The joiner is told which address to sign in with, and that address is the one that
+        // works. Nothing emails it to them and the inviter typed it, so a response that named a
+        // different address than the account holds would lock out a new member silently.
+        assertThat(response.stringField("email")).isEqualTo(JOINER_EMAIL);
+        assertThat(
+                        signIn(response.stringField("email"), JOINER_SECRET)
+                                .get("/api/households/current")
+                                .status())
+                .isEqualTo(200);
+    }
+
+    @Test
+    void tellsTheJoinerTheAddressTheAccountActuallyHoldsNotTheOneThatWasTyped() {
+        Household household = seedHousehold();
+        String typed = "Chris.Rivera@Example.COM";
+
+        ApiResponse response =
+                acceptInvitation(
+                        invite(household.owner(), typed, "MEMBER"), "Chris", JOINER_SECRET);
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.stringField("email"))
+                .as("the address read back from the account, whatever case it was typed in")
+                .isEqualTo(typed);
+        assertThat(
+                        signIn(response.stringField("email"), JOINER_SECRET)
+                                .get("/api/households/current")
+                                .status())
+                .as("the address we show has to be one that signs in")
                 .isEqualTo(200);
     }
 

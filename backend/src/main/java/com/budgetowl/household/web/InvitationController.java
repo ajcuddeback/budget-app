@@ -91,6 +91,7 @@ public class InvitationController {
                 accepted.householdId(),
                 accepted.householdName(),
                 accepted.role(),
-                accepted.userCreated());
+                accepted.userCreated(),
+                accepted.email());
     }
 }

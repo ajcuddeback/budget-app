@@ -35,10 +35,11 @@ as well, especially if you are not the person who runs the server.
 
 2. Enter their email address in **Their email address**.
 
-   Enter the address they will sign in with. The screen calls this address a label — it is not
-   what lets them in; the link does that. But if they do not already have an account on your
-   server, their new account is created with this address, so type it carefully. If they already
+   Enter the address they will sign in with. If they do not already have an account on your
+   server, their new account is created with this address — so type it carefully. If they already
    have an account, use the address of that account.
+
+   The link, not the address, is what lets them in. The address decides who they become.
 
 3. Choose their role under **Their role**.
 

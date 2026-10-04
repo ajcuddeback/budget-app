@@ -66,7 +66,7 @@ test('@doc sign in, rate limited and expired', async ({ page, doc }) => {
             status: 429,
             contentType: 'application/problem+json',
             headers: { 'Retry-After': '120' },
-            body: JSON.stringify({ type: 'https://budgetapp.dev/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' }),
+            body: JSON.stringify({ type: 'https://budgetowl.app/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' }),
         }),
     );
     await page.goto('/login');

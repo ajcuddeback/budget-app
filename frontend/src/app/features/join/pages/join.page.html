@@ -12,7 +12,7 @@
       <p class="card-note">
         {{ 'join.joinedRole' | t: { role: (roleKey[done.role] | t) } }}
         @if (done.userCreated) {
-          {{ 'join.joinedAccountCreated' | t }}
+          {{ 'join.joinedAccountCreated' | t: { email: done.email } }}
         }
       </p>
       <a class="btn btn-primary" routerLink="/login" [queryParams]="{ reason: 'joined' }">{{

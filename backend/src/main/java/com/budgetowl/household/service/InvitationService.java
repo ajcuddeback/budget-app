@@ -209,7 +209,8 @@ public class InvitationService {
                 invitationId,
                 joiningId,
                 existing.isEmpty());
-        return new AcceptedInvitation(household.id(), household.name(), role, existing.isEmpty());
+        return new AcceptedInvitation(
+                household.id(), household.name(), role, existing.isEmpty(), joining.email());
     }
 
     /**

@@ -134,7 +134,7 @@ describe('JoinPage', () => {
   it('asks the server to accept with the token from the link, and shows the new member where to go next', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
-    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'MEMBER', userCreated: true }));
+    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'MEMBER', userCreated: true, email: 'chris@example.com' }));
     typeInto(root, '#join-name', 'Riley Okafor');
     typeInto(root, '#join-password', 'a long fixture passphrase');
 
@@ -144,13 +144,15 @@ describe('JoinPage', () => {
     expect(accept).toHaveBeenCalledWith('tok-123', { displayName: 'Riley Okafor', password: PASSPHRASE });
     expect(root.textContent).toContain('Welcome to Rivera Household');
     expect(root.textContent).toContain('Your account has been created.');
+    // Nothing emails the address to them; this screen is where they learn what to sign in with.
+    expect(root.textContent).toContain('chris@example.com');
     expect(root.querySelector('a[href="/login?reason=joined"]')).not.toBeNull();
     expect(root.textContent).not.toContain('tok-123');
   });
 
   it('lets an existing user accept with both fields empty', async () => {
     const fixture = await render();
-    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'VIEWER', userCreated: false }));
+    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'VIEWER', userCreated: false, email: 'chris@example.com' }));
 
     buttonNamed(fixture.nativeElement, 'Accept and join').click();
     await settle(fixture);
