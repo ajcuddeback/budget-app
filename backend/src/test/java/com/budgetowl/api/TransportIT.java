@@ -91,6 +91,46 @@ class TransportIT extends ApiTestBase {
     }
 
     @Test
+    void refusesToTradeASessionCookieForACsrfExemptionWithABearerHeader() throws Exception {
+        seedHousehold();
+        ApiClient browser = signIn(OWNER_EMAIL, OWNER_SECRET);
+        String cookies =
+                browser.cookies().entrySet().stream()
+                        .map(entry -> entry.getKey() + "=" + entry.getValue())
+                        .collect(java.util.stream.Collectors.joining("; "));
+
+        // The victim's session cookie, no CSRF token, and an Authorization header the attacker
+        // chose. This returned 201 and a working OWNER invitation link until the exemption was
+        // made to require the absence of an ambient credential rather than the presence of a
+        // header. Built raw rather than through ApiClient, which clears cookies when a bearer
+        // token is set and so cannot express the attack at all.
+        java.net.http.HttpRequest forged =
+                java.net.http.HttpRequest.newBuilder(
+                                java.net.URI.create(
+                                        baseUrl() + "/api/households/current/invitations"))
+                        .timeout(java.time.Duration.ofSeconds(30))
+                        .header("Content-Type", "application/json")
+                        .header("Cookie", cookies)
+                        .header("Authorization", "Bearer not-a-real-token")
+                        .POST(
+                                java.net.http.HttpRequest.BodyPublishers.ofString(
+                                        "{\"email\":\"attacker@example.com\",\"role\":\"OWNER\"}"))
+                        .build();
+
+        java.net.http.HttpResponse<String> response =
+                java.net.http.HttpClient.newHttpClient()
+                        .send(forged, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode())
+                .as("a header the caller chooses must not buy an exemption for a cookie request")
+                .isEqualTo(403);
+        assertThat(response.body()).contains("csrf-token-required");
+        assertThat(response.body())
+                .as("no invitation may be created, and no token may come back")
+                .doesNotContain("acceptPath");
+    }
+
+    @Test
     void asksNoCsrfTokenOfTheBearerTransport() {
         seedHousehold();
 

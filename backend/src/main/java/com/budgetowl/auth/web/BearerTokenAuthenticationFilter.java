@@ -47,17 +47,14 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        if (isBearerRequest(request)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String presented =
-                    request.getHeader(HttpHeaders.AUTHORIZATION).substring(SCHEME.length()).strip();
-            // Deliberately unguarded: an empty token is looked up like any other and finds
-            // nothing. Skipping the lookup for it would make whether authentication runs at all
-            // depend on the header's content, which is the shape CodeQL flags as a
-            // user-controlled bypass of a sensitive method. The outcome was already fail-closed,
-            // but a filter whose authentication step is conditional on attacker input is worth
-            // one index probe to be rid of.
-            tokens.authenticate(presented)
+        // Authentication is attempted for every request that does not already have it, and the
+        // header decides only what credential is presented — not whether the attempt happens.
+        // Nothing about the caller's input can steer the filter around its own authentication
+        // step, which is what CodeQL's user-controlled-bypass rule is looking for. A request with
+        // no bearer header presents an empty credential, which AuthTokenService rejects without
+        // touching the database, so this costs a non-bearer request nothing.
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            tokens.authenticate(bearerCredential(request))
                     .ifPresent(
                             authentication -> {
                                 SecurityContext context =
@@ -67,5 +64,15 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                             });
         }
         chain.doFilter(request, response);
+    }
+
+    /**
+     * The credential from an {@code Authorization: Bearer} header, or {@code ""} if there is none.
+     */
+    private static String bearerCredential(HttpServletRequest request) {
+        if (!isBearerRequest(request)) {
+            return "";
+        }
+        return request.getHeader(HttpHeaders.AUTHORIZATION).substring(SCHEME.length()).strip();
     }
 }

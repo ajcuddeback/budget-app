@@ -4,8 +4,11 @@ import com.budgetowl.auth.service.AuthTokenService;
 import com.budgetowl.auth.web.AbsoluteSessionTimeoutFilter;
 import com.budgetowl.auth.web.BearerTokenAuthenticationFilter;
 import com.budgetowl.common.ErrorCode;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +68,11 @@ public class SecurityConfig {
             AuthTokenService tokens,
             SecurityContextRepository securityContextRepository,
             ProblemResponseWriter problems,
-            Clock clock)
+            Clock clock,
+            // The name the container actually issues, not a copy of it. A rename in
+            // application.yml that this did not follow would silently un-exempt nothing and
+            // re-open the bypass.
+            @Value("${server.servlet.session.cookie.name}") String sessionCookieName)
             throws Exception {
         PathPatternRequestMatcher.Builder route = PathPatternRequestMatcher.withDefaults();
 
@@ -116,7 +123,8 @@ public class SecurityConfig {
                         csrf ->
                                 csrf.csrfTokenRepository(csrfCookies)
                                         .csrfTokenRequestHandler(csrfHandler)
-                                        .ignoringRequestMatchers(csrfExempt(route)))
+                                        .ignoringRequestMatchers(
+                                                csrfExempt(route, sessionCookieName)))
                 .securityContext(
                         context -> context.securityContextRepository(securityContextRepository))
                 .sessionManagement(
@@ -224,12 +232,45 @@ public class SecurityConfig {
     /**
      * The two CSRF exemptions, both of them requests with no ambient credential: a bearer-
      * authenticated call, and the endpoint a cookie-less client uses to get a bearer token.
+     *
+     * <p><b>A request carrying the session cookie is never exempt, whatever else it carries.</b>
+     * That clause is the whole control, and leaving it out was a CSRF bypass: the exemption used to
+     * fire on the mere <i>presence</i> of an {@code Authorization: Bearer} header, which is a value
+     * the caller chooses. A request with the victim's session cookie, no CSRF token, and {@code
+     * Authorization: Bearer anything} skipped the CSRF check and was then authenticated by the
+     * cookie — a proven 201 on an OWNER invitation, which returns a working invite link.
+     *
+     * <p>Only the absence of CORS made that unreachable from a browser, because setting {@code
+     * Authorization} cross-origin needs a preflight this server never approves. That is incidental
+     * protection: the first time someone adds an allowed origin it would have become live, with
+     * nothing in the CSRF code to stop it. The exemption now tests the thing its own description
+     * always claimed — no ambient credential — rather than a header anyone can set.
      */
-    private static RequestMatcher csrfExempt(PathPatternRequestMatcher.Builder route) {
+    private static RequestMatcher csrfExempt(
+            PathPatternRequestMatcher.Builder route, String sessionCookieName) {
         RequestMatcher tokenIssue = route.matcher(HttpMethod.POST, "/api/auth/token");
         return request ->
-                BearerTokenAuthenticationFilter.isBearerRequest(request)
-                        || tokenIssue.matches(request);
+                !carriesSessionCookie(request, sessionCookieName)
+                        && (BearerTokenAuthenticationFilter.isBearerRequest(request)
+                                || tokenIssue.matches(request));
+    }
+
+    /**
+     * Whether the request presents the session cookie — read from the raw cookies rather than from
+     * the session, so it is true even when the id names a session that has expired or never
+     * existed. An attacker choosing the cookie's value must not be able to make it look absent.
+     */
+    private static boolean carriesSessionCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return false;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

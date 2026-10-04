@@ -79,6 +79,12 @@ public class AuthTokenService {
      */
     @Transactional
     public Optional<TransportAuthentication> authenticate(String presentedToken) {
+        // An absent or empty credential is this method's business to reject, not its caller's to
+        // pre-screen: the filter calls in unconditionally so that no request header can decide
+        // whether authentication is attempted. Returning early here keeps that free of a lookup.
+        if (presentedToken == null || presentedToken.isBlank()) {
+            return Optional.empty();
+        }
         Instant now = clock.instant();
         return tokens.findByTokenHash(OpaqueToken.of(presentedToken).sha256Hex())
                 .filter(token -> token.isLiveAt(now))
