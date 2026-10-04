@@ -174,10 +174,15 @@ if [ "$TARGET" = "mutation" ]; then
   else
     skip "backend mutation" "backend/ does not exist yet"
   fi
-  if [ -f frontend/package.json ]; then
-    run "frontend mutation score (Stryker)" npm --prefix frontend run test:mutation
-  else
+  # Stryker is an ADR-0024 follow-up that has not been done. Without this check the command
+  # fails on a missing npm script, which reads as "mutation testing is broken" rather than
+  # "it was never wired" — and a command that always fails is one nobody runs.
+  if [ ! -f frontend/package.json ]; then
     skip "frontend mutation" "frontend/ does not exist yet"
+  elif ! npm --prefix frontend run 2>/dev/null | grep -q '^  test:mutation$'; then
+    skip "frontend mutation" "Stryker not wired yet (ADR-0024 follow-up); CI does not run it either"
+  else
+    run "frontend mutation score (Stryker)" npm --prefix frontend run test:mutation
   fi
   section "Result"
   if [ "$FAILED" -eq 0 ]; then printf '  \033[32mPASSED\033[0m\n'; exit 0
@@ -245,6 +250,12 @@ section "Result"
 if [ ${#SKIPPED[@]} -gt 0 ]; then
   printf '  \033[33mskipped:\033[0m %s\n' "$(IFS=,; echo "${SKIPPED[*]}")"
   printf '  A skip is not a pass. Say so when you report this.\n'
+fi
+# A green run here is not a green CI run, and saying so once is cheaper than the round trip.
+# Slice 2 passed this script and then failed CI on two gates it does not contain.
+if [ "$TARGET" = "all" ]; then
+  printf '  \033[33mnot run here:\033[0m mutation testing (tools/verify.sh mutation), CodeQL, Trivy image scan\n'
+  printf '  CI runs those. PASSED below means this script, not the pull request.\n'
 fi
 if [ "$FAILED" -eq 0 ]; then
   printf '  \033[32mPASSED\033[0m\n'; exit 0

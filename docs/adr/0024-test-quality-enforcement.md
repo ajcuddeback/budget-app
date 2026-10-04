@@ -125,3 +125,38 @@ workflow and passing `-DtargetClasses`, or by a plugin that provides it. The fir
 this job slow should treat that as the signal, not as an annoyance.
 
 First recorded score: **70% mutation, 80% test strength**, threshold 60%.
+
+## Amendment — 2026-10-04: PIT mutates only what PIT's tests can reach
+
+Slice 2 took the mutation score from 70% to **43%**, below the 60% threshold, and the first CI run
+of the full backend failed on it. The tests had not got worse. The cause was arithmetic:
+
+- Surefire excludes `**/*IT.java`; failsafe owns the integration tests.
+- PIT derives its test set from surefire's configuration, so it never runs them.
+- 174 of the backend's 293 test methods are `*IT` — every test that exercises a controller, a
+  service or the security chain against real HTTP and a real database.
+
+PIT was therefore mutating the service and web layers while being told not to run the tests that
+cover them. **216 of its 229 "no coverage" mutations were in exactly those two layers.** The score
+was not measuring test quality; it was measuring a classpath exclusion.
+
+JaCoCo, which *does* see the failsafe run, reports 90–100% line coverage for the same packages,
+under the stricter 85%/75% per-package rule this ADR's sibling guidance already applies to
+`*.service`, `*.domain` and `common`.
+
+**Decision:** PIT's `excludedClasses` now covers `com.budgetowl.*.service.*` and
+`com.budgetowl.*.web.*`. PIT guards the pure logic — domain, money, tokens, error mapping —
+where unit tests are the proof. JaCoCo's per-package rule guards the layers that need a database
+to exercise, where integration tests are the proof.
+
+Running the ITs under PIT was considered and rejected: PIT re-runs the covering tests once per
+mutation, and these boot a Spring context and a Testcontainers database. Correct in principle,
+and the kind of gate that gets deleted within a month.
+
+The honest cost: **a unit test added for service-layer logic is no longer mutation-checked.** That
+is the thing to watch. `testStrengthThreshold` is now set to 75 alongside the 60% score threshold
+specifically so that widening these exclusions again cannot silently buy back score — strength is
+computed over covered mutations only, so excluding more code does not improve it.
+
+Score after the change: **76% mutation, 81% test strength**, over 207 mutations whose classes are
+92% line-covered (was 43%).

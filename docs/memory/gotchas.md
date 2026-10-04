@@ -548,3 +548,68 @@ proxy_pass $api_upstream;
 
 Caught by running `nginx -t` with no `api` host present — which is exactly the state a
 self-hoster's first `up` is in. `nginx -t` against the real config is worth doing in CI.
+
+## PIT inherits surefire's exclusions, so `*IT` tests are invisible to mutation testing
+
+`backend/pom.xml` has surefire exclude `**/*IT.java` (failsafe owns them). PIT derives its test
+set from surefire's configuration, so **every integration test is invisible to it** — in slice 2
+that was 174 of 293 test methods, and all of the ones that exercise controllers, services and the
+security chain.
+
+The symptom is not an error. It is a *plausible-looking low score*: PIT reported 43% and
+"229 mutations with no coverage", of which 216 were in `service` and `web` — the layers whose
+tests it had been told not to run. It reads like a test-quality problem and is actually a
+classpath exclusion.
+
+If mutation score drops after adding integration tests, check **where** the uncovered mutations
+are before writing a single test:
+
+```bash
+# which layers are reported as having no coverage
+python3 - <<'PY'
+import xml.etree.ElementTree as ET, collections, glob
+r = ET.parse(glob.glob('backend/target/pit-reports/**/mutations.xml', recursive=True)[0]).getroot()
+agg = collections.defaultdict(collections.Counter)
+for m in r.iter('mutation'):
+    parts = m.findtext('mutatedClass', '').split('.')
+    agg[parts[3] if len(parts) > 3 else parts[-1]][m.get('status')] += 1
+for layer, c in sorted(agg.items(), key=lambda kv: -kv[1]['NO_COVERAGE']):
+    print(f"{layer:<16}{c['NO_COVERAGE']:>6} no-cov {c['KILLED']:>5} killed {c['SURVIVED']:>4} survived")
+PY
+```
+
+Resolved by excluding those layers from PIT and leaving them to JaCoCo, which *does* see the
+failsafe run. See the 2026-10-04 amendment to ADR-0024 for the reasoning and the cost.
+
+*Added 2026-10-04 — slice 2 CI.*
+
+## Trivy and OWASP dependency-check disagree, and both are load-bearing
+
+Slice 2's first CI run: `Dependency vulnerabilities` (OWASP dependency-check, `failBuildOnCVSS 7`)
+**passed**, while Trivy failed the image scan on **five HIGH CVEs in Jackson 3.1.5** — the version
+Spring Boot 4.1.1 manages. Different databases, different latencies; OWASP's NVD feed had not
+caught up.
+
+So neither scanner is redundant, and a green dependency check is not evidence the image is clean.
+They also look at different things: OWASP reads the dependency graph, Trivy reads what is actually
+inside the built jar and the base image.
+
+Overriding a Boot-managed version is one property — the name is not `jackson.version`:
+
+```xml
+<jackson-bom.version>3.1.7</jackson-bom.version>
+```
+
+Find the real name with `mvn help:evaluate -Dexpression=<guess> -DforceStdout` rather than
+guessing; a property Boot does not use is silently ignored and the version does not move.
+
+*Added 2026-10-04 — slice 2 CI.*
+
+## A green `tools/verify.sh` is not a green pull request
+
+The script does not run mutation testing (opt-in, `tools/verify.sh mutation`), CodeQL, or the
+Trivy image scan. Slice 2 passed the full local gate and then failed CI on three checks. The
+script now prints what it does not cover, but the habit matters more than the line: when the
+work is security-relevant, check the PR, not the terminal.
+
+*Added 2026-10-04 — slice 2 CI.*

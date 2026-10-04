@@ -108,6 +108,22 @@ class TransportIT extends ApiTestBase {
                 .isEqualTo(201);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "not-a-token", "00000000000000000000000000000000"})
+    void refusesEveryUnusableBearerCredentialTheSameWay(String credential) {
+        seedHousehold();
+
+        ApiResponse response =
+                anonymous().withBearerToken(credential).get("/api/households/current");
+
+        // The filter looks up an empty token like any other rather than skipping the lookup, so
+        // whether authentication runs does not depend on what the caller put in the header. The
+        // answer is 401 either way; this pins that it stays 401 if the lookup is ever reordered.
+        assertThat(response.status())
+                .as("an absent, empty, malformed or unknown token all do the same thing: nothing")
+                .isEqualTo(401);
+    }
+
     @Test
     void asksNoCsrfTokenToIssueABearerTokenInTheFirstPlace() {
         createFirstUser();

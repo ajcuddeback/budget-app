@@ -51,16 +51,20 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String presented =
                     request.getHeader(HttpHeaders.AUTHORIZATION).substring(SCHEME.length()).strip();
-            if (!presented.isEmpty()) {
-                tokens.authenticate(presented)
-                        .ifPresent(
-                                authentication -> {
-                                    SecurityContext context =
-                                            SecurityContextHolder.createEmptyContext();
-                                    context.setAuthentication(authentication);
-                                    SecurityContextHolder.setContext(context);
-                                });
-            }
+            // Deliberately unguarded: an empty token is looked up like any other and finds
+            // nothing. Skipping the lookup for it would make whether authentication runs at all
+            // depend on the header's content, which is the shape CodeQL flags as a
+            // user-controlled bypass of a sensitive method. The outcome was already fail-closed,
+            // but a filter whose authentication step is conditional on attacker input is worth
+            // one index probe to be rid of.
+            tokens.authenticate(presented)
+                    .ifPresent(
+                            authentication -> {
+                                SecurityContext context =
+                                        SecurityContextHolder.createEmptyContext();
+                                context.setAuthentication(authentication);
+                                SecurityContextHolder.setContext(context);
+                            });
         }
         chain.doFilter(request, response);
     }
