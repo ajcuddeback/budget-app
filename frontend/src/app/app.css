@@ -3,57 +3,49 @@
 .masthead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
   flex-wrap: wrap;
-  margin-block-end: var(--space-6);
+  gap: var(--space-3) var(--space-6);
+  padding-block-end: 0;
 }
 
-.masthead h1 {
-  font-size: 2.5rem;
+.brand {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--color-text);
+  text-decoration: none;
+  margin-inline-end: auto;
 }
 
-.lede {
-  max-inline-size: 60ch;
-  margin-block: 0 var(--space-8);
-  color: var(--color-muted);
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
 }
 
-.card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
+.nav a {
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  text-decoration: none;
+  border-block-end: 2px solid transparent;
 }
 
-.card h2 {
-  font-size: 1.5rem;
-  margin-block-end: var(--space-3);
-}
-
-.card p {
-  margin: 0;
-  max-inline-size: 60ch;
-}
-
-.btn {
-  font: inherit;
-  border: 0;
-  border-radius: 999px;
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-}
-
-.btn-ghost {
-  background: transparent;
+.nav a:hover {
   color: var(--color-accent-text);
-  border: 1px solid var(--color-divider);
 }
 
-.btn-ghost:hover {
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+.nav a.active {
+  border-block-end-color: var(--color-accent-text);
+  font-weight: 700;
 }
 
-.btn-ghost:active {
-  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+.masthead-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Focus lands here after every navigation; it is a landmark, not a control, so no ring. */
+.main:focus {
+  outline: none;
 }

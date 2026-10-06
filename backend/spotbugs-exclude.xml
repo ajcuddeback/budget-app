@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusions. Two, both argued rather than assumed — an exclusion file is where static
+  analysis quietly stops applying, so each one says what it covers and why it is not a defect.
+-->
+<FindBugsFilter>
+
+  <!--
+    EI_EXPOSE_REP / EI_EXPOSE_REP2: "may expose internal representation by storing an externally
+    mutable object".
+
+    Every hit is a Spring bean holding a collaborator handed to it by constructor injection: a
+    repository interface, another service, a Clock, an ObjectMapper. The detector cannot tell a
+    injected singleton from a caller-supplied array, and the "defensive copy" it is asking for is
+    not a thing you can do to a repository.
+
+    Scoped to our own service, web and config packages so it stays about dependency injection.
+    It does NOT cover ..domain.., where a mutable field really could leak out of an entity, and
+    it does not cover any other bug pattern.
+  -->
+  <Match>
+    <Or>
+      <Package name="~com\.budgetowl\..*service"/>
+      <Package name="~com\.budgetowl\..*web"/>
+      <Package name="com.budgetowl.config"/>
+    </Or>
+    <Or>
+      <Bug pattern="EI_EXPOSE_REP"/>
+      <Bug pattern="EI_EXPOSE_REP2"/>
+    </Or>
+  </Match>
+
+  <!--
+    CT_CONSTRUCTOR_THROW on exception types.
+
+    The warning is about a partially constructed object being reachable through a finalizer. It is
+    a real concern for a class somebody can subclass and attack; it is not one for an exception
+    that validates its own error code, and java.lang's own exceptions do exactly this. Narrow on
+    purpose: only classes whose names end in Exception, and only this pattern. Entities and
+    services still have to obey it — UserAccount moved its validation into factory methods for
+    precisely this reason.
+  -->
+  <Match>
+    <Class name="~com\.budgetowl\..*Exception"/>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+
+</FindBugsFilter>

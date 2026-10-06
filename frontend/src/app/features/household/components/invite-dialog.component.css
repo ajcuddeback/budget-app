@@ -1,0 +1,30 @@
+.role-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.role-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  cursor: pointer;
+}
+
+.role-option input {
+  margin-block-start: var(--space-1);
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  accent-color: var(--color-primary);
+  flex: none;
+}
+
+/* The whole link stays readable so it can be checked before it is shared. */
+.link-box {
+  border-radius: var(--radius-md);
+  resize: none;
+  overflow-wrap: anywhere;
+  font-size: 0.9375rem;
+}

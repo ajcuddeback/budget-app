@@ -1,0 +1,44 @@
+<ul class="rows">
+  @for (device of devices(); track device.id) {
+    <li class="row">
+      <div class="row-main">
+        <span class="row-title">
+          @if (summary(device); as known) {
+            {{ 'devices.browserOn' | t: { browser: known.browser, system: known.system } }}
+          } @else {
+            {{ device.label }}
+          }
+          @if (device.current) {
+            <span class="tag">{{ 'devices.thisDevice' | t }}</span>
+          }
+        </span>
+        <span class="row-sub">
+          {{ kindKey(device) | t }}
+        </span>
+        <span class="row-sub">{{ 'devices.signedInAt' | t: { date: (device.createdAt | dateTime) } }}</span>
+        @if (device.lastUsedAt) {
+          <span class="row-sub">{{ 'devices.lastUsed' | t: { date: (device.lastUsedAt | dateTime) } }}</span>
+        }
+      </div>
+      <div class="row-actions">
+        <button
+          type="button"
+          class="btn btn-danger btn-small"
+          [disabled]="busyId() !== null"
+          (click)="revokeRequested.emit(device)"
+        >
+          {{ actionKey(device) | t }}
+          <span class="visually-hidden">
+            @if (summary(device); as known) {
+              {{ known.browser }} / {{ known.system }}
+            } @else {
+              {{ device.label }}
+            }
+          </span>
+        </button>
+      </div>
+    </li>
+  } @empty {
+    <li class="row">{{ 'devices.empty' | t }}</li>
+  }
+</ul>

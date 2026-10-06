@@ -33,7 +33,13 @@ export const test = base.extend<UiFixtures>({
     const failedRequests: string[] = [];
 
     page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
+      if (msg.type() !== 'error') return;
+      // Chromium reports every 4xx/5xx response as a console error ("Failed to load resource…").
+      // A 4xx is an answer the app is meant to handle — 401 from the "who am I?" probe on every
+      // signed-out page load, a 403 for a user with no household — so it is not a defect in the
+      // page. 5xx still fail, through the response listener below.
+      if (/^Failed to load resource: the server responded with a status of 4\d\d/.test(msg.text())) return;
+      consoleErrors.push(msg.text());
     });
     page.on('pageerror', (err) => consoleErrors.push(`Uncaught: ${err.message}`));
     page.on('requestfailed', (req) => {

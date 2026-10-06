@@ -1,6 +1,7 @@
 /* Global stylesheet. Order matters: fonts, then tokens, then the base layer. */
 @import './assets/fonts/fonts.css';
 @import './styles/tokens.css';
+@import './styles/components.css';
 
 *,
 *::before,

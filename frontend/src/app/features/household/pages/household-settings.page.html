@@ -1,0 +1,83 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'household.title' | t }}</h1>
+    <p class="page-lede">{{ 'household.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">{{ 'common.retry' | t }}</button>
+    </div>
+  } @else if (household(); as current) {
+    <section class="card" aria-labelledby="household-details-heading">
+      <h2 class="card-title" id="household-details-heading">{{ 'household.detailsHeading' | t }}</h2>
+      <div class="stack">
+        <app-error-alert [error]="saveError()" />
+        @if (saved()) {
+          <div class="alert alert-success" role="status">
+            <p>{{ 'household.saved' | t }}</p>
+          </div>
+        }
+        <app-household-form
+          [household]="current"
+          [canEdit]="isOwner()"
+          [busy]="saving()"
+          (saved)="save($event)"
+        />
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="members-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="members-heading">{{ 'members.heading' | t }}</h2>
+        @if (isOwner()) {
+          <button type="button" class="btn btn-primary" (click)="openInvite()">
+            {{ 'members.invite' | t }}
+          </button>
+        }
+      </div>
+      <div class="stack">
+        <app-error-alert [error]="membersError()" />
+        <app-member-list
+          [members]="members()"
+          [myMembershipId]="myMembershipId()"
+          [isOwner]="isOwner()"
+          [busy]="membersBusy()"
+          (roleChanged)="changeRole($event)"
+          (removeRequested)="askToRemove($event)"
+          (leaveRequested)="askToLeave($event)"
+        />
+      </div>
+    </section>
+  }
+</div>
+
+@if (inviting()) {
+  <app-invite-dialog
+    [invitation]="invitation()"
+    [link]="inviteLink()"
+    [busy]="inviteBusy()"
+    [revoked]="invitationRevoked()"
+    [error]="inviteError()"
+    (created)="createInvitation($event)"
+    (revokeRequested)="revokeInvitation()"
+    (another)="inviteAnother()"
+    (closed)="closeInvite()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [busy]="membersBusy()"
+    (confirmed)="confirmPending()"
+    (cancelled)="cancelPending()"
+  />
+}

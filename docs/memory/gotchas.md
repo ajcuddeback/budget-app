@@ -335,3 +335,329 @@ proxy (`server certificate not trusted`), and a docker build cannot reach the np
 image changes are verified by CI rather than locally. Check the package version in the base with
 `docker run --rm --entrypoint sh <image> -c "apk list --installed"` — that much does work, and it
 is how the libexpat finding was confirmed.
+
+## `citext` is compared case-SENSITIVELY when the parameter comes from JDBC
+
+`users.email` is `citext`, so `'Ada@Example.com' = 'ada@example.com'` is true in psql. It is
+**false** from Java. Hibernate binds a `String` as a JDBC `varchar`, and the `citext` extension
+creates `varchar → citext` as an *assignment* cast rather than an implicit one — so PostgreSQL
+resolves `citext = varchar` by casting both sides to `text` and calling `texteq`.
+
+Proven against PostgreSQL 16:
+
+```sql
+PREPARE p(varchar) AS SELECT count(*) FROM users WHERE email = $1;
+EXECUTE p('B@Example.com');   -- 0 rows, with the row present
+PREPARE q(varchar) AS SELECT count(*) FROM users WHERE email = CAST($1 AS citext);
+EXECUTE q('B@Example.com');   -- 1 row
+```
+
+A derived `findByEmail(String)` therefore looks right, passes any test that types the address the
+same way twice, and fails for the one user who capitalises their own name — at login, which is
+where it is worst. Every email lookup in `com.budgetowl.auth.persistence` and
+`com.budgetowl.household.persistence` is a native query with an explicit `CAST(:email AS citext)`
+for this reason, and `UserAccountRepositoryIT` asserts the case-insensitive behaviour directly.
+Uniqueness is unaffected: the unique index is on the `citext` column and is case-insensitive.
+
+*Added 2026-09-26 — slice 2.*
+
+## A PostgreSQL constraint violation puts the failing row, or the failing key, in the error DETAIL
+
+`ck_users_password_hash_encoded` exists so a plaintext password cannot be stored. When it fires,
+PostgreSQL's `DETAIL` line contains the entire failing row — *including the plaintext password
+that was rejected*. pgjdbc puts that in the exception message, and Spring's translator carries it
+into `DataIntegrityViolationException.getMessage()`.
+
+It is not one constraint, and not only `CHECK`. Verified against real PostgreSQL:
+
+| Constraint | What `DETAIL` contains |
+|---|---|
+| `ck_users_password_hash_encoded` | the whole row, including the rejected plaintext password |
+| `ck_household_invitations_token_hash_sha256` | the whole row, including the invitation token |
+| `ck_auth_tokens_token_hash_sha256` | the whole row, including the bearer token |
+| `uq_users_email` | `Key (email)=(ada@example.com) already exists.` |
+
+The two token cases are worse than the password one: the token is the credential itself, so a
+line in a log file is a working credential with no cracking required. And `uq_users_email` is not
+an edge case at all — a duplicate registration is a routine path, and every one of them wants to
+write somebody's address into the log.
+
+So: **never log the message or the cause of a `DataIntegrityViolationException`.** Not for `users`,
+not for anything. There is no way to suppress `DETAIL` per constraint, and no way to tell a safe
+failure from an unsafe one at the call site — the two calls look identical, which is why
+documenting it is not enough.
+
+`common/RedactedThrowable` is the mechanism, and its shape is the only safe one: it keeps the
+class names in the cause chain and the *name* of the violated constraint, and throws away
+everything else — message, cause, server error text. An allowlist of "safe constraints" would be
+wrong, because the row is in `DETAIL` regardless of which constraint failed and a later migration
+can add a secret to a table whose constraints were on the list. A denylist would be worse: it
+fails open for every constraint nobody thought about. The constraint name is the one field that is
+a fixed identifier chosen by us rather than data supplied by a user, so it is the one field that
+can be kept — and it is enough for both the operator reading the log and
+`ApiExceptionHandler`, which branches on `ck_households_at_least_one_owner`.
+
+*Added 2026-09-26 — slice 2. Extended after the slice-2 security audit.*
+
+## ArchUnit's `..persistence..` also matches `jakarta.persistence`
+
+`domain_is_plain_java` forbade `..domain..` from depending on `..persistence..`. That pattern
+matches any package with a `persistence` segment, so it fired on `@Entity`, `@Table` and
+`@Column` — 112 violations the moment the first entity was written, for a rule whose intent is
+"domain must not depend on *our* repositories". It had been silently passing because there were no
+entities yet.
+
+Qualify layer patterns with the root package when the rule looks at *dependency targets*:
+`com.budgetowl..persistence..`. The `that()` selector does not need it, because `@AnalyzeClasses`
+only imports `com.budgetowl`.
+
+*Added 2026-09-26 — slice 2.*
+
+## Spring MVC logs the request body at DEBUG, and a record prints every component
+
+`Read "application/json;charset=UTF-8" to [LoginRequest[email=ada@example.com, password=...]]`.
+
+That is one DEBUG line from `AbstractMessageConverterMethodArgumentResolver`, and the value in it
+is a real password, because a record's generated `toString` prints all of its components. Turning
+on debug logging to chase an unrelated bug would have collected every password anyone typed —
+which is how credentials are actually stolen: not by breaking the hash, but by reading a log or a
+bug report somebody pasted into an issue.
+
+**Any record that holds a credential must override `toString`.** `SecretsAreNotPrintableTest`
+enforces it: it constructs every record in the codebase with a component named like a secret,
+asks it to print itself, and fails naming the class if the sentinel comes back.
+
+*Added 2026-09-26 — slice 2, found by the disclosure test rather than by review.*
+
+## Spring Security's request cache creates a session for every unauthenticated request
+
+`ExceptionTranslationFilter` saves the request before invoking the entry point, so a form login can
+replay it afterwards. Saving it means `request.getSession(true)`. With Spring Session JDBC that is
+an **INSERT**, on an unauthenticated request, as fast as an attacker can send them.
+
+This API has no form login and nothing to replay, so the cache is pure cost:
+`.requestCache(cache -> cache.requestCache(new NullRequestCache()))`.
+
+Noticed only because a logout test asserted the session table was empty afterwards and found a row
+with a null principal. A test that asserted "the old cookie is rejected" alone would have passed.
+
+*Added 2026-09-26 — slice 2.*
+
+## A filter added before `AuthorizationFilter` runs after `AnonymousAuthenticationFilter`
+
+Our bearer-token filter checked `SecurityContextHolder.getContext().getAuthentication() == null`
+before doing anything — the obvious guard — and never ran, because the anonymous filter has already
+put an `AnonymousAuthenticationToken` there for every unauthenticated request.
+
+The symptom is the worst kind: every bearer request answered `401`, which is exactly what a wrong
+token looks like. Add an authentication filter **before `AnonymousAuthenticationFilter`**, and treat
+anonymous as "nobody yet" rather than as somebody.
+
+*Added 2026-09-26 — slice 2.*
+
+## BCrypt refuses a password over 72 bytes by throwing — from `matches` as well as `encode`
+
+Spring Security 6.3+ validates the length rather than silently truncating, so an over-long password
+is an `IllegalArgumentException` and therefore a **500 on a login attempt**, where the answer should
+have been "no". Every path that hands a submitted password to the encoder has to check the byte
+length first (`PasswordPolicy.isEncodable`).
+
+The first thing it broke was this feature's own dummy hash for the constant-response login, which
+was two UUIDs — 73 bytes — and took the whole application context down at startup.
+
+*Added 2026-09-26 — slice 2.*
+
+## RFC 7807's `instance` is the request URI, and a token can be in the URI
+
+`POST /api/invitations/{token}/accept` carries a credential in its path, so an error response built
+with `request.getRequestURI()` as its `instance` hands the link back inside the problem body — and
+made four failures that must be indistinguishable (used, revoked, expired, never existed) tell
+themselves apart by their instance.
+
+Use the handler's matched pattern (`HandlerMapping.bestMatchingPattern`), which is template-shaped.
+Before routing there is no pattern, so redact long opaque path segments; leave UUIDs alone, because
+an id is not a credential and support needs to see which row was asked for.
+
+*Added 2026-09-26 — slice 2.*
+
+## `SET CONSTRAINTS ALL IMMEDIATE` makes first-run setup fail, confusingly
+
+The last-owner rule is a `DEFERRABLE INITIALLY DEFERRED` constraint trigger
+(`ck_households_at_least_one_owner`, `V3__households.sql`), and it is deferred for a reason: a
+household is legitimately created with no owner and given its `OWNER` a statement later in the
+same transaction. First-run setup does exactly that.
+
+A session that runs `SET CONSTRAINTS ALL IMMEDIATE` — a pooled connection carrying it over, a
+psql session, a test helper, a future tool trying to "fail fast" — turns that into an error on the
+`INSERT INTO households` itself, saying the household would be left without an `OWNER` when the
+owner is two lines further down. The transaction is correct; the session is not.
+
+If setup or a test fails that way, look at the session's constraint mode before looking at the
+code. V3 cannot say so in its own header comment: merged migrations are frozen (ADR-0007).
+
+*Added 2026-09-26 — from the slice-2 security audit.*
+
+## Angular guards: `inject()` after an `await` has no injection context
+
+An `async` route guard that awaits something and *then* calls `inject(Router)` throws NG0203 —
+and only on the branch that reaches the `inject`, so a signed-in visitor sails through and every
+signed-out one gets a blank page and a console error. Unit tests that only exercise the happy
+branch will not see it; the UI harness did. Inject everything on the first lines of the guard,
+before the first `await` (`core/auth.guards.ts`).
+
+*Added 2026-10-02 — slice 2 frontend.*
+
+## Chromium logs every 4xx as a console error, and the app is meant to receive some
+
+`GET /api/auth/me` answers `401` to anyone not signed in — it is how the SPA finds out — so every
+signed-out page load puts "Failed to load resource … 401" in the console. `ui.noErrors()` used to
+fail on that. It now ignores 4xx `Failed to load resource` lines (an answer the app handles) and
+still fails on 5xx and on real page errors. Do not "fix" it by making the app skip the probe: the
+session cookie is `HttpOnly`, so the client cannot know whether it has one.
+
+*Added 2026-10-02 — slice 2 frontend.*
+
+## `ng test` needs `--coverage`; `npm test` alone fails schema validation
+
+`angular.json` configures `coverage` as an object (thresholds), which the unit-test builder rejects
+unless the flag is on the command line. Use `npm run test:coverage` — it is what `tools/verify.sh`
+runs. Pre-existing from slice 1.
+
+*Added 2026-10-02 — slice 2 frontend.*
+
+## nginx resolves a literal upstream hostname once, at startup
+
+`proxy_pass http://api:8080;` with the hostname written inline is resolved when nginx loads its
+config and then cached forever. On a self-hosted Compose stack that gives two failures, both of
+which look like the app is broken rather than the proxy:
+
+- `docker compose up` leaves the **web container dead** if the API is still starting, because
+  nginx refuses to boot on an unresolvable upstream. `depends_on` without a health condition does
+  not prevent this.
+- An API that restarts comes back on a **new IP that nginx never notices**, so every request 502s
+  until the web container is restarted too.
+
+Going through a variable forces per-request resolution, which is why the resolver line is
+required rather than decorative:
+
+```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;   # Docker's embedded DNS
+set $api_upstream http://api:8080;
+proxy_pass $api_upstream;
+```
+
+Caught by running `nginx -t` with no `api` host present — which is exactly the state a
+self-hoster's first `up` is in. `nginx -t` against the real config is worth doing in CI.
+
+## PIT inherits surefire's exclusions, so `*IT` tests are invisible to mutation testing
+
+`backend/pom.xml` has surefire exclude `**/*IT.java` (failsafe owns them). PIT derives its test
+set from surefire's configuration, so **every integration test is invisible to it** — in slice 2
+that was 174 of 293 test methods, and all of the ones that exercise controllers, services and the
+security chain.
+
+The symptom is not an error. It is a *plausible-looking low score*: PIT reported 43% and
+"229 mutations with no coverage", of which 216 were in `service` and `web` — the layers whose
+tests it had been told not to run. It reads like a test-quality problem and is actually a
+classpath exclusion.
+
+If mutation score drops after adding integration tests, check **where** the uncovered mutations
+are before writing a single test:
+
+```bash
+# which layers are reported as having no coverage
+python3 - <<'PY'
+import xml.etree.ElementTree as ET, collections, glob
+r = ET.parse(glob.glob('backend/target/pit-reports/**/mutations.xml', recursive=True)[0]).getroot()
+agg = collections.defaultdict(collections.Counter)
+for m in r.iter('mutation'):
+    parts = m.findtext('mutatedClass', '').split('.')
+    agg[parts[3] if len(parts) > 3 else parts[-1]][m.get('status')] += 1
+for layer, c in sorted(agg.items(), key=lambda kv: -kv[1]['NO_COVERAGE']):
+    print(f"{layer:<16}{c['NO_COVERAGE']:>6} no-cov {c['KILLED']:>5} killed {c['SURVIVED']:>4} survived")
+PY
+```
+
+Resolved by excluding those layers from PIT and leaving them to JaCoCo, which *does* see the
+failsafe run. See the 2026-10-04 amendment to ADR-0024 for the reasoning and the cost.
+
+*Added 2026-10-04 — slice 2 CI.*
+
+## Trivy and OWASP dependency-check disagree, and both are load-bearing
+
+Slice 2's first CI run: `Dependency vulnerabilities` (OWASP dependency-check, `failBuildOnCVSS 7`)
+**passed**, while Trivy failed the image scan on **five HIGH CVEs in Jackson 3.1.5** — the version
+Spring Boot 4.1.1 manages. Different databases, different latencies; OWASP's NVD feed had not
+caught up.
+
+So neither scanner is redundant, and a green dependency check is not evidence the image is clean.
+They also look at different things: OWASP reads the dependency graph, Trivy reads what is actually
+inside the built jar and the base image.
+
+Overriding a Boot-managed version is one property — the name is not `jackson.version`:
+
+```xml
+<jackson-bom.version>3.1.7</jackson-bom.version>
+```
+
+Find the real name with `mvn help:evaluate -Dexpression=<guess> -DforceStdout` rather than
+guessing; a property Boot does not use is silently ignored and the version does not move.
+
+*Added 2026-10-04 — slice 2 CI.*
+
+## A green `tools/verify.sh` is not a green pull request
+
+The script does not run mutation testing (opt-in, `tools/verify.sh mutation`), CodeQL, or the
+Trivy image scan. Slice 2 passed the full local gate and then failed CI on three checks. The
+script now prints what it does not cover, but the habit matters more than the line: when the
+work is security-relevant, check the PR, not the terminal.
+
+*Added 2026-10-04 — slice 2 CI.*
+
+## A bearer-authenticated request will mint a session cookie unless you stop it
+
+Setting `SecurityContextHolder` in a per-request authentication filter is not inert. With
+`sessionManagement` configured, `SessionManagementFilter` sits downstream, sees an authentication
+the `SecurityContextRepository` has no record of, and persists it — with
+`HttpSessionSecurityContextRepository` that creates a real session and returns
+`Set-Cookie: BUDGETOWL_SESSION`.
+
+For a bearer transport that is a second credential nobody asked for, and it is **not** revoked
+with the token: `AuthTokenService.revokeOwn` deletes the token row, so the token answers `401`
+while the minted session keeps answering `200` with full `OWNER` access until it idles out. It
+also grows `spring_session` by a row per request and fills the devices screen with identical
+`Web browser` entries.
+
+The symptom is invisible from the test suite if the harness clears cookies when a bearer token is
+set — `ApiClient.withBearerToken` did exactly that, so no test in the suite could express "bearer
+client that also has cookies", which is why a green build shipped it.
+
+Blocking creation beats deleting afterwards; by the time a session exists its cookie is already on
+the response:
+
+```java
+chain.doFilter(authenticatedByToken ? withoutSessionCreation(request) : request, response);
+// wrapper overrides getSession(boolean) to super.getSession(false)
+```
+
+Assert the effect, not the wiring: `TransportIT.leavesNoSessionBehindOnABearerRequest` checks both
+that no `Set-Cookie` names the session cookie and that `spring_session` gained no authenticated row.
+
+*Added 2026-10-04 — slice 2 security audit.*
+
+## A security control described in prose is not a security control
+
+Two CSRF bypasses in slice 2 lived in the gap between a method's own javadoc and what it did. The
+comment said the exemptions were "both of them requests with no ambient credential". The code
+tested for the presence of an `Authorization` header — a value the caller picks. Proven: `201`
+creating an `OWNER` invitation with the victim's cookie and no CSRF token.
+
+Both were unreachable from a browser only because there is no CORS configuration, so setting
+`Authorization` cross-origin needs a preflight that never succeeds. Incidental protection from an
+unrelated subsystem is not a control, and it reads exactly like one in a review.
+
+When a comment states an invariant, check that something *tests* the invariant. If the sentence is
+true and the code is right, the test costs nothing; if it is wrong, the test is the only thing that
+will ever say so.
+
+*Added 2026-10-04 — slice 2 security audit.*

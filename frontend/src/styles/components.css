@@ -1,0 +1,425 @@
+/* Shared UI primitives — buttons, fields, cards, alerts, tables, dialogs.
+ *
+ * Modelled on the component layer of the Organic design system (design/canvas/_ds/…/styles.css)
+ * and built only from tokens. Two deliberate departures, both for contrast:
+ *   - the primary button fills with --color-primary, not --color-accent (see tokens.css);
+ *   - input borders are drawn at ~3:1 against the ground (WCAG 1.4.11), where the design system's
+ *     --color-divider hairline is not.
+ * Everything uses logical properties so a right-to-left locale mirrors without a second sheet
+ * (ADR-0023). Font sizes are rem: the token sheet carries families, not a size scale.
+ */
+
+/* ---- layout helpers ---------------------------------------------------------------------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.page-narrow {
+  max-inline-size: 32rem;
+}
+
+.page-title {
+  font-size: 2rem;
+  margin-block-end: var(--space-2);
+}
+
+.page-lede {
+  margin-block: 0 var(--space-6);
+  max-inline-size: 60ch;
+  color: var(--color-muted);
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- cards ------------------------------------------------------------------------------- */
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+  font-size: 1.5rem;
+  margin-block-end: var(--space-3);
+}
+
+.card-note:last-child {
+  margin-block-end: 0;
+}
+
+.card-note {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+  max-inline-size: 60ch;
+}
+
+/* ---- buttons ----------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 2.75rem; /* a 44px touch target */
+  padding: var(--space-2) var(--space-6);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--color-text);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+}
+
+.btn-secondary {
+  border-color: var(--field-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.btn-ghost {
+  color: var(--color-accent-text);
+  padding-inline: var(--space-3);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.btn-ghost:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* A destructive action is outlined, not filled: it should be reachable but never the loudest
+   thing on the screen, and the palette has no red to lean on. */
+.btn-danger {
+  color: var(--color-accent-text);
+  border-color: var(--color-accent-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.btn-small {
+  min-block-size: 2.25rem;
+  padding: var(--space-1) var(--space-4);
+  font-size: 0.875rem;
+}
+
+a.link {
+  color: var(--color-accent-text);
+  text-underline-offset: 0.2em;
+}
+
+/* ---- fields ------------------------------------------------------------------------------ */
+
+:root {
+  /* Control borders must reach 3:1 against the ground; --color-divider is a decorative hairline
+     and does not. Derived from the text colour so it holds in both themes. */
+  --field-border: color-mix(in srgb, var(--color-text) 58%, var(--color-bg));
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field > label,
+.field-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent-text);
+}
+
+.input {
+  inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-bg);
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--color-text);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.input[aria-invalid='true'] {
+  border-width: 2px;
+  border-color: var(--color-accent-text);
+}
+
+.input:disabled,
+.input[readonly] {
+  opacity: 0.7;
+}
+
+select.input {
+  padding-inline-end: var(--space-6);
+}
+
+/* ---- alerts ------------------------------------------------------------------------------ */
+
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent);
+  border-inline-start-width: 6px;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg));
+  color: var(--color-text);
+}
+
+.alert-title {
+  display: block;
+  font-weight: 700;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert-success {
+  border-color: var(--color-accent-2);
+  background: color-mix(in srgb, var(--color-accent-2) 18%, var(--color-bg));
+}
+
+/* The join-time disclosure (ADR-0026). It is body text in the flow, not small print: full size,
+   full contrast, and visually the heaviest block on its screen. */
+.disclosure {
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg));
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.disclosure h2 {
+  font-size: 1.25rem;
+  margin-block-end: var(--space-2);
+}
+
+.disclosure p {
+  margin: 0 0 var(--space-2);
+}
+
+.disclosure p:last-child {
+  margin-block-end: 0;
+}
+
+/* ---- tags -------------------------------------------------------------------------------- */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent-text);
+  color: var(--color-accent-text);
+  white-space: nowrap;
+}
+
+.tag-neutral {
+  border-color: var(--field-border);
+  color: var(--color-muted);
+}
+
+/* ---- list rows --------------------------------------------------------------------------- */
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  padding-block: var(--space-4);
+  border-block-end: 1px solid var(--color-divider);
+}
+
+.row:last-child {
+  border-block-end: 0;
+}
+
+.row-main {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  flex: 1 1 14rem;
+}
+
+.row-title {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.row-sub {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* ---- dialog ------------------------------------------------------------------------------ */
+
+dialog.dialog {
+  inline-size: min(34rem, calc(100vw - var(--space-6)));
+  max-block-size: calc(100dvh - var(--space-6));
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+}
+
+dialog.dialog::backdrop {
+  background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent);
+}
+
+.dialog-title {
+  font-size: 1.5rem;
+  margin-block-end: var(--space-3);
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
+@media (max-width: 30rem) {
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .dialog-actions .btn {
+    inline-size: 100%;
+  }
+}
+
+/* ---- skip link --------------------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: 999px;
+  transform: translateY(-300%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

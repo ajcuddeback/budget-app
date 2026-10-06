@@ -1,16 +1,21 @@
 import { expect, test } from '../../helpers/ui-test.js';
+import { mockApi } from '../../helpers/mock-api.js';
 
 /**
- * Slice 1 has no features, so what there is to validate is the shell: that the design tokens
- * actually reach the page, that dark mode works rather than merely existing, and that the layout
- * survives a phone.
+ * The shell: that the design tokens actually reach the page, that dark mode works rather than
+ * merely existing, and that the layout survives a phone. Rendered on the sign-in screen, which is
+ * what a signed-out visitor to an already-set-up instance sees.
  */
 test.describe('app shell', () => {
+    test.beforeEach(async ({ page }) => {
+        await mockApi(page, { session: 'anonymous' });
+    });
+
     test('renders in the light theme', async ({ page, ui }) => {
         await page.goto('/');
 
-        await expect(page.getByRole('heading', { name: 'Budget Owl', level: 1 })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Nothing to budget yet' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Budget Owl' })).toBeVisible();
 
         await ui.shot('shell-light');
 
@@ -21,6 +26,7 @@ test.describe('app shell', () => {
 
     test('the tokens reach the page rather than sitting in a file', async ({ page }) => {
         await page.goto('/');
+        await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
 
         // The failure this catches is a stylesheet that never loaded: the page would still render,
         // just unstyled and with the browser default background, and every other assertion here
@@ -28,7 +34,9 @@ test.describe('app shell', () => {
         const ground = await page.evaluate(() =>
             getComputedStyle(document.body).backgroundColor,
         );
-        expect(ground).toBe('rgb(245, 234, 216)'); // --color-bg, the warm cream
+        // --color-bg, the warm cream. This spec runs with a light OS preference, so ThemeService
+        // picks light.
+        expect(ground).toBe('rgb(245, 234, 216)');
 
         const heading = await page.evaluate(() => {
             const h1 = document.querySelector('h1');

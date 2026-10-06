@@ -108,8 +108,12 @@ export const test = base.extend<DocFixtures>({
         // Inline callback, not new Function(): page.evaluate runs via the debugger
         // protocol and works under a strict CSP, whereas new Function() inside the page
         // would be blocked by our own `no unsafe-eval` policy.
-        await page.evaluate(
-          ({ box, step }: { box: { x: number; y: number; width: number; height: number }; step: number | null }) => {
+        // A modal <dialog> lives in the browser's top layer, which paints above anything in the
+        // normal page — including a ring appended to <body>. So when the element is inside a
+        // dialog, the overlay is appended to that dialog instead and shows up in the capture.
+        await highlight.evaluate(
+          (el: Element, { box, step }: { box: { x: number; y: number; width: number; height: number }; step: number | null }) => {
+            const host = el.closest('dialog') ?? document.body;
             const wrap = document.createElement('div');
             wrap.id = '__doc_overlay__';
             wrap.style.cssText =
@@ -146,7 +150,7 @@ export const test = base.extend<DocFixtures>({
               ].join(';');
               wrap.appendChild(badge);
             }
-            document.body.appendChild(wrap);
+            host.appendChild(wrap);
           },
           { box, step: step ?? null },
         );

@@ -1,0 +1,63 @@
+<ul class="rows" [attr.aria-busy]="busy()">
+  @for (member of members(); track member.id) {
+    <li class="row">
+      <div class="row-main">
+        <span class="row-title">
+          {{ member.displayName }}
+          @if (member.id === myMembershipId()) {
+            <span class="tag tag-neutral">{{ 'common.you' | t }}</span>
+          }
+        </span>
+        <span class="row-sub">{{ member.email }}</span>
+        <span class="row-sub">{{ 'members.joined' | t: { date: (member.joinedAt | dateOnly) } }}</span>
+      </div>
+
+      <div class="row-actions">
+        @if (isOwner() && member.id !== myMembershipId()) {
+          <div class="field">
+            <label class="visually-hidden" [for]="'role-' + member.id">{{
+              'members.roleFor' | t: { name: member.displayName }
+            }}</label>
+            <select
+              class="input"
+              [id]="'role-' + member.id"
+              [disabled]="busy()"
+              (change)="changeRole(member, $event)"
+            >
+              @for (role of roles; track role) {
+                <option [value]="role" [selected]="role === member.role">
+                  {{ roleKey[role] | t }}
+                </option>
+              }
+            </select>
+          </div>
+          <button
+            type="button"
+            class="btn btn-danger btn-small"
+            [disabled]="busy()"
+            (click)="removeRequested.emit(member)"
+          >
+            {{ 'members.remove' | t }}
+            <span class="visually-hidden">{{ member.displayName }}</span>
+          </button>
+        } @else {
+          <span class="tag">{{ roleKey[member.role] | t }}</span>
+          @if (member.id === myMembershipId()) {
+            @if (isSoleOwner(member)) {
+              <span class="field-hint">{{ 'members.soleOwner' | t }}</span>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-danger btn-small"
+                [disabled]="busy()"
+                (click)="leaveRequested.emit(member)"
+              >
+                {{ 'members.leave' | t }}
+              </button>
+            }
+          }
+        }
+      </div>
+    </li>
+  }
+</ul>

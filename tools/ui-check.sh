@@ -55,6 +55,8 @@ if [ "$SERVE" -eq 1 ]; then
     echo "--serve needs frontend/ to exist. It does not yet." >&2; exit 1
   fi
   echo "Starting the Angular dev server..."
+  # The log lives beside the artifacts directory, which does not exist until the run creates it.
+  mkdir -p "$UI_OUT_DIR"
   (cd "$ROOT/frontend" && npm start >"$UI_OUT_DIR/../dev-server.log" 2>&1) &
   SERVER_PID=$!
 fi

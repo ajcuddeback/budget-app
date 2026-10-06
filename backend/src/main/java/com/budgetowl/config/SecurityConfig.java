@@ -1,29 +1,91 @@
 package com.budgetowl.config;
 
+import com.budgetowl.auth.service.AuthTokenService;
+import com.budgetowl.auth.web.AbsoluteSessionTimeoutFilter;
+import com.budgetowl.auth.web.BearerTokenAuthenticationFilter;
+import com.budgetowl.common.ErrorCode;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Clock;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
- * Deny by default (non-negotiable #2). Every endpoint is authenticated unless it appears in the
- * explicit, reviewed exception list below — adding to that list is a security change.
+ * Deny by default (non-negotiable #2), two credential transports, one authorization (ADR-0018).
  *
- * <p>Authentication itself arrives in slice 2. Until then there is nothing to authenticate with,
- * which is exactly why the default must already be "deny": a skeleton that permits everything and
- * is tightened later is a skeleton that ships permitting everything.
+ * <p><b>The public routes are the five below and nothing else.</b> Setup status, first user, login,
+ * token issue, invitation acceptance — each is public because the caller cannot possibly be
+ * authenticated yet, and each is rate-limited or single-claim in the service behind it. Adding a
+ * sixth is a security change and needs to be reviewed as one.
+ *
+ * <p><b>CSRF is never disabled.</b> It is exempted for exactly two shapes, both of which carry no
+ * ambient credential for a hostile page to ride on: a request authenticated by an {@code
+ * Authorization: Bearer} header, and {@code POST /api/auth/token}, which is how a cookie-less
+ * mobile client obtains one in the first place. Everything else — including login and invitation
+ * acceptance, which browsers reach — requires the token. {@code SameSite=Lax} on the session cookie
+ * is defence in depth behind that, not instead of it.
+ *
+ * <p>Roles are <b>not</b> configured here. {@code hasRole(...)} on a path would be a second
+ * authorization system disagreeing with the service layer, and it cannot express the rules this
+ * feature has anyway ("nobody may change their own role", "an owner or the member themselves").
  */
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties({SecurityProperties.class, InvitationProperties.class})
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        PathPatternRequestMatcher.Builder mvc = PathPatternRequestMatcher.withDefaults();
+    SecurityFilterChain filterChain(
+            HttpSecurity http,
+            SecurityProperties properties,
+            AuthTokenService tokens,
+            SecurityContextRepository securityContextRepository,
+            ProblemResponseWriter problems,
+            Clock clock,
+            // The name the container actually issues, not a copy of it. A rename in
+            // application.yml that this did not follow would silently un-exempt nothing and
+            // re-open the bypass.
+            @Value("${server.servlet.session.cookie.name}") String sessionCookieName)
+            throws Exception {
+        PathPatternRequestMatcher.Builder route = PathPatternRequestMatcher.withDefaults();
+
+        CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
+        // Opt out of deferred loading, so the XSRF-TOKEN cookie is issued on the first safe
+        // request rather than only once something happens to read the token. A client that cannot
+        // get a token cannot make a state-changing request at all.
+        csrfHandler.setCsrfRequestAttributeName(null);
+
+        CookieCsrfTokenRepository csrfCookies = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfCookies.setCookieCustomizer(cookie -> cookie.sameSite("Lax").path("/"));
+
         http.authorizeHttpRequests(
                         auth ->
                                 auth
@@ -31,26 +93,208 @@ public class SecurityConfig {
                                         // surface: /env and /configprops leak configuration, and
                                         // an unauthenticated /shutdown is exactly what it sounds
                                         // like.
-                                        .requestMatchers(mvc.matcher("/actuator/health"))
+                                        .requestMatchers(route.matcher("/actuator/health"))
                                         .permitAll()
-                                        .requestMatchers(mvc.matcher("/actuator/health/**"))
+                                        .requestMatchers(route.matcher("/actuator/health/**"))
+                                        .permitAll()
+                                        // The five public routes. A fresh instance has nobody to
+                                        // authenticate as; a login cannot require being logged in;
+                                        // and an invited person has no account until they accept.
+                                        .requestMatchers(
+                                                route.matcher(HttpMethod.GET, "/api/setup/status"))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                route.matcher(
+                                                        HttpMethod.POST, "/api/setup/first-user"))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                route.matcher(HttpMethod.POST, "/api/auth/login"))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                route.matcher(HttpMethod.POST, "/api/auth/token"))
+                                        .permitAll()
+                                        .requestMatchers(
+                                                route.matcher(
+                                                        HttpMethod.POST,
+                                                        "/api/invitations/{token}/accept"))
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())
-                // No session cookie is issued yet, so there is no CSRF token to carry. Slice 2
-                // turns this on with the session transport (ADR-0018); bearer tokens do not need
-                // it.
-                .csrf(csrf -> csrf.disable())
+                .csrf(
+                        csrf ->
+                                csrf.csrfTokenRepository(csrfCookies)
+                                        .csrfTokenRequestHandler(csrfHandler)
+                                        .ignoringRequestMatchers(
+                                                csrfExempt(route, sessionCookieName)))
+                .securityContext(
+                        context -> context.securityContextRepository(securityContextRepository))
+                .sessionManagement(
+                        session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                                        // Session fixation: the id changes at login. Applied by
+                                        // SessionLogin through the strategy bean below, and
+                                        // declared here too so the chain agrees with it.
+                                        .sessionFixation()
+                                        .changeSessionId())
+                .headers(
+                        headers ->
+                                headers.contentSecurityPolicy(
+                                                csp ->
+                                                        csp.policyDirectives(
+                                                                "default-src 'none'; frame-ancestors"
+                                                                        + " 'none'; base-uri 'none';"
+                                                                        + " form-action 'none'"))
+                                        .referrerPolicy(
+                                                referrer ->
+                                                        referrer.policy(
+                                                                ReferrerPolicyHeaderWriter
+                                                                        .ReferrerPolicy
+                                                                        .NO_REFERRER))
+                                        .frameOptions(frames -> frames.deny())
+                                        .httpStrictTransportSecurity(
+                                                hsts ->
+                                                        hsts.includeSubDomains(true)
+                                                                .maxAgeInSeconds(31_536_000)))
+                // No saved-request cache. Its only purpose is replaying a request after a form
+                // login, which this API does not have — and the default implementation CREATES A
+                // SESSION for every unauthenticated request in order to store it. On a box facing
+                // the internet that is an unauthenticated write to the session table, repeatable
+                // as fast as an attacker can send requests, and it was doing exactly that until a
+                // logout test noticed a stray row.
+                .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
+                .logout(logout -> logout.disable())
                 // Without an explicit entry point Spring Security answers an unauthenticated
                 // request with 403, because no login mechanism is configured to send the caller
                 // to. This is an API: the correct answer is 401, and every endpoint's mandatory
                 // first test asserts it (docs/guides/testing-style.md).
                 .exceptionHandling(
-                        ex ->
-                                ex.authenticationEntryPoint(
-                                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+                        exceptions ->
+                                exceptions
+                                        .authenticationEntryPoint(
+                                                (request, response, failure) ->
+                                                        problems.write(
+                                                                request,
+                                                                response,
+                                                                ErrorCode.NOT_AUTHENTICATED))
+                                        .accessDeniedHandler(
+                                                (request, response, denied) ->
+                                                        problems.write(
+                                                                request,
+                                                                response,
+                                                                deniedCode(denied))))
+                // Before the anonymous filter, not merely before authorization: that filter puts
+                // a non-null Authentication in the context for every unauthenticated request, and
+                // an authentication filter that runs after it has to un-pick its work.
+                .addFilterBefore(
+                        new BearerTokenAuthenticationFilter(tokens),
+                        AnonymousAuthenticationFilter.class)
+                .addFilterBefore(
+                        new AbsoluteSessionTimeoutFilter(
+                                properties.session().absoluteTimeout(), clock),
+                        AuthorizationFilter.class);
         return http.build();
+    }
+
+    /**
+     * BCrypt at cost 12 or more, behind a {@link DelegatingPasswordEncoder} so the algorithm can be
+     * upgraded later without a flag day: every stored hash carries its own {@code {id}} prefix, and
+     * the database refuses anything that does not ({@code ck_users_password_hash_encoded}).
+     *
+     * <p>PBKDF2 is registered for verification only. There is deliberately no {@code noop} encoder
+     * in the map — a plaintext "hash" would be storable, and {@link
+     * PasswordEncoderFactories#createDelegatingPasswordEncoder()} includes several algorithms whose
+     * libraries we do not ship.
+     */
+    @Bean
+    PasswordEncoder passwordEncoder(SecurityProperties properties) {
+        Map<String, PasswordEncoder> encoders =
+                Map.of(
+                        "bcrypt",
+                        new BCryptPasswordEncoder(properties.bcryptStrength()),
+                        "pbkdf2",
+                        Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+        return new DelegatingPasswordEncoder("bcrypt", encoders);
+    }
+
+    /** Sessions are stored in PostgreSQL by Spring Session; this is what reads and writes them. */
+    @Bean
+    SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
+    /** Session fixation protection: {@code changeSessionId} at login, and a test that proves it. */
+    @Bean
+    SessionAuthenticationStrategy sessionAuthenticationStrategy() {
+        return new ChangeSessionIdAuthenticationStrategy();
+    }
+
+    /**
+     * The two CSRF exemptions, both of them requests with no ambient credential: a bearer-
+     * authenticated call, and the endpoint a cookie-less client uses to get a bearer token.
+     *
+     * <p><b>A request carrying the session cookie is never exempt, whatever else it carries.</b>
+     * That clause is the whole control, and leaving it out was a CSRF bypass: the exemption used to
+     * fire on the mere <i>presence</i> of an {@code Authorization: Bearer} header, which is a value
+     * the caller chooses. A request with the victim's session cookie, no CSRF token, and {@code
+     * Authorization: Bearer anything} skipped the CSRF check and was then authenticated by the
+     * cookie — a proven 201 on an OWNER invitation, which returns a working invite link.
+     *
+     * <p>Only the absence of CORS made that unreachable from a browser, because setting {@code
+     * Authorization} cross-origin needs a preflight this server never approves. That is incidental
+     * protection: the first time someone adds an allowed origin it would have become live, with
+     * nothing in the CSRF code to stop it. The exemption now tests the thing its own description
+     * always claimed — no ambient credential — rather than a header anyone can set.
+     */
+    private static RequestMatcher csrfExempt(
+            PathPatternRequestMatcher.Builder route, String sessionCookieName) {
+        RequestMatcher tokenIssue = route.matcher(HttpMethod.POST, "/api/auth/token");
+        // The public writes a browser can be made to perform. A bearer client never calls these —
+        // it authenticates at /api/auth/token — so the bearer exemption has no business covering
+        // them, and covering them meant `Authorization: Bearer <anything>` logged a CSRF check off
+        // POST /api/auth/login (a proven 200, a full login) and POST /api/setup/first-user (201,
+        // the instance claimed). Login CSRF signs a visitor into the attacker's account, and they
+        // then type into it. Same bug class as the cookie half, and unreachable from a browser for
+        // the same incidental reason — no CORS — which is not a control.
+        RequestMatcher publicWrite =
+                new OrRequestMatcher(
+                        route.matcher(HttpMethod.POST, "/api/auth/login"),
+                        route.matcher(HttpMethod.POST, "/api/setup/first-user"),
+                        route.matcher(HttpMethod.POST, "/api/invitations/{token}/accept"));
+        return request ->
+                !carriesSessionCookie(request, sessionCookieName)
+                        && (tokenIssue.matches(request)
+                                || (BearerTokenAuthenticationFilter.isBearerRequest(request)
+                                        && !publicWrite.matches(request)));
+    }
+
+    /**
+     * Whether the request presents the session cookie — read from the raw cookies rather than from
+     * the session, so it is true even when the id names a session that has expired or never
+     * existed. An attacker choosing the cookie's value must not be able to make it look absent.
+     */
+    private static boolean carriesSessionCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return false;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A refused CSRF token and a refused role both arrive as {@code AccessDeniedException}, and a
+     * client has to tell them apart: one means "retry with a token", the other means "you may not
+     * do this at all".
+     */
+    private static ErrorCode deniedCode(AccessDeniedException denied) {
+        return denied instanceof CsrfException
+                ? ErrorCode.CSRF_TOKEN_REQUIRED
+                : ErrorCode.FORBIDDEN;
     }
 }

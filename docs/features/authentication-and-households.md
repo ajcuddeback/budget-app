@@ -1,8 +1,10 @@
 # Feature: Authentication & households
 
-- **Status:** Planned — this is slice 2
+- **Status:** In progress — this is slice 2. Schema, services, endpoints and their tests are
+  built, and so is the Angular client (see *What the web client does*). The Flutter client is not,
+  and neither is OIDC.
 - **Owner:** Repository owner
-- **Last updated:** 2026-09-06
+- **Last updated:** 2026-10-02
 - **Related:** ADR-0016 (self-hosted), ADR-0017 (households), ADR-0018 (auth),
   ADR-0026 (one household per instance; owner is operator),
   `../architecture/security-model.md` (**read it before implementing any of this**)
@@ -83,8 +85,12 @@ recovery path that works from the host shell, because that is all the user has.
 
 ### Households and membership
 
-- A user belongs to **one or more** households; every session has a **current household**, which
-  the user can switch. All financial APIs resolve scope from it (ADR-0017).
+- **An instance holds exactly one household** (ADR-0026). Every user who has a membership has it
+  in that household; there is no switcher, and no way to create a second. All financial APIs
+  resolve scope from the caller's verified membership (ADR-0017), which is why the endpoints are
+  named `/current` — the shape survives if a managed deployment ever needs more.
+- A user may exist **without** a membership (an OIDC-provisioned user before invitation). They
+  sign in successfully and see an empty state, not an error.
 - Roles: **`OWNER`** (everything, including invites, role changes, removal, deletion),
   **`MEMBER`** (read and write financial data), **`VIEWER`** (read only).
 - **A household always has at least one `OWNER`.** The last owner cannot be removed, demoted, or
@@ -157,15 +163,52 @@ instance_settings     registration_open, oidc_* , password_login_enabled
 
 Plus Spring Session's tables for the web transport.
 
-- `password_hash` and `token_hash` are **never** selected into a DTO. Use projections that cannot
-  carry them rather than relying on annotations to hide them.
+- `password_hash` and `token_hash` are **never** selected into a DTO. What is *structural* is the
+  object model: `PasswordCredential` and `AuthToken` are the only mappings of those columns, they
+  expose no accessor for them, and no DTO has a field one could land in — so a secret cannot be
+  copied out of an object that has been loaded (`SecretsAreUnreadableTest`). What is *not*
+  structural is the query: both are persistent attributes, so one line of JPQL
+  (`select c.passwordHash from PasswordCredential c`) would return a `String`, and no test that
+  inspects instances can see a query written in an annotation. `SecretsAreNotProjectedTest` reads
+  every query string under `com.budgetowl..persistence` and fails on a projection; a hash may be
+  matched in a `WHERE` and written in a `SET`, never selected. The only query that selects
+  `password_hash` is `PasswordCredentialRepository.findByEmail`, which hydrates the entity.
 - Invitation and auth tokens are stored **hashed**, never in plaintext — a database dump must not
   yield working credentials.
 - `household_members` is the membership graph, not financial data, so it carries `user_id` rather
   than the `household_id`-only rule that applies to financial tables.
 
-Migrations: `V1__users.sql`, `V2__households.sql`, `V3__invitations.sql`, `V4__auth_tokens.sql`,
-`V5__instance_settings.sql`, `V6__spring_session.sql`.
+Migrations: `V2__users.sql`, `V3__households.sql`, `V4__invitations.sql`, `V5__auth_tokens.sql`,
+`V6__instance_settings.sql`, `V7__spring_session.sql`, `V8__harden_auth_constraints.sql`. Numbered
+from 2 because `V1__baseline.sql` shipped with slice 1 and is frozen (ADR-0007). `V8` is the
+slice-2 security audit: it tightens four rules that V2–V6 already meant to state, and where it
+drops and recreates a constraint the name is kept, because the name is what
+`RedactedThrowable.violatedConstraint` surfaces and `ApiExceptionHandler` branches on. Read V2/V6
+for the intent and V8 for what is enforced.
+
+Three invariants are enforced by the **schema**, not by a service, because a service cannot
+enforce them without racing:
+
+- **The last-owner rule.** `households.owner_count` is maintained by a trigger on
+  `household_members`, and a `DEFERRABLE INITIALLY DEFERRED` constraint trigger re-reads it at
+  `COMMIT` — and, since `V8`, also checks that an `OWNER` membership actually exists. The counter
+  is what makes the concurrent case safe; it is not the invariant, and anything that writes it
+  directly (a restored backup, a `TRUNCATE`, psql) could otherwise switch the rule off silently
+  and permanently. Two concurrent removals must update the same `households` row, so the second blocks and
+  then recomputes against the committed value; exactly one succeeds. Deferred rather than a `CHECK`
+  because a household is legitimately created with no owner and given one a statement later in the
+  same transaction — and because PostgreSQL cannot defer a `CHECK`. Failure arrives at `COMMIT` as
+  SQLSTATE `23514` with constraint `ck_households_at_least_one_owner`.
+- **One household per instance** (ADR-0026): `uq_households_singleton`, a unique index on a
+  constant expression.
+- **One instance administrator**: `uq_users_single_instance_admin`, the same trick restricted to
+  admin rows. With `instance_settings.setup_completed_at`, which the setup transaction claims with
+  a conditional `UPDATE`, this is what stops two simultaneous callers of
+  `/api/setup/first-user` both winning.
+
+Invitation and bearer tokens are stored as a lowercase-hex SHA-256 and the columns are constrained
+to that shape, so a plaintext credential cannot be written at all. `users.password_hash` is
+constrained to an encoded form for the same reason.
 
 ## API
 
@@ -175,7 +218,7 @@ Migrations: `V1__users.sql`, `V2__households.sql`, `V3__invitations.sql`, `V4__a
 | `POST` | `/api/setup/first-user` | Create the first user + household | public, only while no user exists |
 | `POST` | `/api/auth/login` | Start a session (web) | public, rate-limited |
 | `POST` | `/api/auth/token` | Issue a bearer token (mobile) | public, rate-limited |
-| `POST` | `/api/auth/logout` | End the current session/token | authenticated |
+| `POST` | `/api/auth/logout` | End the current session/token | authenticated (401 when not — see below) |
 | `GET` | `/api/auth/me` | Current user + households + current role | authenticated |
 | `GET` | `/api/auth/devices` | This user's sessions and tokens | authenticated |
 | `DELETE` | `/api/auth/devices/{id}` | Revoke one | authenticated, own only |
@@ -188,7 +231,7 @@ Migrations: `V1__users.sql`, `V2__households.sql`, `V3__invitations.sql`, `V4__a
 | `POST` | `/api/invitations/{token}/accept` | Join (existing or new user) | public + token |
 | `PATCH` | `/api/households/current/members/{id}` | Change role | `OWNER`, not self |
 | `PATCH` | `/api/households/current/members/me` | Own display currency and locale | authenticated, self only |
-| `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household |
+| `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household — **not built**, see below |
 | `DELETE` | `/api/households/current/members/{id}` | Remove, or leave | `OWNER`, or self |
 
 The only public routes in the entire application are the setup pair, login, token issue, and
@@ -196,32 +239,385 @@ invitation acceptance. Everything else denies by default (ADR-0016 non-negotiabl
 
 ## UI
 
-**Web:** first-run setup · login · household switcher in the header · household settings with
-members and roles · invitation dialog that produces a copyable link · logged-in devices.
+**Web:** first-run setup · login · household settings with members and roles · invitation dialog
+that produces a copyable link · invitation acceptance · logged-in devices · own preferences.
+**No household switcher** — there is one household (ADR-0026). Built; behaviour is below.
 
 **Mobile:** a server URL field before anything else — the instance is the user's, so this is
 step one and must handle LAN hostnames, self-signed certificates and non-standard ports
-(`../guides/flutter-style.md`). Then login, household switcher, devices.
+(`../guides/flutter-style.md`). Then login and devices.
 
-## Security considerations
+## Threat model
 
-This feature *is* the security boundary; everything in `../architecture/security-model.md`
-applies. The parts specific to it:
+Worked through before implementation (`/threat-model`, 2026-09-26). This feature *is* the security
+boundary — everything in `../architecture/security-model.md` applies; below is what is specific to
+it.
 
-- **Enumeration:** login, invitation acceptance, and password reset must all be non-committal
-  about whether an address exists.
-- **Timing:** always hash-compare on login, even for an unknown user.
-- **Session fixation:** rotate the session id on login. Test it explicitly.
-- **Invitation tokens are credentials:** high entropy, hashed at rest, single-use, expiring,
-  never logged, never in a `Referer`-visible URL we control.
-- **Privilege escalation:** a `MEMBER` must not be able to change any role, including their own;
-  a `VIEWER` must not be able to write anything. Both need explicit tests on every endpoint.
-- **Cross-household leakage** is the highest-severity bug available here. The household comes
-  from verified membership, never from the request.
-- **Lockout:** the last-owner rule and the OIDC safeguard both exist to stop a user locking
-  themselves out of their own financial records with nobody to call.
-- **Credential leakage:** no hash, token, or invitation token in any DTO, log line, error or
-  trace. Assert on raw JSON in tests, not on DTO types.
+### Assets
+
+| Asset | Why it is worth taking |
+|---|---|
+| **Password hashes** | Offline cracking yields credentials people reuse elsewhere |
+| **Session cookies / bearer tokens** | Direct impersonation, no cracking needed |
+| **Invitation tokens** | Possession *is* the authorization — a link is a credential |
+| **The household's financial record** | The reason the product exists. Auth is the only gate in front of it |
+| **Member email addresses** | PII, and a target list for whoever finds the instance |
+| **Instance-admin capability** | Reaches logs, backups, exports — i.e. everyone's data (ADR-0026) |
+
+### Actors
+
+1. **An unauthenticated stranger who found the instance.** The primary adversary: a self-hosted
+   box may be internet-facing with no WAF, no rate-limiting proxy, and nobody watching.
+2. **An invited `MEMBER` or `VIEWER`** trying to act beyond their role.
+3. **Someone holding a leaked invitation link** — forwarded, screenshotted, in a chat backup.
+4. **A hostile page in a member's browser** (CSRF; XSS if we ever allow injection).
+5. **Someone with a stolen cookie or token**, from a shared machine or a backup.
+6. *Not* an adversary: **the instance operator.** See Accepted risks.
+
+### Attacks considered
+
+Each written as a finishable sentence. Attacks that could not be finished were dropped, and are
+listed as ruled out — that is what stops this analysis being redone.
+
+**Live, and mitigated:**
+
+- *An attacker POSTs `/api/auth/login` with a list of addresses and reads the response to learn
+  which exist.* → identical status, body and comparable latency for unknown-email and
+  wrong-password; always hash-compare, against a dummy hash when no user was found.
+- *An attacker finds an internet-facing fresh-looking instance and POSTs `/api/setup/first-user`
+  to become its administrator.* → the endpoint is refused the moment any user exists, checked in
+  the same transaction as the insert so two simultaneous callers cannot both win.
+- *An attacker brute-forces one account, or sprays one password across many accounts.* → rate
+  limiting per IP **and** per email with exponential backoff; never a permanent lock, which
+  would be a DoS against the real user.
+- *A `VIEWER` sends `PATCH /api/households/current/members/{id}` to promote themselves.* → role
+  checked in the service layer; nobody may change their own role at all, and only an `OWNER` may
+  change anyone's.
+- *A `MEMBER` sends `POST /api/households/current/invitations` to add an accomplice.* → owner-only,
+  enforced in the service, with a `MEMBER`-gets-`403` test.
+- *An attacker replays a used or expired invitation link.* → single-use and expiring, both
+  enforced in the accept transaction; expired, revoked and already-used all return an identical
+  generic failure so the link's history is not disclosed.
+- *An attacker brute-forces the invitation token space.* → high-entropy token, hashed at rest,
+  and acceptance is rate-limited like login.
+- *A hostile page makes a member's browser POST an invitation or a role change.* → session
+  transport requires a CSRF token on every state-changing request; `SameSite=Lax` is defence in
+  depth, not the control.
+- *An attacker who has stolen a cookie keeps using it after the member logs out.* → sessions and
+  tokens are server-side and revocable; logout invalidates server-side, and revocation is
+  immediate. This is why bearer tokens are opaque rather than self-contained.
+- *An attacker fixes a session id before login and reuses it afterwards.* → session id rotates on
+  login, with an explicit test.
+- *A removed member keeps using a mobile token.* → removal revokes that user's sessions and
+  tokens for the household immediately.
+- *Two owners remove each other simultaneously, leaving the household with no administrator.* →
+  the last-owner rule is enforced as a database constraint inside the transaction, not as
+  application logic that races.
+- *A user deletes their own account while owning the household, stranding its data.* → refused,
+  with a specific reason (one of the few places a specific message is correct).
+- *An attacker reads a password hash or token out of an API response.* → hashes are never
+  selected into a DTO; projections that cannot carry them, rather than annotations that must be
+  remembered. Tests assert on raw JSON, not on DTO types.
+- *An attacker harvests credentials from logs or a bug report.* → no hash, token, invitation token
+  or `Authorization` header value is ever logged. Authentication events log user, source IP and
+  outcome only.
+- *An OIDC-provisioned user from the provider's whole directory lands inside the household.* →
+  OIDC may provision a *user*, never a membership. No membership means no financial data.
+- *An administrator disables password login before OIDC works and locks everyone out.* → refused
+  until at least one `OWNER` has completed a successful OIDC login; a CLI command re-enables it.
+- *An unauthenticated caller enumerates members via `GET /api/households/current/members`.* →
+  authenticated and member-only; the only public routes in the entire application are the setup
+  pair, login, token issue, and invitation acceptance.
+
+**Ruled out, with reasons:**
+
+- *Cross-household data leakage.* There is one household per instance (ADR-0026), so there is no
+  second household to leak to. **This removed what used to be the highest-value test in the
+  codebase**, and the risk did not disappear with it — it moved onto role enforcement and
+  authentication, which is why those carry explicit tests on every endpoint below.
+- *Tampering with a `householdId` in a request body.* The household is never read from the
+  request; it is resolved from verified membership. The parameter does not exist to tamper with.
+- *Timing attacks on the token comparison.* Tokens are looked up by hash, so the comparison is a
+  database index lookup, not a byte loop over a secret.
+- *Privilege escalation via the invited email address.* The email on an invitation is a label,
+  not an authorization — possession of the link grants access. Which is exactly why the link is
+  treated as a credential.
+
+### Controls, and where each is enforced
+
+| Control | Layer |
+|---|---|
+| Deny by default; four public routes, explicitly listed | `SecurityConfig` |
+| Unauthenticated → `401` (not `403`) | `HttpStatusEntryPoint`, already in place from slice 1 |
+| Role checks (`OWNER` / `MEMBER` / `VIEWER`) | service layer, never the controller |
+| Household resolved from verified membership | service layer |
+| Last-owner rule | **database constraint**, inside the transaction |
+| First-user-only setup | database check in the same transaction as the insert |
+| Password hashing | Spring Security `PasswordEncoder`, adaptive (argon2/bcrypt) |
+| Constant-response login | service layer: dummy-hash compare when no user found |
+| Rate limiting per IP and per email | `AuthRateLimiter`, called first in the auth services (see below) |
+| CSRF token on state-changing session requests | `SecurityConfig`, session transport only |
+| Session id rotation on login | `SecurityConfig` |
+| Hashes unreturnable | projections in the persistence layer, not DTO annotations |
+| Credentials never logged | logging config + an explicit test |
+| Invitation single-use and expiring | accept transaction |
+| Join-time disclosure (ADR-0026) | the acceptance UI, above the button |
+
+### Tests proving each control
+
+Every one of these must fail if its control is removed. That is the whole point of listing them.
+The backend tests that do it are named alongside each; `*IT` are end-to-end over real HTTP against
+a Testcontainers PostgreSQL, `*Test` are unit tests.
+
+1. `401` unauthenticated on **every** non-public endpoint, enumerated — not a sample.
+   → `AuthorizationIT.answers401ToAnUnauthenticatedBrowser`, and the same list under a bearer token.
+2. `VIEWER` gets `403` on every write; `MEMBER` gets `403` on every owner-only endpoint.
+   → `AuthorizationIT.answers403ToAViewerOnEveryWrite`, `...ToAMemberOnEveryOwnerOnlyEndpoint`.
+3. Nobody can change their own role, including an `OWNER`.
+   → `AuthorizationIT.refusesAnOwnerChangingTheirOwnRole`, `...refusesAMemberPromotingThemselves`.
+4. Unknown email and wrong password return the same status, same body, and comparable latency.
+   → `AuthenticationIT.answersIdenticallyForAnUnknownEmailAndAWrongPassword` and
+   `...takesComparableTimeFor...`; `AuthenticationServiceTest` proves the dummy comparison runs.
+5. `/api/setup/first-user` is refused once a user exists — including two concurrent callers.
+   → `SetupIT.refusesASecondFirstUser`, `...exactlyOneOfTwoSimultaneousCallersBecomesTheAdministrator`.
+6. Last-owner rule holds with two concurrent transactions; exactly one succeeds.
+   → `LastOwnerRuleIT` (database), `HouseholdIT.refusesToLetTheLastOwnerLeave` (the answer a caller gets).
+7. Session id changes across login. → `AuthenticationIT.changesTheSessionIdAcrossLogin`.
+8. Missing or wrong CSRF token → `403` on the session transport.
+   → `TransportIT.refusesAStateChangingSessionRequestWithNoCsrfToken`, `...WithTheWrongCsrfToken`.
+9. The same endpoint behaves identically under session and bearer transports (ADR-0018).
+   → `TransportIT.answersIdenticallyOnBothTransportsFor...`, compared on the bytes.
+10. Invitation: expired, revoked and already-used all produce an identical response.
+    → `InvitationIT.answersIdenticallyForUsedRevokedExpiredAndUnknownLinks` (four cases, not three).
+11. Invitation accepted twice → second attempt fails.
+    → `InvitationIT.refusesASecondAcceptanceOfTheSameLink`.
+12. **Raw JSON assertions** that no response body contains `password_hash`, `token_hash`, or any
+    token value — asserted on the serialized string, not on the DTO type.
+    → `CredentialDisclosureIT.neverPutsACredentialInAResponseBody` and `...returnsATokenExactlyOnceAndNeverAgain`;
+    a token necessarily appears in the one response that issues it, so "never" is "exactly once".
+13. Log output contains no token, hash, or `Authorization` value after a full login/logout cycle.
+    → `CredentialDisclosureIT.logsNoCredentialDuringAFullSignInAndSignOut`, and the same at `DEBUG`.
+    `SecretsAreNotPrintableTest` makes the leak that test found unwritable again.
+14. Revoked token and logged-out session are rejected on the very next request.
+    → `AuthenticationIT.rejectsARevokedTokenOnTheVeryNextRequest`, `...rejectsTheOldSessionImmediatelyAfterLogout`.
+15. A signed-in user with no membership gets `403` from a household endpoint, not a crash.
+    → `AuthorizationIT.answers403NotACrashForASignedInUserWithNoMembership`.
+
+### Accepted risks
+
+- **The instance operator can read everything.** Deliberate (ADR-0026): encrypting against the
+  person who holds the database, the volume and the backups would be theatre. Mitigated by
+  *disclosure* rather than by cryptography — the acceptance screen says so in plain words before
+  an invited person's account exists. That disclosure is therefore a security control, and
+  weakening or burying its wording is a security change.
+- **An invitation link in a chat backup is a live credential** until it expires or is used. Bounded
+  by single-use and a 7-day default expiry, and revocable. Not eliminated: any shareable-link
+  invitation has this property, and SMTP cannot be assumed (ADR-0016).
+- **No MFA in this slice.** Out of scope and recorded as such. It is the most valuable future
+  addition to this feature, and it needs its own ADR.
+- **Rate limiting is per-instance and in-memory.** Adequate for one household on one box;
+  it would not survive a multi-instance deployment, which this product does not have.
+
+## What the backend actually does, where it differs from the text above
+
+Decisions taken while building the service and web layers. Each one is a deviation, a resolution
+of something ambiguous, or a consequence worth knowing before reading the code.
+
+**Logout is authenticated, and answers `401` when it is not.** The API table says authenticated and
+the threat model's first test enumerates every non-public endpoint, so it cannot also be the
+"succeeds when not logged in" endpoint the *Sessions and devices* section describes. What is
+idempotent is the effect: logging out twice, or with a token that is already revoked, reveals
+nothing beyond the ordinary `401`.
+
+**Nothing hands out a credential except login and token issue.** Neither `POST
+/api/setup/first-user` nor `POST /api/invitations/{token}/accept` signs anybody in; both create the
+account and the caller signs in afterwards. An endpoint that both creates an administrator and
+issues a credential has two chances to be wrong instead of one, and an invitation that handed out
+a session would turn a forwarded link into an account takeover.
+
+**Accepting an invitation is refused for any signed-in caller** with
+`invitation-requires-sign-out`, not only for one signed in "as somebody else". Comparing the
+invited address with the signed-in one would answer a question about who the link is for, and the
+address on an invitation is a label rather than an authorization. Sign out, then accept.
+
+**The invitation response returns the token and a relative `acceptPath`, not an absolute link.**
+The only origin the server has is the `Host` header, which the caller sets; a credential-bearing
+URL assembled from it is a phishing link with our name on it. The client composes the link from
+its own origin.
+
+**The invitation token is in the path, and that has a cost.** `POST
+/api/invitations/{token}/accept` is the API the spec asks for, so a request line containing a live
+invitation token exists. Nothing this application logs contains it — asserted in
+`CredentialDisclosureIT` against our own loggers — but Spring's request-line logging at `DEBUG`
+does, and so would any reverse proxy's access log. The shipped level is `INFO`. A deployment that
+fronts the API with nginx should exclude that path from its access log.
+
+**There is no endpoint that lists invitations.** The API table has create and revoke-by-id only, so
+the id comes from the creation response. Not an oversight to fix silently: adding a list endpoint
+is a new row in that table and a new `401`/role test.
+
+**A `VIEWER` may change their own password and their own display preferences.** "A `VIEWER` may
+read but never write" is about household data. `PATCH /api/households/current/members/me` and
+`POST /api/auth/password` are self-scoped and carry no role requirement, exactly as the API table
+says.
+
+**Changing a password revokes every session and token of that user, including the one that made the
+request.** Changing a password you believe has leaked and staying signed in everywhere it leaked to
+would be worth very little. The UI signs in again afterwards.
+
+**Rate limiting lives in the services, not in a filter.** The threat model's table says "filter in
+front of the auth endpoints"; a filter can key on the IP but not on the email, because the email is
+in a request body a filter would have to buffer and parse before the framework does. `AuthRateLimiter`
+is called as the first statement of `AuthenticationService.authenticate`, `AuthTokenService`'s issue
+path and `InvitationService.accept`, and is keyed on the IP **and** the submitted email — submitted,
+not found, so an address that does not exist is throttled exactly like one that does.
+
+**CSRF is exempted for exactly two shapes**, and disabled for none:
+
+1. `POST /api/auth/token` — how a cookie-less mobile client obtains a bearer token in the first
+   place, and so the one route that cannot be asked for a token it has no way to hold.
+2. A request carrying an `Authorization: Bearer` header **that is not one of the public writes**
+   (`POST /api/auth/login`, `POST /api/setup/first-user`, `POST /api/invitations/{token}/accept`).
+
+**Both are conditional on the request not carrying the session cookie.** That clause is the
+control, and it is stated here because the code one reads is `SecurityConfig.csrfExempt` and the
+reason is not local to it. Two bypasses lived in the gap between this paragraph and that method,
+both found and closed in slice 2, both now pinned by tests in `TransportIT`:
+
+- The exemption fired on the mere *presence* of an `Authorization` header, which the caller
+  chooses. A request with the victim's session cookie, no CSRF token and
+  `Authorization: Bearer anything` skipped the check and was then authenticated by the cookie —
+  a proven `201` creating an `OWNER` invitation, returning a working invite link.
+- With no cookie at all, the same header turned CSRF off on the public writes: `POST /api/auth/login`
+  answered `200` and signed the caller in. Login CSRF puts a visitor into the attacker's account,
+  where they then type.
+
+Neither was reachable from a browser, because setting `Authorization` cross-origin needs a
+preflight and this server has no CORS configuration at all. **That is not a control.** The first
+allowed origin anyone adds would have made both live, with nothing in the CSRF code to stop it.
+
+**A bearer request leaves no session behind.** Setting the security context was enough for
+`SessionManagementFilter` to persist it and return `Set-Cookie: BUDGETOWL_SESSION` — a second,
+independent credential for the same user that `revokeOwn` never touched, so a revoked or logged-out
+token still had `OWNER` write access until the session idled out. It also minted one session row
+per request and filled the devices screen with indistinguishable `Web browser` entries. The filter
+now blocks session *creation* for a token-authenticated request; an existing session stays
+readable, so a browser request that also carries a token is unaffected.
+
+**The devices list identifies a session by a SHA-256 of its id.** The session id *is* the cookie, so
+a devices screen listing real ids would hand over every live credential the user has. Tokens are
+identified by their row id, which is useless without the token.
+
+**Session timeouts are split.** The idle timeout is Spring Session's (`spring.session.timeout`,
+30 minutes); the absolute one is ours, because Spring Session has no notion of it —
+`AbsoluteSessionTimeoutFilter` ends a session older than `budgetowl.security.session.absolute-timeout`
+(12 hours) however active it has been.
+
+**Passwords are checked against a bundled list**, `backend/src/main/resources/security/breached-passwords.txt`.
+A file rather than a breach API: nothing in the core may require a service we operate or an internet
+connection (ADR-0016). An operator who wants a real corpus mounts a larger file over it.
+
+**Maximum password length is 72 bytes**, which is BCrypt's limit rather than a policy choice. Spring
+Security's encoder throws past it — from `matches` as well as `encode` — so every path that hands a
+submitted password to the encoder checks the length first and refuses rather than failing.
+
+**`DELETE /api/auth/me` is not built.** Self-deletion is refused while owning a household, and the
+way out is to transfer ownership or delete the household — and household deletion is out of scope
+for this slice, so self-deletion arrives with it. The row stays in the API table as the record of
+where it will live.
+
+**An instance can never be left with no way to log in.** Password login may be hidden only while
+OIDC is *switched on* and an `OWNER` has completed a login through it —
+`ck_instance_settings_password_login_lockout`, tightened in `V8`. Checking the owner-login
+timestamp alone let OIDC be switched off afterwards, which is the operator locked out of their own
+financial records on their own hardware. `InstanceSettings.disableOidc()` restores password login
+and discards the timestamp, and `configureOidc` discards it when the issuer or client id changes:
+a login against a different provider proves nothing about this one.
+
+**Invitation acceptance claims the invitation with a conditional UPDATE**
+(`HouseholdInvitationRepository.markAccepted`), before it does anything else, exactly as first-run
+setup claims `setup_completed_at`. Read-check-write cannot be single-use: two holders of one link
+read it in the same instant and both join. A rowcount of 0 is answered with the same generic
+`invitation-unusable` as expired, revoked and never-existed — losing the race must not become a
+fifth, distinguishable outcome.
+
+**Every bulk `@Modifying` query sets `clearAutomatically` and `flushAutomatically`.** A bulk update
+goes round the persistence context, and Hibernate writes *every* column when it flushes a dirty
+entity — so an instance loaded before the update does not merely hold a stale value, it restores
+it. Left alone that un-revokes a token, reverts a password change, or writes
+`setup_completed_at` back to `NULL` and re-opens `POST /api/setup/first-user`. A caller that needs
+the row afterwards must re-read it; `save()` on the instance it held before would merge the old
+snapshot back over the row.
+
+**Test 12 is implemented as "once, and never again".** Its literal wording — no response body
+contains any token value — cannot hold: a bearer token and an invitation link have to come back
+exactly once, or there is no way to have one. `CredentialDisclosureIT` asserts that each appears in
+exactly one body across a full journey, and that no body ever contains a password hash, a token
+hash or a session id.
+
+## What the web client does
+
+`frontend/src/app/features/{setup,login,household,join,devices,preferences}`, with the session,
+CSRF, error and i18n plumbing in `core/`.
+
+| Route | Screen | Notes |
+|---|---|---|
+| `/setup` | First-run setup | Only while `GET /api/setup/status` says the instance is fresh. Creates the user, then signs in with the same credentials (the server hands out none). Tells the *operator* they can see everything the household records. |
+| `/login` | Sign in | Email + password. A fresh instance is sent to `/setup`. `?reason=expired\|created\|joined` shows a note. One sentence for every bad credential; a `429` says how long to wait. |
+| `/join/:token` | Accept an invitation | **Public.** Carries the join-time disclosure. See below. |
+| `/household` | Household settings | Owner: rename, base currency, invite, change roles, remove. Member/viewer: read-only, and may leave. The only owner is told why they cannot leave. A user with no membership sees "you are not part of a household yet" — never an error. |
+| `/devices` | Logged-in devices | Browsers (summarised as "Chrome on Linux") and phones, each revocable. Signing out the browser in use asks first. |
+| `/preferences` | Own preferences | Display currency and locale, via `PATCH …/members/me`. "Follow the default" is sent as `null`, which is a meaning rather than a gap. |
+
+**The disclosure is in `JoinFormComponent`'s template**, ahead of the fields and the button, as
+full-size body text — not a link, not collapsed. The submit button's `aria-describedby` points at
+it, so a screen-reader user hears it at the button. `join.page.spec.ts` asserts it is present,
+visible (not hidden, not inside `<details>`/`<dialog>`), in the flow (no link), and above the
+button; the Playwright `join.spec.ts` asserts the same by rendered position and font size. Each of
+removing it, collapsing it, moving it below the button and shortening its wording was checked to
+fail the suite. Editing the wording is a security change.
+
+**Credentials.** The client holds none: the session is an `HttpOnly` cookie, nothing is written to
+`localStorage`/`sessionStorage` except the theme, and nothing sensitive is logged. Every `/api/`
+request gets `withCredentials` from one interceptor. CSRF uses Angular's `withXsrfConfiguration`
+with `XSRF-TOKEN` / `X-XSRF-TOKEN`, spelled out and matching `SecurityConfig`. A `401` on a request
+made while signed in routes to `/login?reason=expired`; the profile probe, login, logout and the
+public endpoints are exempt, or a wrong password would redirect instead of explaining itself.
+
+**Invitation links** are built in the browser from `window.location.origin` and the server's
+relative `acceptPath`, and refused if the path is not same-origin. The token is held in memory
+while the dialog is open and dropped when it closes. Copy falls back to selecting the text, because
+a self-hosted instance on `http://` has no async clipboard.
+
+**The join page cannot know whether the invited address already has an account** (there is no
+preview endpoint, and one would be an oracle). It asks for a name and password and says that an
+existing user leaves both empty. If the server answers `validation-failed` for a bare acceptance,
+the fields are marked.
+
+**i18n** is runtime (ADR-0023): English is `frontend/src/i18n/en.json`, compiled in and typed, so a
+template that asks for a missing key fails to build; other languages are the same file shape served
+from `/i18n/<language>.json` and fall back to English per key. Errors render from the API's `code`.
+Dates, numbers and currency names come from `Intl`. `dir` follows the language. Only English ships.
+
+**Not built in the web client:** change-own-password (`POST /api/auth/password`), leaving via the
+API is built but self-deletion is not, OIDC login, and any reaction to `registrationOpen` /
+`passwordLoginEnabled` from the status endpoint (nothing can set them yet).
+
+## Deployment notes
+
+**The runtime connection must not be the database owner.** It currently is, and while it is, every
+database-level guarantee in this document is advisory: a superuser or table owner can `TRUNCATE`
+past row triggers, set `session_replication_role = replica` to switch triggers off for the
+session, or `ALTER TABLE ... DISABLE TRIGGER`. The last-owner rule, the owner-count trigger and
+the one-household index are all bypassable from the application's own connection pool.
+
+The fix is a deployment change rather than a migration, which is why it is recorded here and not
+done: **Flyway migrates as the owning role, and the runtime pool connects as a separate,
+non-owning role with `SELECT, INSERT, UPDATE, DELETE` on the application tables and nothing
+else.** That also makes `REVOKE UPDATE (owner_count) ON households` mean something — as things
+stand it would read like protection and provide none, which is why `V8` deliberately does not
+include it. Scope this with the deployment/packaging work; it needs a second role in the compose
+file and the Helm chart, and a decision about who runs migrations in a self-hosted upgrade.
 
 ## Edge cases
 
@@ -230,14 +626,19 @@ applies. The parts specific to it:
 - Expired, revoked, or already-used invitation → identical generic failure for all three.
 - Last owner tries to leave, be removed, or demote themselves → refused with a clear reason
   (this is the one place a specific message is right; it is not an enumeration surface).
-- A user in three households switching between them mid-session.
+- A signed-in user with **no** membership (OIDC-provisioned, not yet invited) calling a
+  financial endpoint → `403`, not a crash and not an empty success.
 - A member removed while they have an active mobile token → next request fails cleanly, app
-  routes to household selection rather than crashing.
+  routes to a signed-out state rather than crashing.
 - OIDC user with no household membership → signs in successfully and sees an empty state
   explaining they need an invitation. Not an error.
 - Registration re-opened, then closed, with an invitation outstanding → the invitation still works.
 - Two owners removing each other simultaneously → the last-owner rule must hold under
   concurrency, which means enforcing it in a transaction, not in application logic that races.
+- One invitation link presented twice at the same instant → exactly one acceptance succeeds; the
+  other gets the same generic failure as a link that never existed.
+- An administrator switches OIDC off while password login is hidden → password login comes back
+  with it, rather than the instance having no login route.
 
 ## Out of scope
 
@@ -285,10 +686,14 @@ Beyond the mandatory set in `../guides/testing-style.md`:
   authorizes correctly for web but not mobile is a real and easy bug.
 - **`VIEWER` gets `403` on every write endpoint**; `MEMBER` gets `403` on every `OWNER` endpoint.
 - Cross-household: a member of household A gets `404` on household B's resources.
-- The last-owner rule holds under **concurrent** removal attempts.
-- An invitation is single-use: the second acceptance fails.
-- Password login cannot be disabled before an `OWNER` has completed an OIDC login.
+- The last-owner rule holds under **concurrent** removal attempts, and when `owner_count` has been
+  desynchronised from the memberships it is supposed to count.
+- An invitation is single-use: the second acceptance fails, and so does a **simultaneous** one.
+- Password login cannot be disabled before an `OWNER` has completed an OIDC login, and OIDC cannot
+  be switched off while it is the only route in.
 - No `password_hash`, `token_hash` or invitation token appears in any response — asserted against
-  the raw JSON, not the DTO type.
+  the raw JSON, not the DTO type — and no query under `..persistence` selects one into a
+  projection, asserted against the query strings themselves.
+- A bulk `@Modifying` update is not silently undone by an entity loaded before it.
 - Registration is closed after the first user: `POST /api/setup/first-user` fails on a
   non-empty instance.

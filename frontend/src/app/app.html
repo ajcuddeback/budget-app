@@ -1,22 +1,36 @@
-<main class="page">
-  <header class="masthead">
-    <h1>Budget Owl</h1>
-    <button type="button" class="btn btn-ghost" (click)="toggleTheme()">
-      {{ nextModeLabel() }}
+<a class="skip-link" href="#main" (click)="$event.preventDefault(); skipToMain()">
+  {{ 'app.skipToContent' | t }}
+</a>
+
+<header class="masthead page">
+  <a class="brand" routerLink="/">{{ 'app.name' | t }}</a>
+
+  @if (signedIn()) {
+    <nav class="nav" [attr.aria-label]="'nav.label' | t">
+      <a routerLink="/household" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.household' | t
+      }}</a>
+      <a routerLink="/devices" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.devices' | t
+      }}</a>
+      <a routerLink="/preferences" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.preferences' | t
+      }}</a>
+    </nav>
+  }
+
+  <div class="masthead-actions">
+    <button type="button" class="btn btn-secondary btn-small" (click)="toggleTheme()">
+      {{ themeLabel() | t }}
     </button>
-  </header>
+    @if (signedIn()) {
+      <button type="button" class="btn btn-secondary btn-small" (click)="signOut()">
+        {{ 'nav.signOut' | t }}
+      </button>
+    }
+  </div>
+</header>
 
-  <p class="lede">
-    Self-hosted budgeting for your household. Your financial data never leaves this machine.
-  </p>
-
-  <section class="card" aria-labelledby="status-heading">
-    <h2 id="status-heading">Nothing to budget yet</h2>
-    <p>
-      This instance is running, but no features have been built. Accounts, envelopes and bills
-      arrive slice by slice — see the roadmap.
-    </p>
-  </section>
-
+<main id="main" class="page main" tabindex="-1">
   <router-outlet />
 </main>

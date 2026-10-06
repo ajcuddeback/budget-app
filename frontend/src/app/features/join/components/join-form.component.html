@@ -1,0 +1,56 @@
+<form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <!--
+    SECURITY CONTROL (ADR-0026) — not copy. Do not remove, collapse, shorten, move below the
+    button, or put behind a link. See join.page.spec.ts, which fails if this changes.
+  -->
+  <section class="disclosure" id="join-disclosure" aria-labelledby="join-disclosure-heading">
+    <h2 id="join-disclosure-heading">{{ 'join.disclosure.heading' | t }}</h2>
+    <p>{{ 'join.disclosure.operator' | t }}</p>
+    <p>{{ 'join.disclosure.nothingHidden' | t }}</p>
+    <p>{{ 'join.disclosure.trust' | t }}</p>
+  </section>
+
+  <p class="muted">{{ 'join.accountNote' | t }}</p>
+
+  <div class="field">
+    <label for="join-name">{{ 'join.name' | t }}</label>
+    <input
+      id="join-name"
+      class="input"
+      type="text"
+      formControlName="displayName"
+      autocomplete="name"
+      aria-describedby="join-name-error"
+      [attr.aria-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched ? 'true' : null"
+    />
+    <app-field-error [control]="form.controls.displayName" errorId="join-name-error" />
+  </div>
+
+  <div class="field">
+    <label for="join-password">{{ 'join.password' | t }}</label>
+    <input
+      id="join-password"
+      class="input"
+      type="password"
+      formControlName="password"
+      autocomplete="new-password"
+      aria-describedby="join-password-hint join-password-error"
+      [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched ? 'true' : null"
+    />
+    <p class="field-hint" id="join-password-hint">
+      {{ 'setup.passwordHint' | t: { min: minimumLength } }}
+    </p>
+    <app-field-error [control]="form.controls.password" errorId="join-password-error" />
+  </div>
+
+  <div>
+    <button
+      type="submit"
+      class="btn btn-primary"
+      aria-describedby="join-disclosure"
+      [disabled]="busy()"
+    >
+      {{ (busy() ? 'join.joining' : 'join.accept') | t }}
+    </button>
+  </div>
+</form>

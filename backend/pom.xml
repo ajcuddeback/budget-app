@@ -36,6 +36,15 @@
     <spotbugs.version>4.10.4.1</spotbugs.version>
     <pmd.version>3.28.0</pmd.version>
     <dependency-check.version>12.1.9</dependency-check.version>
+
+    <!-- Spring Boot 4.1.1 manages Jackson 3.1.5. Trivy fails the image scan on five HIGH
+         denial-of-service CVEs in it: CVE-2026-89407 and CVE-2026-89425 in jackson-core,
+         CVE-2026-68497, CVE-2026-91776 and CVE-2026-91777 in jackson-databind. 3.1.7 is the
+         lowest version that fixes all five, and stays on the 3.1.x line Boot ships rather than
+         jumping a minor. Remove this once Boot's own managed version passes 3.1.7.
+         OWASP dependency-check did NOT flag these — Trivy's database had them first, which is
+         the reason both scanners are in the pipeline. -->
+    <jackson-bom.version>3.1.7</jackson-bom.version>
   </properties>
 
   <dependencyManagement>
@@ -90,10 +99,28 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
     </dependency>
+    <!-- Compile scope, not runtime: the global error handler reads the violated constraint's
+         NAME out of a PSQLException's ServerErrorMessage, and must never touch the message —
+         PostgreSQL puts the entire rejected row in the error DETAIL, which for `users` means the
+         plaintext password (docs/memory/gotchas.md). Hibernate's own constraint-name extractor
+         cannot help: it scrapes "violates check constraint" out of the message text, and the
+         last-owner rule arrives as a custom RAISE from a trigger. PostgreSQL is the only database
+         this product supports (ADR-0009). -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Web sessions live in PostgreSQL (security-model.md): they survive a restart and revoking
+         one is a DELETE. Spring Boot 4 splits autoconfiguration per technology, so the starter is
+         not enough — without spring-boot-session-jdbc the sessions silently stay in memory. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-session-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-jdbc</artifactId>
     </dependency>
 
     <!-- Test -->
@@ -248,6 +275,8 @@
           <effort>Max</effort>
           <threshold>Medium</threshold>
           <failOnError>true</failOnError>
+          <!-- Two argued exclusions, both explained in the file itself. -->
+          <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
         </configuration>
       </plugin>
       <plugin>
@@ -278,8 +307,24 @@
           <excludedClasses>
             <param>com.budgetowl.config.*</param>
             <param>com.budgetowl.BudgetOwlApplication</param>
+            <!-- The service and web layers are proven by *IT tests against real HTTP and real
+                 PostgreSQL. Surefire excludes **/*IT.java (failsafe owns them), and PIT derives
+                 its test set from surefire — so it cannot run them, and reported 216 of its 229
+                 "no coverage" mutations in exactly these two layers. Mutating code whose tests
+                 you have been told not to run measures nothing: it dragged the score to 43%
+                 while JaCoCo, which DOES see the failsafe run, reports 90-100% line coverage
+                 for the same packages under a stricter 85%/75% rule.
+                 Running the ITs under PIT instead is not an option — each mutation re-runs the
+                 covering tests, and these boot Spring and a Testcontainers database.
+                 So: PIT guards the pure logic, JaCoCo's per-package rule guards the layers that
+                 need a database to exercise. See ADR-0024. -->
+            <param>com.budgetowl.*.service.*</param>
+            <param>com.budgetowl.*.web.*</param>
           </excludedClasses>
           <mutationThreshold>60</mutationThreshold>
+          <!-- Of the mutations PIT CAN cover, how many die. Without this, widening the
+               exclusions above would silently buy back score rather than being caught. -->
+          <testStrengthThreshold>75</testStrengthThreshold>
           <outputFormats>
             <param>HTML</param>
             <param>XML</param>
