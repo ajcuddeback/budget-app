@@ -17,8 +17,8 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 0d | Product direction: self-hosted, households, mobile (ADR-0016–0021) | 0 | **Done** |
 | 0e | Designs imported; docs reconciled to them | 0d | **Done** |
 | 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | **Done** |
-| 2 | [Authentication & households](features/authentication-and-households.md) | 1 | Next |
-| 3 | Accounts (money containers) | 2 | Planned |
+| 2 | [Authentication & households](features/authentication-and-households.md) | 1 | **Done** |
+| 3 | Accounts (money containers) | 2 | Next |
 | 4 | Categories + defaults on household creation | 2 | Planned |
 | 5 | Transactions (create, list, edit, delete) | 3, 4 | Planned |
 | 6 | **Envelopes** — set an amount, log against it, fully unsynced | 4, 5 | Planned |
@@ -66,10 +66,10 @@ not "eventually":
 | Integration tests + migrations | Testcontainers, real Postgres (ADR-0009) | — | slice 1 |
 | Coverage thresholds | JaCoCo | Vitest c8 | slice 1 |
 | Architecture rules | ArchUnit (ADR-0024) | — | slice 1 |
-| Static analysis / code smells | SpotBugs + PMD | ESLint rulesets | slice 2 |
+| Static analysis / code smells | SpotBugs + PMD | ESLint rulesets | slice 2 ✓ |
 | Dependency vulnerabilities | OWASP dependency-check | `npm audit` | slice 1 |
 | Container image scan | Trivy on the published images | slice 1 (with Compose) |
-| Mutation testing | PIT (ADR-0024) | Stryker | slice 2 |
+| Mutation testing | PIT (ADR-0024) ✓ | Stryker — **not wired** | slice 2 |
 | Secret scanning | gitleaks | ✓ already |
 | SAST | CodeQL | ✓ already |
 | UI validation + a11y | Playwright + axe (ADR-0011) | ✓ already |

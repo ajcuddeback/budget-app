@@ -52,3 +52,4 @@ in `memory/gotchas.md`. Reach for an ADR when the *reasoning* is what needs pres
 | [0025](0025-bills-are-occurrences-not-generated-transactions.md) | Bills are occurrences with a status, not generated transactions | Accepted | 2026-09-09 |
 | [0026](0026-one-household-per-instance.md) | One household per instance; the owner is the operator | Accepted | 2026-09-25 |
 | [0027](0027-llm-is-an-optional-self-hosted-sidecar.md) | The assistant is an optional self-hosted sidecar, or absent | Accepted | 2026-09-25 |
+| [0028](0028-account-last-four-digits.md) | Store an optional last four digits on an account | Accepted | 2026-10-10 |

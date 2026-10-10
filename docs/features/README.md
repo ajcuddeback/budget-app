@@ -32,7 +32,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Household management (invites, roles) | Planned | _not written_ |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
-| Accounts (money containers) | Planned | _not written_ |
+| Accounts (money containers) | In progress — spec ready, building | [accounts.md](accounts.md) |
 | Transactions | Planned | _not written_ |
 | Categories | Planned | _not written_ |
 | Bills & income (incl. charge mapping) | Planned | _not written_ |
