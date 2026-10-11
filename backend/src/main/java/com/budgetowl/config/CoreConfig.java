@@ -43,12 +43,32 @@ public class CoreConfig {
     JsonMapperBuilderCustomizer refuseCoercionIntoText() {
         return builder ->
                 builder.withCoercionConfig(
-                        LogicalType.Textual,
-                        coercion -> {
-                            coercion.setCoercion(CoercionInputShape.Integer, CoercionAction.Fail);
-                            coercion.setCoercion(CoercionInputShape.Float, CoercionAction.Fail);
-                            coercion.setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail);
-                        });
+                                LogicalType.Textual,
+                                coercion -> {
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Integer, CoercionAction.Fail);
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Float, CoercionAction.Fail);
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Boolean, CoercionAction.Fail);
+                                })
+                        // An enum bound from a JSON integer is its ORDINAL, so {"role":0} was a
+                        // silent OWNER and {"role":2} a silent VIEWER. Both routes that take a
+                        // role are OWNER-only, so this was never privilege escalation by an
+                        // outsider — the realistic failure is a client sending a default-
+                        // initialised int or a select's index and creating an OWNER invitation
+                        // where it meant VIEWER. Role is the highest-value authorization control
+                        // this app has (security-model.md), so a typo must not grant it.
+                        .withCoercionConfig(
+                                LogicalType.Enum,
+                                coercion -> {
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Integer, CoercionAction.Fail);
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Float, CoercionAction.Fail);
+                                    coercion.setCoercion(
+                                            CoercionInputShape.Boolean, CoercionAction.Fail);
+                                });
     }
 
     /**

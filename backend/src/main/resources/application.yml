@@ -101,16 +101,42 @@ logging:
     # AccountDisclosureIT, which asserts they stay quiet with the root logger at DEBUG.
     #
     #   org.hibernate.orm.core prints every column of every flushed entity through Hibernate's
-    #   own EntityPrinter — every mapped column of every flushed entity: an account's name,
-    #   last_four and opening_balance, and a user's email and display name. It does
+    #   own EntityPrinter — every mapped column of every entity in the persistence context at
+    #   flush: an account's name, last_four and opening_balance, a user's email and display name,
+    #   and PasswordCredential.passwordHash on the POST /api/auth/password path, which prints the
+    #   replaced bcrypt hash twice. This pin is the ONLY thing protecting that hash — the entity
+    #   split protects it from being read, not from being printed. It does
     #   not use the entity's toString, so redacting that (as Account does) does nothing here.
     #
     #   ExceptionHandlerExceptionResolver logs the resolved exception, and a Bean Validation
     #   failure carries the value it rejected: "rejected value [98765]" for a mistyped
     #   last_four. Our own problem responses never echo a rejected value; this line is not ours.
     #
-    # An operator who needs either can still raise it explicitly. Nothing below TRACE is pinned,
+    # Raising org.hibernate.orm.core alone does NOT restore its output: the flush listener gates
+    # on a different logger, so an operator who tries it gets silence and reaches for root=TRACE,
+    # which is the worst available option. Nothing below TRACE is pinned,
     # so a root logger set to TRACE still binds JDBC parameters into the log — that is a
     # deliberate act rather than a default, and it is recorded in docs/memory/gotchas.md.
     org.hibernate.orm.core: INFO
     org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO
+    # The same logger prints the same MethodArgumentNotValidException, rejected value and all, so
+    # pinning only the resolver above was half a control.
+    org.springframework.web.method.HandlerMethod: INFO
+    #
+    # Tomcat's request plumbing writes CREDENTIALS, not merely user data, which security-model.md
+    # says must never reach a log — a stronger rule than "DEBUG is safe", so TRACE is not an
+    # acceptable escape hatch for these three. Measured, with root at TRACE:
+    #
+    #   Http11InputBuffer        the entire raw request — request line, every header, and the body.
+    #                            A login body is a plaintext password.
+    #   Rfc6265CookieProcessor   BUDGETOWL_SESSION and XSRF-TOKEN, parsed and echoed.
+    #   CoyoteAdapter            the requested session id.
+    #
+    # Tomcat gates these on its own FINER level, which jul-to-slf4j maps to slf4j DEBUG — so the
+    # line is produced only at root=TRACE but is STAMPED DEBUG on the way out. An operator who
+    # filters an appender to "DEBUG and above" cannot separate it from ordinary debug output, and
+    # a log shipper keying on level will not drop it. That mismatch is the reason these are pinned
+    # rather than left to the operator's judgement.
+    org.apache.coyote.http11.Http11InputBuffer: INFO
+    org.apache.tomcat.util.http.Rfc6265CookieProcessor: INFO
+    org.apache.catalina.connector.CoyoteAdapter: INFO

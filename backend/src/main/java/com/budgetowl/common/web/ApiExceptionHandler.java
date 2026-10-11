@@ -21,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Every error response in the application is built here (docs/guides/api-style.md). Controllers do
@@ -72,6 +73,34 @@ public class ApiExceptionHandler {
                     HttpHeaders.RETRY_AFTER, Long.toString(rateLimited.retryAfter().toSeconds()));
         }
         return new ResponseEntity<>(problem, headers, exception.errorCode().status());
+    }
+
+    /**
+     * A path variable or query parameter that will not convert — {@code /api/accounts/zzz}, {@code
+     * ?size=abc}, {@code ?includeArchived=maybe}.
+     *
+     * <p>Without this it fell through to {@link #handleUnexpected} as a {@code 500}, and the
+     * exception message carries the caller's raw string, so {@code ?size=<64 KB>} wrote 64 KB plus
+     * a stack trace into the log at {@code ERROR} on every request. That is a cheap disk-fill on a
+     * self-hoster's box, an audit-trail flood that buries the authentication events, and arbitrary
+     * attacker-controlled text in the log stream for anything downstream that parses it. {@link
+     * RedactedThrowable} does not help: it redacts only SQL-shaped throwables.
+     *
+     * <p>So: a {@code 400} naming the parameter, and {@code null} to {@code log} like every other
+     * client error, which keeps the message out of the log entirely.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<Map<String, Object>> handleUnconvertableParameter(
+            MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        String correlationId = ApiProblem.newCorrelationId();
+        log(ErrorCode.VALIDATION_FAILED, correlationId, null);
+        return problem(
+                ApiProblem.ofFieldErrors(
+                        ApiProblem.instanceOf(request),
+                        List.of(
+                                new ApiProblem.FieldProblem(
+                                        exception.getName(), "must be a valid value")),
+                        correlationId));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

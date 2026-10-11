@@ -63,6 +63,79 @@ class CredentialDisclosureIT extends ApiTestBase {
     }
 
     @Test
+    void keepsTheStoredHashOutOfTheLogAtDebug() {
+        captureLogs(Level.DEBUG);
+        seedHousehold();
+        signIn(OWNER_EMAIL, OWNER_SECRET)
+                .post(
+                        "/api/auth/password",
+                        """
+                        {"currentPassword":"%s","newPassword":"a-different-example-passphrase"}
+                        """
+                                .formatted(OWNER_SECRET));
+
+        assertThat(loggedLines(event -> true))
+                .as("a password change must not write the replaced hash to the log")
+                .noneMatch(line -> line.contains("$2a$") || line.contains("$2b$"));
+    }
+
+    @Test
+    void provesTheHibernatePinIsWhatKeepsTheHashOutOfTheLog() {
+        // The inverse assertion, and the reason it exists: the control here is a pinned logger in
+        // application.yml, not the entity split. PasswordCredential is a mapped @Entity, so
+        // Hibernate's EntityPrinter reads passwordHash off the persister by field access — having
+        // no getter and a redacted toString does not reach it.
+        //
+        // Without this test, the obvious way to "fix" a failing keepsTheStoredHashOutOfTheLog is
+        // to unpin org.hibernate.orm.core and watch it go green for the wrong reason. This fails
+        // if the leak it guards against ever stops being real, which is the only honest way to
+        // know the pin above is still load-bearing.
+        Logger ormCore = (Logger) LoggerFactory.getLogger("org.hibernate.orm.core");
+        Level pinned = ormCore.getLevel();
+        captureLogs(Level.DEBUG);
+        ormCore.setLevel(Level.DEBUG);
+        try {
+            seedHousehold();
+            signIn(OWNER_EMAIL, OWNER_SECRET)
+                    .post(
+                            "/api/auth/password",
+                            """
+                            {"currentPassword":"%s","newPassword":"a-different-example-passphrase"}
+                            """
+                                    .formatted(OWNER_SECRET));
+
+            assertThat(loggedLines(event -> true))
+                    .as(
+                            "if this stops leaking, the pin may no longer be needed — verify why"
+                                    + " before relaxing it")
+                    .anyMatch(line -> line.contains("PasswordCredential") && line.contains("$2a$"));
+        } finally {
+            ormCore.setLevel(pinned);
+        }
+    }
+
+    @Test
+    void keepsCredentialsOutOfTheLogEvenAtTrace() {
+        // TRACE is where an operator ends up when DEBUG did not explain the problem. Tomcat dumps
+        // the whole raw request there — including a login body — and stamps it DEBUG on the way
+        // out through jul-to-slf4j, so level-based filtering cannot save them. The pins in
+        // application.yml are what keeps this empty.
+        captureLogs(Level.TRACE);
+        seedHousehold();
+        ApiClient browser = signIn(OWNER_EMAIL, OWNER_SECRET);
+        browser.get("/api/auth/me");
+
+        assertThat(loggedLines(event -> true))
+                .as("no plaintext password, session cookie or CSRF header at any level")
+                .noneMatch(line -> line.contains(OWNER_SECRET))
+                .noneMatch(
+                        line ->
+                                browser.cookie("BUDGETOWL_SESSION")
+                                        .map(line::contains)
+                                        .orElse(false));
+    }
+
+    @Test
     void returnsATokenExactlyOnceAndNeverAgain() {
         captureLogs(Level.INFO);
         Journey journey = walkThrough();

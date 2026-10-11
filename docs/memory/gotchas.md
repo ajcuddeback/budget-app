@@ -675,13 +675,26 @@ nothing in our own code could have prevented:
   values off the persister, so a redacted `toString` on the entity (which `Account` has) changes
   nothing.
 
-  It prints **every mapped column**, so the blast radius is wider than the field that found it:
-  a user's `email` and `display_name` go the same way. It does *not* print `password_hash` —
-  verified by capturing the output of a first-user registration with the logger unpinned. That
-  is not this pin's doing: `UserAccount` deliberately has no password field and
-  `PasswordCredential` exposes no getter (slice 2's structural secrecy), so there is nothing for
-  the printer to read. Worth knowing which control is actually holding — this pin protects the
-  account fields and the personal ones, and the hash is protected by its mapping.
+  It prints **every mapped column of every entity in the persistence context at flush**, so the
+  blast radius is wider than the field that found it: an account's `name`, `last_four` and
+  `opening_balance`, a user's `email` and `display_name`, **and `PasswordCredential.passwordHash`**:
+
+  ```
+  com.budgetowl.auth.domain.PasswordCredential{userId=2bbe4e92-…,
+      passwordHash={bcrypt}$2a$04$4eRA1/L7b6g/2Oj9DPYv0eCdS4emVoZ0hMMaRAZbIWA2xnqZbtYKW}
+  ```
+
+  **The pin is the only thing protecting that hash.** An earlier version of this entry claimed the
+  opposite — that the hash was safe "because of its mapping", on the strength of a probe that ran
+  only a first-user registration. Registration and login never flush a `PasswordCredential`;
+  `POST /api/auth/password` does, and prints the *previous* hash twice, at the moment the user has
+  just proved they know the matching plaintext. Two lessons, both general:
+
+  - **Proving a leak absent in one flow proves nothing about the others.** Enumerate the paths that
+    flush the entity, not the paths that are convenient to test.
+  - **A missing getter is irrelevant to `EntityPrinter`**, which reads values off the Hibernate
+    persister by field access. Redacting `toString` and omitting accessors are good practice and
+    neither of them is a logging control.
 - **`ExceptionHandlerExceptionResolver`** logs the exception it resolved, and a Bean Validation
   failure carries the value that failed: `rejected value [98765]`. Our problem responses never echo
   a rejected value — that line is the framework's, not ours.

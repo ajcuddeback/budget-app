@@ -51,7 +51,12 @@ public final class AccountRequests {
             "must be a signed decimal amount with at most 15 integer digits and 4 decimal places";
 
     /** At least one non-whitespace character. {@code DOTALL} so a newline cannot slip past. */
-    private static final String NOT_BLANK = ".*\\S.*";
+    // (?U) makes \\S Unicode-aware. Without it \\S is [^ \\t\\n\\x0B\\f\\r], so U+3000
+    // IDEOGRAPHIC SPACE (and U+1680, U+2000-U+200A, U+2028, U+2029, U+205F) counted as
+    // non-blank here and were then removed by Account's Unicode-aware String.strip(),
+    // leaving an empty name and a 500. POST never had this because @NotBlank is already
+    // Unicode-aware; PATCH has to hand-roll the check because an absent name is legal.
+    private static final String NOT_BLANK = "(?U).*\\S.*";
 
     private AccountRequests() {}
 
