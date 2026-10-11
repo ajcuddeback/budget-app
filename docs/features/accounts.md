@@ -2,7 +2,7 @@
 
 - **Status:** In progress
 - **Owner:** Repository owner
-- **Last updated:** 2026-10-10
+- **Last updated:** 2026-10-11
 - **Related:** [ADR-0006](../adr/0006-money-representation.md) (money),
   [ADR-0017](../adr/0017-households-own-financial-data.md) (ownership),
   [ADR-0022](../adr/0022-multi-currency-display.md) (currency),
@@ -112,7 +112,7 @@ Migration: `V9__accounts.sql`
 | --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`                        | `uuid`          | primary key                                                                                                                                     |
 | `household_id`              | `uuid`          | FK → `households`, `NOT NULL`, indexed. The ownership root (ADR-0017)                                                                           |
-| `name`                      | `text`          | `NOT NULL`, `CHECK (length(btrim(name)) BETWEEN 1 AND 80)`                                                                                      |
+| `name`                      | `text`          | `NOT NULL`, `CHECK (length(btrim(name)) BETWEEN 1 AND 80 AND length(name) <= 80)`                                                                |
 | `last_four`                 | `text`          | nullable, `CHECK (last_four ~ '^[0-9]{4}$')`                                                                                                    |
 | `type`                      | `text`          | `NOT NULL`, `CHECK (type IN (...))` — a check constraint, not a Postgres enum, so adding a type later is a migration rather than a type rewrite |
 | `currency`                  | `text`          | `NOT NULL`, `CHECK (currency ~ '^[A-Z]{3}$')`                                                                                                   |
@@ -121,7 +121,14 @@ Migration: `V9__accounts.sql`
 | `created_at` / `updated_at` | `timestamptz`   | `NOT NULL DEFAULT now()`                                                                                                                        |
 | `version`                   | `bigint`        | `NOT NULL DEFAULT 0` — optimistic locking                                                                                                       |
 
-Index on `(household_id, archived, lower(name))` to serve the default listing without a sort.
+Index on `(household_id, archived, lower(name), id)` to serve the default listing without a sort.
+The trailing `id` is the listing's own tiebreak: without it in the index PostgreSQL answers the
+filter from the index and still adds a `Sort` node for `ORDER BY lower(name), id`.
+
+The `name` check bounds the **raw** value as well as the trimmed one. `length(btrim(name)) <= 80`
+on its own is satisfied by any amount of surrounding whitespace, and `text` in PostgreSQL has no
+ceiling of its own — the same gap V8 section 4 closed on every other user-supplied text column.
+The application stores the trimmed value, so the two halves agree on every row it writes.
 
 **The database enforces the shape, not just the application.** Bean Validation produces the good
 error message; the `CHECK` constraints are what remain true when a future import path, CLI or
@@ -273,9 +280,14 @@ household, 400 on bad input, 403 for a `VIEWER` write, identical under session a
 - **`openingBalance` round-trips exactly.** A value like `-1234.5678` comes back identical —
   string in, string out, no float anywhere. A property test over generated amounts is cheap here.
 - **The ownership test is the valuable one.** ADR-0026 removed the cross-household case from
-  slice 2 by making the instance single-household; here it returns, because a second household
-  can be seeded directly in the database even if the UI cannot create one. Seed one, and assert
-  `404` on every route.
+  slice 2 by making the instance single-household; here it returns. Seed a second household, and
+  assert `404` on every route.
+  **Seeding one takes more than an `INSERT`.** `uq_households_singleton` (`V3__households.sql`) is
+  a unique index on a constant expression, so it permits exactly one household row whoever is
+  inserting — API, migration, CLI or `psql`. The second household has to be created with the index
+  dropped and the index restored afterwards, extra household deleted first. `AccountHouseholdScopingIT`
+  does exactly that and explains itself at length; copy its shape rather than rediscovering why a
+  plain insert fails.
 - **`lastFour` never reaches a log.** Assert against captured log output on create, update and
   error paths — the same shape as slice 2's credential-disclosure test, which is what caught a
   password reaching the log.
