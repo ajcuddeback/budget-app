@@ -129,6 +129,27 @@ public class ApiExceptionHandler {
     }
 
     /**
+     * Two people edited one row and the second one lost.
+     *
+     * <p>Caught here rather than in a service because Hibernate can only discover it at flush,
+     * which is after the service method has returned and its try/catch has gone — the same reason
+     * the last-owner rule is handled here. The loser is told; nothing is overwritten.
+     */
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    ResponseEntity<Map<String, Object>> handleStaleVersion(
+            org.springframework.dao.OptimisticLockingFailureException exception,
+            HttpServletRequest request) {
+        String correlationId = ApiProblem.newCorrelationId();
+        log(ErrorCode.STALE_VERSION, correlationId, null);
+        return problem(
+                ApiProblem.of(
+                        ErrorCode.STALE_VERSION,
+                        ApiProblem.instanceOf(request),
+                        Map.of(),
+                        correlationId));
+    }
+
+    /**
      * The database refused the write.
      *
      * <p>The only thing read out of the exception is the violated constraint's <em>name</em>, and

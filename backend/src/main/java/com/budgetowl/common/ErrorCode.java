@@ -39,6 +39,21 @@ public enum ErrorCode {
     INVITATION_REQUIRES_SIGN_OUT(
             "invitation-requires-sign-out", 409, "Sign out before accepting an invitation"),
     LAST_OWNER("last-owner", 409, "A household must keep at least one owner"),
+
+    /**
+     * Changing an account's currency once it has a transaction would silently reinterpret every
+     * amount already recorded — the figures do not move, so £100 becomes €100 and nothing admits
+     * it. Refused rather than applied, and never a silent no-op.
+     */
+    ACCOUNT_CURRENCY_IMMUTABLE(
+            "account-currency-immutable", 409, "This account's currency can no longer be changed"),
+
+    /** Deleting an account with transactions would destroy financial history. Archive instead. */
+    ACCOUNT_NOT_EMPTY("account-not-empty", 409, "This account still has transactions"),
+
+    /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
+    STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
+
     CONFLICT("conflict", 409, "Conflict"),
 
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
