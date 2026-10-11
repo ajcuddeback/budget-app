@@ -130,7 +130,11 @@ public class Account implements HouseholdOwned {
     public static Account of(
             Household household, String name, AccountType type, Money openingBalance) {
         Account account = new Account();
-        account.householdId = Objects.requireNonNull(household, "household").id();
+        // The household must already have been persisted. A null here would reach the database as
+        // a NOT NULL violation several frames away from the mistake.
+        account.householdId =
+                Objects.requireNonNull(
+                        Objects.requireNonNull(household, "household").id(), "household.id");
         account.name = requireValidName(name);
         account.type = Objects.requireNonNull(type, "type");
         account.openingBalance = Objects.requireNonNull(openingBalance, "openingBalance").amount();
