@@ -95,3 +95,21 @@ logging:
   level:
     root: INFO
     com.budgetowl: INFO
+    # Two framework loggers are pinned above DEBUG because they echo user data by design, and an
+    # operator turning DEBUG on when something is wrong is the worst possible moment for a log to
+    # start collecting it (ADR-0028, docs/architecture/security-model.md). Both were found by
+    # AccountDisclosureIT, which asserts they stay quiet with the root logger at DEBUG.
+    #
+    #   org.hibernate.orm.core prints every column of every flushed entity through Hibernate's
+    #   own EntityPrinter — name, last_four, opening_balance, and a user's password hash. It does
+    #   not use the entity's toString, so redacting that (as Account does) does nothing here.
+    #
+    #   ExceptionHandlerExceptionResolver logs the resolved exception, and a Bean Validation
+    #   failure carries the value it rejected: "rejected value [98765]" for a mistyped
+    #   last_four. Our own problem responses never echo a rejected value; this line is not ours.
+    #
+    # An operator who needs either can still raise it explicitly. Nothing below TRACE is pinned,
+    # so a root logger set to TRACE still binds JDBC parameters into the log — that is a
+    # deliberate act rather than a default, and it is recorded in docs/memory/gotchas.md.
+    org.hibernate.orm.core: INFO
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO

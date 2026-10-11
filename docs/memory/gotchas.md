@@ -661,3 +661,60 @@ true and the code is right, the test costs nothing; if it is wrong, the test is 
 will ever say so.
 
 *Added 2026-10-04 — slice 2 security audit.*
+
+---
+
+### Two framework loggers echo user data at `DEBUG`, and redacting `toString` does not stop either
+
+`AccountDisclosureIT` asserts that `lastFour`, account names and amounts never reach a log. With the
+root logger at `DEBUG` — what an operator turns on when something is wrong — it found two leaks that
+nothing in our own code could have prevented:
+
+- **`org.hibernate.orm.core`** prints every column of every flushed entity through Hibernate's own
+  `EntityPrinter`: `name=Chase Sapphire, lastFour=4412, openingBalance=-9876.5432`. It reads the
+  values off the persister, so a redacted `toString` on the entity (which `Account` has) changes
+  nothing. The same line would print a user's `password_hash`.
+- **`ExceptionHandlerExceptionResolver`** logs the exception it resolved, and a Bean Validation
+  failure carries the value that failed: `rejected value [98765]`. Our problem responses never echo
+  a rejected value — that line is the framework's, not ours.
+
+Both are pinned to `INFO` in `application.yml` with the reasoning next to them. **A redacted
+`toString` is not a logging control**; it only covers the places something calls `toString`. If a
+field must not reach a log, the only thing that proves it is a test that captures the log at the
+level an operator will actually use.
+
+Pinning stops at `DEBUG`. A root logger set to `TRACE` still binds JDBC parameters into the log,
+which is a deliberate act rather than a default.
+
+*Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### Jackson coerces a JSON number into a `String` field, so a string-typed amount is not a defence
+
+Amounts are declared as `String` on request DTOs so a malformed one fails Bean Validation and is
+answered as `validation-failed` *naming the field* — a deserializer failure can only be a
+`malformed-request` naming nothing. But `{"openingBalance": 1234.56}` then arrives as the string
+`"1234.56"`, the custom `BigDecimal` deserializer never runs, and the request is accepted with a
+`201`. The digits in it are already whatever the client's double rounded to.
+
+Fixed globally in `CoreConfig` with a Jackson coercion config refusing `Integer`, `Float` and
+`Boolean` input shapes for every `LogicalType.Textual` target. The type of a DTO field decides
+which deserializer runs, so "we registered a strict deserializer for `BigDecimal`" says nothing
+about a field that is not a `BigDecimal`.
+
+*Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### `@Version` is incremented at flush, so a write that answers before flushing returns a stale version
+
+`AccountService.update` mutated the entity and built its response from it. The response carried the
+version the caller already had, because Hibernate increments `@Version` when the change is flushed,
+not when the setter runs. The caller's next `PATCH` then sent that version and was refused with
+`409 stale-version` — the optimistic lock firing against a conflict that never happened.
+
+If a response reports a version, the write has to flush first. `AccountRepository.saveAndFlush`
+does, and it stays within ADR-0017's rule because it takes the entity rather than an id.
+
+*Added 2026-10-11 — slice 3 (accounts).*

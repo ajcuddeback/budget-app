@@ -1,6 +1,6 @@
 # Feature: Accounts
 
-- **Status:** In progress
+- **Status:** API complete (service + web). UI not started.
 - **Owner:** Repository owner
 - **Last updated:** 2026-10-11
 - **Related:** [ADR-0006](../adr/0006-money-representation.md) (money),
@@ -154,18 +154,75 @@ retiring an account is a different act from correcting its name and reads differ
 log.
 
 Amounts cross the wire as **strings** (`"1234.56"`), never JSON numbers — a double cannot hold
-every `NUMERIC(19,4)` and the one that gets rounded will be somebody's money (ADR-0006).
+every `NUMERIC(19,4)` and the one that gets rounded will be somebody's money (ADR-0006). A JSON
+number where an amount belongs is **refused**, not converted: by the time it arrives its digits are
+already whatever the sender's double rounded to. `MoneyJsonModule` writes every `BigDecimal` as a
+string and refuses to read one from a number; `CoreConfig` additionally refuses coercion of any JSON
+number into any textual field, which is what closes the same hole for the `String`-typed amounts on
+the request DTOs (see `../memory/gotchas.md`).
+
+### Bodies
+
+`AccountResponse`, on every route that returns an account:
+
+```json
+{
+  "id": "…", "name": "Chase", "lastFour": "4412", "type": "CREDIT_CARD",
+  "currency": "GBP", "openingBalance": "-400.0000", "balance": "-425.5000",
+  "archived": false, "createdAt": "…", "updatedAt": "…", "version": 3
+}
+```
+
+`balance` is computed by the service as `openingBalance` plus the account's transaction total, and
+is **not** the same field as `openingBalance`. They are equal only because there are no
+transactions yet.
+
+`POST` takes `name`, `lastFour` (optional), `type`, `currency`, `openingBalance`. No `householdId`
+and no user: both come from the authenticated caller's verified membership, and a field for either
+would be a field an attacker could set.
+
+`PATCH` is a **partial** update and takes the same five fields plus a required `version`:
+
+- **An absent field is unchanged.** A client may patch one field and nothing else.
+- **`version` is required**, because optimistic locking only works if the caller says which version
+  it read. Without it the second of two concurrent editors silently overwrites the first instead of
+  getting `409 stale-version`. The version in every response is the version in the row — a write
+  flushes before it answers, or it would hand back the version the caller already had.
+- **`"lastFour": null` clears the digits; omitting `lastFour` leaves them alone.** The two have to
+  be distinguishable or a client that patches only the name silently erases the digits that tell two
+  cards at one bank apart. JSON cannot carry that distinction in a record component — an absent
+  property and an explicit `null` both arrive as `null`, and as `Optional.empty()` with Jackson's
+  `Optional` support — so `UpdateAccountRequest` is the one request body in the codebase that is a
+  mutable class rather than a record: a setter is called only for a property that is present.
+- **Changing the currency to the one the account already has is not a change** and is never refused,
+  so a client may patch the whole form back without being told the account is immutable.
 
 Error codes follow `../guides/api-style.md`:
 
-| Code                         | Status | When                                              |
-| ---------------------------- | ------ | ------------------------------------------------- |
-| `validation-failed`          | 400    | Bad name, `lastFour`, type, currency or amount    |
-| `forbidden`                  | 403    | A `VIEWER` attempting any write                   |
-| `not-found`                  | 404    | Unknown id, or one belonging to another household |
-| `account-currency-immutable` | 409    | Currency change on an account with transactions   |
-| `account-not-empty`          | 409    | Delete on an account with transactions            |
-| `stale-version`              | 409    | Optimistic-lock conflict                          |
+| Code                         | Status | When                                                                  |
+| ---------------------------- | ------ | --------------------------------------------------------------------- |
+| `validation-failed`          | 400    | Bad name, `lastFour`, type, currency or amount                        |
+| `malformed-request`          | 400    | Unparseable body, unknown property, or a JSON number for an amount    |
+| `read-only-role`             | 403    | A `VIEWER` attempting any write                                       |
+| `not-a-member`               | 403    | Authenticated, but not a member of the household                      |
+| `csrf-token-required`        | 403    | Session transport, missing or wrong CSRF token                        |
+| `not-found`                  | 404    | Unknown id, or one belonging to another household                     |
+| `account-currency-immutable` | 409    | Currency change on an account with transactions                       |
+| `account-not-empty`          | 409    | Delete on an account with transactions                                |
+| `stale-version`              | 409    | Optimistic-lock conflict                                              |
+
+Two corrections to an earlier draft of this table, both deliberate:
+
+- The `403` is `read-only-role`, not a generic `forbidden`. The codes already in `ErrorCode` are
+  finer-grained than `forbidden`, a code is part of the API contract, and the client renders the
+  sentence from it (ADR-0023) — "this role may not write" and "you are not a member of this
+  household" are different sentences.
+- `malformed-request` is reachable and was missing. A body Jackson cannot bind cannot be answered
+  with a field-level `validation-failed`, because there is no bound object to validate.
+
+The **role is checked before the account is looked up**, so a `VIEWER` sending an id that does not
+exist gets `403` rather than `404`. That ordering is deliberate: the alternative lets a `VIEWER`
+distinguish ids that exist from ids that do not by the code they get back.
 
 ## UI
 
@@ -214,7 +271,20 @@ changes them.
   string and is parsed to `BigDecimal` — a malformed amount is a `400`, never a silent `0`.
 - **`lastFour` is a partial financial identifier and is treated as one.** It is never written to
   a log, never placed in an error message or a problem-detail `detail` field, and never used in a
-  URL or query string where a proxy or access log would capture it. See ADR-0028.
+  URL or query string where a proxy or access log would capture it — including the `Location`
+  header on `POST`, which carries the id alone. See ADR-0028.
+- **Two framework loggers had to be pinned to make that true**, and this is part of the feature
+  rather than an aside. `AccountDisclosureIT` runs the whole journey with the root logger at
+  `DEBUG` and found `lastFour`, the account name and the opening balance in two places nothing in
+  our own code could reach: `org.hibernate.orm.core`, which prints every column of every flushed
+  entity through Hibernate's `EntityPrinter` (and ignores the entity's own redacted `toString`),
+  and `ExceptionHandlerExceptionResolver`, which logs a Bean Validation failure's `rejected
+  value [98765]`. Both are pinned to `INFO` in `application.yml`. A root logger set to `TRACE`
+  still binds JDBC parameters into the log; that is a deliberate act rather than a default.
+- **Every request body's `toString` is redacted.** Spring MVC logs the deserialized body at
+  `DEBUG`, and a record's generated `toString` prints every component — which here means the
+  digits, the name and the amount. Same shape as the bug slice 2's credential-disclosure test
+  caught.
 - **Nothing here is logged with a value attached.** Audit lines name the account by id and the
   actor by user id. An account's name can contain anything the user typed and belongs in the
   database, not in the log stream.
@@ -273,8 +343,15 @@ household, 400 on bad input, 403 for a `VIEWER` write, identical under session a
 - **Balance is computed, not echoed.** Assert through the API that `balance` equals
   `openingBalance` _by computation_ — a test that passes because both fields happen to be read
   from the same column proves nothing, and will keep passing after transactions make it wrong.
+  **Done, in `AccountBalanceIT`**, which replaces the `AccountTransactions` bean with one that
+  reports real totals and real history and then asserts `balance == openingBalance + total`
+  through HTTP, on the single-account route and on every row of the list. That is also where the
+  two transaction-dependent `409`s are proven reachable rather than merely written.
 - **Currency immutability** proven with a real transaction present once slice 5 exists; until
   then, prove the check is reached and that the pre-transaction path still allows the change.
+  **Done**, both halves, plus the two cases that are easy to get wrong in the other direction:
+  patching the account's existing currency back is still allowed once it has transactions, and
+  type and opening balance stay mutable.
 - **`lastFour` rejects** empty string, three digits, five digits, letters, Unicode digits
   (`١٢٣٤`), a leading `+`, and whitespace padding. Accepts `0000`.
 - **`openingBalance` round-trips exactly.** A value like `-1234.5678` comes back identical —
@@ -290,4 +367,24 @@ household, 400 on bad input, 403 for a `VIEWER` write, identical under session a
   plain insert fails.
 - **`lastFour` never reaches a log.** Assert against captured log output on create, update and
   error paths — the same shape as slice 2's credential-disclosure test, which is what caught a
-  password reaching the log.
+  password reaching the log. **Done, in `AccountDisclosureIT`**, at `INFO` and again at `DEBUG`,
+  covering create, read, list, update, a rejected `lastFour`, a `VIEWER`'s refused write, a `404`,
+  a `409 stale-version`, an unparseable body and a `CHECK` violation written straight to the table.
+  It found two real leaks; see the Security section.
+- **The seam, not a stub.** `AccountTransactions` has two methods because "the total is zero" and
+  "there are no transactions" are different facts — a credit of 50 against a debit of 50 is an
+  account with history whose currency must not be reinterpreted and whose rows must not be
+  deleted. There is a test for exactly that case.
+
+## Implementation notes
+
+- `AccountService` owns the derived balance, both `409`s and all authorization.
+  `AccountTransactions` is the slice-5 seam: a batched `totalsByAccount` and an
+  `existForAccount`, both taking the `householdId` resolved from the caller's membership.
+  `NoTransactionsRecorded` is its truthful implementation for a schema whose only money table is
+  `accounts` — slice 5 replaces that bean and **adds a term**; it does not rewrite a call site.
+- `AccountRepository.saveAndFlush` was added for one reason: `@Version` is incremented at flush, so
+  a response built straight after mutating the entity reports the version the caller already had
+  and their next `PATCH` is refused as a conflict that never happened.
+- The listing pages **in the query**, not in memory. `PageResponse.of` materialises a list and
+  slices it, which is fine for a household's members and is not fine for a financial collection.
