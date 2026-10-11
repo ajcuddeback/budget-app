@@ -214,6 +214,15 @@ that combination is rejected by browsers anyway and signals a misunderstanding.
 
 - Never log: passwords, session ids, CSRF tokens, full account numbers, or auth headers.
 - Amounts and balances are sensitive. Log identifiers, not values, unless you have a reason.
+- **A redacted `toString` is not a logging control, and two framework loggers are pinned because
+  of it.** Hibernate's `EntityPrinter` prints every column of every flushed entity at `DEBUG`
+  reading values off the persister, so it ignores the entity's own `toString`; Spring's
+  `ExceptionHandlerExceptionResolver` logs a Bean Validation failure's `rejected value [...]`.
+  Both would put a partial account number, an account name, an amount or a password hash in a log
+  the moment an operator turned `DEBUG` on — which is exactly when they would. `application.yml`
+  pins `org.hibernate.orm.core` and that resolver to `INFO`, with the reasoning beside them. If a
+  field must not reach a log, the only thing that proves it is a test that captures the log at the
+  level an operator will actually use: `CredentialDisclosureIT` and `AccountDisclosureIT` do.
 - Error responses are RFC 7807 `application/problem+json` with a generic message. Stack traces,
   SQL, and framework internals never reach the client. The correlation id does — so support can
   find the real error in the logs.

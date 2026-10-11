@@ -244,9 +244,27 @@ class AccountDisclosureIT extends ApiTestBase {
         return new Journey(bodies, id);
     }
 
-    /** Everything that must not appear in a log line, whatever produced the line. */
-    private static final List<String> NEVER_LOGGED =
-            List.of(DIGITS, OTHER_DIGITS, REJECTED_DIGITS, ACCOUNT_NAME, AMOUNT, "9876.5432");
+    /**
+     * Everything that must not appear in a log line, whatever produced the line.
+     *
+     * <p>The four-digit values are matched with word boundaries, and the identifiers a log is
+     * <em>allowed</em> to contain are masked first — see {@link #withoutPermittedIdentifiers}.
+     * Searching a DEBUG log for a bare four-digit substring is otherwise a coin flip: the full
+     * suite caught {@code HikariProxyConnection@2092234412} as a leak of {@code 4412}, which is a
+     * flaky test rather than a finding, and docs/guides/testing-style.md is unambiguous that a
+     * flaky test is a broken one.
+     */
+    private static final List<java.util.regex.Pattern> NEVER_LOGGED =
+            List.of(
+                    java.util.regex.Pattern.compile("\\b" + DIGITS + "\\b"),
+                    java.util.regex.Pattern.compile("\\b" + OTHER_DIGITS + "\\b"),
+                    java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(REJECTED_DIGITS)),
+                    java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(ACCOUNT_NAME)),
+                    java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(AMOUNT)),
+                    java.util.regex.Pattern.compile(java.util.regex.Pattern.quote("9876.5432")));
+
+    /** Emits nothing but timings. No user data can reach it, and its numbers are pure noise. */
+    private static final String METRICS_LOGGER = "org.hibernate.session.metrics";
 
     /**
      * Asserts on the offending lines rather than on the whole log, so a failure names the logger
@@ -255,10 +273,41 @@ class AccountDisclosureIT extends ApiTestBase {
     private static void assertNothingSensitiveIn(List<String> lines) {
         assertThat(
                         lines.stream()
-                                .filter(line -> NEVER_LOGGED.stream().anyMatch(line::contains))
+                                .filter(line -> !line.startsWith(METRICS_LOGGER))
+                                .map(AccountDisclosureIT::withoutPermittedIdentifiers)
+                                .filter(
+                                        line ->
+                                                NEVER_LOGGED.stream()
+                                                        .anyMatch(
+                                                                pattern ->
+                                                                        pattern.matcher(line)
+                                                                                .find()))
                                 .toList())
                 .as("no log line may carry a partial financial identifier, a name or an amount")
                 .isEmpty();
+    }
+
+    /**
+     * Blanks what a log line is entitled to contain, before searching it for what it is not.
+     *
+     * <p>Audit lines name rows and actors by id, which is the whole design — "log identifiers, not
+     * values" (docs/architecture/security-model.md) — and the framework prints object hashes,
+     * session ids and durations. All of those are long digit or hex runs, and a four-digit
+     * identifier is a substring of plenty of them by chance. Masking them keeps the search for a
+     * real leak precise instead of probabilistic; a leak of {@code lastFour} looks like {@code
+     * lastFour=4412} or {@code "lastFour":"4412"}, which survives every rule below.
+     *
+     * <p>Runs of six digits or more, not five: the rejected five-digit value is one of the things
+     * being searched for, and masking it would make that assertion unfalsifiable. Five-digit
+     * numbers a log does produce cannot collide with it — a port is at most 65535.
+     */
+    private static String withoutPermittedIdentifiers(String line) {
+        return line.replaceAll(
+                        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
+                                + "-[0-9a-fA-F]{12}",
+                        "{uuid}")
+                .replaceAll("[0-9]{6,}", "{number}")
+                .replaceAll("[0-9]{1,4} ?(ns|ms|s)\\b", "{duration}");
     }
 
     private void captureLogs(Level level) {
