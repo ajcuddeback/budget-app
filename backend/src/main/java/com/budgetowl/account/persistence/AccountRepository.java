@@ -35,6 +35,22 @@ public interface AccountRepository extends Repository<Account, UUID> {
     Account save(Account account);
 
     /**
+     * Save, and make the database agree before returning.
+     *
+     * <p>Needed because {@code @Version} is incremented by Hibernate at <b>flush</b>, not at the
+     * moment a field is set — so a write endpoint that built its response straight after mutating
+     * the entity reported the version the caller already had. The next {@code PATCH} would then
+     * carry a stale version and be refused with {@code 409}, which is the optimistic lock firing
+     * against a conflict that does not exist. An integration test caught exactly that.
+     *
+     * <p>Scoped by taking the entity: the caller can only have obtained it from {@link
+     * #findByIdAndHouseholdId}, which is what {@code
+     * ArchitectureTest.household_owned_data_is_unreachable_without_its_household} accepts in place
+     * of a {@code householdId} parameter.
+     */
+    Account saveAndFlush(Account account);
+
+    /**
      * Hard-deletes an account.
      *
      * <p>Only legal while the account has no transactions — the service enforces that and answers

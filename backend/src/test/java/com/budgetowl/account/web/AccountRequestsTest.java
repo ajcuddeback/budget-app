@@ -60,18 +60,8 @@ class AccountRequestsTest {
     @EmptySource
     @ValueSource(
             strings = {
-                "123",
-                "12345",
-                "abcd",
-                "12a4",
-                "١٢٣٤",
-                "+123",
-                " 123",
-                "123 ",
-                " 1234 ",
-                "1234\n",
-                "12.4",
-                "-123"
+                "123", "12345", "abcd", "12a4", "١٢٣٤", "+123", " 123", "123 ", " 1234 ", "1234\n",
+                "12.4", "-123"
             })
     void rejectsAnythingThatIsNotExactlyFourAsciiDigits(String candidate) {
         assertThat(fieldsRejectedIn(create("Current", candidate, "CHECKING", "GBP", "0")))
@@ -81,7 +71,8 @@ class AccountRequestsTest {
     @ParameterizedTest
     @ValueSource(strings = {"0000", "1234", "9999", "0001"})
     void acceptsFourAsciiDigits(String candidate) {
-        assertThat(fieldsRejectedIn(create("Current", candidate, "CHECKING", "GBP", "0"))).isEmpty();
+        assertThat(fieldsRejectedIn(create("Current", candidate, "CHECKING", "GBP", "0")))
+                .isEmpty();
     }
 
     @Test
@@ -199,7 +190,8 @@ class AccountRequestsTest {
 
     @Test
     void requiresATypeButDoesNotEnumerateThemHere() {
-        assertThat(fieldsRejectedIn(create("Current", null, " ", "GBP", "0"))).containsExactly("type");
+        assertThat(fieldsRejectedIn(create("Current", null, " ", "GBP", "0")))
+                .containsExactly("type");
         assertThat(fieldsRejectedIn(create("Current", null, "SPACESHIP", "GBP", "0"))).isEmpty();
     }
 

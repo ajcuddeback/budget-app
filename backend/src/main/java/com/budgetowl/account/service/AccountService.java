@@ -121,7 +121,7 @@ public class AccountService {
                         Money.of(amount(requested.openingBalance()), currency));
         account.identifyBy(requested.lastFour());
 
-        Account saved = accounts.save(account);
+        Account saved = accounts.saveAndFlush(account);
         log.info(
                 "account created householdId={} accountId={} byUserId={} type={}",
                 householdId,
@@ -170,12 +170,16 @@ public class AccountService {
                     Money.of(amount(changes.openingBalance()), account.currency()));
         }
 
+        // Flushed before the view is built: @Version is incremented at flush, so a response
+        // assembled before it would hand the caller back the version they already had and their
+        // next PATCH would be refused as stale.
+        Account saved = accounts.saveAndFlush(account);
         log.info(
                 "account updated householdId={} accountId={} byUserId={}",
                 householdId,
                 accountId,
                 actorId);
-        return view(householdId, account);
+        return view(householdId, saved);
     }
 
     /** Idempotent: archiving an archived account is the state the caller asked for. */
@@ -232,13 +236,14 @@ public class AccountService {
             account.unarchive();
         }
 
+        Account saved = accounts.saveAndFlush(account);
         log.info(
                 "account {} householdId={} accountId={} byUserId={}",
                 archived ? "archived" : "unarchived",
                 householdId,
                 accountId,
                 actorId);
-        return view(householdId, account);
+        return view(householdId, saved);
     }
 
     /**

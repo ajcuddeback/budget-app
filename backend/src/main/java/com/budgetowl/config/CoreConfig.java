@@ -2,8 +2,12 @@ package com.budgetowl.config;
 
 import com.budgetowl.common.web.MoneyJsonModule;
 import java.time.Clock;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.cfg.CoercionAction;
+import tools.jackson.databind.cfg.CoercionInputShape;
+import tools.jackson.databind.type.LogicalType;
 
 /** Beans that are not about security but are needed everywhere. */
 @Configuration
@@ -17,6 +21,34 @@ public class CoreConfig {
     @Bean
     MoneyJsonModule moneyJsonModule() {
         return new MoneyJsonModule();
+    }
+
+    /**
+     * A JSON number is never accepted where this API expects text.
+     *
+     * <p>This closes the hole {@link MoneyJsonModule} cannot reach. Amounts are declared as {@code
+     * String} on request DTOs so that a malformed one is a {@code validation-failed} naming the
+     * field — but Jackson will happily coerce {@code {"openingBalance": 1234.56}} into the string
+     * {@code "1234.56"}, and the module's deserializer never runs. The digits in that request are
+     * already whatever the client's double rounded to (docs/memory/gotchas.md), so accepting them
+     * silently is exactly the failure ADR-0006 exists to prevent — and an integration test proved
+     * it was a {@code 201} before this bean existed.
+     *
+     * <p>Applied to every textual target rather than only to amounts, because a client sending a
+     * number where a name belongs is also a mistake worth answering with a {@code 400}: {@code
+     * fail-on-unknown-properties} already says a typo is an error rather than a guess, and this is
+     * the same principle one level down.
+     */
+    @Bean
+    JsonMapperBuilderCustomizer refuseCoercionIntoText() {
+        return builder ->
+                builder.withCoercionConfig(
+                        LogicalType.Textual,
+                        coercion -> {
+                            coercion.setCoercion(CoercionInputShape.Integer, CoercionAction.Fail);
+                            coercion.setCoercion(CoercionInputShape.Float, CoercionAction.Fail);
+                            coercion.setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail);
+                        });
     }
 
     /**
