@@ -673,7 +673,15 @@ nothing in our own code could have prevented:
 - **`org.hibernate.orm.core`** prints every column of every flushed entity through Hibernate's own
   `EntityPrinter`: `name=Chase Sapphire, lastFour=4412, openingBalance=-9876.5432`. It reads the
   values off the persister, so a redacted `toString` on the entity (which `Account` has) changes
-  nothing. The same line would print a user's `password_hash`.
+  nothing.
+
+  It prints **every mapped column**, so the blast radius is wider than the field that found it:
+  a user's `email` and `display_name` go the same way. It does *not* print `password_hash` —
+  verified by capturing the output of a first-user registration with the logger unpinned. That
+  is not this pin's doing: `UserAccount` deliberately has no password field and
+  `PasswordCredential` exposes no getter (slice 2's structural secrecy), so there is nothing for
+  the printer to read. Worth knowing which control is actually holding — this pin protects the
+  account fields and the personal ones, and the hash is protected by its mapping.
 - **`ExceptionHandlerExceptionResolver`** logs the exception it resolved, and a Bean Validation
   failure carries the value that failed: `rejected value [98765]`. Our problem responses never echo
   a rejected value — that line is the framework's, not ours.

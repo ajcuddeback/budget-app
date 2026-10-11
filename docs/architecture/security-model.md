@@ -218,7 +218,8 @@ that combination is rejected by browsers anyway and signals a misunderstanding.
   of it.** Hibernate's `EntityPrinter` prints every column of every flushed entity at `DEBUG`
   reading values off the persister, so it ignores the entity's own `toString`; Spring's
   `ExceptionHandlerExceptionResolver` logs a Bean Validation failure's `rejected value [...]`.
-  Both would put a partial account number, an account name, an amount or a password hash in a log
+  Both would put a partial account number, an account name, an amount, an email or a display
+  name in a log
   the moment an operator turned `DEBUG` on — which is exactly when they would. `application.yml`
   pins `org.hibernate.orm.core` and that resolver to `INFO`, with the reasoning beside them. If a
   field must not reach a log, the only thing that proves it is a test that captures the log at the

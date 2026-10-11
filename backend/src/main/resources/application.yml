@@ -101,7 +101,8 @@ logging:
     # AccountDisclosureIT, which asserts they stay quiet with the root logger at DEBUG.
     #
     #   org.hibernate.orm.core prints every column of every flushed entity through Hibernate's
-    #   own EntityPrinter — name, last_four, opening_balance, and a user's password hash. It does
+    #   own EntityPrinter — every mapped column of every flushed entity: an account's name,
+    #   last_four and opening_balance, and a user's email and display name. It does
     #   not use the entity's toString, so redacting that (as Account does) does nothing here.
     #
     #   ExceptionHandlerExceptionResolver logs the resolved exception, and a Bean Validation
