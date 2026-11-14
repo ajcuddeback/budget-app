@@ -3,6 +3,7 @@ package com.budgetowl.account.service;
 import com.budgetowl.common.Money;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -54,4 +55,17 @@ public interface AccountTransactions {
      * whose currency must not be reinterpreted and whose rows must not be deleted.
      */
     boolean existForAccount(UUID householdId, UUID accountId);
+
+    /**
+     * Which of these accounts have any transaction at all, batched.
+     *
+     * <p>Separate from {@link #totalsByAccount} because a total of zero is not an absence: an
+     * account with +50 and -50 has history and must not be deletable. Separate from {@link
+     * #existForAccount} because the list endpoint asks about every row at once, and asking one at a
+     * time is an N+1 the day this stops returning an empty set.
+     *
+     * @return the subset with history; never null, and never containing an id that was not asked
+     *     about
+     */
+    Set<UUID> withHistory(UUID householdId, Collection<UUID> accountIds);
 }

@@ -3,6 +3,7 @@ package com.budgetowl.account.service;
 import com.budgetowl.common.Money;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -31,5 +32,10 @@ public class NoTransactionsRecorded implements AccountTransactions {
     @Override
     public boolean existForAccount(UUID householdId, UUID accountId) {
         return false;
+    }
+
+    @Override
+    public Set<UUID> withHistory(UUID householdId, Collection<UUID> accountIds) {
+        return Set.of();
     }
 }

@@ -212,6 +212,53 @@ class AccountBalanceIT extends ApiTestBase {
                 .containsExactly(jdbc.queryForObject("SELECT id FROM households", UUID.class));
     }
 
+    @Test
+    void reportsAnAccountWithNoTransactionsAsEmpty() {
+        Household household = seedHousehold();
+        ApiClient owner = household.owner();
+        UUID id = createAccount(owner, "Current", null);
+
+        assertThat(owner.get("/api/accounts/" + id).body())
+                .as("a fresh account can be deleted, and its currency is still free to change")
+                .contains("\"empty\":true");
+    }
+
+    @Test
+    void doesNotCallAnAccountEmptyJustBecauseItsTransactionsNetToZero() {
+        Household household = seedHousehold();
+        ApiClient owner = household.owner();
+        UUID id = createAccount(owner, "Current", null);
+        // A +50 and a -50. The balance is untouched; the history is not.
+        pretend.recordOffsettingHistory(id, Money.zero(java.util.Currency.getInstance("GBP")));
+
+        ApiResponse response = owner.get("/api/accounts/" + id);
+
+        // This is the whole reason `empty` is its own field rather than a balance comparison.
+        // Deriving it from the amounts would delete an account that has records in it.
+        assertThat(response.body()).contains("\"empty\":false");
+        assertThat(response.stringField("balance"))
+                .as("and the balance is genuinely unchanged, so nothing else could have told us")
+                .isEqualTo(response.stringField("openingBalance"));
+    }
+
+    @Test
+    void asksAboutEveryAccountInTheListAtOnce() {
+        Household household = seedHousehold();
+        ApiClient owner = household.owner();
+        createAccount(owner, "One", null);
+        createAccount(owner, "Two", null);
+        createAccount(owner, "Three", null);
+
+        // Batched: the list must not ask per row, or it becomes an N+1 the day slice 5 supplies a
+        // real implementation. Proven by the stand-in recording one call per household, not per id.
+        pretend.clearCalls();
+        owner.get("/api/accounts");
+
+        assertThat(pretend.historyCallCount())
+                .as("one history query for the whole page")
+                .isEqualTo(1);
+    }
+
     /** Replaces the production bean for this context only. Detected automatically when nested. */
     @TestConfiguration
     static class SliceFiveStandIn {
@@ -234,6 +281,16 @@ class AccountBalanceIT extends ApiTestBase {
         private final Map<UUID, Money> totals = new ConcurrentHashMap<>();
         private final Set<UUID> withHistory = ConcurrentHashMap.newKeySet();
         private final Set<UUID> householdsAsked = ConcurrentHashMap.newKeySet();
+        private final java.util.concurrent.atomic.AtomicInteger historyCalls =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        void clearCalls() {
+            historyCalls.set(0);
+        }
+
+        int historyCallCount() {
+            return historyCalls.get();
+        }
 
         void clear() {
             totals.clear();
@@ -267,6 +324,21 @@ class AccountBalanceIT extends ApiTestBase {
         public boolean existForAccount(UUID householdId, UUID accountId) {
             householdsAsked.add(householdId);
             return withHistory.contains(accountId);
+        }
+
+        @Override
+        public Set<UUID> withHistory(UUID householdId, Collection<UUID> accountIds) {
+            householdsAsked.add(householdId);
+            historyCalls.incrementAndGet();
+            Set<UUID> asked = new java.util.HashSet<>(accountIds);
+            asked.retainAll(withHistory);
+            return Set.copyOf(asked);
+        }
+
+        /** History that nets to nothing: a +50 and a -50, which is still history. */
+        void recordOffsettingHistory(UUID accountId, Money zero) {
+            totals.put(accountId, zero);
+            withHistory.add(accountId);
         }
     }
 }

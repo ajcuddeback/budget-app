@@ -18,6 +18,7 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -288,17 +289,22 @@ public class AccountService {
     }
 
     private List<AccountView> views(UUID householdId, List<Account> found) {
-        Map<UUID, Money> totals =
-                transactions.totalsByAccount(householdId, found.stream().map(Account::id).toList());
+        List<UUID> ids = found.stream().map(Account::id).toList();
+        Map<UUID, Money> totals = transactions.totalsByAccount(householdId, ids);
+        Set<UUID> withHistory = transactions.withHistory(householdId, ids);
         List<AccountView> views = new ArrayList<>(found.size());
         for (Account account : found) {
-            views.add(view(account, totals));
+            views.add(view(account, totals, withHistory));
         }
         return views;
     }
 
     private AccountView view(UUID householdId, Account account) {
-        return view(account, transactions.totalsByAccount(householdId, List.of(account.id())));
+        List<UUID> id = List.of(account.id());
+        return view(
+                account,
+                transactions.totalsByAccount(householdId, id),
+                transactions.withHistory(householdId, id));
     }
 
     /**
@@ -312,7 +318,8 @@ public class AccountService {
      * (docs/features/accounts.md, and the Javadoc on {@code Account} explaining why the entity
      * deliberately has no such method).
      */
-    private static AccountView view(Account account, Map<UUID, Money> totals) {
+    private static AccountView view(
+            Account account, Map<UUID, Money> totals, Set<UUID> withHistory) {
         Money opening = account.openingBalance();
         Money posted = totals.getOrDefault(account.id(), Money.zero(account.currency()));
         return new AccountView(
@@ -322,6 +329,7 @@ public class AccountService {
                 account.type(),
                 opening,
                 opening.plus(posted),
+                !withHistory.contains(account.id()),
                 account.isArchived(),
                 account.createdAt(),
                 account.updatedAt(),

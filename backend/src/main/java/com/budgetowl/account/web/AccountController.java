@@ -149,6 +149,7 @@ public class AccountController {
                 account.openingBalance().currency().getCurrencyCode(),
                 account.openingBalance().amount(),
                 account.balance().amount(),
+                account.empty(),
                 account.archived(),
                 account.createdAt(),
                 account.updatedAt(),

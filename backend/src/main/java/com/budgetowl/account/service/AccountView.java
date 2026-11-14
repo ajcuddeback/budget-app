@@ -15,6 +15,10 @@ import java.util.UUID;
  * @param balance <b>derived</b>: {@link #openingBalance} plus the account's transactions. Never
  *     read from a column, and never assumed by a client to equal {@link #openingBalance} — the two
  *     are equal only until slice 5, and a client that conflates them breaks silently then.
+ * @param empty whether this account has no transactions at all. Not "its balance is zero": an
+ *     account with +50 and -50 has history and may not be deleted. It is the client's only way to
+ *     know whether Delete is offered or the currency is locked, which is why it is on the response
+ *     rather than left to a 409 the user discovers by trying.
  * @param version what the caller must send back on a {@code PATCH} to win the optimistic lock
  */
 public record AccountView(
@@ -24,6 +28,7 @@ public record AccountView(
         AccountType type,
         Money openingBalance,
         Money balance,
+        boolean empty,
         boolean archived,
         Instant createdAt,
         Instant updatedAt,

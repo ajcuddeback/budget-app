@@ -40,6 +40,7 @@ public final class AccountResponses {
             String currency,
             BigDecimal openingBalance,
             BigDecimal balance,
+            boolean empty,
             boolean archived,
             Instant createdAt,
             Instant updatedAt,
