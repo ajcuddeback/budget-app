@@ -88,7 +88,16 @@ injected services. If a dumb component needs `HttpClient`, it's in the wrong fol
 
 Amounts arrive from the API as **strings** (ADR-0006). Do not `parseFloat` them.
 
-- Keep them as strings, format for display with a currency pipe fed by a decimal library.
+- Keep them as strings, and format them with the `money` pipe — `{{ account.balance | money:
+  account.currency }}` — which is `I18nService.formatMoney`. It hands the string to
+  `Intl.NumberFormat`, whose string overload formats a decimal exactly. **No decimal library.**
+  This is what the earlier wording ("a currency pipe fed by a decimal library") was reaching for;
+  the platform grew the capability (Intl.NumberFormat V3) and a dependency is no longer the way to
+  get it. It is also why `tsconfig.json` names `lib` — the ES2023 typings are where that
+  overload appears.
+- Exact arithmetic, where display genuinely needs it, is `core/money.ts`: decimal strings added
+  as `bigint` minor units at the server's scale. The accounts screen's per-currency subtotals are
+  the only caller, and the only sanctioned kind of money arithmetic in the browser.
 - Never do arithmetic on money in the browser and send the result to the server as truth.
   The server computes; the client displays.
 
