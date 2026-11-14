@@ -1,5 +1,7 @@
 import type { Page, Route } from '@playwright/test';
 import {
+  DEMO_ACCOUNTS,
+  DEMO_ACCOUNTS_ACTIVE,
   DEMO_API,
   DEMO_HOUSEHOLD,
   DEMO_INVITATION,
@@ -131,6 +133,50 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     }
     if (at === 'POST /api/households/current/invitations') {
       return json(route, 201, { ...DEMO_INVITATION, email: field('email') ?? DEMO_INVITATION.email, role: field('role') ?? DEMO_INVITATION.role });
+    }
+
+    // ---- accounts -------------------------------------------------------------------------
+    // Enough of the real contract that a capture is honest: the default list hides archived rows,
+    // every amount is a string (ADR-0006), and a write answers with an account rather than `ok`,
+    // so the screen's own re-render is exercised instead of being skipped.
+    if (at === 'GET /api/accounts') {
+      const all = url.searchParams.get('includeArchived') === 'true';
+      const rows = all ? DEMO_ACCOUNTS : DEMO_ACCOUNTS_ACTIVE;
+      return json(route, 200, { content: rows, page: 0, size: 50, totalElements: rows.length, totalPages: 1 });
+    }
+    if (at === 'POST /api/accounts') {
+      return json(route, 201, {
+        ...DEMO_ACCOUNTS[0],
+        id: 'acc-0099',
+        name: field('name') ?? 'New account',
+        lastFour: field('lastFour') ?? null,
+        type: field('type') ?? 'CHECKING',
+        currency: field('currency') ?? DEMO_HOUSEHOLD.baseCurrency,
+        openingBalance: field('openingBalance') ?? '0.00',
+        balance: field('openingBalance') ?? '0.00',
+        archived: false,
+        version: 0,
+      });
+    }
+    const account = /^\/api\/accounts\/([^/]+)(?:\/(archive|unarchive))?$/.exec(url.pathname);
+    if (account) {
+      const found = DEMO_ACCOUNTS.find((one) => one.id === account[1]) ?? DEMO_ACCOUNTS[0];
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (account[2]) {
+        return json(route, 200, { ...found, archived: account[2] === 'archive', version: found.version + 1 });
+      }
+      if (method === 'PATCH') {
+        // Only the properties the client actually sent, which is what PATCH means — and the one
+        // place the three-way `lastFour` is visible: absent leaves it, null clears it (ADR-0028).
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        const patched = { ...found, ...changes, version: found.version + 1 };
+        return json(route, 200, { ...patched, balance: patched.openingBalance });
+      }
+      return json(route, 200, found);
     }
 
     // ---- household ------------------------------------------------------------------------

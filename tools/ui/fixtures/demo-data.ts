@@ -171,11 +171,36 @@ export const DEMO_PROBLEMS = {
   internal: { type: 'https://budgetowl.app/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
 } as const;
 
+/**
+ * The accounts, in the shape `AccountResponse` really sends (docs/features/accounts.md).
+ *
+ * Four things here are deliberate rather than decoration:
+ *
+ *  1. **Amounts are strings**, as they are on the wire (ADR-0006). A JSON number in this file
+ *     would be a fixture teaching the one thing the API refuses — and testing-style.md is explicit
+ *     that fixtures are read as examples and get copied.
+ *  2. **`balance` is not `openingBalance`.** Each balance is its opening balance plus the
+ *     DEMO_TRANSACTIONS recorded against that account, worked out once so the two agree. A client
+ *     that assumed the two fields were equal would look correct against a sloppier fixture and
+ *     break the moment a transaction existed.
+ *  3. **A second currency**, because the accounts screen only groups and subtotals by currency
+ *     when there is more than one, and a household with one would never show it (ADR-0022).
+ *  4. **An archived account**, so the toggle that reveals them has something to reveal — and it
+ *     keeps its balance, because archiving hides an account rather than zeroing it.
+ *
+ * `lastFour` is invented like everything else here, and arrives separately from the name: the
+ * client composes `name •1234` so a right-to-left locale can reorder it (ADR-0023).
+ */
 export const DEMO_ACCOUNTS = [
-  { id: 'acc-0001', name: 'Everyday Checking', type: 'CHECKING', currency: 'USD', balance: '2480.15' },
-  { id: 'acc-0002', name: 'Emergency Fund', type: 'SAVINGS', currency: 'USD', balance: '6120.00' },
-  { id: 'acc-0003', name: 'Travel Card', type: 'CREDIT_CARD', currency: 'USD', balance: '-318.44' },
+  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
+  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
+  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
+  { id: 'acc-0004', name: 'Berlin Savings', lastFour: null, type: 'SAVINGS', currency: 'EUR', openingBalance: '1200.00', balance: '1200.00', archived: false, createdAt: '2026-06-04T07:30:00Z', updatedAt: '2026-06-04T07:30:00Z', version: 0 },
+  { id: 'acc-0005', name: 'Old Joint Account', lastFour: '0041', type: 'CHECKING', currency: 'USD', openingBalance: '84.60', balance: '84.60', archived: true, createdAt: '2026-06-01T09:12:00Z', updatedAt: '2026-07-18T16:45:00Z', version: 4 },
 ] as const;
+
+/** The default list is unarchived only; `?includeArchived=true` is what returns all of them. */
+export const DEMO_ACCOUNTS_ACTIVE = DEMO_ACCOUNTS.filter((account) => !account.archived);
 
 export const DEMO_CATEGORIES = [
   { id: 'cat-0001', name: 'Salary', kind: 'INCOME' },
@@ -218,7 +243,7 @@ export const DEMO_API: Record<string, unknown> = {
   '/api/auth/devices': { content: DEMO_DEVICES, page: 0, size: 50, totalElements: DEMO_DEVICES.length, totalPages: 1 },
   '/api/households/current': { ...DEMO_HOUSEHOLD, role: 'OWNER' },
   '/api/households/current/members': { content: DEMO_MEMBERS, page: 0, size: 50, totalElements: DEMO_MEMBERS.length, totalPages: 1 },
-  '/api/accounts': { content: DEMO_ACCOUNTS, page: 0, size: 50, totalElements: DEMO_ACCOUNTS.length, totalPages: 1 },
+  '/api/accounts': { content: DEMO_ACCOUNTS_ACTIVE, page: 0, size: 50, totalElements: DEMO_ACCOUNTS_ACTIVE.length, totalPages: 1 },
   '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 50, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
   '/api/transactions': { content: DEMO_TRANSACTIONS, page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },
   '/api/budgets/2026-08': DEMO_BUDGET,
