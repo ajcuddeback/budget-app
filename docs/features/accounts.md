@@ -112,7 +112,7 @@ Migration: `V9__accounts.sql`
 | --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`                        | `uuid`          | primary key                                                                                                                                     |
 | `household_id`              | `uuid`          | FK → `households`, `NOT NULL`, indexed. The ownership root (ADR-0017)                                                                           |
-| `name`                      | `text`          | `NOT NULL`, `CHECK (length(btrim(name)) BETWEEN 1 AND 80 AND length(name) <= 80)`                                                                |
+| `name`                      | `text`          | `NOT NULL`, `CHECK (length(btrim(name)) BETWEEN 1 AND 80 AND length(name) <= 80)`                                                               |
 | `last_four`                 | `text`          | nullable, `CHECK (last_four ~ '^[0-9]{4}$')`                                                                                                    |
 | `type`                      | `text`          | `NOT NULL`, `CHECK (type IN (...))` — a check constraint, not a Postgres enum, so adding a type later is a migration rather than a type rewrite |
 | `currency`                  | `text`          | `NOT NULL`, `CHECK (currency ~ '^[A-Z]{3}$')`                                                                                                   |
@@ -149,6 +149,18 @@ membership and is **never** read from the request (ADR-0017 — non-negotiable #
 | `POST`   | `/api/accounts/{id}/unarchive` | Un-archive                                            | `OWNER` or `MEMBER` |
 | `DELETE` | `/api/accounts/{id}`           | Delete, only while empty                              | `OWNER` or `MEMBER` |
 
+Every account response carries **`empty`**: whether the account has no transactions at all. It is
+deliberately **not** "the balance is zero" — an account with a +50 and a -50 nets to nothing and
+still has history — which is why it is its own field rather than something a client derives from
+the amounts, and why the two fields that look like they would answer it (`balance`,
+`openingBalance`) are the two this doc forbids comparing. Deriving emptiness from the amounts would
+delete an account with records in it.
+
+It exists because the UI needs it _before_ the user acts: Delete is offered only where it is
+allowed, and the currency select is shown locked with the reason, rather than both being discovered
+by being refused. Today every account reports `true`, because there are no transactions yet — a
+fact about the data, not the code, exactly as with `balance`.
+
 Archive and un-archive are **explicit sub-resources rather than a field on `PATCH`**, because
 retiring an account is a different act from correcting its name and reads differently in an audit
 log.
@@ -167,9 +179,17 @@ the request DTOs (see `../memory/gotchas.md`).
 
 ```json
 {
-  "id": "…", "name": "Chase", "lastFour": "4412", "type": "CREDIT_CARD",
-  "currency": "GBP", "openingBalance": "-400.0000", "balance": "-425.5000",
-  "archived": false, "createdAt": "…", "updatedAt": "…", "version": 3
+  "id": "…",
+  "name": "Chase",
+  "lastFour": "4412",
+  "type": "CREDIT_CARD",
+  "currency": "GBP",
+  "openingBalance": "-400.0000",
+  "balance": "-425.5000",
+  "archived": false,
+  "createdAt": "…",
+  "updatedAt": "…",
+  "version": 3
 }
 ```
 
@@ -199,17 +219,17 @@ would be a field an attacker could set.
 
 Error codes follow `../guides/api-style.md`:
 
-| Code                         | Status | When                                                                  |
-| ---------------------------- | ------ | --------------------------------------------------------------------- |
-| `validation-failed`          | 400    | Bad name, `lastFour`, type, currency or amount                        |
-| `malformed-request`          | 400    | Unparseable body, unknown property, or a JSON number for an amount    |
-| `read-only-role`             | 403    | A `VIEWER` attempting any write                                       |
-| `not-a-member`               | 403    | Authenticated, but not a member of the household                      |
-| `csrf-token-required`        | 403    | Session transport, missing or wrong CSRF token                        |
-| `not-found`                  | 404    | Unknown id, or one belonging to another household                     |
-| `account-currency-immutable` | 409    | Currency change on an account with transactions                       |
-| `account-not-empty`          | 409    | Delete on an account with transactions                                |
-| `stale-version`              | 409    | Optimistic-lock conflict                                              |
+| Code                         | Status | When                                                               |
+| ---------------------------- | ------ | ------------------------------------------------------------------ |
+| `validation-failed`          | 400    | Bad name, `lastFour`, type, currency or amount                     |
+| `malformed-request`          | 400    | Unparseable body, unknown property, or a JSON number for an amount |
+| `read-only-role`             | 403    | A `VIEWER` attempting any write                                    |
+| `not-a-member`               | 403    | Authenticated, but not a member of the household                   |
+| `csrf-token-required`        | 403    | Session transport, missing or wrong CSRF token                     |
+| `not-found`                  | 404    | Unknown id, or one belonging to another household                  |
+| `account-currency-immutable` | 409    | Currency change on an account with transactions                    |
+| `account-not-empty`          | 409    | Delete on an account with transactions                             |
+| `stale-version`              | 409    | Optimistic-lock conflict                                           |
 
 Two corrections to an earlier draft of this table, both deliberate:
 
@@ -320,7 +340,7 @@ changes them.
   our own code could reach: `org.hibernate.orm.core`, which prints every column of every flushed
   entity through Hibernate's `EntityPrinter` (and ignores the entity's own redacted `toString`),
   and `ExceptionHandlerExceptionResolver`, which logs a Bean Validation failure's `rejected
-  value [98765]`. Both are pinned to `INFO` in `application.yml`. A root logger set to `TRACE`
+value [98765]`. Both are pinned to `INFO` in `application.yml`. A root logger set to `TRACE`
   still binds JDBC parameters into the log; that is a deliberate act rather than a default.
 - **Every request body's `toString` is redacted.** Spring MVC logs the deserialized body at
   `DEBUG`, and a record's generated `toString` prints every component — which here means the
