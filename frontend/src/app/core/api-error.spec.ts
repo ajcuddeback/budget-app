@@ -18,18 +18,40 @@ describe('ApiError', () => {
 
   it('collects the fields a validation failure names, from either shape', () => {
     const fromParams = ApiError.from(
-      failure(400, { code: 'validation-failed', params: { fields: ['displayName', 7, 'password'] } }),
+      failure(400, {
+        code: 'validation-failed',
+        params: { fields: ['displayName', 7, 'password'] },
+      }),
     );
     const fromList = ApiError.from(
-      failure(400, { code: 'validation-failed', errors: [{ field: 'email', message: 'x' }, 'junk'] }),
+      failure(400, {
+        code: 'validation-failed',
+        errors: [{ field: 'email', message: 'x' }, 'junk'],
+      }),
     );
 
     expect(fromParams.fields).toEqual(['displayName', 'password']);
     expect(fromList.fields).toEqual(['email']);
   });
 
+  it('reads the singular field a service-thrown validation failure names', () => {
+    // `params: { field: 'currency' }` is the shape every `InvalidRequestException` in the API
+    // produces — AccountService's unknown currency and unknown type among them. Reading only the
+    // plural left those marking nothing in the form.
+    const one = ApiError.from(
+      failure(400, { code: 'validation-failed', params: { field: 'currency' } }),
+    );
+
+    expect(one.fields).toEqual(['currency']);
+    expect(
+      ApiError.from(failure(400, { code: 'validation-failed', params: { field: 7 } })).fields,
+    ).toEqual([]);
+  });
+
   it('reads how long to wait from the params, then from the header', () => {
-    const fromParams = ApiError.from(failure(429, { code: 'rate-limited', params: { retryAfterSeconds: 90 } }));
+    const fromParams = ApiError.from(
+      failure(429, { code: 'rate-limited', params: { retryAfterSeconds: 90 } }),
+    );
     const fromHeader = ApiError.from(
       failure(429, { code: 'rate-limited' }, new HttpHeaders({ 'Retry-After': '30' })),
     );
