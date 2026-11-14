@@ -106,6 +106,10 @@ export class AccountsPage {
   protected readonly notShown = computed(() =>
     Math.max(0, this.totalElements() - this.accounts().length),
   );
+  /** Two keys rather than "1 more accounts": the message catalogue has no plural machinery. */
+  protected readonly notShownKey = computed<MessageKey>(() =>
+    this.notShown() === 1 ? 'accounts.notShownOne' : 'accounts.notShown',
+  );
 
   protected readonly dialog = signal<DialogTarget | null>(null);
   protected readonly dialogBusy = signal(false);
@@ -188,6 +192,11 @@ export class AccountsPage {
   protected openEdit(account: Account): void {
     this.resetDialogState();
     this.dialog.set({ account });
+  }
+
+  /** A notice is about the last thing that happened, and that moment has passed. */
+  private forgetNotice(): void {
+    this.notice.set(null);
   }
 
   protected closeDialog(): void {
@@ -356,13 +365,15 @@ export class AccountsPage {
     );
   }
 
+  /** Close first, then say what happened: closing forgets the previous notice. */
   private finish(notice: MessageKey): void {
-    this.notice.set(notice);
-    this.actionError.set(null);
     this.closeDialog();
+    this.actionError.set(null);
+    this.notice.set(notice);
   }
 
   private resetDialogState(): void {
+    this.forgetNotice();
     this.dialogError.set(null);
     this.conflict.set(null);
     this.latest = null;

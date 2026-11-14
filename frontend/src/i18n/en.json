@@ -190,6 +190,7 @@
   "accounts.emptyBody": "An account is a place money sits — a current account, a savings pot, a credit card, or cash in a tin. Add the ones you have and you can start recording what happens in them.",
   "accounts.emptyReadOnly": "Your role in this household is read-only, so someone else will need to add them.",
   "accounts.notShown": "{count} more accounts are not shown here.",
+  "accounts.notShownOne": "1 more account is not shown here.",
   "accounts.nameWithDigits": "{name} •{digits}",
   "accounts.subtotal": "Subtotal",
   "accounts.subtotalUnavailable": "Subtotal unavailable",

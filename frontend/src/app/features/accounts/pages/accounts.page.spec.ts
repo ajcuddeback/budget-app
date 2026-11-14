@@ -232,6 +232,12 @@ describe('AccountsPage', () => {
     expect(text(fixture)).toContain('203 more accounts are not shown');
   });
 
+  it('counts the last one in words that read properly', async () => {
+    const fixture = await render({ accounts: [CHASE, SAVINGS], totalElements: 3 });
+
+    expect(text(fixture)).toContain('1 more account is not shown');
+  });
+
   it('adds an account, sending every amount as a string', async () => {
     const fixture = await render({ accounts: [] });
     const created: Account = { ...SAVINGS, id: 'new', name: 'Tin on the shelf', type: 'CASH' };

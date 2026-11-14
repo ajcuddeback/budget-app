@@ -58,7 +58,7 @@
             (deleteRequested)="askToDelete($event)"
           />
           @if (notShown() > 0) {
-            <p class="field-hint">{{ 'accounts.notShown' | t: { count: notShown() } }}</p>
+            <p class="field-hint">{{ notShownKey() | t: { count: notShown() } }}</p>
           }
         }
       </div>
