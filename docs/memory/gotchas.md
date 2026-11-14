@@ -744,3 +744,19 @@ If a response reports a version, the write has to flush first. `AccountRepositor
 does, and it stays within ADR-0017's rule because it takes the entity rather than an id.
 
 *Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### The formatting hook reformats files outside `frontend/`, because the prettier config lives there
+
+Prettier's config is `frontend/.prettierrc` (`singleQuote`, `printWidth: 100`). Editing a
+TypeScript file anywhere else — `tools/ui/fixtures/demo-data.ts`, say — runs prettier with its
+*defaults* instead: double quotes, 80 columns. A four-line content change came back as a 346-line
+diff that also undid the fixture file's deliberate one-row-per-line layout.
+
+Change a file outside `frontend/` with `sed` or a small script rather than an editing tool, or
+check `git diff --stat` straight afterwards and restore the file if the line count is absurd. The
+real fix is a repository-root `.prettierrc` (or `frontend/.prettierrc` moved up with an
+override), which is a tooling change rather than something to do mid-feature.
+
+*Added 2026-11-14 — slice 3 frontend.*
