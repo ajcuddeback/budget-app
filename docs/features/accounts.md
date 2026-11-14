@@ -1,8 +1,8 @@
 # Feature: Accounts
 
-- **Status:** API complete (service + web). UI not started.
+- **Status:** API complete (service + web). Web UI complete; user guide and UI capture outstanding.
 - **Owner:** Repository owner
-- **Last updated:** 2026-10-11
+- **Last updated:** 2026-11-14
 - **Related:** [ADR-0006](../adr/0006-money-representation.md) (money),
   [ADR-0017](../adr/0017-households-own-financial-data.md) (ownership),
   [ADR-0022](../adr/0022-multi-currency-display.md) (currency),
@@ -249,6 +249,47 @@ canvas gains real accounts artboards, this section is what gets reconciled.
   rather than vanishing, so the user learns why rather than wondering where it went.
 - Both viewports, light and dark, from tokens only. Every string from `en.json`; every amount and
   date through the i18n formatters (ADR-0023).
+
+### What was built, and the four places it reads the above differently
+
+`frontend/src/app/features/accounts/` — `pages/accounts.page.ts` is the only smart component;
+`components/account-list` and `components/account-dialog` take inputs and emit outputs. The
+dialog's structure is the invitation dialog's: a native `<dialog>` opened modally, so focus is
+trapped and restored and `Escape` closes it, with the heading as `aria-labelledby`.
+
+1. **Emptiness is not in the API, so "Delete only when empty" cannot be fully honoured yet.**
+   `AccountResponse` reports no such field, and the two fields that look like they would answer it
+   — `balance` and `openingBalance` — are the two this document forbids comparing. The client
+   therefore offers Delete unless the server has _said_ the account has history, which is what
+   `isKnownToHaveHistory` means: today it is never true, so Delete is offered on every account, and
+   the `409 account-not-empty` that would follow is rendered as a sentence naming archiving. **The
+   fix is an API field** (`empty`, or `transactionCount`) on `AccountResponse`; the client reads an
+   optional `empty` already, so adding it on the server completes the rule with no client change.
+   The same predicate gates the currency lock, for the same reason and with the same consequence.
+2. **With one currency there is no subtotal**, not even a single-group one. A lone subtotal _is_ a
+   household total, and whether this screen shows one is still an Open Question below; rendering
+   one here would answer it by accident. Grouping headings and subtotals appear from the second
+   currency onwards.
+3. **Archived accounts are a separate section with no subtotal**, rather than extra rows inside
+   the currency groups. Otherwise revealing them would change a subtotal, which would read as a
+   closed account's money coming back. Each archived row still shows its own balance, because
+   archiving hides an account rather than zeroing it.
+4. **A `409 stale-version` stops and asks.** The page re-reads the account, shows the list the new
+   truth, and names each field that changed with its new value. The submit button is disabled
+   while the conflict stands, and the two ways out are explicit: "use theirs" reloads the form from
+   the server's copy, "keep mine and save" re-sends the same edit against the version the person
+   has just been shown. There is no path that adopts a new version silently.
+
+The subtotals are computed in the browser, which is the one piece of money arithmetic the client
+does. `core/money.ts` adds decimal strings as `bigint` minor units at the server's scale — exact
+for every `NUMERIC(19,4)` — and the result is display-only: nothing here is ever sent back as
+truth. `I18nService.formatMoney` hands the API's string straight to `Intl.NumberFormat`, whose
+string overload formats the digits without a `number` existing; **no amount is parsed anywhere in
+the client** (ADR-0006).
+
+Pagination: the screen asks for one page of 200 with `includeArchived=true` and says plainly how
+many rows the server is holding back if there are more. A household with 200 accounts is not a
+case worth building paging controls for before anyone has one.
 
 ## Security considerations
 
