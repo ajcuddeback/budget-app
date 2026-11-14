@@ -5,6 +5,7 @@ import com.budgetowl.auth.persistence.PasswordCredentialRepository;
 import com.budgetowl.common.ErrorCode;
 import com.budgetowl.common.ForbiddenException;
 import com.budgetowl.common.NotFoundException;
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class PasswordService {
 
     private final PasswordCredentialRepository credentials;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
     private final PasswordPolicy passwordPolicy;
     private final DeviceService devices;
 
@@ -38,11 +40,13 @@ public class PasswordService {
             PasswordCredentialRepository credentials,
             PasswordEncoder passwordEncoder,
             PasswordPolicy passwordPolicy,
-            DeviceService devices) {
+            DeviceService devices,
+            EntityManager entityManager) {
         this.credentials = credentials;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicy = passwordPolicy;
         this.devices = devices;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -51,8 +55,23 @@ public class PasswordService {
                 credentials
                         .findById(userId)
                         .orElseThrow(() -> new NotFoundException("no such user"));
-        if (!PasswordPolicy.isEncodable(currentPassword)
-                || !credential.matches(currentPassword, passwordEncoder::matches)) {
+        boolean matched =
+                PasswordPolicy.isEncodable(currentPassword)
+                        && credential.matches(currentPassword, passwordEncoder::matches);
+
+        // Verification is the only reason this entity was loaded, so it leaves the persistence
+        // context the moment that is done. A managed PasswordCredential is still mapped when
+        // updatePassword flushes below, and Hibernate's EntityPrinter prints every mapped column
+        // of every entity in the context at flush — including this one's bcrypt hash, twice, at
+        // the moment the user has just proved they know the matching plaintext.
+        //
+        // application.yml pins org.hibernate.orm.core for that reason, but a pinned logger is a
+        // configuration file away from being undone by an operator debugging Hibernate. Detaching
+        // makes it structural: there is no managed entity to print, whatever the log level.
+        // Redacting toString does not help — the printer reads off the persister by field access.
+        entityManager.detach(credential);
+
+        if (!matched) {
             // 403 rather than 401: the caller is authenticated and stays authenticated. Answering
             // 401 here would sign a user out for mistyping their old password.
             throw new ForbiddenException(

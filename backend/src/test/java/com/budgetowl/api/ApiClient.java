@@ -52,6 +52,26 @@ public final class ApiClient {
         return this;
     }
 
+    /**
+     * A bearer client that <b>keeps whatever cookies the server sends it</b> — a WebView, anything
+     * built on an HTTP stack with a cookie jar (dio, curl -c, a JDK HttpClient with a
+     * CookieHandler), or a client behind a browser.
+     *
+     * <p>This exists because its absence hid two real defects until a security audit found them.
+     * {@link #withBearerToken} clears the jar, so no test in the suite could express "a bearer
+     * client that also holds cookies" — and that is the exact shape of a bearer request being
+     * issued a session cookie it never asked for, and of the CSRF exemption then refusing that
+     * client's next write. Both shipped through a green suite.
+     *
+     * <p>Reach for this whenever a change touches the bearer transport, cookies, or the CSRF
+     * exemption. A transport defect that only appears when both credentials are present is
+     * invisible to every other client in this file.
+     */
+    public ApiClient withBearerTokenKeepingCookies(String token) {
+        this.bearerToken = token;
+        return this;
+    }
+
     /** Replays one cookie, which is what a stolen session cookie is. */
     public ApiClient withCookie(String name, String value) {
         this.cookies.put(name, value);

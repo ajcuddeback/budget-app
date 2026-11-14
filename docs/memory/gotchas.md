@@ -684,7 +684,12 @@ nothing in our own code could have prevented:
       passwordHash={bcrypt}$2a$04$4eRA1/L7b6g/2Oj9DPYv0eCdS4emVoZ0hMMaRAZbIWA2xnqZbtYKW}
   ```
 
-  **The pin is the only thing protecting that hash.** An earlier version of this entry claimed the
+  **That one is now fixed structurally**: `PasswordService` detaches the credential as soon as
+  verification is done, so no managed entity survives to the flush and no log level can print it
+  (`CredentialDisclosureIT.keepsTheStoredHashOutOfTheLogEvenWithHibernateUnpinned` fails if the
+  detach is removed). The pin remains for everything else, which is still only protected by it.
+
+  **The pin was the only thing protecting that hash until then.** An earlier version of this entry claimed the
   opposite — that the hash was safe "because of its mapping", on the strength of a probe that ran
   only a first-user registration. Registration and login never flush a `PasswordCredential`;
   `POST /api/auth/password` does, and prints the *previous* hash twice, at the moment the user has

@@ -15,10 +15,12 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Architecture rules (ADR-0024). These make the dangerous shapes unwritable rather than merely
@@ -233,20 +235,54 @@ class ArchitectureTest {
                 "take a UUID householdId, or the household-owned entity itself") {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
-                boolean scoped = false;
-                for (Parameter parameter : method.reflect().getParameters()) {
-                    scoped =
-                            scoped
-                                    || (parameter.getType() == UUID.class
-                                            && "householdId".equals(parameter.getName()))
+                Method reflected = method.reflect();
+                boolean takesTheEntity = false;
+                boolean takesHouseholdId = false;
+                for (Parameter parameter : reflected.getParameters()) {
+                    takesTheEntity =
+                            takesTheEntity
                                     || HouseholdOwned.class.isAssignableFrom(parameter.getType());
+                    takesHouseholdId =
+                            takesHouseholdId
+                                    || (parameter.getType() == UUID.class
+                                            && "householdId".equals(parameter.getName()));
                 }
-                events.add(
-                        new SimpleConditionEvent(
-                                method,
-                                scoped,
-                                method.getFullName()
-                                        + " reaches household-owned data without a householdId"));
+
+                // save/delete are scoped by construction: the caller can only have obtained the
+                // entity from a scoped finder, so there is no id to be wrong about.
+                String why;
+                boolean scoped;
+                if (takesTheEntity) {
+                    scoped = true;
+                    why = "";
+                } else if (!takesHouseholdId) {
+                    scoped = false;
+                    why = " reaches household-owned data without a householdId";
+                } else {
+                    // Taking the parameter is not using it. Until this was checked, a
+                    // hand-written @Query could accept householdId and never mention it in the
+                    // JPQL, which reads as scoped at every call site and is not — exactly the
+                    // defect the rule exists to make unwritable.
+                    Query query = reflected.getAnnotation(Query.class);
+                    if (query != null) {
+                        scoped =
+                                query.value().contains("householdId")
+                                        && (query.countQuery().isEmpty()
+                                                || query.countQuery().contains("householdId"));
+                        why =
+                                " takes a householdId its @Query never filters on, so every call"
+                                        + " site reads as scoped and none of them is";
+                    } else {
+                        // A derived query is built from the method name, so the name is the
+                        // query. Spring Data would reject a householdId parameter the name does
+                        // not bind, but that failure happens at startup rather than here.
+                        scoped = reflected.getName().contains("HouseholdId");
+                        why =
+                                " takes a householdId its derived query name does not bind to a"
+                                        + " property";
+                    }
+                }
+                events.add(new SimpleConditionEvent(method, scoped, method.getFullName() + why));
             }
         };
     }

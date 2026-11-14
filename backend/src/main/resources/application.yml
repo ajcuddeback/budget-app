@@ -103,9 +103,10 @@ logging:
     #   org.hibernate.orm.core prints every column of every flushed entity through Hibernate's
     #   own EntityPrinter — every mapped column of every entity in the persistence context at
     #   flush: an account's name, last_four and opening_balance, a user's email and display name,
-    #   and PasswordCredential.passwordHash on the POST /api/auth/password path, which prints the
-    #   replaced bcrypt hash twice. This pin is the ONLY thing protecting that hash — the entity
-    #   split protects it from being read, not from being printed. It does
+    #   and anything else still managed at that point. It once printed the replaced bcrypt hash
+    #   twice on POST /api/auth/password; PasswordService now detaches the credential as soon as
+    #   verification is done, so that one is structural and no longer depends on this pin. The
+    #   rest still do depend on it. It does
     #   not use the entity's toString, so redacting that (as Account does) does nothing here.
     #
     #   ExceptionHandlerExceptionResolver logs the resolved exception, and a Bean Validation
