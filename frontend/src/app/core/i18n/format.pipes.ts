@@ -23,6 +23,21 @@ export class DateOnlyPipe implements PipeTransform {
   }
 }
 
+/**
+ * `{{ account.balance | money: account.currency }}` — an amount in its own currency.
+ *
+ * The amount stays the string the API sent all the way into `Intl` (ADR-0006). There is no
+ * numeric overload on purpose: a `number` here would mean somebody had already parsed money.
+ */
+@Pipe({ name: 'money', pure: false })
+export class MoneyPipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(amount: string | null | undefined, currency: string): string {
+    return this.i18n.formatMoney(amount, currency);
+  }
+}
+
 @Pipe({ name: 'currencyName', pure: false })
 export class CurrencyNamePipe implements PipeTransform {
   private readonly i18n = inject(I18nService);

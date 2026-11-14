@@ -23,6 +23,12 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'household' },
       {
+        path: 'accounts',
+        title: 'title.accounts',
+        loadChildren: () =>
+          import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES),
+      },
+      {
         path: 'household',
         title: 'title.household',
         loadChildren: () =>

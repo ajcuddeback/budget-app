@@ -1,0 +1,89 @@
+@for (group of groups(); track group.currency) {
+  <div class="currency-group">
+    @if (showSubtotals()) {
+      <div class="group-head">
+        <h3 class="group-title">{{ group.currency | currencyName }} ({{ group.currency }})</h3>
+        <p class="group-subtotal">
+          <span class="small muted">{{ 'accounts.subtotal' | t }}</span>
+          @if (group.subtotal) {
+            <span class="amount">{{ group.subtotal | money: group.currency }}</span>
+          } @else {
+            <span class="small">{{ 'accounts.subtotalUnavailable' | t }}</span>
+          }
+        </p>
+      </div>
+    }
+
+    <ul class="rows" [class.rows-archived]="archived()">
+      @for (account of group.accounts; track account.id) {
+        <li class="row">
+          <div class="row-main">
+            <span class="row-title">
+              @if (account.lastFour; as digits) {
+                {{ 'accounts.nameWithDigits' | t: { name: account.name, digits: digits } }}
+              } @else {
+                {{ account.name }}
+              }
+            </span>
+            <span class="row-sub">
+              {{ typeKey(account.type) | t }}
+              @if (archived()) {
+                · {{ 'accounts.archivedTag' | t }}
+              }
+            </span>
+          </div>
+
+          <p class="row-balance">
+            <span class="amount">{{ account.balance | money: account.currency }}</span>
+          </p>
+
+          @if (canWrite()) {
+            <div class="row-actions">
+              @if (archived()) {
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-small"
+                  [disabled]="busyId() === account.id"
+                  (click)="unarchiveRequested.emit(account)"
+                >
+                  {{ 'accounts.unarchive' | t }}
+                  <span class="visually-hidden">{{ account.name }}</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-small"
+                  [disabled]="busyId() === account.id"
+                  (click)="editRequested.emit(account)"
+                >
+                  {{ 'accounts.edit' | t }}
+                  <span class="visually-hidden">{{ account.name }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-small"
+                  [disabled]="busyId() === account.id"
+                  (click)="archiveRequested.emit(account)"
+                >
+                  {{ 'accounts.archive' | t }}
+                  <span class="visually-hidden">{{ account.name }}</span>
+                </button>
+              }
+              @if (deletable(account)) {
+                <button
+                  type="button"
+                  class="btn btn-danger btn-small"
+                  [disabled]="busyId() === account.id"
+                  (click)="deleteRequested.emit(account)"
+                >
+                  {{ 'accounts.delete' | t }}
+                  <span class="visually-hidden">{{ account.name }}</span>
+                </button>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+}

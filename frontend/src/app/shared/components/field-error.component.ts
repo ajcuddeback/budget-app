@@ -49,6 +49,12 @@ export class FieldErrorComponent {
     if (errors['currency']) {
       return message('validation.currency');
     }
+    if (errors['lastFour']) {
+      return message('validation.lastFour');
+    }
+    if (errors['amount']) {
+      return message('validation.amount');
+    }
     if (errors['minlength']) {
       return message('validation.minLength', { min: Number(errors['minlength'].requiredLength) });
     }

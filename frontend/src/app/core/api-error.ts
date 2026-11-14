@@ -64,6 +64,13 @@ function fieldNames(problem: Record<string, unknown>, params: Record<string, unk
   if (Array.isArray(listed)) {
     names.push(...listed.filter((name): name is string => typeof name === 'string'));
   }
+  // The server names one rejected field as `params.field` and several as `params.fields`
+  // (ApiProblem, and every `InvalidRequestException` thrown by a service). Reading only the plural
+  // meant the single-field case — an unknown currency, an unrecognised account type — marked
+  // nothing in the form, and the user had a sentence with no field highlighted.
+  if (typeof params['field'] === 'string') {
+    names.push(params['field']);
+  }
   const errors = problem['errors'];
   if (Array.isArray(errors)) {
     for (const entry of errors) {

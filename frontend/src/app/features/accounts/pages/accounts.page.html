@@ -1,0 +1,127 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'accounts.title' | t }}</h1>
+    <p class="page-lede">{{ 'accounts.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <section class="card" aria-labelledby="accounts-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="accounts-heading">{{ 'accounts.heading' | t }}</h2>
+        @if (canWrite() && active().length > 0) {
+          <button type="button" class="btn btn-primary" (click)="openAdd()">
+            {{ 'accounts.add' | t }}
+          </button>
+        }
+      </div>
+
+      <div class="stack">
+        <app-error-alert [error]="actionError()" />
+        @if (notice(); as said) {
+          <div class="alert alert-success" role="status">
+            <p>{{ said | t }}</p>
+          </div>
+        }
+
+        @if (active().length === 0) {
+          <!-- First run is the common case, not a fault: one line about what an account is for,
+               and one thing to do about it. -->
+          <p class="card-note">{{ 'accounts.emptyBody' | t }}</p>
+          @if (canWrite()) {
+            <div>
+              <button type="button" class="btn btn-primary" (click)="openAdd()">
+                {{ 'accounts.addFirst' | t }}
+              </button>
+            </div>
+          } @else {
+            <p class="field-hint">{{ 'accounts.emptyReadOnly' | t }}</p>
+          }
+        } @else {
+          <app-account-list
+            [groups]="activeGroups()"
+            [showSubtotals]="multipleCurrencies()"
+            [canWrite]="canWrite()"
+            [busyId]="busyId()"
+            (editRequested)="openEdit($event)"
+            (archiveRequested)="askToArchive($event)"
+            (deleteRequested)="askToDelete($event)"
+          />
+          @if (notShown() > 0) {
+            <p class="field-hint">{{ 'accounts.notShown' | t: { count: notShown() } }}</p>
+          }
+        }
+      </div>
+    </section>
+
+    @if (archived().length > 0) {
+      <section class="card" aria-labelledby="archived-heading">
+        <div class="cluster section-head">
+          <h2 class="card-title" id="archived-heading">{{ 'accounts.archivedHeading' | t }}</h2>
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            aria-controls="archived-accounts"
+            [attr.aria-expanded]="showArchived()"
+            (click)="toggleArchived()"
+          >
+            {{
+              (showArchived() ? 'accounts.hideArchived' : 'accounts.showArchived')
+                | t: { count: archived().length }
+            }}
+          </button>
+        </div>
+
+        <div id="archived-accounts">
+          @if (showArchived()) {
+            <p class="card-note">{{ 'accounts.archivedNote' | t }}</p>
+            <app-account-list
+              [groups]="archivedGroups()"
+              [archived]="true"
+              [canWrite]="canWrite()"
+              [busyId]="busyId()"
+              (unarchiveRequested)="unarchive($event)"
+              (deleteRequested)="askToDelete($event)"
+            />
+          }
+        </div>
+      </section>
+    }
+  }
+</div>
+
+@if (dialog(); as target) {
+  <app-account-dialog
+    [account]="target.account"
+    [defaultCurrency]="baseCurrency()"
+    [currencyLocked]="currencyLocked()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    [conflict]="conflict()"
+    (submitted)="submit($event)"
+    (latestWanted)="useLatest()"
+    (overwriteWanted)="overwrite()"
+    (closed)="closeDialog()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmPending()"
+    (cancelled)="cancelPending()"
+  />
+}

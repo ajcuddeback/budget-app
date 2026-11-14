@@ -14,6 +14,13 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
+    /* ES2023's Intl typings, which is where `Intl.NumberFormat.format` learned to take a decimal
+       *string*. That overload is the only way to format a NUMERIC(19,4) without parsing it into a
+       double first, and parsing money into a double is ADR-0006's one forbidden move. Every
+       browser we support has shipped it since 2022 (Intl.NumberFormat V3); the lib was lagging the
+       runtime, not the other way round. `lib` affects type checking only — the emit target is
+       unchanged. */
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "preserve"
   },
   "angularCompilerOptions": {
