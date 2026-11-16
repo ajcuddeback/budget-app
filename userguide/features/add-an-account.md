@@ -19,14 +19,14 @@ of them.
 
 2. Select **Add an account**.
 
-   A window called **Add an account** opens.
-
    ![The Accounts screen, with accounts grouped under Euro (EUR) and US Dollar (USD) and the Add an account button circled.](../images/add-an-account--accounts.png)
 
    If this is your first account, the screen explains what an account is and the button says
    **Add your first account** instead. It does the same thing.
 
    ![The Accounts screen with no accounts yet, showing the Add your first account button circled.](../images/add-an-account--empty.png)
+
+   Either way, a window called **Add an account** opens.
 
 3. Enter a name in **Name**.
 
@@ -68,8 +68,8 @@ of them.
 
 ## What you'll see
 
-Your new account appears in the list, under the heading for its currency, with its balance beside
-it. A balance you owe is shown with a minus in front of it, like **-$420.50**.
+Your new account appears in the list with its balance beside it. A balance you owe is shown with
+a minus in front of it, like **-$420.50**.
 
 **If all your accounts are in one currency**, the list is one plain list with no headings and no
 subtotal.
@@ -92,7 +92,7 @@ balance your bank shows you right now.
 
 - A current account with 1,641.75 in it opens at **1641.75**.
 - A credit card you owe 420.50 on opens at **-420.50**. Money you owe is a minus, every time.
-- An account you have just opened with nothing in it opens at **0**.
+- A brand-new account with nothing in it yet opens at **0**.
 
 Get it wrong and every balance after it is wrong by the same amount, which is why it is worth a
 second look. If you do get it wrong, you can correct it — see below. Correcting it moves the

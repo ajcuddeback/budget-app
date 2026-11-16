@@ -30,31 +30,32 @@ with no buttons beside them.
 
    ![The Accounts screen with the Archive button on the Travel Card row circled.](../images/archive-or-delete-an-account--archive-button.png)
 
-3. Read what the window tells you, then select **Archive**.
+3. Read what the window says.
 
-   It says: *It keeps its history, hides it from lists, and stops taking new transactions. You
-   can bring it back whenever you like.* To change your mind, select **Cancel** — nothing
-   happens.
+   It asks, for example, **Archive Travel Card?** and tells you: *It keeps its history, hides it
+   from lists, and stops taking new transactions. You can bring it back whenever you like.*
 
    ![The window "Archive Travel Card?" with Cancel and Archive buttons, Archive circled.](../images/archive-or-delete-an-account--archive-confirm.png)
 
-4. You'll see **That account has been archived.**
+4. Select **Archive**.
 
-   The account leaves **Your accounts** and is counted in the **Archived** section at the bottom,
-   which now says **Show 2 archived**.
+   To change your mind, select **Cancel** instead — nothing happens.
+
+   You'll see **That account has been archived.** The account leaves **Your accounts** and is
+   counted in the **Archived** section at the bottom, which now says **Show 2 archived**.
 
    ![The Accounts screen with the message "That account has been archived." and the Show 2 archived button circled.](../images/archive-or-delete-an-account--archived.png)
 
 **The subtotal for that currency changes.** Archiving the card took **-$318.44** out of the list,
 so the **US Dollar (USD)** subtotal went up from $8,281.71 to $8,600.15. Nothing was deleted —
-the account is just no longer part of what you are looking at.
+the account is no longer part of what you are looking at.
 
 ## Bring an archived account back
 
 1. Select **Show 2 archived** at the bottom of the **Accounts** screen.
 
-   The section opens and lists the archived accounts, greyed out and marked **Archived**, each
-   with its balance.
+   The number is however many you have. The section opens and lists them, greyed out and marked
+   **Archived**, each with its balance.
 
 2. Select **Bring back** beside the one you want.
 
@@ -81,16 +82,19 @@ instead.
 
    Archived accounts have a **Delete** button too, in the **Archived** section.
 
-3. Read the window, then select **Delete**.
+3. Read what the window says.
 
-   It says: *This permanently removes the account, and it cannot be undone. To keep an account's
-   history, archive it instead.* To change your mind, select **Cancel**.
+   It asks, for example, **Delete Travel Card?** and tells you: *This permanently removes the
+   account, and it cannot be undone. To keep an account's history, archive it instead.*
 
    ![The window "Delete Travel Card?" with Cancel and Delete buttons, Delete circled.](../images/archive-or-delete-an-account--delete-confirm.png)
 
-4. You'll see **That account has been deleted.**
+4. Select **Delete**.
 
-   The row is gone from the list, and the subtotal for its currency changes to match.
+   To change your mind, select **Cancel** instead — nothing happens.
+
+   You'll see **That account has been deleted.** The row is gone from the list, and the subtotal
+   for its currency changes to match.
 
    ![The Accounts screen with the message "That account has been deleted." and the Travel Card row gone.](../images/archive-or-delete-an-account--deleted.png)
 
@@ -114,7 +118,8 @@ the list and does not name the account — it is about the one you just tried.
 ![The Accounts screen with the message explaining that an account with transactions cannot be deleted, outlined.](../images/archive-or-delete-an-account--delete-refused.png)
 
 **I archived the wrong account.**
-Select **Show 1 archived**, then **Bring back** beside it. It returns exactly as it was.
+Select the **Show … archived** button at the bottom of the **Accounts** screen, then **Bring
+back** beside it. It returns exactly as it was.
 
 **I deleted an account and want it back.**
 Deleting cannot be undone. Add the account again with [Add an account](add-an-account.md) — it
