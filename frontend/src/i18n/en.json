@@ -228,7 +228,7 @@
   "accounts.added": "Account added.",
   "accounts.saved": "Account saved.",
   "accounts.archiveHeading": "Archive {name}?",
-  "accounts.archiveMessage": "It keeps its history, hides it from lists, and stops taking new transactions. You can bring it back whenever you like.",
+  "accounts.archiveMessage": "It keeps its history, hides it from lists, and stops taking new transactions. Its balance leaves the subtotal for its currency, so that figure will change. You can bring it back whenever you like.",
   "accounts.archivedNotice": "That account has been archived.",
   "accounts.unarchivedNotice": "That account is back in your lists.",
   "accounts.deleteHeading": "Delete {name}?",

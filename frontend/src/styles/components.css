@@ -363,6 +363,16 @@ select.input {
 dialog.dialog {
   inline-size: min(34rem, calc(100vw - var(--space-6)));
   max-block-size: calc(100dvh - var(--space-6));
+  /*
+   * The dialog is its own scroll container, said explicitly rather than left to the UA default.
+   * scroll-padding keeps the sticky actions bar from being counted as empty space: without it,
+   * scrolling a field into view (or focusing it with a keyboard) parks it UNDER the bar, where it
+   * is invisible but still "in view" as far as the browser and Playwright's fill() are concerned.
+   * The guide found this the hard way — the Opening balance field, the one people most often get
+   * wrong, could not be photographed without scrolling the dialog by hand.
+   */
+  overflow-y: auto;
+  scroll-padding-block-end: calc(var(--space-8) * 2);
   padding: var(--space-6);
   border: 0;
   border-radius: var(--radius-lg);

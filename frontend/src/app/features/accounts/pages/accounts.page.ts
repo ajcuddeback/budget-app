@@ -127,6 +127,9 @@ export class AccountsPage {
 
   protected readonly busyId = signal<string | null>(null);
   protected readonly actionError = signal<ApiError | null>(null);
+
+  /** Which account the {@link actionError} is about, so the alert can name it. */
+  protected readonly actionErrorAccount = signal<string | null>(null);
   protected readonly notice = signal<MessageKey | null>(null);
   protected readonly pending = signal<PendingAction | null>(null);
 
@@ -305,12 +308,14 @@ export class AccountsPage {
 
   protected askToArchive(account: Account): void {
     this.actionError.set(null);
+    this.actionErrorAccount.set(null);
     this.notice.set(null);
     this.pending.set({ kind: 'archive', account });
   }
 
   protected askToDelete(account: Account): void {
     this.actionError.set(null);
+    this.actionErrorAccount.set(null);
     this.notice.set(null);
     this.pending.set({ kind: 'delete', account });
   }
@@ -327,6 +332,7 @@ export class AccountsPage {
     const { kind, account } = action;
     this.busyId.set(account.id);
     this.actionError.set(null);
+    this.actionErrorAccount.set(null);
     try {
       if (kind === 'archive') {
         this.replace(await firstValueFrom(this.service.archive(account.id)));
@@ -340,7 +346,11 @@ export class AccountsPage {
       this.pending.set(null);
     } catch (thrown) {
       // `account-not-empty` lands here: the sentence it renders names archiving as the way out.
+      // The alert sits at the top of the card rather than beside the row that was refused, so with
+      // several accounts it has to say which one it means — otherwise the reader is left matching
+      // a refusal to an action they took a moment ago.
       this.pending.set(null);
+      this.actionErrorAccount.set(account.name);
       this.actionError.set(asApiError(thrown));
     } finally {
       this.busyId.set(null);
@@ -351,6 +361,7 @@ export class AccountsPage {
   protected async unarchive(account: Account): Promise<void> {
     this.busyId.set(account.id);
     this.actionError.set(null);
+    this.actionErrorAccount.set(null);
     this.notice.set(null);
     try {
       this.replace(await firstValueFrom(this.service.unarchive(account.id)));
@@ -372,6 +383,7 @@ export class AccountsPage {
   private finish(notice: MessageKey): void {
     this.closeDialog();
     this.actionError.set(null);
+    this.actionErrorAccount.set(null);
     this.notice.set(notice);
   }
 

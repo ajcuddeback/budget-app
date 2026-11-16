@@ -5,7 +5,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen: accounts grouped by currency, each group with its own subtotal.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -14,7 +14,7 @@
     "guide": "add-an-account",
     "caption": "The Add an account window filled in for a credit card, with Save account at the bottom.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -23,7 +23,7 @@
     "guide": "add-an-account",
     "caption": "The Add an account window, before anything is filled in.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -32,7 +32,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen after adding the card: \"Account added.\" and the new row in the US Dollar group.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -41,7 +41,7 @@
     "guide": "add-an-account",
     "caption": "The Edit account window with Currency greyed out and the reason printed under it.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -50,7 +50,7 @@
     "guide": "add-an-account",
     "caption": "The Edit account window, filled in with what the account says now.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -59,7 +59,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen with no accounts yet, offering Add your first account.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -68,7 +68,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen for a household with one currency: a plain list, no currency headings and no subtotal.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -77,7 +77,7 @@
     "guide": "add-an-account",
     "caption": "The Opening balance field, reached by scrolling down inside the window, with a negative amount in it.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -86,7 +86,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen after saving: \"Account saved.\" and the new name in the list.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -95,7 +95,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen for someone whose role is Viewer: the balances, and nothing to click.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -104,7 +104,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Travel Card row, with its Archive button.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -113,7 +113,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to archive Travel Card.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -122,7 +122,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after archiving: the card has left the list and the Archived section now says Show 2 archived.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -131,7 +131,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Archived section opened, listing the archived accounts with a Bring back button each.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -140,7 +140,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after bringing the card back: \"That account is back in your lists.\"",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -149,7 +149,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to delete Travel Card, saying it cannot be undone.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -158,7 +158,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Everyday Checking row, which has transactions: Edit and Archive, and no Delete.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -167,7 +167,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The message shown when an account has transactions: it cannot be deleted, and archiving is offered instead.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -176,7 +176,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after deleting: \"That account has been deleted.\" and the row gone.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -185,7 +185,7 @@
     "guide": "create-your-account",
     "caption": "The Household screen you land on after creating your account.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -194,7 +194,7 @@
     "guide": "create-your-account",
     "caption": "The setup form filled in.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -203,7 +203,7 @@
     "guide": "create-your-account",
     "caption": "The Set up Budget Owl screen with an empty form.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -212,7 +212,7 @@
     "guide": "create-your-account",
     "caption": "The password field asking for at least 12 characters.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -221,7 +221,7 @@
     "guide": "invite-someone",
     "caption": "The Household screen as an owner, with the Invite someone button.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -230,7 +230,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window just after selecting Copy link, with \"Link copied.\" beside the button.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -239,7 +239,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window with an email address and the Viewer role chosen.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -248,7 +248,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window, before anything is filled in.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -257,7 +257,7 @@
     "guide": "invite-someone",
     "caption": "The invitation link, with the warning to treat it like a password.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -266,7 +266,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window after the link has been revoked.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -275,7 +275,7 @@
     "guide": "join-a-household",
     "caption": "The welcome screen after joining.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -284,7 +284,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen as someone who already has an account on this instance.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -293,7 +293,7 @@
     "guide": "join-a-household",
     "caption": "The welcome screen for someone who already had an account.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -302,7 +302,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen, with the notice about who can see what you record.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -311,7 +311,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen asking for a name and password.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -320,7 +320,7 @@
     "guide": "join-a-household",
     "caption": "The Sign in screen after joining, with a message that you have joined the household.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -329,7 +329,7 @@
     "guide": "join-a-household",
     "caption": "The screen asking you to sign out before you accept an invitation.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -338,7 +338,7 @@
     "guide": "join-a-household",
     "caption": "The message shown when an invitation link has expired, been used, or been cancelled.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -347,7 +347,7 @@
     "guide": "manage-members",
     "caption": "The window asking you to confirm leaving the household.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -356,7 +356,7 @@
     "guide": "manage-members",
     "caption": "The Household screen as a member: settings are read-only and a Leave button is shown.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -365,7 +365,7 @@
     "guide": "manage-members",
     "caption": "The screen shown to someone who is signed in but belongs to no household.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -374,7 +374,7 @@
     "guide": "manage-members",
     "caption": "The note shown to the only owner, explaining why there is no Leave button.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -383,7 +383,7 @@
     "guide": "manage-members",
     "caption": "The Household screen as an owner, listing three people and their roles.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -392,7 +392,7 @@
     "guide": "manage-members",
     "caption": "The window asking you to confirm removing Sam Rivera.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -401,7 +401,7 @@
     "guide": "manage-members",
     "caption": "Jordan Rivera now shown with the Member role.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -410,7 +410,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen explaining that your session ended.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -419,7 +419,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -428,7 +428,7 @@
     "guide": "sign-in",
     "caption": "The message asking you to wait before trying to sign in again.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -437,7 +437,7 @@
     "guide": "sign-in",
     "caption": "The message shown when the email address or password is wrong.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -446,7 +446,7 @@
     "guide": "your-devices",
     "caption": "The Devices screen listing this browser, another browser, and a phone.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -455,7 +455,7 @@
     "guide": "your-devices",
     "caption": "The window warning that you are about to sign out of the browser you are using.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -464,7 +464,7 @@
     "guide": "your-devices",
     "caption": "The Devices screen after signing the other browser out.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -473,7 +473,7 @@
     "guide": "your-display-settings",
     "caption": "The Your preferences screen.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -482,7 +482,7 @@
     "guide": "your-display-settings",
     "caption": "Euro and German chosen, before saving.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   },
   {
@@ -491,7 +491,7 @@
     "guide": "your-display-settings",
     "caption": "The preferences screen confirming that they were saved.",
     "capturedAt": "2026-11-16",
-    "commit": "d24292b",
+    "commit": "91434ff",
     "viewport": "1280x720"
   }
 ]

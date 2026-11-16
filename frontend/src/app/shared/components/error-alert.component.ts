@@ -17,7 +17,13 @@ import { TranslatePipe } from '../../core/i18n/t.pipe';
   template: `
     @if (error(); as failure) {
       <div class="alert" role="alert">
-        <p>{{ failure | errorText }}</p>
+        <p>
+          @if (subject(); as named) {
+            <strong>{{ named }}</strong>
+            {{ '&mdash;' }}
+          }
+          {{ failure | errorText }}
+        </p>
         @if (failure.correlationId && failure.status >= 500) {
           <p class="small muted">{{ 'error.reference' | t: { id: failure.correlationId } }}</p>
         }
@@ -27,4 +33,12 @@ import { TranslatePipe } from '../../core/i18n/t.pipe';
 })
 export class ErrorAlertComponent {
   readonly error = input<ApiError | null>(null);
+
+  /**
+   * What the failure was about, when the alert does not sit beside it.
+   *
+   * An alert at the top of a list has no way of saying which row it means. Naming the subject is
+   * the difference between "this account has transactions" and knowing which of five it refused.
+   */
+  readonly subject = input<string | null>(null);
 }
