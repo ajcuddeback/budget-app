@@ -141,10 +141,13 @@ export class AccountsPage {
           heading: this.i18n.t('accounts.archiveHeading', { name }),
           message: this.i18n.t('accounts.archiveMessage'),
           action: this.i18n.t('accounts.archive'),
+          // Reversible, so it does not wear the colour that means "this cannot be undone".
+          tone: 'ordinary' as const,
         }
       : {
           heading: this.i18n.t('accounts.deleteHeading', { name }),
           message: this.i18n.t('accounts.deleteMessage'),
+          tone: 'destructive' as const,
           action: this.i18n.t('accounts.delete'),
         };
   });

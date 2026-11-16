@@ -200,7 +200,7 @@
   "accounts.delete": "Delete",
   "accounts.save": "Save account",
   "accounts.archivedHeading": "Archived",
-  "accounts.archivedNote": "These keep their history and take no new transactions. Bring one back at any time.",
+  "accounts.archivedNote": "These keep their history and take no new transactions.",
   "accounts.showArchived": "Show {count} archived",
   "accounts.hideArchived": "Hide archived",
   "accounts.archivedTag": "Archived",
@@ -232,11 +232,12 @@
   "accounts.archivedNotice": "That account has been archived.",
   "accounts.unarchivedNotice": "That account is back in your lists.",
   "accounts.deleteHeading": "Delete {name}?",
-  "accounts.deleteMessage": "This permanently removes the account. It has no transactions, so there is no history to lose — but it cannot be undone. To keep an account's history, archive it instead.",
+  "accounts.deleteMessage": "This permanently removes the account, and it cannot be undone. To keep an account's history, archive it instead.",
   "accounts.deletedNotice": "That account has been deleted.",
   "accounts.conflictTitle": "Somebody else saved first",
   "accounts.conflictBody": "Nothing you typed has been saved. This is what the account says now:",
   "accounts.conflictField": "{field}: {value}",
   "accounts.conflictUseLatest": "Use theirs",
-  "accounts.conflictOverwrite": "Keep mine and save"
+  "accounts.conflictOverwrite": "Keep mine and save",
+  "accounts.archivedNoteWritable": "These keep their history and take no new transactions. Bring one back at any time."
 }

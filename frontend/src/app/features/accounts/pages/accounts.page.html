@@ -84,7 +84,9 @@
 
         <div id="archived-accounts">
           @if (showArchived()) {
-            <p class="card-note">{{ 'accounts.archivedNote' | t }}</p>
+            <p class="card-note">
+              {{ (canWrite() ? 'accounts.archivedNoteWritable' : 'accounts.archivedNote') | t }}
+            </p>
             <app-account-list
               [groups]="archivedGroups()"
               [archived]="true"
@@ -120,6 +122,7 @@
     [heading]="text.heading"
     [message]="text.message"
     [confirmLabel]="text.action"
+    [tone]="text.tone"
     [busy]="busyId() !== null"
     (confirmed)="confirmPending()"
     (cancelled)="cancelPending()"

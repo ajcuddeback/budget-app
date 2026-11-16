@@ -380,12 +380,30 @@ dialog.dialog::backdrop {
   margin-block-end: var(--space-3);
 }
 
+/*
+ * Sticky, because a dialog taller than the viewport scrolls its own content and the actions were
+ * scrolling away with it. "Add an account" on a phone showed five fields and no way to save; the
+ * stale-version conflict did it on a 1440x900 desktop too, and in the worst case put a DISABLED
+ * Save on screen with the explanation for why it was disabled scrolled off above it.
+ *
+ * The negative inline margins and matching padding let the bar span the dialog's full width so
+ * content scrolling underneath is covered rather than appearing in the padding gutters.
+ */
 .dialog-actions {
+  position: sticky;
+  inset-block-end: calc(var(--space-6) * -1);
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2) var(--space-3);
   margin-block-start: var(--space-4);
+  margin-inline: calc(var(--space-6) * -1);
+  padding: var(--space-3) var(--space-6);
+  /* Full-bleed to the dialog's bottom edge, so nothing shows beneath the bar. */
+  margin-block-end: calc(var(--space-6) * -1);
+  background: var(--color-surface);
+  border-block-start: 1px solid var(--color-divider);
 }
 
 @media (max-width: 30rem) {

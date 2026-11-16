@@ -61,11 +61,14 @@ export interface Account {
    * Whether the account has no transactions — the one fact that decides whether deleting it is
    * allowed and whether its currency is still changeable.
    *
-   * **The API does not send this yet.** `AccountResponse` has no such field, so until slice 5
-   * gives it one it is absent on every row and {@link isKnownToHaveHistory} answers "no history
-   * known", which is true today: there is no transaction table. See the feature doc's UI section —
-   * the client must not infer history from `balance === openingBalance`, because those two are
-   * deliberately different fields and the comparison would start lying the moment it mattered.
+   * The server sends it on every account. It reads `true` for all of them today, because there is
+   * no transaction table yet — a fact about the data, not about the code.
+   *
+   * Optional on this type because it is the client's contract with a server that might be older
+   * than it is, and {@link isKnownToHaveHistory} treats an absent value as "no history known".
+   * Never infer it from `balance === openingBalance`: those two are deliberately different fields,
+   * an account whose transactions net to zero still has history, and that comparison would start
+   * lying at the moment it mattered.
    */
   empty?: boolean;
 }

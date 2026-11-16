@@ -60,6 +60,14 @@ you need is not in the token sheet, that is a design-system question, not a lice
 
 These are recorded rather than fixed, because the frontend does not exist yet (slice 1).
 
+- **There is no type scale in the token sheet.** It carries font *families* and a heading weight,
+  but no size tokens — and neither does the design system's own `styles.css`, so this is not an
+  extraction we got wrong. Non-negotiable #10 says type sizes come from tokens; today they cannot,
+  and there are 17 hard-coded `font-size` declarations across `frontend/src/` as a result. A
+  reviewer flagging one of them as an accounts defect is a symptom: every component is in the same
+  position. Fixing it means defining a scale in the design project (so a re-export keeps it) and
+  then replacing all 17 in one pass — not patching whichever one a review happens to land on.
+
 - **Dark mode is not in the token sheet.** `styles.css` carries only the light theme; the dark
   palette exists as inline styles inside the canvas's dark-mode artboards. The tokens need a dark
   block before any component is written against them, or every screen will re-invent it.

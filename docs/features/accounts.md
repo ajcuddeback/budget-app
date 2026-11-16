@@ -277,15 +277,16 @@ canvas gains real accounts artboards, this section is what gets reconciled.
 dialog's structure is the invitation dialog's: a native `<dialog>` opened modally, so focus is
 trapped and restored and `Escape` closes it, with the heading as `aria-labelledby`.
 
-1. **Emptiness is not in the API, so "Delete only when empty" cannot be fully honoured yet.**
-   `AccountResponse` reports no such field, and the two fields that look like they would answer it
-   — `balance` and `openingBalance` — are the two this document forbids comparing. The client
-   therefore offers Delete unless the server has _said_ the account has history, which is what
-   `isKnownToHaveHistory` means: today it is never true, so Delete is offered on every account, and
-   the `409 account-not-empty` that would follow is rendered as a sentence naming archiving. **The
-   fix is an API field** (`empty`, or `transactionCount`) on `AccountResponse`; the client reads an
-   optional `empty` already, so adding it on the server completes the rule with no client change.
-   The same predicate gates the currency lock, for the same reason and with the same consequence.
+1. **Emptiness is a server fact, never inferred from the amounts.** The client reads `empty` off
+   the response and `isKnownToHaveHistory` is true only when the server has *said* so. It must
+   never be derived from `balance === openingBalance`: those two are deliberately different fields,
+   an account whose transactions net to zero has history, and that comparison would start lying at
+   exactly the moment it mattered — by deleting an account with records in it.
+
+   This was raised building the screen, when `AccountResponse` carried no such field: Delete was
+   offered on every account and the currency lock was unreachable code. The field was added in
+   response. The client needed no change, because it already read an optional `empty`.
+
 2. **With one currency there is no subtotal**, not even a single-group one. A lone subtotal _is_ a
    household total, and whether this screen shows one is still an Open Question below; rendering
    one here would answer it by accident. Grouping headings and subtotals appear from the second
