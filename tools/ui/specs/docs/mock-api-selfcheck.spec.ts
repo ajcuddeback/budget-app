@@ -6,7 +6,12 @@ import { DEMO_ACCOUNTS } from '../../fixtures/demo-data.js';
  * credentials, because the API is served from fixtures in-process.
  *
  * The page below is a stand-in for the real Angular app — it fetches /api/accounts exactly as
- * the app will. Nothing here starts a server or opens a socket to one.
+ * the app does, `includeArchived=true` and all. Nothing here starts a server or opens a socket
+ * to one.
+ *
+ * The query parameter is load-bearing: the mock answers the default list with the unarchived
+ * rows only, so a bare /api/accounts cannot render every fixture account and this spec failed
+ * on the one that is archived.
  */
 
 const APP_SHELL = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -34,7 +39,7 @@ const APP_SHELL = `<!doctype html><html lang="en"><head><meta charset="utf-8">
   // bug. It also keeps CodeQL green, and a permanently red security check is how teams learn
   // to ignore CI. docs/guides/angular-style.md bans innerHTML with response data; a fixture in
   // this repo should not model what the style guide forbids.
-  fetch('/api/accounts').then(r => r.json()).then(data => {
+  fetch('/api/accounts?includeArchived=true').then(r => r.json()).then(data => {
     const rows = document.getElementById('rows');
     for (const account of data.content) {
       const tr = document.createElement('tr');
