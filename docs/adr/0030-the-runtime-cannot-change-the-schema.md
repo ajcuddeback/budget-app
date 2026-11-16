@@ -38,7 +38,7 @@ schema.**
 | Owns the tables                        | yes                        | no                          |
 | DDL (`CREATE`, `ALTER`, `DROP`)        | yes                        | **no**                      |
 | `TRUNCATE`                             | yes                        | **no**                      |
-| `SET session_replication_role`         | superuser only, so neither | **no**                      |
+| `SET session_replication_role`         | **yes** — it is a superuser | **no**                      |
 | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | yes                        | yes                         |
 | Used by Flyway                         | **yes**                    | no                          |
 | Used by the connection pool            | no                         | **yes**                     |
@@ -60,6 +60,21 @@ Concretely:
   that `TRUNCATE` and `DROP CONSTRAINT` are refused. A privilege model nothing exercises is a
   privilege model nobody can trust, and this one is invisible from the application's own tests —
   they connect as the owner.
+
+### Correction: the owner is a superuser, and its credentials are in the API container
+
+An earlier draft of the table above said `SET session_replication_role` was "superuser only, so
+neither". That is wrong, and the implementation caught it. `initdb` makes `POSTGRES_USER` a
+superuser — verified, `rolsuper = t` — so the owner can do that and everything else.
+
+This matters beyond a table cell. **Flyway runs at application start-up, so the superuser's
+credentials are in the API container's environment.** Anyone who can read that environment or its
+files gets superuser on the database, not merely ownership of the tables.
+
+So be precise about what this ADR buys. It stops the *running application* — the thing most likely
+to have a bug, and the thing an injected statement executes inside — from dropping a constraint or
+truncating a table, and that is worth having. It does **not** contain an attacker who can read the
+container's environment. The follow-up below is what would, and it is now more than tidiness.
 
 ## Alternatives considered
 
@@ -89,6 +104,14 @@ restricted path by default** — the dedicated test is what covers it.
 A future migration that needs a privilege the application role lacks will fail at runtime rather
 than at review. That is the intended behaviour, and the failure names the missing grant.
 
-**Follow-ups:** consider moving migrations out of application start-up entirely, so the owner's
-credentials need not be present in the running container at all. That is the stronger version of
+**Follow-ups:** move migrations out of application start-up, so the superuser's credentials are
+not in the running container at all — see the correction above for why this is the substantive
+half of the work rather than a refinement. A non-superuser owner role would close the other half.
+
+Also worth doing: **V10 is a versioned migration, so it records itself applied even when it grants
+nothing.** Start the new version before the role exists and it never runs again, leaving an
+application that cannot read its own tables. The init script repairs that and the upgrade order is
+documented, but a Flyway `afterMigrate` callback would run on every start-up and make the grants
+self-healing, removing the ordering hazard rather than documenting it. Deferred only because no
+instance exists to upgrade yet; do it before anyone is running this. That is the stronger version of
 this decision and is worth its own ADR when the admin console (slice 9) gives upgrades a home.

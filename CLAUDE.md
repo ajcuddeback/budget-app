@@ -15,27 +15,27 @@ ahead of features.** When a tradeoff appears, take the secure option and note it
 Do **not** re-explore the codebase to answer questions the docs already answer.
 Read the doc, then read only the code you are about to change.
 
-| You are about to… | Read first |
-|---|---|
-| Anything at all | this file |
-| Decide anything product-shaped | `docs/product/vision.md` |
-| Build or change a feature | `docs/features/<feature>.md`, then `docs/features/README.md` |
-| Build a screen, or need a colour/size | `design/README.md` — tokens, never hard-coded values |
-| Understand the system shape | `docs/architecture/overview.md` |
-| Touch auth, sessions, cookies, CSRF | `docs/architecture/security-model.md` (**mandatory**) |
-| Write Java | `docs/guides/java-style.md` |
-| Write Angular / TypeScript | the `angular-developer` skill, then `docs/guides/angular-style.md` |
-| Write Flutter / Dart | `docs/guides/flutter-style.md` |
-| Add or change a REST endpoint | `docs/guides/api-style.md` |
-| Write a migration or entity | `docs/guides/database-style.md` |
-| Write tests | `docs/guides/testing-style.md` |
-| Check how the UI actually looks | `docs/guides/ui-validation.md` |
-| Write docs for the people using the app | `docs/guides/user-docs.md`, `userguide/STYLE.md` |
-| Commit, branch, or open a PR | `docs/guides/git-style.md` |
-| Understand a domain term | `docs/domain/model.md`, `docs/memory/glossary.md` |
-| Wonder what the old app did | `docs/domain/legacy-app.md` (the code is gone) |
-| Wonder "why is it like this?" | `docs/adr/` (index in `docs/adr/README.md`) |
-| Hit something surprising | `docs/memory/gotchas.md` |
+| You are about to…                       | Read first                                                         |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| Anything at all                         | this file                                                          |
+| Decide anything product-shaped          | `docs/product/vision.md`                                           |
+| Build or change a feature               | `docs/features/<feature>.md`, then `docs/features/README.md`       |
+| Build a screen, or need a colour/size   | `design/README.md` — tokens, never hard-coded values               |
+| Understand the system shape             | `docs/architecture/overview.md`                                    |
+| Touch auth, sessions, cookies, CSRF     | `docs/architecture/security-model.md` (**mandatory**)              |
+| Write Java                              | `docs/guides/java-style.md`                                        |
+| Write Angular / TypeScript              | the `angular-developer` skill, then `docs/guides/angular-style.md` |
+| Write Flutter / Dart                    | `docs/guides/flutter-style.md`                                     |
+| Add or change a REST endpoint           | `docs/guides/api-style.md`                                         |
+| Write a migration or entity             | `docs/guides/database-style.md`                                    |
+| Write tests                             | `docs/guides/testing-style.md`                                     |
+| Check how the UI actually looks         | `docs/guides/ui-validation.md`                                     |
+| Write docs for the people using the app | `docs/guides/user-docs.md`, `userguide/STYLE.md`                   |
+| Commit, branch, or open a PR            | `docs/guides/git-style.md`                                         |
+| Understand a domain term                | `docs/domain/model.md`, `docs/memory/glossary.md`                  |
+| Wonder what the old app did             | `docs/domain/legacy-app.md` (the code is gone)                     |
+| Wonder "why is it like this?"           | `docs/adr/` (index in `docs/adr/README.md`)                        |
+| Hit something surprising                | `docs/memory/gotchas.md`                                           |
 
 ## Repository layout
 
@@ -46,6 +46,7 @@ mobile/      Flutter app (Dart), iOS + Android  — not yet created (ADR-0019)
 design/      Visual source of truth, exported from Claude Design. See design/README.md
 docs/        Durable knowledge for DEVELOPERS and agents. See docs/README.md
 userguide/   Customer-facing help for PEOPLE USING THE APP. Different reader — see its STYLE.md
+deploy/      Things the Compose stack mounts. db-init/ creates the non-owning role (ADR-0030)
 tools/       Dev + CI scripts. tools/verify.sh is the gate.
 .agents/     Vendored third-party agent skills (Angular's). Pinned; see skills-lock.json
 .claude/     Agents, skills, hooks for this repo
@@ -75,19 +76,19 @@ than digging through git history.
 6. **Tests ship with the change.** A feature without tests is not done. See
    `docs/guides/testing-style.md` for what "enough" means.
 7. **`tools/verify.sh` must pass before you say you're done.** Not "should pass" — run it.
-8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and *read the
-   screenshots*. A green test suite does not tell you the page renders correctly.
+8. **Frontend changes are checked in a real browser.** Run `tools/ui-check.sh` and _read the
+   screenshots_. A green test suite does not tell you the page renders correctly.
 9. **Nothing in the core may require a service we operate.** No mandatory internet access, no
    account with us, no third-party SaaS. A self-hoster's instance works standing alone
    (ADR-0016). Optional integrations are opt-in and off by default.
 10. **Design values come from tokens, never from your head.** Colours, spacing, type sizes and
-   radii are CSS variables from the design system (`design/README.md`). Never hard-code a hex or
-   a px a token already carries, and never read the 465 KB canvas wholesale — the feature doc
-   describes the screen. Every screen exists in **both** viewports, and dark mode is a
-   requirement, not a later pass.
+    radii are CSS variables from the design system (`design/README.md`). Never hard-code a hex or
+    a px a token already carries, and never read the 465 KB canvas wholesale — the feature doc
+    describes the screen. Every screen exists in **both** viewports, and dark mode is a
+    requirement, not a later pass.
 11. **A user-visible feature ships with its user guide.** `userguide/` is written from the
-   running UI, never from the feature doc — see ADR-0012. Captures render against the demo
-   fixtures in `tools/ui/fixtures/demo-data.ts` and refuse any non-local target (ADR-0013).
+    running UI, never from the feature doc — see ADR-0012. Captures render against the demo
+    fixtures in `tools/ui/fixtures/demo-data.ts` and refuse any non-local target (ADR-0013).
 
 ## Working agreement
 
