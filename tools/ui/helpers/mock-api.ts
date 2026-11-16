@@ -8,6 +8,7 @@ import {
   DEMO_ME,
   DEMO_ME_MEMBER,
   DEMO_ME_NO_HOUSEHOLD,
+  DEMO_ME_VIEWER,
   DEMO_MEMBERS,
   DEMO_PROBLEMS,
   DEMO_TOKENS,
@@ -39,7 +40,7 @@ export type ApiCall = {
 };
 
 /** Who the mocked session belongs to. `anonymous` answers 401 to `/api/auth/me`. */
-export type MockSession = 'anonymous' | 'owner' | 'member' | 'no-household';
+export type MockSession = 'anonymous' | 'owner' | 'member' | 'viewer' | 'no-household';
 
 export type MockOptions = {
   /** Default `owner`: documentation captures show the signed-in app. */
@@ -75,7 +76,13 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
 
   const me = () => {
     const base =
-      session === 'member' ? DEMO_ME_MEMBER : session === 'no-household' ? DEMO_ME_NO_HOUSEHOLD : DEMO_ME;
+      session === 'member'
+        ? DEMO_ME_MEMBER
+        : session === 'viewer'
+          ? DEMO_ME_VIEWER
+          : session === 'no-household'
+            ? DEMO_ME_NO_HOUSEHOLD
+            : DEMO_ME;
     return ownPreferences && base.household ? { ...base, household: { ...base.household, ...ownPreferences } } : base;
   };
 
@@ -184,7 +191,10 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return problem(route, DEMO_PROBLEMS.notAMember);
     }
     if (at === 'GET /api/households/current') {
-      return json(route, 200, { ...DEMO_HOUSEHOLD, role: session === 'member' ? 'MEMBER' : 'OWNER' });
+      return json(route, 200, {
+        ...DEMO_HOUSEHOLD,
+        role: session === 'member' ? 'MEMBER' : session === 'viewer' ? 'VIEWER' : 'OWNER',
+      });
     }
     if (at === 'PUT /api/households/current') {
       return json(route, 200, { ...DEMO_HOUSEHOLD, name: field('name'), baseCurrency: field('baseCurrency'), role: 'OWNER' });

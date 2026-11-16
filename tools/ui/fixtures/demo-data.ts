@@ -92,6 +92,21 @@ export const DEMO_ME_MEMBER = {
   household: { ...DEMO_ME.household, role: 'MEMBER', membershipId: DEMO_MEMBERS[1].id, displayCurrency: 'EUR', locale: 'de-DE' },
 } as const;
 
+/**
+ * The same endpoint for the household's viewer, who may read everything and write nothing.
+ *
+ * A `VIEWER` is the role every screen has to be checked against on its own: the server refuses
+ * their writes with `403 read-only-role` whatever the client did, and the UI's job is to not
+ * offer a button that is going to be refused. Without this fixture that case cannot be captured.
+ */
+export const DEMO_ME_VIEWER = {
+  id: DEMO_MEMBERS[2].userId,
+  displayName: DEMO_MEMBERS[2].displayName,
+  email: DEMO_MEMBERS[2].email,
+  instanceAdmin: false,
+  household: { ...DEMO_ME.household, role: 'VIEWER', membershipId: DEMO_MEMBERS[2].id },
+} as const;
+
 /** A signed-in user nobody has invited: an empty state, not an error. */
 export const DEMO_ME_NO_HOUSEHOLD = {
   id: '66666666-6666-4666-8666-666666666666',
