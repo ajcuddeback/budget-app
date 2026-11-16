@@ -177,6 +177,33 @@ largest privacy surface in the product. It is constrained structurally rather th
 - Anything it **proposes** — a changed goal contribution, a moved envelope amount — is a proposal
   until a human confirms it. The model never writes to financial data directly.
 
+## Database privileges (ADR-0030)
+
+**The application does not connect as the role that owns the schema.** Two roles: the owner runs
+Flyway, and the connection pool serving requests holds `SELECT, INSERT, UPDATE, DELETE` and
+nothing else.
+
+This is what makes the rest of the database's guarantees real rather than advisory. An owner can
+`TRUNCATE` past row triggers, `ALTER TABLE ... DROP CONSTRAINT` and `ALTER TABLE ... DISABLE
+TRIGGER`, so while the runtime was the owner, every `CHECK` and every constraint trigger could be
+removed by the process they were meant to constrain. It is also the containment for threat #4:
+injection that reaches a statement can no longer drop a constraint, create a table or empty one —
+the blast radius is reading and writing rows, which is what the application does anyway.
+
+- Flyway's credentials are `spring.flyway.user` / `password` (the owner); `spring.datasource.*`
+  is the application role. Never the other way round, and never one pair for both.
+- Privileges are granted by migration (`V10`), conditionally on the role existing, so a developer
+  machine and the test suite — which have one role — still migrate cleanly. **Neither exercises
+  the restricted path**, which is why `ApplicationRoleRestrictionsIT` creates a genuinely
+  restricted role and asserts PostgreSQL's refusals. Any change to the privilege model belongs in
+  that test, with the statement executed and the error asserted; a grant table says what was
+  said, not what the database means.
+- A new grant is a deliberate decision. If a feature needs one, it needs a reason in the
+  migration next to it.
+- The owner's credentials are still present in the running container, because Flyway runs at
+  application start-up. Moving migrations out of start-up is the stronger version of this and is
+  recorded as a follow-up in ADR-0030, not done.
+
 ## Input validation and output encoding
 
 - Bean Validation (`@Valid`) on every request DTO. Validate types, ranges, lengths, and formats

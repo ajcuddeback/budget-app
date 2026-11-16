@@ -776,3 +776,42 @@ guarded by `isConnected` for the case where the action removed the opener as wel
 only presses Escape will not catch this; assert the Cancel path too.
 
 *Added 2026-11-16 — UI validation of the accounts screen.*
+
+---
+
+### Flyway substitutes `${...}` in migration SQL — comments included
+
+`V10`'s header comment explained that the runtime used to connect as `${DB_USER}`. Flyway's
+placeholder replacement does not care that it is inside a `--` comment: the migration failed at
+startup with `Unable to parse statement in db/migration/V10__application_role_grants.sql at line 1
+col 1 ... No value provided for placeholder: ${DB_USER}`, which reads like a SQL syntax error and
+points at a line that is a comment.
+
+Write an environment variable in a migration as `DB_USER`, with no braces. If a migration ever
+genuinely needs a literal `${`, the escape is `spring.flyway.placeholder-prefix` or
+`placeholder-replacement: false`, not creative quoting.
+
+*Added 2026-11-16 — ADR-0030.*
+
+---
+
+### A Compose `${VAR:-}` default makes a variable *set* to an empty string
+
+`DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}` looks like "pass it through if it is set". It is not: the
+variable arrives in the container as an empty string, and an empty value is **set** as far as a
+Spring placeholder default is concerned — `${DB_APP_USER:${DB_USER:budgetowl}}` resolves to `""`
+rather than falling back, and the app tries to log in as nobody with a blank password.
+
+To pass a variable through only when it exists, give the key no value at all:
+
+```yaml
+environment:
+  DB_APP_USER:
+  DB_APP_PASSWORD:
+```
+
+Compose reads those from the shell **or `.env`**, and leaves them genuinely absent from the
+container when they are unset (confirmed with `docker compose run --rm x env`). `docker compose
+config` renders them as `null`, which is the tell.
+
+*Added 2026-11-16 — ADR-0030.*
