@@ -54,3 +54,4 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0027](0027-llm-is-an-optional-self-hosted-sidecar.md)           | The assistant is an optional self-hosted sidecar, or absent     | Accepted                   | 2026-09-25 |
 | [0028](0028-account-last-four-digits.md)                         | Store an optional last four digits on an account                | Accepted                   | 2026-10-10 |
 | [0029](0029-one-instance-administrator.md)                       | Exactly one instance administrator, enforced in the schema      | Accepted                   | 2026-11-14 |
+| [0030](0030-the-runtime-cannot-change-the-schema.md)             | The runtime connects as a role that cannot change the schema    | Accepted                   | 2026-11-16 |
