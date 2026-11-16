@@ -65,6 +65,46 @@ function readBody(route: Route): unknown {
   }
 }
 
+/**
+ * The balance an account has after its opening balance moved.
+ *
+ * `balance` is `openingBalance` plus the account's transactions — a different field, not a copy
+ * (docs/features/accounts.md). Echoing the opening balance back as the balance collapsed the two:
+ * renaming "Everyday Checking" dropped its balance from $2,480.15 to $1,641.75 on screen, which a
+ * user-guide screenshot would then teach as real. So the transaction part is kept and only the
+ * correction is applied. Arithmetic is on `bigint` minor units, never a float (ADR-0006).
+ */
+function rebalanced(before: { openingBalance: string; balance: string }, openingBalance: unknown): string {
+  if (typeof openingBalance !== 'string' || openingBalance === before.openingBalance) {
+    return before.balance;
+  }
+  const next = minorUnits(openingBalance);
+  const previous = minorUnits(before.openingBalance);
+  const balance = minorUnits(before.balance);
+  if (next === null || previous === null || balance === null) {
+    return before.balance;
+  }
+  return decimalString(balance + next - previous);
+}
+
+/** `'-400.0000'` → `-4000000n`, at `NUMERIC(19,4)`. `null` for anything that is not an amount. */
+function minorUnits(amount: string): bigint | null {
+  if (!/^-?[0-9]{1,15}(\.[0-9]{1,4})?$/.test(amount)) {
+    return null;
+  }
+  const negative = amount.startsWith('-');
+  const [whole, fraction = ''] = (negative ? amount.slice(1) : amount).split('.');
+  const scaled = BigInt(whole + fraction.padEnd(4, '0'));
+  return negative ? -scaled : scaled;
+}
+
+/** `-4000000n` → `'-400.0000'`, the scale the server reports. */
+function decimalString(value: bigint): string {
+  const negative = value < 0n;
+  const digits = (negative ? -value : value).toString().padStart(5, '0');
+  return `${negative ? '-' : ''}${digits.slice(0, -4)}.${digits.slice(-4)}`;
+}
+
 export async function mockApi(page: Page, options: MockOptions = {}): Promise<ApiCall[]> {
   const calls: ApiCall[] = [];
   let session: MockSession = options.session ?? 'owner';
@@ -181,7 +221,7 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         const changes = { ...sent };
         delete changes['version'];
         const patched = { ...found, ...changes, version: found.version + 1 };
-        return json(route, 200, { ...patched, balance: patched.openingBalance });
+        return json(route, 200, { ...patched, balance: rebalanced(found, patched.openingBalance) });
       }
       return json(route, 200, found);
     }
