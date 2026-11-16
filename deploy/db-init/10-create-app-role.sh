@@ -16,8 +16,10 @@
 # /docker-entrypoint-initdb.d/ is ignored once PGDATA is initialised. An instance that is already
 # running Budget Owl therefore has to run this by hand, exactly once:
 #
-#   docker compose exec -e DB_APP_PASSWORD="$DB_APP_PASSWORD" db \
-#       /docker-entrypoint-initdb.d/10-create-app-role.sh
+#   docker compose up -d db      # recreate it so the variables and this file are present
+#   docker compose exec db /docker-entrypoint-initdb.d/10-create-app-role.sh
+#
+# The full upgrade step, in order, is in docs/features/authentication-and-households.md.
 #
 # It is idempotent and safe to run on a live database: it creates the role only if it is missing,
 # and re-applies the grants only if the schema has already been migrated.
