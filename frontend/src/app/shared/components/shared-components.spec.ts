@@ -201,6 +201,24 @@ describe('ConfirmDialogComponent and ModalDirective', () => {
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
 
+  it('returns focus to whatever opened it when its owner removes it', async () => {
+    // The Cancel-button path, which is not the Escape path: Angular detaches the element before
+    // ngOnDestroy, so the native close() has nothing left to restore focus within.
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    try {
+      const fixture = render();
+      await settle(fixture);
+
+      fixture.destroy();
+
+      expect(document.activeElement).toBe(opener);
+    } finally {
+      opener.remove();
+    }
+  });
+
   it('uses the native modal when the browser has one, and closes it when removed', async () => {
     const show = vi.fn(function (this: HTMLDialogElement) {
       this.setAttribute('open', '');

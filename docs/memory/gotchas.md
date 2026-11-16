@@ -760,3 +760,19 @@ real fix is a repository-root `.prettierrc` (or `frontend/.prettierrc` moved up 
 override), which is a tooling change rather than something to do mid-feature.
 
 *Added 2026-11-14 — slice 3 frontend.*
+
+---
+
+### A `<dialog>` removed by `@if` cannot restore focus with the native `close()`
+
+`ModalDirective` closed the dialog in `ngOnDestroy` and left focus to the browser. Escape worked —
+there the browser closes a dialog that is still in the document — but every other way out (Cancel,
+Save, a confirmed Archive or Delete) left `document.activeElement` on `<body>`, so the next Tab
+started from the skip link. Angular detaches an embedded view's DOM *before* it runs the destroy
+hooks, so by the time `close()` is called the element has no document to return focus within.
+
+The directive now remembers `activeElement` before `showModal()` and focuses it back on destroy,
+guarded by `isConnected` for the case where the action removed the opener as well. A spec that
+only presses Escape will not catch this; assert the Cancel path too.
+
+*Added 2026-11-16 — UI validation of the accounts screen.*
