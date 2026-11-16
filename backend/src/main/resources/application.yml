@@ -5,8 +5,16 @@ spring:
     name: budget-owl
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:budgetowl}
-    username: ${DB_USER:budgetowl}
-    password: ${DB_PASSWORD}
+    # The RUNTIME connection, and it is deliberately not the role that owns the tables (ADR-0030).
+    # An owner can TRUNCATE past triggers and DROP a CONSTRAINT, which would make every CHECK in
+    # the schema advisory against this very process. Flyway keeps the owner's credentials below.
+    #
+    # Both fall back to the owner's values, in that order, so an instance that has not been
+    # reconfigured — and local development, which has one role — keeps working exactly as before
+    # rather than failing to start. On such an instance the restriction is simply not in effect;
+    # V10's grant block is conditional for the same reason.
+    username: ${DB_APP_USER:${DB_USER:budgetowl}}
+    password: ${DB_APP_PASSWORD:${DB_PASSWORD}}
   jpa:
     open-in-view: false
     hibernate:
@@ -21,6 +29,14 @@ spring:
     # Migrations run unattended on a machine nobody is watching.
     locations: classpath:db/migration
     validate-on-migrate: true
+    # Flyway — and only Flyway — connects as the role that owns the schema (ADR-0030). With a
+    # username set and no `spring.flyway.url`, Spring Boot derives a separate DataSource from the
+    # one above and overrides just the credentials; the pool that serves requests is untouched.
+    # Verified against Boot 4.1.1's FlywayAutoConfiguration#getMigrationDataSource, and proved by
+    # ApplicationRoleRestrictionsIT: that test's own DataSource cannot create a table, so the
+    # context only starts if these credentials are honoured.
+    user: ${DB_USER:budgetowl}
+    password: ${DB_PASSWORD}
   threads:
     virtual:
       enabled: true
