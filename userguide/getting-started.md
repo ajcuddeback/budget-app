@@ -1,6 +1,6 @@
 # Getting started
 
-> **Status: partly written.** Steps 1 and 1b below are written from the running app. Steps 2
+> **Status: partly written.** Steps 1, 1b and 2 below are written from the running app. Steps 3
 > onward are still outlines: their screens do not exist yet, and each gets written, with real
 > screenshots, as its slice ships. See `docs/roadmap.md` for the order.
 >
@@ -77,10 +77,35 @@ people, and leaving: [See who is in your household](features/manage-members.md).
 
 ## 2. Add your accounts
 
-*Awaiting slice 3.*
+Tell Budget Owl where your money sits. Do this once for each account, and everything you record
+later belongs to one of them.
 
-Will cover: adding a checking account, a savings account, and a credit card; what an opening
-balance is and where to find yours; why a credit card balance shows as negative.
+1. Select **Accounts** in the menu across the top, then select **Add your first account**.
+
+2. Fill in **Name**, choose the **Type** and the **Currency**, and scroll down inside the window
+   to **Opening balance**.
+
+   **Last four digits** is optional — it is shown beside the name, like **Travel Card •8820**, so
+   you can tell two accounts at the same bank apart.
+
+3. Select **Save account**.
+
+   You'll see **Account added.** and the account in the list, with its balance.
+
+   ![The Accounts screen with the message "Account added." and accounts grouped under Euro (EUR) and US Dollar (USD), each group with its own subtotal.](images/add-an-account--added.png)
+
+**The opening balance is what the account held when you started tracking it** — usually the
+balance your bank shows you today. **An account you owe money on starts with a minus:** a credit
+card with 420.50 outstanding opens at **-420.50**, and its balance stays negative until you pay
+it off. This is the step people most often get wrong, and getting it wrong leaves every later
+balance out by the same amount.
+
+Once you have accounts in more than one currency, they are grouped by currency and each group
+gets its own **Subtotal**, as above. There is no total across currencies, on purpose: adding
+dollars to euros needs a rate and a date, and the answer would be a guess printed as a fact.
+
+Full steps: [Add an account](features/add-an-account.md). Closing an account later:
+[Archive or delete an account](features/archive-or-delete-an-account.md).
 
 ## 3. Set up your categories
 
