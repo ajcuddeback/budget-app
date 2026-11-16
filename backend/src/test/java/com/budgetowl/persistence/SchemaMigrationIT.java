@@ -39,13 +39,47 @@ class SchemaMigrationIT extends PersistenceTestBase {
                         "V6__instance_settings.sql",
                         "V7__spring_session.sql",
                         "V8__harden_auth_constraints.sql",
-                        "V9__accounts.sql");
+                        "V9__accounts.sql",
+                        "V10__application_role_grants.sql");
 
         Integer failures =
                 jdbc.queryForObject(
                         "SELECT count(*) FROM flyway_schema_history WHERE NOT success",
                         Integer.class);
         assertThat(failures).isZero();
+    }
+
+    @Test
+    void theApplicationRoleGrantsDoNothingWhereTheRoleDoesNotExist() {
+        // ADR-0030. V10 grants DML to `budgetowl_app`, which is created in deployment and does
+        // not exist on a developer's machine, in this container, or on an instance that has not
+        // been reconfigured yet. The grant block is wrapped in a role-existence check so that all
+        // three migrate cleanly; if that check regressed, V10 would fail here — which is the
+        // point of asserting the absence rather than assuming it.
+        Integer role =
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM pg_roles WHERE rolname = 'budgetowl_app'",
+                        Integer.class);
+        assertThat(role).isZero();
+
+        Integer succeeded =
+                jdbc.queryForObject(
+                        """
+                        SELECT count(*) FROM flyway_schema_history
+                         WHERE script = 'V10__application_role_grants.sql' AND success
+                        """,
+                        Integer.class);
+        assertThat(succeeded).isEqualTo(1);
+
+        // Nothing was granted to anything else on the way past, either.
+        List<String> grantees =
+                jdbc.queryForList(
+                        """
+                        SELECT DISTINCT grantee FROM information_schema.role_table_grants
+                         WHERE table_schema = 'public' AND grantee <> current_user
+                        """,
+                        String.class);
+        assertThat(grantees).isEmpty();
     }
 
     @Test
