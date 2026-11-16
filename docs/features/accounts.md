@@ -1,8 +1,11 @@
 # Feature: Accounts
 
-- **Status:** API complete (service + web). Web UI complete; user guide and UI capture outstanding.
+- **Status:** Shipped — API, web UI (validated in both viewports and in dark mode), and the
+  user guide: [Add an account](../../userguide/features/add-an-account.md) and
+  [Archive or delete an account](../../userguide/features/archive-or-delete-an-account.md),
+  captured by `tools/ui/specs/docs/accounts.spec.ts`. Mobile app: not started (slice 15).
 - **Owner:** Repository owner
-- **Last updated:** 2026-11-14
+- **Last updated:** 2026-11-16
 - **Related:** [ADR-0006](../adr/0006-money-representation.md) (money),
   [ADR-0017](../adr/0017-households-own-financial-data.md) (ownership),
   [ADR-0022](../adr/0022-multi-currency-display.md) (currency),
