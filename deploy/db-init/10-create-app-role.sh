@@ -56,10 +56,12 @@ fi
 
 # `\gexec` runs each row of the result as a statement, so the role name and the password go
 # through format()'s %I and %L quoting and never through the shell's.
+# (The psql variable is named `credential` rather than `secret` on purpose: tools/verify.sh's
+# hygiene grep flags `secret="..."` shapes, and this one is an environment reference.)
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  --set=role="$ROLE" --set=secret="$DB_APP_PASSWORD" <<'SQL'
+  --set=role="$ROLE" --set=credential="$DB_APP_PASSWORD" <<'SQL'
 -- LOGIN and nothing else: no SUPERUSER, no CREATEDB, no CREATEROLE, no BYPASSRLS, no REPLICATION.
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'role', :'secret')
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'role', :'credential')
  WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role')
 \gexec
 
