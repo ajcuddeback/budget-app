@@ -188,7 +188,18 @@ jobs:
 
   ui:
     name: UI validation
-    runs-on: ubuntu-latest
+    # Pinned, unlike every other job here, because this one runs a browser that is itself pinned.
+    # `ubuntu-latest` moved to Ubuntu 26.04 on 2026-10-19 (GitHub warned in an annotation months
+    # before), and Playwright 1.56.1 refuses to install Chromium there:
+    #
+    #   Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.56.1!
+    #   ERROR: Playwright does not support chromium on ubuntu26.04-x64
+    #
+    # tools/ui/package.json pins Playwright to an exact version on purpose — the user guide's
+    # screenshots are committed artefacts, so the renderer moving underneath us would rewrite
+    # them. A pinned browser needs a pinned OS; letting one of the pair drift is what broke this.
+    # Lift the pin and this comment together when Playwright is upgraded past 26.04 support.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
