@@ -184,6 +184,8 @@ export const DEMO_PROBLEMS = {
   lastOwner: { type: 'https://budgetowl.app/errors/last-owner', title: 'A household must keep at least one owner', status: 409, code: 'last-owner', correlationId: 'demo0000000000000000000000000005' },
   rateLimited: { type: 'https://budgetowl.app/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' },
   internal: { type: 'https://budgetowl.app/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
+  staleVersion: { type: 'https://budgetowl.app/errors/stale-version', title: 'Somebody else changed this first', status: 409, code: 'stale-version', correlationId: 'demo0000000000000000000000000009' },
+  accountNotEmpty: { type: 'https://budgetowl.app/errors/account-not-empty', title: 'This account has transactions', status: 409, code: 'account-not-empty', correlationId: 'demo0000000000000000000000000010' },
 } as const;
 
 /**
@@ -207,14 +209,20 @@ export const DEMO_PROBLEMS = {
  * client composes `name •1234` so a right-to-left locale can reorder it (ADR-0023).
  */
 export const DEMO_ACCOUNTS = [
-  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
-  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
-  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
-  { id: 'acc-0004', name: 'Berlin Savings', lastFour: null, type: 'SAVINGS', currency: 'EUR', openingBalance: '1200.00', balance: '1200.00', archived: false, createdAt: '2026-06-04T07:30:00Z', updatedAt: '2026-06-04T07:30:00Z', version: 0 },
-  { id: 'acc-0005', name: 'Old Joint Account', lastFour: '0041', type: 'CHECKING', currency: 'USD', openingBalance: '84.60', balance: '84.60', archived: true, createdAt: '2026-06-01T09:12:00Z', updatedAt: '2026-07-18T16:45:00Z', version: 4 },
+  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', empty: true, archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
+  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', empty: true, archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
+  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', empty: true, archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
+  { id: 'acc-0004', name: 'Berlin Savings', lastFour: null, type: 'SAVINGS', currency: 'EUR', openingBalance: '1200.00', balance: '1200.00', empty: true, archived: false, createdAt: '2026-06-04T07:30:00Z', updatedAt: '2026-06-04T07:30:00Z', version: 0 },
+  { id: 'acc-0005', name: 'Old Joint Account', lastFour: '0041', type: 'CHECKING', currency: 'USD', openingBalance: '84.60', balance: '84.60', empty: true, archived: true, createdAt: '2026-06-01T09:12:00Z', updatedAt: '2026-07-18T16:45:00Z', version: 4 },
 ] as const;
 
-/** The default list is unarchived only; `?includeArchived=true` is what returns all of them. */
+/**
+ * The default list is unarchived only; `?includeArchived=true` is what returns all of them.
+ *
+ * Every row reports `empty: true` because no transaction table exists yet (slice 5) — a fact about
+ * the data, not about the code. It is its own field rather than something a client derives from
+ * the two balances: an account with a +50 and a -50 nets to nothing and still has history.
+ */
 export const DEMO_ACCOUNTS_ACTIVE = DEMO_ACCOUNTS.filter((account) => !account.archived);
 
 export const DEMO_CATEGORIES = [
