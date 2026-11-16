@@ -48,6 +48,14 @@ class ApplicationRoleRestrictionsIT {
     /** Hardcoded in {@code V10}, in the Compose init script, and here. A name, not a secret. */
     private static final String APP_ROLE = "budgetowl_app";
 
+    /**
+     * The restricted role's password in this test, fixed rather than taken from the container.
+     *
+     * <p>Not a secret: it exists for the few seconds this class's database does, and it matches the
+     * shape of the other example passphrases in the suite.
+     */
+    private static final String APP_SECRET = "restricted-role-example-passphrase";
+
     private static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("budgetowl")
@@ -80,12 +88,13 @@ class ApplicationRoleRestrictionsIT {
                                 POSTGRES.getUsername(),
                                 POSTGRES.getPassword());
                 Statement statement = owner.createStatement()) {
-            statement.execute(
-                    "CREATE ROLE "
-                            + APP_ROLE
-                            + " LOGIN PASSWORD '"
-                            + POSTGRES.getPassword().replace("'", "''")
-                            + "'");
+            // Both halves are compile-time constants, so there is no value here for anything to
+            // inject through. It used to interpolate the container's generated password, which
+            // CodeQL flagged as query-building from a possibly-untrusted string — correctly as a
+            // pattern, even though the value came from Testcontainers. A literal is simpler than
+            // arguing about it, and PostgreSQL will not take CREATE ROLE's password as a bind
+            // parameter, so escaping-and-concatenating was the only other option.
+            statement.execute("CREATE ROLE " + APP_ROLE + " LOGIN PASSWORD '" + APP_SECRET + "'");
         } catch (SQLException e) {
             throw new IllegalStateException("could not create the restricted role", e);
         }
@@ -96,7 +105,7 @@ class ApplicationRoleRestrictionsIT {
         // The application pool: the restricted role.
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", () -> APP_ROLE);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.password", () -> APP_SECRET);
         // Flyway: the owner. This is the production arrangement, exactly as application.yml
         // resolves it from DB_USER/DB_PASSWORD.
         registry.add("spring.flyway.user", POSTGRES::getUsername);
