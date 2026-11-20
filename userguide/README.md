@@ -29,6 +29,10 @@ account to seeing your first month's budget.
 | [Organise your categories](features/organise-your-categories.md) | Rename, group and retire the categories you file things under |
 | [Set up an envelope](features/set-up-an-envelope.md) | Set money aside for the spending that changes week to week |
 | [Log spend in an envelope](features/log-spend-in-an-envelope.md) | Write down what you spent and see what's left, straight away |
+| [See what's left this month](features/see-whats-left-this-month.md) | The one figure the Bills & income page is for, and why paying a bill doesn't change it |
+| [Add your income](features/add-your-income.md) | What arrives on a schedule, and how many times it arrives this month |
+| [Add a bill](features/add-a-bill.md) | Something that leaves on a date, the five kinds of schedule, and retiring one you've stopped paying |
+| [Mark a bill paid](features/mark-a-bill-paid.md) | Tick a bill off, say you paid a different amount, skip it, or undo what was recorded |
 | _Transfers_ | Not written yet |
 | _Recurring transactions_ | Not written yet |
 | _Reports_ | Not written yet |

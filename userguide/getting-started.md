@@ -1,8 +1,9 @@
 # Getting started
 
-> **Status: partly written.** Steps 1, 1b and 2 below are written from the running app. Steps 3
-> onward are still outlines: their screens do not exist yet, and each gets written, with real
-> screenshots, as its slice ships. See `docs/roadmap.md` for the order.
+> **Status: partly written.** Steps 1, 1b, 2 and 6 below are written from the running app. The
+> rest are still outlines, and each gets written, with real screenshots, once somebody has run
+> `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
+> order.
 >
 > **Do not write steps here from the feature docs.** Feature docs describe what we intend to
 > build; a user guide describes what shipped. Write each section only after running
@@ -130,10 +131,41 @@ reading the one number that matters — what is left. Works whether or not you e
 
 ## 6. Put in your bills and income
 
-*Awaiting slice 7.*
+Rent, subscriptions and payday are the predictable half of your money. Put them in once and they
+appear in every month they fall in — and Budget Owl can tell you what's left.
 
-Will cover: rent, subscriptions and payday — entering something once so it appears every month,
-and letting Budget Owl match a bill to the real charge that pays it.
+1. Select **Bills** in the menu across the top.
+
+   You'll see **Bills & income**, opened on the month you're in.
+
+2. Select **Add an income source**, and enter a name, what arrives **each time**, and when.
+
+   The month's total is worked out from the schedule, so something arriving every other week is
+   worth more in the months that hold three arrivals.
+
+3. Select **Add a bill**, under **Your bills**, and enter a name, the amount you expect, and when
+   it's due.
+
+   Monthly, yearly, weekly, every other week, or irregular — for the vet, where there's no date to
+   predict.
+
+4. Select **Mark paid** on a bill's row when you pay it.
+
+   Each date gets its own row, so a weekly bill is ticked off a week at a time.
+
+![The What's left this month card: $980.90 left to spend, with income expected $3,640.00, bills this month $1,959.10, set aside in envelopes $700.00, and still to pay $266.00 of $1,959.10.](images/see-whats-left-this-month--whats-left.png)
+
+**A bill is a plan, not a payment.** Marking one paid records what your household says happened.
+It doesn't move money and doesn't create a transaction — only a transaction is ever money that
+really went.
+
+**Bills count towards the month whether or not you've paid them.** Rent that has already gone is
+not money you still have, so ticking it off doesn't make **What's left this month** go up. The
+**Still to pay** line is the one that drops.
+
+Full steps: [See what's left this month](features/see-whats-left-this-month.md),
+[Add your income](features/add-your-income.md), [Add a bill](features/add-a-bill.md) and
+[Mark a bill paid](features/mark-a-bill-paid.md).
 
 ## 7. Move money between your own accounts
 

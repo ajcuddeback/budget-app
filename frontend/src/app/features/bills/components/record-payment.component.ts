@@ -64,6 +64,20 @@ export class RecordPaymentComponent {
     this.choosesDate() ? 'bills.recordTitle' : 'bills.paidTitle',
   );
 
+  /**
+   * Whether there is a budgeted figure worth filling in.
+   *
+   * An irregular bill has no projected occurrence and often no meaningful expected amount, so the
+   * field opens empty — and the hint must not then promise that "the budgeted figure is filled in
+   * for you", which is a screen telling the reader something it has not done.
+   */
+  protected readonly amountHintKey = computed<MessageKey>(() => {
+    const prefill = this.occurrence()?.actualAmount ?? this.occurrence()?.expectedAmount;
+    return prefill && Number(prefill) !== 0
+      ? 'bills.actualAmountHint'
+      : 'bills.actualAmountHintBlank';
+  });
+
   readonly form = this.fb.group({
     dueDate: ['', [Validators.required]],
     actualAmount: ['', [Validators.required, Validators.pattern(AMOUNT)]],

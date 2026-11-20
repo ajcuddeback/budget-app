@@ -38,7 +38,7 @@
         "
       />
       <!-- Pre-filled with what was budgeted, which is the figure most people are confirming. -->
-      <p class="field-hint" id="record-amount-hint">{{ 'bills.actualAmountHint' | t }}</p>
+      <p class="field-hint" id="record-amount-hint">{{ amountHintKey() | t }}</p>
       <app-field-error [control]="form.controls.actualAmount" errorId="record-amount-error" />
     </div>
 

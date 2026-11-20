@@ -125,11 +125,14 @@ erased.
 
 ## UI
 
-`/bills` — Bills & Income, with four blocks in the order the designs show them, under a month
+`/bills` — headed **Bills & income**, reached from **Bills** in the nav, with four blocks in the order the designs show them, under a month
 picker (previous / next) that every block follows at once:
 
-1. **What's left** — the one figure the page is for, with its three terms beneath it, and the
-   outstanding bills figure as a secondary line. It comes from
+1. **What's left** — the one figure the page is for, with its three terms beneath it, and a
+   secondary line reading "£266.00 of £1,200.00 still to pay" — a sentence rather than the two
+   figures with a slash between them, which reads as a ratio. The card also says in so many words
+   that bills count whether or not they are paid: the headline not moving when you tick one off
+   is correct, and is the thing people misread. It comes from
    `GET /api/periods/{period}/summary` rather than from adding the other blocks up, so the
    headline cannot disagree with them. **It is rendered negative when it is negative** — never
    clamped — and a negative figure is coloured with `--color-accent-text`, because the olive
@@ -140,21 +143,32 @@ picker (previous / next) that every block follows at once:
 3. **Bills** — each bill with **one row per occurrence**, and each row its own due date, status
    and one-tap **Mark paid** (`PUT` to that row's date, no amount and no date in the body). A
    weekly bill is four or five rows; a bill with no occurrence this month is still listed and
-   says why. Beside Mark paid: **Paid a different amount…**, **Skip**, **Mark as due**, and
-   **Forget** — the last only on a `recorded` occurrence, with a confirmation that says it is
-   not the same as marking it due. An `IRREGULAR` bill gets **Record a payment**, which chooses
-   the date, because recording against one is what brings its occurrence into being.
+   says why. **Mark paid is the only control in the open**, and only on a row that is actually
+   `DUE`: a weekly bill is five rows a month, and five buttons on each buries the one anybody
+   taps — and on a skipped row it contradicted the tag beside it. The corrections live behind a
+   **Correct this** disclosure: **Paid a different amount…**, **Skip**, **Mark as due**,
+   **Forget** (only on a `recorded` occurrence, with a confirmation that says it is not the same
+   as marking it due), and **Mark paid** when the row is skipped. An `IRREGULAR` bill gets
+   **Record a payment**, which chooses the date, because recording against one is what brings its
+   occurrence into being — and its amount field opens empty with a hint that says so, rather than
+   promising a budgeted figure it has not got.
 4. **Envelopes** — a summary block using `envelopesAllocated`, linking to `/envelopes`. The
    block slice 6 deliberately did not build, because this page did not exist; it is a link and a
    figure, not a second envelopes screen.
 
-A bill that is overdue says so. A bill paid for other than its expected amount shows both
-figures, labelled, and is tagged as not what was budgeted. A recorded occurrence says **who**
-recorded it (`statusSource`), so a figure somebody asserted is never shown as one the app
-inferred.
+A bill that is overdue says so. A bill paid for other than its expected amount shows both figures,
+labelled, and is tagged as not what was budgeted — and **one** figure when they agree, because the
+difference is the useful number and there is no difference to report. A skipped row keeps its
+figure struck through and labelled "not counted this month", so it is visible and visibly not part
+of what the month costs.
+
+A recorded occurrence says **how** it was recorded — "You recorded this" — so a figure somebody
+asserted is never shown as one the app inferred. It does **not** say **which** person: no user is
+stored against an occurrence. See Known gaps.
 
 The bill and income dialogs share one schedule editor: a kind, and only the parameters that kind
-uses. **Changing the kind clears the parameters that stopped applying**, and the request is built
+uses. It takes its heading from the caller — "When it is due" for a bill, **"When it arrives"** for
+income, because money coming in is not due. **Changing the kind clears the parameters that stopped applying**, and the request is built
 from the same table the editor reads, because sending a parameter a kind has no use for is a
 `400`. `amountVaries` and `tolerance` move together — the tolerance field appears only when the
 box is ticked, and a patch sends both or neither.
@@ -185,6 +199,9 @@ Retiring a bill or a source is `PATCH active: false` and is offered as **Retire*
   an envelope is subtracted twice from what's left. Nothing stops it, because nothing can tell the
   two apart, and the alternative — matching bills to envelopes by name or category — would be
   guessing. The page shows the three terms, so the double is visible rather than hidden.
+- **An occurrence does not record who settled it.** `statusSource` says a person did it rather
+  than a rule, which is what it is for, but not which person — so a household of two cannot tell
+  who ticked a bill off. The column does not exist yet; nothing is lost by adding it later.
 - An occurrence cannot yet be attached to a transaction by hand. The column exists and the
   uniqueness rule is enforced; the UI for choosing the transaction arrives with matching.
 

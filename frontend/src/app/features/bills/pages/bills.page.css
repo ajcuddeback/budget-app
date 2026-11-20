@@ -257,3 +257,14 @@
 .occurrence-more[open] > summary {
   margin-bottom: var(--space-2);
 }
+
+/*
+ * A skipped amount, which is shown but does not count.
+ *
+ * Struck through AND labelled: a line through a figure is easy to miss at a glance and invisible
+ * to a screen reader, so the words beside it are what actually carry the meaning.
+ */
+.pair-amount.is-discounted {
+  text-decoration: line-through;
+  color: var(--color-muted);
+}

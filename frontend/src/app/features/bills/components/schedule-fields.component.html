@@ -1,5 +1,5 @@
 <fieldset class="schedule" [formGroup]="form()">
-  <legend>{{ 'bills.schedule' | t }}</legend>
+  <legend>{{ legendKey() | t }}</legend>
 
   <div class="field">
     <label [attr.for]="idPrefix() + '-kind'">{{ 'bills.howOften' | t }}</label>

@@ -425,6 +425,56 @@ describe('BillsPage', () => {
     expect(buttonNamedOrNull(recordedRow, /Mark as due/)).not.toBeNull();
   });
 
+  it('does not offer to mark a skipped occurrence paid where the tag says it is skipped', async () => {
+    const fixture = await render({
+      bills: [{ ...RENT, occurrences: [due({ status: 'SKIPPED', recorded: true, version: 0 })] }],
+    });
+    const row = occurrenceRows(fixture)[0];
+
+    // The loudest control on the row must not contradict the tag beside it. Writing the user
+    // guide is what exposed this: the sentence "it says Skipped, and there is a Mark paid button"
+    // could not be made to sound like anything but a bug.
+    const open = row.querySelector<HTMLElement>('.occurrence-actions')!;
+    expect(buttonNamedOrNull(open, /Mark paid/)).toBeNull();
+    // Still reachable, because changing your mind is allowed.
+    expect(buttonNamedOrNull(row, /Mark paid/)).not.toBeNull();
+  });
+
+  it('shows a skipped amount as not counting rather than silently', async () => {
+    const fixture = await render({
+      bills: [{ ...RENT, occurrences: [due({ status: 'SKIPPED', recorded: true, version: 0 })] }],
+    });
+    const row = occurrenceRows(fixture)[0];
+
+    // The figure stays — it is worth seeing — but nothing about the row implied it had stopped
+    // counting towards the month, and a line through it alone is invisible to a screen reader.
+    expect(row.textContent).toContain('not counted this month');
+    expect(row.querySelector('.pair-amount.is-discounted')).not.toBeNull();
+  });
+
+  it('keeps the one-tap action in the open for an occurrence that is actually due', async () => {
+    const fixture = await render({ bills: [{ ...RENT, occurrences: [due()] }] });
+    const open = occurrenceRows(fixture)[0].querySelector<HTMLElement>('.occurrence-actions')!;
+
+    expect(buttonNamedOrNull(open, /Mark paid/)).not.toBeNull();
+  });
+
+  it('says what the two bill figures are rather than printing them as a fraction', async () => {
+    const fixture = await render();
+
+    // "$266.00 / $1,959.10" with a label beside it reads as a ratio, and took a paragraph of the
+    // user guide to explain. A sentence needs none.
+    expect(text(fixture)).toMatch(/still to pay/i);
+    expect(text(fixture)).not.toMatch(/\s\/\s\$/);
+  });
+
+  it('says on the card that bills count whether or not they are paid', async () => {
+    const fixture = await render();
+
+    // The one thing people get wrong about this figure. Left to the guide, it was two sections.
+    expect(text(fixture)).toMatch(/whether or not you have paid/i);
+  });
+
   it('says what forgetting is, and is not, before doing it', async () => {
     const fixture = await render({
       bills: [{ ...RENT, occurrences: [due({ status: 'PAID', recorded: true, version: 0 })] }],

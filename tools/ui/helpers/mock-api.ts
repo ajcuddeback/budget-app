@@ -99,9 +99,20 @@ function datesIn(
  * That ordering is what keeps every case the fixtures were chosen for — a paid one, an overdue
  * one, one paid for a surprising amount — present in whatever month the screen is showing.
  */
-function occurrencesIn(bill: (typeof DEMO_BILLS)[number], period: string) {
+function occurrencesIn(
+  bill: (typeof DEMO_BILLS)[number],
+  period: string,
+  recorded: Map<string, Record<string, unknown>> = new Map(),
+) {
   const dates = bill.active ? datesIn(bill.schedule, period) : [];
-  return dates.map((dueDate, index) => {
+  const projected: Record<string, unknown>[] = dates.map((dueDate, index) => {
+    const since = recorded.get(`${bill.id}|${dueDate}`);
+    if (since) {
+      // Something was recorded during this run. A real server reads it back on the next GET, so
+      // the mock does too — otherwise a screenshot taken after "Mark paid" shows the row still
+      // due, which in a user guide is a picture of the app not working.
+      return { ...since, expectedAmount: bill.expectedAmount };
+    }
     const fixture = bill.occurrences[index];
     if (!fixture) {
       return {
@@ -116,6 +127,17 @@ function occurrencesIn(bill: (typeof DEMO_BILLS)[number], period: string) {
       paidDate: fixture.paidDate ? dueDate : null,
     };
   });
+  // An irregular bill projects nothing, so a payment recorded against a date is the only thing
+  // that brings a row into being — the same rule the server follows.
+  const extra = [...recorded.values()].filter(
+    (one) =>
+      one['billId'] === bill.id &&
+      String(one['dueDate']).startsWith(period) &&
+      !dates.includes(String(one['dueDate'])),
+  );
+  return [...projected, ...extra].sort((a, b) =>
+    String(a['dueDate']).localeCompare(String(b['dueDate'])),
+  );
 }
 
 /** Requests that reached the mock, so a spec can assert the page asked for what it needed. */
@@ -196,6 +218,14 @@ function decimalString(value: bigint): string {
 
 export async function mockApi(page: Page, options: MockOptions = {}): Promise<ApiCall[]> {
   const calls: ApiCall[] = [];
+  /**
+   * What this run has recorded against a bill, keyed `billId|dueDate`.
+   *
+   * The only state the mock keeps, and it is kept because the screen reloads from the server
+   * after recording: without it, marking a bill paid would flip back to due in front of the
+   * person who just did it. Per page, so nothing leaks between tests.
+   */
+  const recordedOccurrences = new Map<string, Record<string, unknown>>();
   let session: MockSession = options.session ?? 'owner';
   let setupComplete = !options.freshInstance;
 
@@ -469,7 +499,7 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const period = url.searchParams.get('period') ?? '2026-08';
       const rows = (all ? DEMO_BILLS : DEMO_BILLS_ACTIVE).map((bill) => ({
         ...bill,
-        occurrences: occurrencesIn(bill, period),
+        occurrences: occurrencesIn(bill, period, recordedOccurrences),
       }));
       return json(route, 200, {
         content: rows,
@@ -500,25 +530,33 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     if (occurrenceRoute) {
       const [, billId, dueDate] = occurrenceRoute;
       if (method === 'DELETE') {
+        // Forgetting: the row goes back to whatever the schedule projects.
+        recordedOccurrences.delete(`${billId}|${dueDate}`);
         return route.fulfill({ status: 204 });
       }
       const bill = DEMO_BILLS.find((one) => one.id === billId) ?? DEMO_BILLS[0];
       const status = field('status') ?? 'PAID';
       const paid = status === 'PAID';
-      return json(route, 200, {
+      const tolerance = Number(bill.tolerance ?? 0);
+      const actualAmount = paid ? (field('actualAmount') ?? bill.expectedAmount) : null;
+      const written = {
         billId,
         dueDate,
         expectedAmount: bill.expectedAmount,
         status,
-        actualAmount: paid ? (field('actualAmount') ?? bill.expectedAmount) : null,
+        actualAmount,
         paidDate: paid ? (field('paidDate') ?? dueDate) : null,
         transactionId: null,
         statusSource: 'MANUAL',
         recorded: true,
         overdue: false,
-        surprising: false,
+        surprising:
+          paid &&
+          Math.abs(Number(actualAmount) - Number(bill.expectedAmount)) > tolerance,
         version: 0,
-      });
+      };
+      recordedOccurrences.set(`${billId}|${dueDate}`, written);
+      return json(route, 200, written);
     }
     const billRoute = /^\/api\/bills\/([^/]+)$/.exec(url.pathname);
     if (billRoute) {

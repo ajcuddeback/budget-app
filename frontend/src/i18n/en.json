@@ -545,5 +545,10 @@
   "bills.envelopes.open": "Open envelopes",
   "error.bill-inactive": "This bill is retired, so nothing new can be recorded against it. Restore it first — what was already recorded is kept.",
   "error.bill-name-taken": "You already have a bill with that name.",
-  "error.income-name-taken": "You already have an income source with that name."
+  "error.income-name-taken": "You already have an income source with that name.",
+  "bills.stillToPayOf": "{outstanding} of {total} still to pay",
+  "bills.billsCountEitherWay": "Bills count here whether or not you have paid them. Money that has already gone is not money you still have, so ticking one off does not change this figure.",
+  "bills.notCounted": "not counted this month",
+  "bills.income.schedule": "When it arrives",
+  "bills.actualAmountHintBlank": "What really left the account."
 }

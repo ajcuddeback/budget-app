@@ -3,6 +3,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { merge, of, switchMap } from 'rxjs';
 import { MonthNamePipe, WeekdayNamePipe } from '../../../core/i18n/format.pipes';
+import { MessageKey } from '../../../core/i18n/messages';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { FieldErrorComponent } from '../../../shared/components/field-error.component';
 import { ScheduleFormGroup } from '../data/schedule-form';
@@ -45,6 +46,15 @@ export class ScheduleFieldsComponent {
   readonly form = input.required<ScheduleFormGroup>();
   /** Prefix for every `id`, so two editors on one page keep their labels apart. */
   readonly idPrefix = input.required<string>();
+
+  /**
+   * What to head the schedule with.
+   *
+   * Money leaving is "due"; money arriving is not. One legend for both read as "When it is due"
+   * above a salary, which is the wrong register and was hard to write instructions for — the
+   * surest sign that a screen is wrong rather than the words.
+   */
+  readonly legendKey = input<MessageKey>('bills.schedule');
 
   protected readonly kinds = SCHEDULE_KINDS;
   protected readonly daysOfMonth = DAYS_OF_MONTH;

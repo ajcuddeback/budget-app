@@ -44,7 +44,11 @@
       <app-field-error [control]="form.controls.amount" errorId="income-amount-error" />
     </div>
 
-    <app-schedule-fields [form]="form.controls.schedule" idPrefix="income" />
+    <app-schedule-fields
+      [form]="form.controls.schedule"
+      idPrefix="income"
+      legendKey="bills.income.schedule"
+    />
 
     <div class="field">
       <label for="income-account">{{ 'bills.income.account' | t }}</label>

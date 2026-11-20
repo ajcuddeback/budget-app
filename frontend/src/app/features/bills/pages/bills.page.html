@@ -67,13 +67,21 @@
 
         <!-- Secondary, deliberately: bills count whether or not they are paid, so this is not the
              figure the page leads with. -->
+        <!-- A sentence, not a fraction. "$266.00 / $1,959.10" with a label beside it reads as a
+             ratio and needed a paragraph of the user guide to explain. -->
         <p class="secondary-figure">
-          <span class="secondary-label">{{ 'bills.outstandingLabel' | t }}</span>
-          <span class="secondary-amount">
-            {{ sums.billsOutstanding | money: sums.currency }} /
-            {{ sums.bills | money: sums.currency }}
-          </span>
+          {{
+            'bills.stillToPayOf'
+              | t
+                : {
+                    outstanding: sums.billsOutstanding | money: sums.currency,
+                    total: sums.bills | money: sums.currency,
+                  }
+          }}
         </p>
+        <!-- The one thing people get wrong about this figure, said on the card rather than left
+             to the guide: paying a bill does not make it go up. -->
+        <p class="card-note">{{ 'bills.billsCountEitherWay' | t }}</p>
         @if (negative(sums.left)) {
           <p class="card-note">{{ 'bills.shortNote' | t }}</p>
         }
@@ -360,11 +368,18 @@
                           </span>
                         </span>
                       } @else {
-                        <!-- One figure, because there is one figure to report. -->
+                        <!-- One figure, because there is one figure to report. Struck through on
+                             a skipped row: the amount is still worth seeing, and it is no longer
+                             part of what the month costs. -->
                         <span class="occurrence-figures">
-                          <span class="pair-amount">{{
-                            theFigure(occurrence) | money: bill.currency
-                          }}</span>
+                          <span
+                            class="pair-amount"
+                            [class.is-discounted]="occurrence.status === 'SKIPPED'"
+                            >{{ theFigure(occurrence) | money: bill.currency }}</span
+                          >
+                          @if (occurrence.status === 'SKIPPED') {
+                            <span class="pair-label">{{ 'bills.notCounted' | t }}</span>
+                          }
                         </span>
                       }
 
@@ -377,10 +392,13 @@
 
                       @if (canWrite()) {
                         <span class="row-actions occurrence-actions">
-                          @if (occurrence.status !== 'PAID') {
+                          @if (occurrence.status === 'DUE') {
                             <!-- One tap: paid, for what was budgeted, today. The ONLY control
                                  kept in the open — a weekly bill has four or five rows a month,
-                                 and five buttons on each of them buries the one that matters. -->
+                                 and five buttons on each of them buries the one that matters.
+                                 DUE only, not "not PAID": a SKIPPED row said "Skipped" with a
+                                 prominent "Mark paid" beside it, so the loudest thing on the row
+                                 contradicted the tag on it. -->
                             <button
                               type="button"
                               class="btn btn-primary btn-small"
@@ -397,6 +415,18 @@
                         <details class="occurrence-more">
                           <summary>{{ 'bills.moreActions' | t }}</summary>
                           <span class="row-actions">
+                          @if (occurrence.status === 'SKIPPED') {
+                            <!-- Reachable, but not competing with the tag that says it does not
+                                 apply this month. -->
+                            <button
+                              type="button"
+                              class="btn btn-secondary btn-small"
+                              [disabled]="busyId() === rowId(occurrence)"
+                              (click)="markPaid(bill, occurrence)"
+                            >
+                              {{ 'bills.markPaid' | t }}
+                            </button>
+                          }
                           <button
                             type="button"
                             class="btn btn-secondary btn-small"
