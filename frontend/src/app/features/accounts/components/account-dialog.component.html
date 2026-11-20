@@ -1,0 +1,134 @@
+<dialog class="dialog" appModal aria-labelledby="account-dialog-title" (dismissed)="closed.emit()">
+  <h2 class="dialog-title" id="account-dialog-title">{{ titleKey() | t }}</h2>
+
+  <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-error-alert [error]="error()" />
+
+    @if (conflict(); as changed) {
+      <div class="alert" role="alert">
+        <p class="alert-title">{{ 'accounts.conflictTitle' | t }}</p>
+        <p>{{ 'accounts.conflictBody' | t }}</p>
+        <ul>
+          @for (field of changed; track field.labelKey) {
+            <li>
+              {{
+                'accounts.conflictField' | t: { field: (field.labelKey | t), value: field.value }
+              }}
+            </li>
+          }
+        </ul>
+        <div class="cluster">
+          <button type="button" class="btn btn-secondary btn-small" (click)="latestWanted.emit()">
+            {{ 'accounts.conflictUseLatest' | t }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger btn-small"
+            [disabled]="busy()"
+            (click)="overwriteWanted.emit()"
+          >
+            {{ 'accounts.conflictOverwrite' | t }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <div class="field">
+      <label for="account-name">{{ 'accounts.name' | t }}</label>
+      <input
+        id="account-name"
+        class="input"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        [attr.maxlength]="80"
+        aria-describedby="account-name-hint account-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="account-name-hint">{{ 'accounts.nameHint' | t }}</p>
+      <app-field-error [control]="form.controls.name" errorId="account-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="account-last-four">{{ 'accounts.lastFour' | t }}</label>
+      <input
+        id="account-last-four"
+        class="input"
+        type="text"
+        formControlName="lastFour"
+        inputmode="numeric"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="4"
+        aria-describedby="account-last-four-hint account-last-four-error"
+        [attr.aria-invalid]="
+          form.controls.lastFour.invalid && form.controls.lastFour.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="account-last-four-hint">{{ 'accounts.lastFourHint' | t }}</p>
+      <app-field-error [control]="form.controls.lastFour" errorId="account-last-four-error" />
+    </div>
+
+    <div class="field">
+      <label for="account-type">{{ 'accounts.type' | t }}</label>
+      <select
+        id="account-type"
+        class="input"
+        formControlName="type"
+        aria-describedby="account-type-error"
+      >
+        @for (type of types; track type) {
+          <option [value]="type">{{ typeKey(type) | t }}</option>
+        }
+      </select>
+      <app-field-error [control]="form.controls.type" errorId="account-type-error" />
+    </div>
+
+    <app-currency-field
+      fieldId="account-currency"
+      [control]="form.controls.currency"
+      [label]="'accounts.currency' | t"
+      [hint]="(currencyLocked() ? 'accounts.currencyLocked' : 'accounts.currencyHint') | t"
+    />
+
+    <div class="field">
+      <label for="account-opening-balance">{{ 'accounts.openingBalance' | t }}</label>
+      <input
+        id="account-opening-balance"
+        class="input"
+        type="text"
+        formControlName="openingBalance"
+        inputmode="decimal"
+        autocomplete="off"
+        spellcheck="false"
+        dir="ltr"
+        aria-describedby="account-opening-balance-hint account-opening-balance-error"
+        [attr.aria-invalid]="
+          form.controls.openingBalance.invalid && form.controls.openingBalance.touched
+            ? 'true'
+            : null
+        "
+      />
+      <p class="field-hint" id="account-opening-balance-hint">
+        {{ 'accounts.openingBalanceHint' | t }}
+      </p>
+      <app-field-error
+        [control]="form.controls.openingBalance"
+        errorId="account-opening-balance-error"
+      />
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+      <!-- While a conflict is unresolved this would send the version the server has already
+           rejected. The two choices in the alert above are the way forward, so this is not it. -->
+      <button type="submit" class="btn btn-primary" [disabled]="busy() || conflict() !== null">
+        {{ (busy() ? 'common.saving' : 'accounts.save') | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

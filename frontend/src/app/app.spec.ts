@@ -79,10 +79,10 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
-    const links = Array.from<HTMLAnchorElement>(fixture.nativeElement.querySelectorAll('nav a')).map(
-      (link) => link.textContent?.trim(),
-    );
-    expect(links).toEqual(['Household', 'Devices', 'Preferences']);
+    const links = Array.from<HTMLAnchorElement>(
+      fixture.nativeElement.querySelectorAll('nav a'),
+    ).map((link) => link.textContent?.trim());
+    expect(links).toEqual(['Accounts', 'Household', 'Devices', 'Preferences']);
 
     const signOut = Array.from<HTMLButtonElement>(
       fixture.nativeElement.querySelectorAll('button'),

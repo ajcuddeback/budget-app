@@ -34,7 +34,8 @@ public abstract class PersistenceTestBase extends PostgresTestBase {
         // cannot trip the last-owner rule on the way.
         jdbc.execute(
                 """
-                TRUNCATE household_invitations, auth_tokens, household_members, households, users
+                TRUNCATE accounts, household_invitations, auth_tokens, household_members,
+                         households, users
                 RESTART IDENTITY CASCADE
                 """);
         jdbc.update(

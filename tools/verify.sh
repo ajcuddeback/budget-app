@@ -180,7 +180,7 @@ if [ "$TARGET" = "mutation" ]; then
   if [ ! -f frontend/package.json ]; then
     skip "frontend mutation" "frontend/ does not exist yet"
   elif ! npm --prefix frontend run 2>/dev/null | grep -q '^  test:mutation$'; then
-    skip "frontend mutation" "Stryker not wired yet (ADR-0024 follow-up); CI does not run it either"
+    skip "frontend mutation" "Stryker cannot drive ng test's in-memory vitest config — see the 2026-11-16 amendment to ADR-0024. Not a to-do."
   else
     run "frontend mutation score (Stryker)" npm --prefix frontend run test:mutation
   fi

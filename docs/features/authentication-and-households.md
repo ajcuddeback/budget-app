@@ -605,19 +605,72 @@ API is built but self-deletion is not, OIDC login, and any reaction to `registra
 
 ## Deployment notes
 
-**The runtime connection must not be the database owner.** It currently is, and while it is, every
-database-level guarantee in this document is advisory: a superuser or table owner can `TRUNCATE`
-past row triggers, set `session_replication_role = replica` to switch triggers off for the
-session, or `ALTER TABLE ... DISABLE TRIGGER`. The last-owner rule, the owner-count trigger and
-the one-household index are all bypassable from the application's own connection pool.
+**The runtime connection must not be the database owner — and now it is not** (ADR-0030, closing
+finding **F8**). While it was, every database-level guarantee in this document was advisory: a
+table owner can `TRUNCATE` past row triggers, `ALTER TABLE ... DROP CONSTRAINT`, or
+`ALTER TABLE ... DISABLE TRIGGER`, so the last-owner rule, the owner-count trigger and every
+`CHECK` in `V8`/`V9` were bypassable from the application's own connection pool.
 
-The fix is a deployment change rather than a migration, which is why it is recorded here and not
-done: **Flyway migrates as the owning role, and the runtime pool connects as a separate,
-non-owning role with `SELECT, INSERT, UPDATE, DELETE` on the application tables and nothing
-else.** That also makes `REVOKE UPDATE (owner_count) ON households` mean something — as things
-stand it would read like protection and provide none, which is why `V8` deliberately does not
-include it. Scope this with the deployment/packaging work; it needs a second role in the compose
-file and the Helm chart, and a decision about who runs migrations in a self-hosted upgrade.
+**Two roles.** Flyway connects as the owner (`DB_USER` / `DB_PASSWORD`); the connection pool that
+serves requests connects as a non-owning role (`DB_APP_USER` / `DB_APP_PASSWORD`) holding
+`SELECT, INSERT, UPDATE, DELETE` and nothing else. Both application variables fall back to the
+owner's values, so an instance that has not been reconfigured keeps running — unrestricted. The
+pieces:
+
+| Piece | Where |
+|---|---|
+| Creates the role (fresh volume only) | `deploy/db-init/10-create-app-role.sh` |
+| Grants it DML, conditional on the role existing | `backend/src/main/resources/db/migration/V10__application_role_grants.sql` |
+| Splits the two credentials | `backend/src/main/resources/application.yml` |
+| Proves the restriction against a real restricted role | `ApplicationRoleRestrictionsIT` |
+
+### Upgrading an instance that already exists
+
+The init script runs **only when the database volume is empty**, so an instance already running
+Budget Owl has to create the role once, by hand. Do it **before** starting the new version.
+
+1. Add both variables to `.env` — they are a pair, and setting one alone fails at start-up with an
+   authentication error:
+
+   ```
+   DB_APP_USER=budgetowl_app
+   DB_APP_PASSWORD=<a new password, not the one in DB_PASSWORD>
+   ```
+
+2. Recreate the `db` container so it picks up the mounted script and the new variables. This does
+   not touch the data volume:
+
+   ```
+   docker compose up -d db
+   ```
+
+3. Create the role:
+
+   ```
+   docker compose exec db /docker-entrypoint-initdb.d/10-create-app-role.sh
+   ```
+
+   The script is idempotent, and on an already-migrated database it applies `V10`'s grants itself.
+
+4. Start the new application version:
+
+   ```
+   docker compose up -d
+   ```
+
+If the order gets reversed — the new version starts first — `V10` records itself as applied
+against a database with no such role, grants nothing, and the application then fails every query
+with `permission denied`. Step 3 is also the repair: run it, then restart the `api` container.
+
+Leaving `DB_APP_PASSWORD` unset is supported, and is what an unattended upgrade does. No role is
+created, the pool connects as the owner exactly as before, and the init script says so in the `db`
+container's log. The restriction is simply not in effect until the step above is taken.
+
+`REVOKE UPDATE (owner_count) ON households` is still **not** done, and `V10` records why: the
+column is maintained by `sync_household_owner_count()`, an invoker-rights trigger function, so
+revoking the column from the application role would break every legitimate membership write rather
+than only the illegitimate direct `UPDATE`. Making it meaningful needs the function to become
+`SECURITY DEFINER` with a pinned `search_path` — a migration and a test of its own.
 
 ## Edge cases
 

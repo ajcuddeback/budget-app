@@ -5,10 +5,22 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.budgetowl.common.HouseholdOwned;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Architecture rules (ADR-0024). These make the dangerous shapes unwritable rather than merely
@@ -116,6 +128,68 @@ class ArchitectureTest {
                             "an entity in ..web.. is an entity one step from being a response body"
                                     + " (docs/architecture/overview.md)");
 
+    /**
+     * The rule the whole ownership model rests on (ADR-0008 as amended by ADR-0017, non-negotiable
+     * #2): household-owned data cannot be reached without naming the household.
+     *
+     * <p>{@code repositories_expose_no_inherited_unscoped_finder} above stops {@code
+     * CrudRepository} smuggling a {@code findById} in. This one stops somebody writing it out by
+     * hand — which is the easier mistake, because a hand-written {@code findById(UUID)} looks like
+     * perfectly ordinary Spring Data and reads as if the service above it will remember to check.
+     * One that forgets returns another household's row, and the service has no way to notice.
+     *
+     * <p>A method satisfies it by taking a {@code UUID householdId}, or by taking the entity itself
+     * — {@code save} and {@code delete} are scoped by the fact that the caller had to get the
+     * entity from a scoped finder first.
+     *
+     * <p>Parameter <em>names</em> are read from the bytecode, which needs {@code -parameters};
+     * spring-boot-starter-parent turns it on. If it were ever off this rule fails loudly on correct
+     * code rather than passing silently on incorrect code, which is the right direction for a
+     * control to break in.
+     */
+    @ArchTest
+    static final ArchRule household_owned_data_is_unreachable_without_its_household =
+            methods()
+                    .that()
+                    .areDeclaredInClassesThat()
+                    .resideInAPackage("com.budgetowl..persistence..")
+                    .and(declaredOnARepositoryForHouseholdOwnedData())
+                    .should(takeTheHouseholdIdOrTheEntityItself())
+                    .because(
+                            "an id from a path or a body is a lookup key and never evidence of"
+                                    + " ownership. Another household's account must be"
+                                    + " indistinguishable from one that never existed, and the only way"
+                                    + " to keep that true at every call site is for the unscoped call"
+                                    + " to be unwritable (docs/guides/database-style.md)");
+
+    /**
+     * Keeps the rule above honest.
+     *
+     * <p>It selects on the {@link HouseholdOwned} marker, so a financial entity that forgets the
+     * marker would be checked by nothing at all — the same silent-stop-applying failure {@code
+     * allowEmptyShould} causes, and the one docs/memory/gotchas.md records. So every entity outside
+     * the membership graph has to declare itself.
+     */
+    @ArchTest
+    static final ArchRule financial_entities_declare_the_household_that_owns_them =
+            classes()
+                    .that()
+                    .areAnnotatedWith(jakarta.persistence.Entity.class)
+                    .and()
+                    .resideOutsideOfPackages(
+                            // The membership graph that ownership is resolved *from*, plus the
+                            // instance's own single configuration row. Everything else is a
+                            // household's financial data.
+                            "com.budgetowl.auth..",
+                            "com.budgetowl.household..",
+                            "com.budgetowl.instance..")
+                    .should()
+                    .implement(HouseholdOwned.class)
+                    .because(
+                            "every financial table has a direct household_id column (ADR-0017), and"
+                                    + " the marker is what makes that enforceable rather than"
+                                    + " documented");
+
     // These two check every class in the codebase, so they are never empty and need no exemption.
 
     @ArchTest
@@ -144,4 +218,94 @@ class ArchitectureTest {
                     .andShould()
                     .notHaveRawReturnType(Float.class)
                     .because("ADR-0006 — no floating point anywhere near this codebase");
+
+    // ---------------------------------------------------------------------------------- helpers
+
+    private static DescribedPredicate<JavaMethod> declaredOnARepositoryForHouseholdOwnedData() {
+        return new DescribedPredicate<>("declared on a repository for household-owned data") {
+            @Override
+            public boolean test(JavaMethod method) {
+                return guardsHouseholdOwnedData(method.getOwner().reflect());
+            }
+        };
+    }
+
+    private static ArchCondition<JavaMethod> takeTheHouseholdIdOrTheEntityItself() {
+        return new ArchCondition<>(
+                "take a UUID householdId, or the household-owned entity itself") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                Method reflected = method.reflect();
+                boolean takesTheEntity = false;
+                boolean takesHouseholdId = false;
+                for (Parameter parameter : reflected.getParameters()) {
+                    takesTheEntity =
+                            takesTheEntity
+                                    || HouseholdOwned.class.isAssignableFrom(parameter.getType());
+                    takesHouseholdId =
+                            takesHouseholdId
+                                    || (parameter.getType() == UUID.class
+                                            && "householdId".equals(parameter.getName()));
+                }
+
+                // save/delete are scoped by construction: the caller can only have obtained the
+                // entity from a scoped finder, so there is no id to be wrong about.
+                String why;
+                boolean scoped;
+                if (takesTheEntity) {
+                    scoped = true;
+                    why = "";
+                } else if (!takesHouseholdId) {
+                    scoped = false;
+                    why = " reaches household-owned data without a householdId";
+                } else {
+                    // Taking the parameter is not using it. Until this was checked, a
+                    // hand-written @Query could accept householdId and never mention it in the
+                    // JPQL, which reads as scoped at every call site and is not — exactly the
+                    // defect the rule exists to make unwritable.
+                    Query query = reflected.getAnnotation(Query.class);
+                    if (query != null) {
+                        scoped =
+                                query.value().contains("householdId")
+                                        && (query.countQuery().isEmpty()
+                                                || query.countQuery().contains("householdId"));
+                        why =
+                                " takes a householdId its @Query never filters on, so every call"
+                                        + " site reads as scoped and none of them is";
+                    } else {
+                        // A derived query is built from the method name, so the name is the
+                        // query. Spring Data would reject a householdId parameter the name does
+                        // not bind, but that failure happens at startup rather than here.
+                        scoped = reflected.getName().contains("HouseholdId");
+                        why =
+                                " takes a householdId its derived query name does not bind to a"
+                                        + " property";
+                    }
+                }
+                events.add(new SimpleConditionEvent(method, scoped, method.getFullName() + why));
+            }
+        };
+    }
+
+    /**
+     * Whether this interface is a Spring Data repository whose aggregate is {@link HouseholdOwned}.
+     *
+     * <p>Read from the generic interface rather than guessed from the name, so renaming the
+     * repository cannot switch the rule off.
+     */
+    private static boolean guardsHouseholdOwnedData(Class<?> candidate) {
+        for (Type implemented : candidate.getGenericInterfaces()) {
+            if (implemented instanceof ParameterizedType parameterized
+                    && parameterized.getRawType() instanceof Class<?> raw
+                    && org.springframework.data.repository.Repository.class.isAssignableFrom(raw)) {
+                for (Type argument : parameterized.getActualTypeArguments()) {
+                    if (argument instanceof Class<?> aggregate
+                            && HouseholdOwned.class.isAssignableFrom(aggregate)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 }

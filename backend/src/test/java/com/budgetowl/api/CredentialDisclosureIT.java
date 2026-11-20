@@ -63,6 +63,57 @@ class CredentialDisclosureIT extends ApiTestBase {
     }
 
     @Test
+    void keepsTheStoredHashOutOfTheLogAtDebug() {
+        captureLogs(Level.DEBUG);
+        seedHousehold();
+        signIn(OWNER_EMAIL, OWNER_SECRET)
+                .post(
+                        "/api/auth/password",
+                        """
+                        {"currentPassword":"%s","newPassword":"a-different-example-passphrase"}
+                        """
+                                .formatted(OWNER_SECRET));
+
+        assertThat(loggedLines(event -> true))
+                .as("a password change must not write the replaced hash to the log")
+                .noneMatch(line -> line.contains("$2a$") || line.contains("$2b$"));
+    }
+
+    @Test
+    void keepsTheStoredHashOutOfTheLogEvenWithHibernateUnpinned() {
+        // The strong form, and the one that matters: the hash stays out of the log even with
+        // org.hibernate.orm.core at DEBUG, because PasswordService detaches the credential the
+        // moment verification is done. There is no managed entity left for EntityPrinter to read.
+        //
+        // This test used to assert the opposite — that the leak was real when unpinned — because
+        // at the time the pin was the only thing holding. It failed the moment the detach landed,
+        // with the message it was written to carry, which is what a falsifiable test is for.
+        //
+        // The pin stays regardless: it still protects account names, amounts, emails and display
+        // names, which are mapped columns of entities that legitimately stay managed.
+        Logger ormCore = (Logger) LoggerFactory.getLogger("org.hibernate.orm.core");
+        Level pinned = ormCore.getLevel();
+        captureLogs(Level.DEBUG);
+        ormCore.setLevel(Level.DEBUG);
+        try {
+            seedHousehold();
+            signIn(OWNER_EMAIL, OWNER_SECRET)
+                    .post(
+                            "/api/auth/password",
+                            """
+                            {"currentPassword":"%s","newPassword":"a-different-example-passphrase"}
+                            """
+                                    .formatted(OWNER_SECRET));
+
+            assertThat(loggedLines(event -> true))
+                    .as("no configuration change may put a stored password hash in the log")
+                    .noneMatch(line -> line.contains("$2a$") || line.contains("$2b$"));
+        } finally {
+            ormCore.setLevel(pinned);
+        }
+    }
+
+    @Test
     void returnsATokenExactlyOnceAndNeverAgain() {
         captureLogs(Level.INFO);
         Journey journey = walkThrough();

@@ -1,5 +1,6 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { ApiError } from '../../core/api-error';
+import { isAmount } from '../../core/money';
 
 /**
  * The server's password ceiling is BCrypt's 72 *bytes*, not characters — an emoji is four. The
@@ -9,7 +10,9 @@ export function maxBytes(max: number): ValidatorFn {
   const encoder = new TextEncoder();
   return (control: AbstractControl): ValidationErrors | null => {
     const value: unknown = control.value;
-    return typeof value === 'string' && encoder.encode(value).length > max ? { maxBytes: { max } } : null;
+    return typeof value === 'string' && encoder.encode(value).length > max
+      ? { maxBytes: { max } }
+      : null;
   };
 }
 
@@ -17,6 +20,32 @@ export function maxBytes(max: number): ValidatorFn {
 export function currencyCode(control: AbstractControl): ValidationErrors | null {
   const value: unknown = control.value;
   return typeof value === 'string' && /^[A-Za-z]{3}$/.test(value) ? null : { currency: true };
+}
+
+/**
+ * Exactly four ASCII digits, or empty — the server's `[0-9]{4}` on an optional field (ADR-0028).
+ * `[0-9]` and not `\d`, which in some engines widens to Arabic-Indic digits the server refuses.
+ */
+export function lastFourDigits(control: AbstractControl): ValidationErrors | null {
+  const value: unknown = control.value;
+  if (typeof value !== 'string' || value === '') {
+    return null;
+  }
+  return /^[0-9]{4}$/.test(value) ? null : { lastFour: true };
+}
+
+/**
+ * A signed decimal that fits `NUMERIC(19,4)`, mirroring `AccountRequests.AMOUNT` so the person
+ * finds out before submitting. **It never parses the value** (ADR-0006): an amount is a string
+ * from the first keystroke to the database, and a validator that read it as a `number` would be
+ * the one place the rule was broken.
+ */
+export function amount(control: AbstractControl): ValidationErrors | null {
+  const value: unknown = control.value;
+  if (typeof value !== 'string' || value === '') {
+    return null;
+  }
+  return isAmount(value.trim()) ? null : { amount: true };
 }
 
 /**

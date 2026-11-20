@@ -28,5 +28,11 @@ public abstract class PostgresTestBase {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Flyway has its own credentials since ADR-0030, and application.yml resolves them from
+        // ${DB_USER}/${DB_PASSWORD}, which no test environment sets. The container has ONE role, so
+        // here they are the same credentials as above: these tests connect as the owner, which is
+        // precisely why the restricted path needs ApplicationRoleRestrictionsIT to cover it.
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
     }
 }

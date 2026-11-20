@@ -72,6 +72,7 @@ mobile/    Flutter app          (not yet created)
 design/    Visual source of truth, exported from Claude Design
 docs/      Architecture, decisions, specs, conventions
 userguide/ Customer-facing help, written from the running UI
+deploy/    Mounted into the Compose stack at container start (db-init)
 tools/     verify.sh (the gate), ui-check.sh, userguide-capture.sh
 .claude/   AI harness: agents, skills, hooks
 .agents/   Vendored Angular skills, pinned

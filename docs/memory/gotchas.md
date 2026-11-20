@@ -661,3 +661,157 @@ true and the code is right, the test costs nothing; if it is wrong, the test is 
 will ever say so.
 
 *Added 2026-10-04 — slice 2 security audit.*
+
+---
+
+### Two framework loggers echo user data at `DEBUG`, and redacting `toString` does not stop either
+
+`AccountDisclosureIT` asserts that `lastFour`, account names and amounts never reach a log. With the
+root logger at `DEBUG` — what an operator turns on when something is wrong — it found two leaks that
+nothing in our own code could have prevented:
+
+- **`org.hibernate.orm.core`** prints every column of every flushed entity through Hibernate's own
+  `EntityPrinter`: `name=Chase Sapphire, lastFour=4412, openingBalance=-9876.5432`. It reads the
+  values off the persister, so a redacted `toString` on the entity (which `Account` has) changes
+  nothing.
+
+  It prints **every mapped column of every entity in the persistence context at flush**, so the
+  blast radius is wider than the field that found it: an account's `name`, `last_four` and
+  `opening_balance`, a user's `email` and `display_name`, **and `PasswordCredential.passwordHash`**:
+
+  ```
+  com.budgetowl.auth.domain.PasswordCredential{userId=2bbe4e92-…,
+      passwordHash={bcrypt}$2a$04$4eRA1/L7b6g/2Oj9DPYv0eCdS4emVoZ0hMMaRAZbIWA2xnqZbtYKW}
+  ```
+
+  **That one is now fixed structurally**: `PasswordService` detaches the credential as soon as
+  verification is done, so no managed entity survives to the flush and no log level can print it
+  (`CredentialDisclosureIT.keepsTheStoredHashOutOfTheLogEvenWithHibernateUnpinned` fails if the
+  detach is removed). The pin remains for everything else, which is still only protected by it.
+
+  **The pin was the only thing protecting that hash until then.** An earlier version of this entry claimed the
+  opposite — that the hash was safe "because of its mapping", on the strength of a probe that ran
+  only a first-user registration. Registration and login never flush a `PasswordCredential`;
+  `POST /api/auth/password` does, and prints the *previous* hash twice, at the moment the user has
+  just proved they know the matching plaintext. Two lessons, both general:
+
+  - **Proving a leak absent in one flow proves nothing about the others.** Enumerate the paths that
+    flush the entity, not the paths that are convenient to test.
+  - **A missing getter is irrelevant to `EntityPrinter`**, which reads values off the Hibernate
+    persister by field access. Redacting `toString` and omitting accessors are good practice and
+    neither of them is a logging control.
+- **`ExceptionHandlerExceptionResolver`** logs the exception it resolved, and a Bean Validation
+  failure carries the value that failed: `rejected value [98765]`. Our problem responses never echo
+  a rejected value — that line is the framework's, not ours.
+
+Both are pinned to `INFO` in `application.yml` with the reasoning next to them. **A redacted
+`toString` is not a logging control**; it only covers the places something calls `toString`. If a
+field must not reach a log, the only thing that proves it is a test that captures the log at the
+level an operator will actually use.
+
+Pinning stops at `DEBUG`. A root logger set to `TRACE` still binds JDBC parameters into the log,
+which is a deliberate act rather than a default.
+
+*Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### Jackson coerces a JSON number into a `String` field, so a string-typed amount is not a defence
+
+Amounts are declared as `String` on request DTOs so a malformed one fails Bean Validation and is
+answered as `validation-failed` *naming the field* — a deserializer failure can only be a
+`malformed-request` naming nothing. But `{"openingBalance": 1234.56}` then arrives as the string
+`"1234.56"`, the custom `BigDecimal` deserializer never runs, and the request is accepted with a
+`201`. The digits in it are already whatever the client's double rounded to.
+
+Fixed globally in `CoreConfig` with a Jackson coercion config refusing `Integer`, `Float` and
+`Boolean` input shapes for every `LogicalType.Textual` target. The type of a DTO field decides
+which deserializer runs, so "we registered a strict deserializer for `BigDecimal`" says nothing
+about a field that is not a `BigDecimal`.
+
+*Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### `@Version` is incremented at flush, so a write that answers before flushing returns a stale version
+
+`AccountService.update` mutated the entity and built its response from it. The response carried the
+version the caller already had, because Hibernate increments `@Version` when the change is flushed,
+not when the setter runs. The caller's next `PATCH` then sent that version and was refused with
+`409 stale-version` — the optimistic lock firing against a conflict that never happened.
+
+If a response reports a version, the write has to flush first. `AccountRepository.saveAndFlush`
+does, and it stays within ADR-0017's rule because it takes the entity rather than an id.
+
+*Added 2026-10-11 — slice 3 (accounts).*
+
+---
+
+### The formatting hook reformats files outside `frontend/`, because the prettier config lives there
+
+Prettier's config is `frontend/.prettierrc` (`singleQuote`, `printWidth: 100`). Editing a
+TypeScript file anywhere else — `tools/ui/fixtures/demo-data.ts`, say — runs prettier with its
+*defaults* instead: double quotes, 80 columns. A four-line content change came back as a 346-line
+diff that also undid the fixture file's deliberate one-row-per-line layout.
+
+Change a file outside `frontend/` with `sed` or a small script rather than an editing tool, or
+check `git diff --stat` straight afterwards and restore the file if the line count is absurd. The
+real fix is a repository-root `.prettierrc` (or `frontend/.prettierrc` moved up with an
+override), which is a tooling change rather than something to do mid-feature.
+
+*Added 2026-11-14 — slice 3 frontend.*
+
+---
+
+### A `<dialog>` removed by `@if` cannot restore focus with the native `close()`
+
+`ModalDirective` closed the dialog in `ngOnDestroy` and left focus to the browser. Escape worked —
+there the browser closes a dialog that is still in the document — but every other way out (Cancel,
+Save, a confirmed Archive or Delete) left `document.activeElement` on `<body>`, so the next Tab
+started from the skip link. Angular detaches an embedded view's DOM *before* it runs the destroy
+hooks, so by the time `close()` is called the element has no document to return focus within.
+
+The directive now remembers `activeElement` before `showModal()` and focuses it back on destroy,
+guarded by `isConnected` for the case where the action removed the opener as well. A spec that
+only presses Escape will not catch this; assert the Cancel path too.
+
+*Added 2026-11-16 — UI validation of the accounts screen.*
+
+---
+
+### Flyway substitutes `${...}` in migration SQL — comments included
+
+`V10`'s header comment explained that the runtime used to connect as `${DB_USER}`. Flyway's
+placeholder replacement does not care that it is inside a `--` comment: the migration failed at
+startup with `Unable to parse statement in db/migration/V10__application_role_grants.sql at line 1
+col 1 ... No value provided for placeholder: ${DB_USER}`, which reads like a SQL syntax error and
+points at a line that is a comment.
+
+Write an environment variable in a migration as `DB_USER`, with no braces. If a migration ever
+genuinely needs a literal `${`, the escape is `spring.flyway.placeholder-prefix` or
+`placeholder-replacement: false`, not creative quoting.
+
+*Added 2026-11-16 — ADR-0030.*
+
+---
+
+### A Compose `${VAR:-}` default makes a variable *set* to an empty string
+
+`DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}` looks like "pass it through if it is set". It is not: the
+variable arrives in the container as an empty string, and an empty value is **set** as far as a
+Spring placeholder default is concerned — `${DB_APP_USER:${DB_USER:budgetowl}}` resolves to `""`
+rather than falling back, and the app tries to log in as nobody with a blank password.
+
+To pass a variable through only when it exists, give the key no value at all:
+
+```yaml
+environment:
+  DB_APP_USER:
+  DB_APP_PASSWORD:
+```
+
+Compose reads those from the shell **or `.env`**, and leaves them genuinely absent from the
+container when they are unset (confirmed with `docker compose run --rm x env`). `docker compose
+config` renders them as `null`, which is the tell.
+
+*Added 2026-11-16 — ADR-0030.*

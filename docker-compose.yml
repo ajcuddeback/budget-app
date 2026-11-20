@@ -19,8 +19,22 @@ services:
       POSTGRES_DB: ${DB_NAME:-budgetowl}
       POSTGRES_USER: ${DB_USER:-budgetowl}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set — see .env.example}
+      # Read by the init script below to create the role the application connects as (ADR-0030).
+      # Unset DB_APP_PASSWORD is tolerated: no role is created, the api falls back to the owner's
+      # credentials, and the init script says so in this container's log.
+      DB_APP_USER: ${DB_APP_USER:-budgetowl_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}
     volumes:
       - db-data:/var/lib/postgresql/data
+      # The api must NOT connect as the role that owns the tables: an owner can TRUNCATE past
+      # triggers and drop the CHECK constraints the schema relies on, which makes every one of
+      # them advisory against the application itself (ADR-0030). This creates the non-owning role;
+      # V10__application_role_grants.sql grants it DML and nothing more.
+      #
+      # The Postgres entrypoint runs this ONLY WHEN THE VOLUME IS EMPTY. An instance that is
+      # already running Budget Owl needs the role created by hand — the script is idempotent and
+      # the command is in its header and in docs/features/authentication-and-households.md.
+      - ./deploy/db-init:/docker-entrypoint-initdb.d:ro
     # NOT published to the host. The API reaches it on the internal network; nothing else should.
     expose:
       - "5432"
@@ -43,8 +57,22 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME:-budgetowl}
+      # The owner's credentials, used by Flyway only (ADR-0030).
       DB_USER: ${DB_USER:-budgetowl}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set — see .env.example}
+      # The connection pool that serves requests: the role that CANNOT change the schema.
+      #
+      # Deliberately passed through with no default rather than interpolated. A `${VAR:-}` here
+      # would put an EMPTY string in the container, and an empty value is "set" as far as
+      # application.yml's `${DB_APP_USER:${DB_USER}}` fallback is concerned — the app would try to
+      # log in as a role that does not exist with a blank password. Written this way, an unset
+      # variable is genuinely absent in the container and the fallback to the owner's credentials
+      # works, which is what keeps an upgraded-but-not-yet-reconfigured instance running.
+      #
+      # Set BOTH in .env to get the restriction; they are a pair. Setting one alone fails at
+      # startup with an authentication error rather than quietly connecting as something else.
+      DB_APP_USER:
+      DB_APP_PASSWORD:
     expose:
       - "8080"
     healthcheck:

@@ -76,6 +76,12 @@ Consequences that shape the code, not just the ops story:
   telemetry (ADR-0016).
 - **Migrations run unattended** on a machine nobody is watching (ADR-0007). A migration that
   needs a human is a migration that eats someone's data at 3am.
+- **Two database roles** (ADR-0030): Flyway migrates as the owner, and the connection pool that
+  serves requests connects as a role with DML and no DDL, so the schema's constraints are
+  enforced against the application and not merely by it. The role is created by
+  `deploy/db-init/10-create-app-role.sh`, which the `db` service mounts into
+  `/docker-entrypoint-initdb.d/` — the only thing in `deploy/` today, and where anything else
+  the deployable unit needs at container start belongs.
 - **First run must work** with nothing configured beyond a database password.
 - **We cannot see failing instances.** Diagnostics are things the user can run and choose to
   share, which makes clear error messages a product feature rather than a nicety.

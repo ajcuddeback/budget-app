@@ -44,6 +44,23 @@ public record ApiResponse(int status, String body, Map<String, List<String>> hea
     }
 
     /**
+     * Pulls one JSON <em>number</em> out of the body, for the handful of fields that are genuinely
+     * numbers rather than strings — a row's {@code version} and a page's counts.
+     *
+     * <p>Returns {@code long}, and there is no {@code double} counterpart on purpose: an amount is
+     * never a JSON number in this API (ADR-0006), so a helper that read one would only ever be used
+     * to assert a bug.
+     */
+    public long numberField(String name) {
+        Matcher matcher =
+                Pattern.compile("\"" + Pattern.quote(name) + "\"\\s*:\\s*(-?[0-9]+)").matcher(body);
+        if (!matcher.find()) {
+            throw new AssertionError("no number field '" + name + "' in: " + body);
+        }
+        return Long.parseLong(matcher.group(1));
+    }
+
+    /**
      * The body with its correlation id blanked.
      *
      * <p>Every problem response carries a fresh correlation id, so two failures are never

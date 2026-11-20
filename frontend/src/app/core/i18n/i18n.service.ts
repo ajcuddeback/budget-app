@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { isAmount } from '../money';
 import { ENGLISH, MessageKey, MessageParams } from './messages';
 
 const RIGHT_TO_LEFT = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ckb']);
@@ -87,9 +88,10 @@ export class I18nService {
     if (Number.isNaN(date.getTime())) {
       return '';
     }
-    return new Intl.DateTimeFormat(this.locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(
-      date,
-    );
+    return new Intl.DateTimeFormat(this.locale(), {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
   }
 
   formatDate(iso: string | null | undefined): string {
@@ -101,6 +103,30 @@ export class I18nService {
       return '';
     }
     return new Intl.DateTimeFormat(this.locale(), { dateStyle: 'medium' }).format(date);
+  }
+
+  /**
+   * An amount in its own currency, for the active locale.
+   *
+   * **The string the API sent is handed straight to `Intl`** (ADR-0006). `Intl.NumberFormat`
+   * accepts a decimal string and formats its digits exactly; parsing it to a `number` first would
+   * round every amount a double cannot hold, and the one that gets rounded will be somebody's
+   * money. Nothing in this app calls `parseFloat` on an amount.
+   *
+   * An empty string for anything that is not an amount: a figure we cannot trust is better absent
+   * than approximated.
+   */
+  formatMoney(amount: string | null | undefined, currency: string): string {
+    const value = (amount ?? '').trim();
+    if (!isAmount(value)) {
+      return '';
+    }
+    try {
+      return new Intl.NumberFormat(this.locale(), { style: 'currency', currency }).format(value);
+    } catch {
+      // A code `Intl` does not know. The figure and the code are still true and still readable.
+      return `${value} ${currency}`;
+    }
   }
 
   /** "US Dollar", "Dollar américain" — the currency's name in the active locale. */
@@ -129,7 +155,9 @@ export class I18nService {
     }
     const minutes = Math.ceil(seconds / 60);
     if (minutes < 60) {
-      return minutes === 1 ? this.t('duration.minute') : this.t('duration.minutes', { count: minutes });
+      return minutes === 1
+        ? this.t('duration.minute')
+        : this.t('duration.minutes', { count: minutes });
     }
     const hours = Math.ceil(minutes / 60);
     return hours === 1 ? this.t('duration.hour') : this.t('duration.hours', { count: hours });

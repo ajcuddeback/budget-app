@@ -5,8 +5,16 @@ spring:
     name: budget-owl
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:budgetowl}
-    username: ${DB_USER:budgetowl}
-    password: ${DB_PASSWORD}
+    # The RUNTIME connection, and it is deliberately not the role that owns the tables (ADR-0030).
+    # An owner can TRUNCATE past triggers and DROP a CONSTRAINT, which would make every CHECK in
+    # the schema advisory against this very process. Flyway keeps the owner's credentials below.
+    #
+    # Both fall back to the owner's values, in that order, so an instance that has not been
+    # reconfigured — and local development, which has one role — keeps working exactly as before
+    # rather than failing to start. On such an instance the restriction is simply not in effect;
+    # V10's grant block is conditional for the same reason.
+    username: ${DB_APP_USER:${DB_USER:budgetowl}}
+    password: ${DB_APP_PASSWORD:${DB_PASSWORD}}
   jpa:
     open-in-view: false
     hibernate:
@@ -21,6 +29,14 @@ spring:
     # Migrations run unattended on a machine nobody is watching.
     locations: classpath:db/migration
     validate-on-migrate: true
+    # Flyway — and only Flyway — connects as the role that owns the schema (ADR-0030). With a
+    # username set and no `spring.flyway.url`, Spring Boot derives a separate DataSource from the
+    # one above and overrides just the credentials; the pool that serves requests is untouched.
+    # Verified against Boot 4.1.1's FlywayAutoConfiguration#getMigrationDataSource, and proved by
+    # ApplicationRoleRestrictionsIT: that test's own DataSource cannot create a table, so the
+    # context only starts if these credentials are honoured.
+    user: ${DB_USER:budgetowl}
+    password: ${DB_PASSWORD}
   threads:
     virtual:
       enabled: true
@@ -95,3 +111,49 @@ logging:
   level:
     root: INFO
     com.budgetowl: INFO
+    # Two framework loggers are pinned above DEBUG because they echo user data by design, and an
+    # operator turning DEBUG on when something is wrong is the worst possible moment for a log to
+    # start collecting it (ADR-0028, docs/architecture/security-model.md). Both were found by
+    # AccountDisclosureIT, which asserts they stay quiet with the root logger at DEBUG.
+    #
+    #   org.hibernate.orm.core prints every column of every flushed entity through Hibernate's
+    #   own EntityPrinter — every mapped column of every entity in the persistence context at
+    #   flush: an account's name, last_four and opening_balance, a user's email and display name,
+    #   and anything else still managed at that point. It once printed the replaced bcrypt hash
+    #   twice on POST /api/auth/password; PasswordService now detaches the credential as soon as
+    #   verification is done, so that one is structural and no longer depends on this pin. The
+    #   rest still do depend on it. It does
+    #   not use the entity's toString, so redacting that (as Account does) does nothing here.
+    #
+    #   ExceptionHandlerExceptionResolver logs the resolved exception, and a Bean Validation
+    #   failure carries the value it rejected: "rejected value [98765]" for a mistyped
+    #   last_four. Our own problem responses never echo a rejected value; this line is not ours.
+    #
+    # Raising org.hibernate.orm.core alone does NOT restore its output: the flush listener gates
+    # on a different logger, so an operator who tries it gets silence and reaches for root=TRACE,
+    # which is the worst available option. Nothing below TRACE is pinned,
+    # so a root logger set to TRACE still binds JDBC parameters into the log — that is a
+    # deliberate act rather than a default, and it is recorded in docs/memory/gotchas.md.
+    org.hibernate.orm.core: INFO
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO
+    # The same logger prints the same MethodArgumentNotValidException, rejected value and all, so
+    # pinning only the resolver above was half a control.
+    org.springframework.web.method.HandlerMethod: INFO
+    #
+    # Tomcat's request plumbing writes CREDENTIALS, not merely user data, which security-model.md
+    # says must never reach a log — a stronger rule than "DEBUG is safe", so TRACE is not an
+    # acceptable escape hatch for these three. Measured, with root at TRACE:
+    #
+    #   Http11InputBuffer        the entire raw request — request line, every header, and the body.
+    #                            A login body is a plaintext password.
+    #   Rfc6265CookieProcessor   BUDGETOWL_SESSION and XSRF-TOKEN, parsed and echoed.
+    #   CoyoteAdapter            the requested session id.
+    #
+    # Tomcat gates these on its own FINER level, which jul-to-slf4j maps to slf4j DEBUG — so the
+    # line is produced only at root=TRACE but is STAMPED DEBUG on the way out. An operator who
+    # filters an appender to "DEBUG and above" cannot separate it from ordinary debug output, and
+    # a log shipper keying on level will not drop it. That mismatch is the reason these are pinned
+    # rather than left to the operator's judgement.
+    org.apache.coyote.http11.Http11InputBuffer: INFO
+    org.apache.tomcat.util.http.Rfc6265CookieProcessor: INFO
+    org.apache.catalina.connector.CoyoteAdapter: INFO

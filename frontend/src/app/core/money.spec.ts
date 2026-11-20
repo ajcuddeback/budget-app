@@ -1,0 +1,60 @@
+import { addAmounts, isAmount, sameAmount } from './money';
+
+/**
+ * The point of every test in here is the same: **no amount is ever a `number`**.
+ *
+ * Each case below is one a double gets wrong. If somebody "simplifies" money.ts with `parseFloat`
+ * and a `+`, these are what fail — which is the only reason they exist as separate tests rather
+ * than one happy-path sum.
+ */
+describe('money', () => {
+  it('adds the sum a double cannot', () => {
+    // Number('0.1') + Number('0.2') === 0.30000000000000004.
+    expect(addAmounts(['0.1', '0.2'])).toBe('0.3000');
+    // Beyond 2^53: every digit survives, where a double would round the last four.
+    expect(addAmounts(['99999999999999.9999', '0.0001'])).toBe('100000000000000.0000');
+    expect(addAmounts(['12345678901234.5678', '0'])).toBe('12345678901234.5678');
+  });
+
+  it('keeps the sign, and treats zero as a figure rather than nothing', () => {
+    expect(addAmounts(['-400.00', '-25.50'])).toBe('-425.5000');
+    expect(addAmounts(['-400.00', '400'])).toBe('0.0000');
+    expect(addAmounts(['0.00'])).toBe('0.0000');
+    // An empty currency group sums to zero. "No accounts" is not "unknown".
+    expect(addAmounts([])).toBe('0.0000');
+  });
+
+  it('refuses to guess at anything that is not an amount', () => {
+    for (const nonsense of [
+      '',
+      ' 1.00',
+      '1,00',
+      '1.00 USD',
+      '١٢٣٤',
+      'NaN',
+      'Infinity',
+      '1e3',
+      '+1',
+      '1.23456',
+    ]) {
+      expect(isAmount(nonsense)).toBe(false);
+      expect(addAmounts(['1.00', nonsense])).toBeNull();
+    }
+    expect(isAmount(null)).toBe(false);
+    expect(isAmount(undefined)).toBe(false);
+  });
+
+  it('accepts the shapes the API and the form actually produce', () => {
+    for (const amount of ['0', '-0', '0.0000', '-400', '-400.0000', '123456789012345.1234']) {
+      expect(isAmount(amount)).toBe(true);
+    }
+  });
+
+  it('compares amounts as money, not as text', () => {
+    expect(sameAmount('-400', '-400.0000')).toBe(true);
+    expect(sameAmount('1.5', '1.50')).toBe(true);
+    expect(sameAmount('1.5', '1.51')).toBe(false);
+    // Unreadable input is never "the same as" anything; the caller must notice.
+    expect(sameAmount('1.5', 'nope')).toBe(false);
+  });
+});

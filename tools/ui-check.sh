@@ -80,8 +80,11 @@ echo " up."
 rm -rf "$UI_OUT_DIR"; mkdir -p "$UI_OUT_DIR"
 
 # ---------------------------------------------------------------------- run
-GREP_ARG=""; [ -n "$GREP" ] && GREP_ARG="--grep $GREP"
-(cd "$UI" && npx playwright test --grep-invert "@doc|harness (captures|detects)" $GREP_ARG $HEADED)
+# An array, not a string: unquoted word-splitting turned `--grep "an expired session"` into
+# `--grep an` plus two stray arguments, which Playwright ignored — so a scoped run silently ran
+# the whole suite and looked like it had simply passed a lot of tests.
+GREP_ARG=(); [ -n "$GREP" ] && GREP_ARG=(--grep "$GREP")
+(cd "$UI" && npx playwright test --grep-invert "@doc|harness (captures|detects)" "${GREP_ARG[@]}" $HEADED)
 status=$?
 
 (cd "$UI" && npx tsx helpers/summarize.ts) || true

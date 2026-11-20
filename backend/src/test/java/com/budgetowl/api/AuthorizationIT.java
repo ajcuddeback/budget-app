@@ -52,7 +52,19 @@ class AuthorizationIT extends ApiTestBase {
                         "POST",
                         "/api/households/current/invitations",
                         "{\"email\":\"x@example.com\",\"role\":\"MEMBER\"}"),
-                new Endpoint("DELETE", "/api/households/current/invitations/" + any, null));
+                new Endpoint("DELETE", "/api/households/current/invitations/" + any, null),
+                new Endpoint("GET", "/api/accounts", null),
+                new Endpoint(
+                        "POST",
+                        "/api/accounts",
+                        "{\"name\":\"Current\",\"type\":\"CHECKING\",\"currency\":\"GBP\","
+                                + "\"openingBalance\":\"0\"}"),
+                new Endpoint("GET", "/api/accounts/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/accounts/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/accounts/" + any + "/archive", null),
+                new Endpoint("POST", "/api/accounts/" + any + "/unarchive", null),
+                new Endpoint("DELETE", "/api/accounts/" + any, null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */
@@ -101,7 +113,14 @@ class AuthorizationIT extends ApiTestBase {
 
     // ------------------------------------------------------------------------------- roles
 
-    /** Every endpoint that changes household state. A VIEWER may read and never write. */
+    /**
+     * Every endpoint that changes household state and is an <b>owner's alone</b>.
+     *
+     * <p>Account writes are deliberately not here: a {@code MEMBER} may create, edit, archive and
+     * delete an account (docs/features/accounts.md), so they would fail the member test below. The
+     * {@code VIEWER} half of the matrix for accounts, and the {@code MEMBER}-is-allowed half, are
+     * in {@code AccountIT}, parameterized over the same list of routes.
+     */
     static List<Endpoint> householdWrites() {
         UUID any = UUID.fromString("00000000-0000-4000-8000-00000000f00d");
         return List.of(

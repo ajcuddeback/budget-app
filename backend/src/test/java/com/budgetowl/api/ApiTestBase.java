@@ -59,8 +59,8 @@ public abstract class ApiTestBase extends PostgresTestBase {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute(
                 """
-                TRUNCATE household_invitations, auth_tokens, household_members, households, users,
-                         spring_session_attributes, spring_session
+                TRUNCATE accounts, household_invitations, auth_tokens, household_members,
+                         households, users, spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE
                 """);
         jdbc.update(
@@ -180,6 +180,27 @@ public abstract class ApiTestBase extends PostgresTestBase {
                         {"displayName":"%s","password":"%s"}
                         """
                                 .formatted(displayName, secret));
+    }
+
+    /**
+     * An account, created the way a real one is — through the API, as a caller who may write.
+     *
+     * @return its id, which is the only thing a test needs from it
+     */
+    protected UUID createAccount(ApiClient client, String name, String lastFour) {
+        ApiResponse response =
+                client.post(
+                        "/api/accounts",
+                        """
+                        {"name":"%s","lastFour":%s,"type":"CHECKING","currency":"GBP",
+                         "openingBalance":"100.0000"}
+                        """
+                                .formatted(
+                                        name, lastFour == null ? "null" : "\"" + lastFour + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create an account: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
     }
 
     protected UUID membershipIdOf(String email) {

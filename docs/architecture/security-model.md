@@ -177,6 +177,33 @@ largest privacy surface in the product. It is constrained structurally rather th
 - Anything it **proposes** — a changed goal contribution, a moved envelope amount — is a proposal
   until a human confirms it. The model never writes to financial data directly.
 
+## Database privileges (ADR-0030)
+
+**The application does not connect as the role that owns the schema.** Two roles: the owner runs
+Flyway, and the connection pool serving requests holds `SELECT, INSERT, UPDATE, DELETE` and
+nothing else.
+
+This is what makes the rest of the database's guarantees real rather than advisory. An owner can
+`TRUNCATE` past row triggers, `ALTER TABLE ... DROP CONSTRAINT` and `ALTER TABLE ... DISABLE
+TRIGGER`, so while the runtime was the owner, every `CHECK` and every constraint trigger could be
+removed by the process they were meant to constrain. It is also the containment for threat #4:
+injection that reaches a statement can no longer drop a constraint, create a table or empty one —
+the blast radius is reading and writing rows, which is what the application does anyway.
+
+- Flyway's credentials are `spring.flyway.user` / `password` (the owner); `spring.datasource.*`
+  is the application role. Never the other way round, and never one pair for both.
+- Privileges are granted by migration (`V10`), conditionally on the role existing, so a developer
+  machine and the test suite — which have one role — still migrate cleanly. **Neither exercises
+  the restricted path**, which is why `ApplicationRoleRestrictionsIT` creates a genuinely
+  restricted role and asserts PostgreSQL's refusals. Any change to the privilege model belongs in
+  that test, with the statement executed and the error asserted; a grant table says what was
+  said, not what the database means.
+- A new grant is a deliberate decision. If a feature needs one, it needs a reason in the
+  migration next to it.
+- The owner's credentials are still present in the running container, because Flyway runs at
+  application start-up. Moving migrations out of start-up is the stronger version of this and is
+  recorded as a follow-up in ADR-0030, not done.
+
 ## Input validation and output encoding
 
 - Bean Validation (`@Valid`) on every request DTO. Validate types, ranges, lengths, and formats
@@ -214,6 +241,16 @@ that combination is rejected by browsers anyway and signals a misunderstanding.
 
 - Never log: passwords, session ids, CSRF tokens, full account numbers, or auth headers.
 - Amounts and balances are sensitive. Log identifiers, not values, unless you have a reason.
+- **A redacted `toString` is not a logging control, and two framework loggers are pinned because
+  of it.** Hibernate's `EntityPrinter` prints every column of every flushed entity at `DEBUG`
+  reading values off the persister, so it ignores the entity's own `toString`; Spring's
+  `ExceptionHandlerExceptionResolver` logs a Bean Validation failure's `rejected value [...]`.
+  Both would put a partial account number, an account name, an amount, an email, a display name
+  or a stored password hash in a log
+  the moment an operator turned `DEBUG` on — which is exactly when they would. `application.yml`
+  pins `org.hibernate.orm.core` and that resolver to `INFO`, with the reasoning beside them. If a
+  field must not reach a log, the only thing that proves it is a test that captures the log at the
+  level an operator will actually use: `CredentialDisclosureIT` and `AccountDisclosureIT` do.
 - Error responses are RFC 7807 `application/problem+json` with a generic message. Stack traces,
   SQL, and framework internals never reach the client. The correlation id does — so support can
   find the real error in the logs.

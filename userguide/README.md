@@ -22,7 +22,8 @@ account to seeing your first month's budget.
 | [Your signed-in devices](features/your-devices.md) | See where you are signed in, and sign a device out |
 | [Your display currency and language](features/your-display-settings.md) | Choose the currency and language you see |
 | _Using the mobile app_ | Not written yet |
-| _Accounts_ | Not written yet |
+| [Add an account](features/add-an-account.md) | Tell Budget Owl where your money sits, and what an opening balance is |
+| [Archive or delete an account](features/archive-or-delete-an-account.md) | Put away an account you have closed, bring it back, or remove one for good |
 | _Transactions_ | Not written yet |
 | _Categories_ | Not written yet |
 | _Budgets_ | Not written yet |

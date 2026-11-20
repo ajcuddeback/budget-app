@@ -160,3 +160,38 @@ computed over covered mutations only, so excluding more code does not improve it
 
 Score after the change: **76% mutation, 81% test strength**, over 207 mutations whose classes are
 92% line-covered (was 43%).
+
+## Amendment — 2026-11-16: Stryker does not fit this frontend, and that is a finding
+
+This ADR promised Stryker alongside PIT, and three slices later it is still unwired. That was
+recorded as an unfinished follow-up. It is not: it is blocked on something structural, and leaving
+it as "to do" invites the next person to spend a day rediscovering why.
+
+**Angular 22 runs unit tests through its own builder, not through a vitest config file.**
+`@angular/build`'s unit-test builder calls `startVitest` programmatically, assembling the config in
+memory from Angular's plugins (`createVitestPlugins`, `createVitestConfigPlugin`) plus the
+project's setup files. `npm test` is `ng test`. There is no `vitest.config.ts` anywhere in
+`frontend/`, and running `npx vitest` directly fails with `describe is not defined`, because the
+globals and the Angular transform come from that in-memory config.
+
+Stryker's vitest runner needs a vitest it can configure and drive. The only way to give it one here
+is to hand-write a second vitest config that replicates what the Angular builder does — the
+TestBed setup, the compiler plugins, the setup files, the zoneless configuration.
+
+**That second config is the problem, not the work of writing it.** It would be a parallel
+definition of how this project's tests run, and the two would drift: a change to Angular's builder,
+a new setup file, or an Angular upgrade moves one and not the other. Mutation testing exists to
+tell us whether the real tests would catch a real defect. A mutation score produced by running the
+tests a *different* way answers a question nobody asked, and does it with enough authority to be
+believed.
+
+**Decision: no Stryker until Angular's builder can be driven by it, or Stryker supports the
+builder.** The frontend keeps its coverage threshold and its behavioural specs, and
+`tools/verify.sh mutation` skips the frontend with this reason rather than a bare "not wired yet".
+
+The backend keeps PIT, which has no equivalent problem — Maven runs the real tests and PIT mutates
+the real classes.
+
+**What to watch for:** either `@angular/build` gaining a way to emit or export its vitest config,
+or `@stryker-mutator/vitest-runner` gaining an Angular-builder mode. Either one makes this a small
+piece of work; neither exists today. Revisit then, not before.

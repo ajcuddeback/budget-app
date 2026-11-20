@@ -31,6 +31,16 @@ export class ConfirmDialogComponent {
   readonly confirmLabel = input.required<string>();
   readonly busy = input(false);
 
+  /**
+   * Whether confirming does something that cannot be undone.
+   *
+   * Archiving is reversible — the dialog itself says so — and it used to wear the same
+   * rust-outlined danger treatment as a permanent delete. Spending the warning colour on a
+   * reversible action is how a person learns to click through it, and then it is not there when
+   * it matters. Defaults to the safe reading: ask for `destructive` explicitly.
+   */
+  readonly tone = input<'destructive' | 'ordinary'>('ordinary');
+
   readonly confirmed = output<void>();
   readonly cancelled = output<void>();
 }

@@ -15,6 +15,29 @@ Read ADR-0007 (Flyway) and ADR-0008 (user-scoped access) first.
 Hibernate runs `ddl-auto: validate` everywhere. If startup fails on a schema mismatch, the fix
 is a migration — never a change to `ddl-auto`.
 
+## Two roles: who runs the migration, and who runs the app
+
+Flyway connects as the role that **owns** the schema. The application connects as a role that can
+only `SELECT, INSERT, UPDATE, DELETE` (ADR-0030). An owner could `TRUNCATE` past triggers and drop
+the constraints below, which would make everything in this guide advisory against the one process
+most likely to have a bug in it.
+
+What that means when you write a migration:
+
+- **A new table needs no grant.** `V10` set `ALTER DEFAULT PRIVILEGES` for the owner, so anything
+  the owner creates afterwards is already readable and writable by the application role.
+- **A new privilege does need one** — a sequence used in an unusual way, a function the
+  application must `EXECUTE` that is not `PUBLIC`, a new schema. Grant it explicitly, in the
+  migration, with the reason beside it. If you forget, it fails at runtime rather than at review,
+  and the error names what is missing.
+- **Do not grant `TRUNCATE`**, and do not reach for `session_replication_role`. A test that needs
+  to empty a table connects as the owner (every integration test does); production never does.
+- `ApplicationRoleRestrictionsIT` is the only test that connects as the restricted role. Changes
+  to the privilege model go there, asserted by running the statement and catching PostgreSQL's
+  refusal (`42501`).
+- Nothing with a `${...}` in it, even in a comment: Flyway substitutes placeholders in migration
+  text and fails when it cannot resolve one. See `../memory/gotchas.md`.
+
 ## Naming
 
 | Thing | Convention | Example |

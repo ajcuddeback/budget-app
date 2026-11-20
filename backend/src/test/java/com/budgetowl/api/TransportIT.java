@@ -198,6 +198,31 @@ class TransportIT extends ApiTestBase {
     }
 
     @Test
+    void servesABearerClientThatKeepsTheCookiesItIsSent() {
+        seedHousehold();
+        // Signs in first, so this client holds a real cookie jar, then adds a bearer token
+        // without clearing it — a WebView, or anything on an HTTP stack with a CookieHandler.
+        ApiClient hybrid =
+                signIn(OWNER_EMAIL, OWNER_SECRET)
+                        .withBearerTokenKeepingCookies(
+                                issueToken(OWNER_EMAIL, OWNER_SECRET, "Ada's phone"));
+
+        ApiResponse read = hybrid.get("/api/households/current");
+        ApiResponse write =
+                hybrid.post(
+                        "/api/households/current/invitations",
+                        "{\"email\":\"chris@example.com\",\"role\":\"MEMBER\"}");
+
+        // The failure this guards: a bearer request used to be issued a session cookie it never
+        // asked for, and the CSRF exemption then refused the next write of any client that kept
+        // it. No test could express that, because withBearerToken empties the jar.
+        assertThat(read.status()).as("a bearer client with cookies can still read").isEqualTo(200);
+        assertThat(write.status())
+                .as("and can still write — it carries a CSRF token like any cookie client")
+                .isEqualTo(201);
+    }
+
+    @Test
     void asksNoCsrfTokenOfTheBearerTransport() {
         seedHousehold();
 

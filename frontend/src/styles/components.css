@@ -363,6 +363,16 @@ select.input {
 dialog.dialog {
   inline-size: min(34rem, calc(100vw - var(--space-6)));
   max-block-size: calc(100dvh - var(--space-6));
+  /*
+   * The dialog is its own scroll container, said explicitly rather than left to the UA default.
+   * scroll-padding keeps the sticky actions bar from being counted as empty space: without it,
+   * scrolling a field into view (or focusing it with a keyboard) parks it UNDER the bar, where it
+   * is invisible but still "in view" as far as the browser and Playwright's fill() are concerned.
+   * The guide found this the hard way — the Opening balance field, the one people most often get
+   * wrong, could not be photographed without scrolling the dialog by hand.
+   */
+  overflow-y: auto;
+  scroll-padding-block-end: calc(var(--space-8) * 2);
   padding: var(--space-6);
   border: 0;
   border-radius: var(--radius-lg);
@@ -380,12 +390,30 @@ dialog.dialog::backdrop {
   margin-block-end: var(--space-3);
 }
 
+/*
+ * Sticky, because a dialog taller than the viewport scrolls its own content and the actions were
+ * scrolling away with it. "Add an account" on a phone showed five fields and no way to save; the
+ * stale-version conflict did it on a 1440x900 desktop too, and in the worst case put a DISABLED
+ * Save on screen with the explanation for why it was disabled scrolled off above it.
+ *
+ * The negative inline margins and matching padding let the bar span the dialog's full width so
+ * content scrolling underneath is covered rather than appearing in the padding gutters.
+ */
 .dialog-actions {
+  position: sticky;
+  inset-block-end: calc(var(--space-6) * -1);
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2) var(--space-3);
   margin-block-start: var(--space-4);
+  margin-inline: calc(var(--space-6) * -1);
+  padding: var(--space-3) var(--space-6);
+  /* Full-bleed to the dialog's bottom edge, so nothing shows beneath the bar. */
+  margin-block-end: calc(var(--space-6) * -1);
+  background: var(--color-surface);
+  border-block-start: 1px solid var(--color-divider);
 }
 
 @media (max-width: 30rem) {
