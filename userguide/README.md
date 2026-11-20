@@ -24,8 +24,9 @@ account to seeing your first month's budget.
 | _Using the mobile app_ | Not written yet |
 | [Add an account](features/add-an-account.md) | Tell Budget Owl where your money sits, and what an opening balance is |
 | [Archive or delete an account](features/archive-or-delete-an-account.md) | Put away an account you have closed, bring it back, or remove one for good |
-| _Transactions_ | Not written yet |
-| _Categories_ | Not written yet |
+| [Record a transaction](features/record-a-transaction.md) | Write down what you spent or received, and fix it if you get it wrong |
+| [Give a transaction a category](features/give-a-transaction-a-category.md) | Work through everything you left unfiled |
+| [Organise your categories](features/organise-your-categories.md) | Rename, group and retire the categories you file things under |
 | _Budgets_ | Not written yet |
 | _Transfers_ | Not written yet |
 | _Recurring transactions_ | Not written yet |

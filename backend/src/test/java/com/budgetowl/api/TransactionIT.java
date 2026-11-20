@@ -2,10 +2,13 @@ package com.budgetowl.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Transactions over real HTTP against real PostgreSQL — the slice that makes the app usable.
@@ -160,6 +163,54 @@ class TransactionIT extends ApiTestBase {
                         household
                                 .owner()
                                 .get("/api/transactions?uncategorised=true")
+                                .numberField("totalElements"))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void a_caller_cannot_declare_a_transaction_reconciled() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/transactions",
+                                """
+                                {"accountId":"%s","date":"2026-11-20","amount":"-5.0000",
+                                 "status":"RECONCILED"}
+                                """
+                                        .formatted(account));
+
+        // RECONCILED asserts that a statement period was closed against this row. That is
+        // reconciliation's to say (slice 13), not a user's, so the contract cannot express it.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.body()).contains("status");
+    }
+
+    @Test
+    void the_work_queue_narrows_with_the_other_filters_rather_than_replacing_them() {
+        Household household = seedHousehold();
+        UUID current = createAccount(household.owner(), "Current", null);
+        UUID savings = createAccount(household.owner(), "Savings", null);
+        createTransaction(household.owner(), current, "2026-05-01", "-5.0000", null);
+        createTransaction(household.owner(), savings, "2026-05-02", "-6.0000", null);
+        createTransaction(
+                household.owner(), current, "2026-05-03", "-7.0000", seededCategoryId("Groceries"));
+
+        // Both filters at once is one question — "what still needs a category on this account" —
+        // and must not quietly answer a different one.
+        assertThat(
+                        household
+                                .owner()
+                                .get("/api/transactions?uncategorised=true&accountId=" + current)
+                                .numberField("totalElements"))
+                .isEqualTo(1);
+        assertThat(
+                        household
+                                .owner()
+                                .get("/api/transactions?uncategorised=true&from=2026-05-02")
                                 .numberField("totalElements"))
                 .isEqualTo(1);
     }
@@ -523,29 +574,75 @@ class TransactionIT extends ApiTestBase {
         assertThat(refused.status()).isEqualTo(404);
     }
 
-    @Test
-    void a_viewer_may_read_the_ledger_and_never_write_to_it() {
+    /** Method, path and body for each of the five routes, with {@code {id}} to be substituted. */
+    static List<Endpoint> everyRoute() {
+        return List.of(
+                new Endpoint("GET", "/api/transactions", null),
+                new Endpoint(
+                        "POST",
+                        "/api/transactions",
+                        "{\"accountId\":\"{id}\",\"date\":\"2026-11-20\",\"amount\":\"-1.00\"}"),
+                new Endpoint("GET", "/api/transactions/{id}", null),
+                new Endpoint(
+                        "PATCH", "/api/transactions/{id}", "{\"version\":0,\"amount\":\"-2.00\"}"),
+                new Endpoint("DELETE", "/api/transactions/{id}", null));
+    }
+
+    /** The three that change something. A {@code VIEWER} gets {@code 403} from every one. */
+    static List<Endpoint> everyWrite() {
+        return everyRoute().stream().filter(endpoint -> !"GET".equals(endpoint.method())).toList();
+    }
+
+    /**
+     * The highest-value authorization test in this slice, and the one that matters most in the
+     * whole codebase: this is the table the money is in.
+     *
+     * <p>Parameterized over every write rather than written once, because the role check is one
+     * line per method and the one that gets forgotten is the one nobody listed.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyWrite")
+    void answers403ToAViewerOnEveryWrite(Endpoint endpoint) {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
         UUID transaction =
                 createTransaction(household.owner(), account, "2026-11-20", "-3.0000", null);
 
+        // The POST substitutes an account id and the rest a transaction id, so each route is
+        // refused for the role rather than for a 404 it would have got anyway.
+        ApiResponse response =
+                endpoint.callWith(
+                        household.viewer(),
+                        "POST".equals(endpoint.method()) ? account : transaction);
+
+        assertThat(response.status()).isEqualTo(403);
+        assertThat(response.stringField("code")).isEqualTo("read-only-role");
+    }
+
+    @Test
+    void a_viewer_may_read_the_ledger() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+        createTransaction(household.owner(), account, "2026-11-20", "-3.0000", null);
+
         assertThat(household.viewer().get("/api/transactions").status()).isEqualTo(200);
+        assertThat(household.viewer().get("/api/transactions").body()).contains("Current");
+    }
 
-        ApiResponse created =
-                household
-                        .viewer()
-                        .post(
-                                "/api/transactions",
-                                """
-                                {"accountId":"%s","date":"2026-11-20","amount":"-4.0000"}
-                                """
-                                        .formatted(account));
-        assertThat(created.status()).isEqualTo(403);
-        assertThat(created.body()).contains("read-only-role");
+    /** Method, path and body for one route, with {@code {id}} to be substituted. */
+    record Endpoint(String method, String path, String body) {
 
-        assertThat(household.viewer().delete("/api/transactions/" + transaction).status())
-                .isEqualTo(403);
+        ApiResponse callWith(ApiClient client, UUID id) {
+            return client.send(
+                    method,
+                    path.replace("{id}", id.toString()),
+                    body == null ? null : body.replace("{id}", id.toString()));
+        }
+
+        @Override
+        public String toString() {
+            return method + " " + path;
+        }
     }
 
     @Test

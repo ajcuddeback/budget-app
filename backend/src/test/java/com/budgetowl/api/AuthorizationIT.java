@@ -64,7 +64,31 @@ class AuthorizationIT extends ApiTestBase {
                         "PATCH", "/api/accounts/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
                 new Endpoint("POST", "/api/accounts/" + any + "/archive", null),
                 new Endpoint("POST", "/api/accounts/" + any + "/unarchive", null),
-                new Endpoint("DELETE", "/api/accounts/" + any, null));
+                new Endpoint("DELETE", "/api/accounts/" + any, null),
+                new Endpoint("GET", "/api/categories", null),
+                new Endpoint(
+                        "POST", "/api/categories", "{\"name\":\"Bills\",\"kind\":\"EXPENSE\"}"),
+                new Endpoint("GET", "/api/categories/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/categories/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/categories/" + any + "/archive", null),
+                new Endpoint("POST", "/api/categories/" + any + "/unarchive", null),
+                new Endpoint("DELETE", "/api/categories/" + any, null),
+                new Endpoint("GET", "/api/transactions", null),
+                new Endpoint(
+                        "POST",
+                        "/api/transactions",
+                        "{\"accountId\":\""
+                                + any
+                                + "\",\"date\":\"2026-11-20\","
+                                + "\"amount\":\"-1.00\"}"),
+                new Endpoint("GET", "/api/transactions/" + any, null),
+                new Endpoint(
+                        "PATCH",
+                        "/api/transactions/" + any,
+                        "{\"version\":0,\"amount\":\"-2.00\"}"),
+                new Endpoint("DELETE", "/api/transactions/" + any, null),
+                new Endpoint("GET", "/api/transactions/payee-suggestions?typed=te", null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */

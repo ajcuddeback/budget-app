@@ -11,6 +11,16 @@ export const TRANSACTION_STATUSES = ['PENDING', 'CLEARED', 'RECONCILED'] as cons
 
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 
+/**
+ * The statuses a person may choose.
+ *
+ * **`RECONCILED` is deliberately absent.** It means a statement period was closed against the
+ * transaction, which is reconciliation's to say and not a user's — the server refuses it with
+ * `400`. It stays in {@link TRANSACTION_STATUSES} because a transaction the server has marked
+ * reconciled still has to be *displayed*; the two lists answer different questions.
+ */
+export const SETTABLE_TRANSACTION_STATUSES = ['PENDING', 'CLEARED'] as const;
+
 const STATUS_KEY: Readonly<Record<TransactionStatus, MessageKey>> = {
   PENDING: 'transactions.status.PENDING',
   CLEARED: 'transactions.status.CLEARED',

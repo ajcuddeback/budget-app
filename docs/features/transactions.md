@@ -52,7 +52,11 @@ derived from it, envelopes draw down against it, bills match to it, and reportin
    gone, and every later sum would otherwise have to remember to exclude it. "Append-mostly" in
    `docs/domain/model.md` is about corrections keeping a trail, which `updated_at` and `version`
    provide.
-9. **Everything a person types starts `CLEARED`.** They watched it happen and are the authority on
+9. **`RECONCILED` is not a status a caller may set.** It asserts that a statement period was
+   closed against the row, which is reconciliation's to say (slice 13). The request contract
+   refuses it, the same way it refuses an account change — rather than accepting it and
+   apologising later.
+10. **Everything a person types starts `CLEARED`.** They watched it happen and are the authority on
    whether it did. `PENDING` is for something expected to settle; `RECONCILED` is set by
    reconciliation (slice 13), never by a user toggling it.
 
@@ -144,6 +148,20 @@ regardless of how many buttons a row carries.
   the browser check, which renders a transfer from the fixtures.
 - **A page mixing currencies** carries no total, and the screen says so.
 - **Two members editing one transaction**: `409 stale-version`.
+
+## Known gaps
+
+These came out of the security review of this slice and are not done:
+
+- **`ApplicationRoleRestrictionsIT` does not exercise the three new tables.** The grants are
+  inherited correctly (`V10` sets `ALTER DEFAULT PRIVILEGES`), but the only test that connects as
+  the genuinely restricted role still inserts into the slice-1 and slice-3 tables only. A grant
+  table says what was said, not what the database means.
+- **No disclosure test for amounts, payees and notes.** `AccountDisclosureIT` proves an account's
+  name, digits and balance stay out of the log at `DEBUG`; its journey records no transaction, so
+  nothing holds the "nothing is logged but ids" claim above. The control is level-based and
+  therefore entity-agnostic, which is why this is a gap in the proof rather than a known leak — but
+  that is exactly the argument slice 2 made before the credential-disclosure test found a real one.
 
 ## Out of scope
 

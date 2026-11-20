@@ -75,5 +75,25 @@ public final class TransactionResponses {
             int page,
             int size,
             long totalElements,
-            int totalPages) {}
+            int totalPages) {
+
+        /**
+         * Redacted, like every other DTO in this slice. A generated {@code toString} would print
+         * the page's transactions and its total, and Spring logs the response body's own {@code
+         * toString} when the converter runs — truncated at {@code DEBUG}, in full at {@code TRACE}.
+         * Relying on the truncation to hide the total is luck, not a control.
+         */
+        @Override
+        public String toString() {
+            return "LedgerResponse[page="
+                    + page
+                    + ", size="
+                    + size
+                    + ", totalElements="
+                    + totalElements
+                    + ", totalPages="
+                    + totalPages
+                    + "]";
+        }
+    }
 }

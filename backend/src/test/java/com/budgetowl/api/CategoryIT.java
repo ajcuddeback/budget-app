@@ -2,10 +2,13 @@ package com.budgetowl.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Categories over real HTTP against real PostgreSQL.
@@ -289,23 +292,76 @@ class CategoryIT extends ApiTestBase {
         assertThat(survivor.body()).contains("\"categoryId\":null");
     }
 
+    /** Method, path and body for each of the seven routes, with {@code {id}} to be substituted. */
+    static List<Endpoint> everyRoute() {
+        return List.of(
+                new Endpoint("GET", "/api/categories", null),
+                new Endpoint("POST", "/api/categories", "{\"name\":\"New\",\"kind\":\"EXPENSE\"}"),
+                new Endpoint("GET", "/api/categories/{id}", null),
+                new Endpoint(
+                        "PATCH", "/api/categories/{id}", "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/categories/{id}/archive", null),
+                new Endpoint("POST", "/api/categories/{id}/unarchive", null),
+                new Endpoint("DELETE", "/api/categories/{id}", null));
+    }
+
+    /** The six that change something. A {@code VIEWER} gets {@code 403} from every one. */
+    static List<Endpoint> everyWrite() {
+        return everyRoute().stream().filter(endpoint -> !"GET".equals(endpoint.method())).toList();
+    }
+
+    /**
+     * The highest-value authorization test in this slice.
+     *
+     * <p>Parameterized over every write rather than written once against {@code POST}: the role
+     * check is one line per method, and the one that gets forgotten is the one nobody listed. Since
+     * ADR-0026 removed the second household, this is what replaces the cross-household test for
+     * role enforcement (docs/architecture/security-model.md).
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyWrite")
+    void answers403ToAViewerOnEveryWrite(Endpoint endpoint) {
+        Household household = seedHousehold();
+
+        ApiResponse response = endpoint.callWith(household.viewer(), seededCategoryId("Groceries"));
+
+        assertThat(response.status()).isEqualTo(403);
+        assertThat(response.stringField("code")).isEqualTo("read-only-role");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyRoute")
+    void answers404ForAnIdThatBelongsToNothing(Endpoint endpoint) {
+        Household household = seedHousehold();
+
+        ApiResponse response = endpoint.callWith(household.owner(), UUID.randomUUID());
+
+        if (endpoint.path().contains("{id}")) {
+            assertThat(response.status()).isEqualTo(404);
+            assertThat(response.stringField("code")).isEqualTo("not-found");
+        } else {
+            assertThat(response.status()).isIn(200, 201);
+        }
+    }
+
     @Test
-    void a_viewer_may_read_categories_and_never_write_one() {
+    void a_viewer_may_read_categories() {
         Household household = seedHousehold();
 
         assertThat(household.viewer().get("/api/categories").status()).isEqualTo(200);
+    }
 
-        ApiResponse refused =
-                household
-                        .viewer()
-                        .post(
-                                "/api/categories",
-                                """
-                                {"name":"Viewer's own","kind":"EXPENSE"}
-                                """);
+    /** Method, path and body for one route, with {@code {id}} to be substituted. */
+    record Endpoint(String method, String path, String body) {
 
-        assertThat(refused.status()).isEqualTo(403);
-        assertThat(refused.body()).contains("read-only-role");
+        ApiResponse callWith(ApiClient client, UUID categoryId) {
+            return client.send(method, path.replace("{id}", categoryId.toString()), body);
+        }
+
+        @Override
+        public String toString() {
+            return method + " " + path;
+        }
     }
 
     @Test

@@ -87,6 +87,11 @@ CREATE INDEX ix_categories_parent_id
 -- about a single row's relationship to its parent, so it can be judged as each row lands, but
 -- making it deferrable leaves the option of a transaction that reparents a subtree in several
 -- statements without tripping over itself mid-way.
+--
+-- Both reads below take FOR NO KEY UPDATE. A security review found that without it the rule is
+-- bypassable by two concurrent writes that cannot see each other's work, which would leave a
+-- three-level tree the application cannot render. Row locks are what make this a guarantee rather
+-- than a very likely outcome.
 CREATE FUNCTION categories_enforce_two_levels() RETURNS trigger
     LANGUAGE plpgsql AS $$
 DECLARE
@@ -95,10 +100,16 @@ DECLARE
     parent_household uuid;
 BEGIN
     IF NEW.parent_id IS NOT NULL THEN
+        -- FOR NO KEY UPDATE, not a plain SELECT. Without a lock this check reads MVCC state and
+        -- two concurrent transactions can each pass it: T1 makes X a child of P while T2 makes P
+        -- a child of Q, neither sees the other, both commit, and the result is three levels —
+        -- exactly what this trigger exists to make impossible. The lock serialises the pair.
+        -- NO KEY, so it does not conflict with the FOR KEY SHARE the foreign keys take.
         SELECT parent_id, kind, household_id
           INTO parent_parent_id, parent_kind, parent_household
           FROM categories
-         WHERE id = NEW.parent_id;
+         WHERE id = NEW.parent_id
+           FOR NO KEY UPDATE;
 
         -- The FK guarantees the parent exists by the end of the transaction, not necessarily now.
         IF NOT FOUND THEN
@@ -129,9 +140,11 @@ BEGIN
     END IF;
 
     -- The other direction: a category that already has children may not acquire a parent, because
-    -- that would push its children to depth three.
+    -- that would push its children to depth three. Locked for the same reason as above — this is
+    -- the half of the race that sees stale children.
     IF NEW.parent_id IS NOT NULL
-       AND EXISTS (SELECT 1 FROM categories WHERE parent_id = NEW.id) THEN
+       AND EXISTS (
+           SELECT 1 FROM categories WHERE parent_id = NEW.id FOR NO KEY UPDATE) THEN
         RAISE EXCEPTION
             'category % has children, so it cannot itself become a child', NEW.id
             USING ERRCODE = 'check_violation';

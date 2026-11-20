@@ -101,17 +101,19 @@ public class TransactionService {
         UUID householdId = membership.household().id();
 
         Pageable pageable = pageable(page, size);
+        // One query with every filter bound, including the work queue. An earlier version routed
+        // "uncategorised" to a method of its own, which silently discarded the account, date and
+        // search the caller had also set — a data bug on a financial screen, found in review.
         Page<Transaction> found =
-                filter.uncategorisedOnly()
-                        ? transactions.findUncategorised(householdId, pageable)
-                        : transactions.findLedger(
-                                householdId,
-                                filter.accountId(),
-                                filter.categoryId(),
-                                filter.fromOrEarliest(),
-                                filter.toOrLatest(),
-                                likePattern(filter.search()),
-                                pageable);
+                transactions.findLedger(
+                        householdId,
+                        filter.accountId(),
+                        filter.categoryId(),
+                        filter.uncategorisedOnly(),
+                        filter.fromOrEarliest(),
+                        filter.toOrLatest(),
+                        likePattern(filter.search()),
+                        pageable);
 
         List<TransactionView> views = views(householdId, found.getContent());
         return new TransactionPage(
@@ -390,9 +392,12 @@ public class TransactionService {
             Map<UUID, String> payeeNames) {
 
         Account account = accountsById.get(transaction.accountId());
-        // Not reachable through the API — fk_transactions_account guarantees the row exists and
-        // belongs to this household — but a null here would be a confusing NPE three frames away,
-        // and an import path is the kind of thing that finds the unreachable case.
+        // Unreachable through the API — fk_transactions_account guarantees the row exists and
+        // belongs to this household — but this is load-bearing rather than defensive padding.
+        // Deliberately breaking findLedger's household predicate makes this throw instead of
+        // leaking: a transaction whose account this household cannot read is not rendered at all.
+        // MoneyCrossHouseholdIT demonstrates exactly that, so do not downgrade it to a null check
+        // that returns a blank row.
         if (account == null) {
             throw new IllegalStateException(
                     "transaction " + transaction.id() + " references an unreadable account");

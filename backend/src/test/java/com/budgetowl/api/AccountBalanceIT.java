@@ -42,9 +42,12 @@ import org.springframework.context.annotation.Primary;
  * arithmetic and the two {@code 409}s through cases a real table makes laborious to set up — a
  * zero-sum account that still has history, an account asked about but absent from the totals map,
  * the batching assertion that the list endpoint asks once rather than once per row. {@code
- * TransactionBalanceIT} covers the same rules end to end against real rows, which is what proves
- * {@code PostedTransactions} agrees with what is pretended here; without that companion test this
- * file would be asserting a contract nothing implements.
+ * TransactionIT} covers the same rules end to end against real rows — {@code
+ * recording_a_transaction_changes_the_accounts_balance}, {@code
+ * an_account_with_transactions_can_no_longer_be_deleted_or_re_denominated} and {@code
+ * an_account_whose_transactions_net_to_zero_still_has_history} — which is what proves {@code
+ * PostedTransactions} agrees with what is pretended here. Without those, this file would be
+ * asserting a contract nothing implements.
  */
 class AccountBalanceIT extends ApiTestBase {
 

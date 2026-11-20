@@ -31,7 +31,10 @@ release where categorising is impossible, or a migration that back-fills categor
 1. **Two levels, no deeper.** A category is top-level or a child of a top-level one. A child's
    parent must itself be top-level, and a category that already has children may not become a
    child. Both directions are enforced by `trg_categories_two_levels` in `V11`, not only by the
-   service — the rule is about another row, which a `CHECK` cannot see.
+   service — the rule is about another row, which a `CHECK` cannot see. The trigger takes
+   `FOR NO KEY UPDATE` on the rows it reads: without the lock, two concurrent writes that cannot
+   see each other's work can each pass and leave a three-level tree behind. A security review
+   found that; it is why the claim above is a guarantee rather than a very likely outcome.
 2. **A child takes its parent's kind.** `INCOME` or `EXPENSE`. A create that states a kind
    contradicting the parent's is `400`, never a silent preference for one of them.
 3. **A kind is fixed at creation.** Re-kinding a category in use would reinterpret every

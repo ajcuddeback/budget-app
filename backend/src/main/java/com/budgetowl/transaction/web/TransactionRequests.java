@@ -24,6 +24,11 @@ import java.util.UUID;
  * <p><b>No currency field.</b> The amount is in the account's currency, read from the account. A
  * field here would be a second source for a fact the account owns, and the two would disagree.
  *
+ * <p><b>{@code RECONCILED} is not accepted from a caller.</b> It means a statement period was
+ * closed against this row, which is reconciliation's to say (slice 13) and not a user's. The
+ * contract cannot express it, the same way {@code kind} and {@code accountId} cannot express their
+ * forbidden changes — rather than accepting it and apologising.
+ *
  * <p>Every {@code toString} is redacted: Spring MVC logs the deserialized body at {@code DEBUG},
  * and these records hold an amount, a payee and whatever the user wrote in the note.
  */
@@ -56,7 +61,7 @@ public final class TransactionRequests {
             @Size(max = Payee.NAME_MAX_LENGTH) String payeeName,
             UUID categoryId,
             @Size(max = Transaction.NOTE_MAX_LENGTH) String note,
-            @Pattern(regexp = "PENDING|CLEARED|RECONCILED") String status) {
+            @Pattern(regexp = "PENDING|CLEARED") String status) {
 
         /** Redacted — see the class Javadoc. */
         @Override
@@ -98,7 +103,7 @@ public final class TransactionRequests {
 
         private boolean noteMentioned;
 
-        @Pattern(regexp = "PENDING|CLEARED|RECONCILED")
+        @Pattern(regexp = "PENDING|CLEARED")
         private String status;
 
         /** Required: optimistic locking only works if the caller says which version it read. */

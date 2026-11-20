@@ -10,7 +10,12 @@ import {
   patchIsEmpty,
   signedAmount,
 } from './transaction-patch';
-import { Transaction, transactionStatusKey } from './transaction.models';
+import {
+  SETTABLE_TRANSACTION_STATUSES,
+  TRANSACTION_STATUSES,
+  Transaction,
+  transactionStatusKey,
+} from './transaction.models';
 import { TransactionsService } from './transactions.service';
 
 const SHOP: Transaction = {
@@ -170,6 +175,15 @@ describe('buildTransactionPatch', () => {
 
   it('always carries the version, which is what makes a concurrent edit a 409', () => {
     expect(buildTransactionPatch(SHOP, form()).version).toBe(2);
+  });
+});
+
+describe('SETTABLE_TRANSACTION_STATUSES', () => {
+  it('does not offer RECONCILED, which the server refuses from a caller', () => {
+    // A transaction the server has marked reconciled must still be displayable, so the full list
+    // keeps it — these two answer different questions and must not be collapsed into one.
+    expect(SETTABLE_TRANSACTION_STATUSES).toEqual(['PENDING', 'CLEARED']);
+    expect(TRANSACTION_STATUSES).toContain('RECONCILED');
   });
 });
 

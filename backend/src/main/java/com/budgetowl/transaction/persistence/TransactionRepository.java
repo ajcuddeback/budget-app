@@ -73,9 +73,11 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
      * caller supplied.
      *
      * @param accountId null for every account
-     * @param categoryId null for every category — note that this cannot express "uncategorised
-     *     only", which {@link #findUncategorised} does, because a null here already means "do not
-     *     filter"
+     * @param categoryId null for every category. A null cannot express "uncategorised only",
+     *     because it already means "do not filter" — hence the separate flag below
+     * @param uncategorisedOnly true for the work queue: transactions with no category, excluding
+     *     transfers. It composes with every other filter here, so "what still needs a category on
+     *     the current account" is one query and one answer
      * @param from the inclusive lower bound, and <b>never null</b> — "no lower bound" is {@code
      *     LedgerFilter.EARLIEST}. See the class note on why.
      * @param to the inclusive upper bound, never null — "no upper bound" is {@code
@@ -94,6 +96,8 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
                     where t.householdId = :householdId
                       and (:accountId is null or t.accountId = :accountId)
                       and (:categoryId is null or t.categoryId = :categoryId)
+                      and (:uncategorisedOnly = false
+                           or (t.categoryId is null and t.transferGroupId is null))
                       and t.date >= :from
                       and t.date <= :to
                       and (lower(coalesce(t.note, '')) like :search escape '\\'
@@ -109,6 +113,8 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
                     where t.householdId = :householdId
                       and (:accountId is null or t.accountId = :accountId)
                       and (:categoryId is null or t.categoryId = :categoryId)
+                      and (:uncategorisedOnly = false
+                           or (t.categoryId is null and t.transferGroupId is null))
                       and t.date >= :from
                       and t.date <= :to
                       and (lower(coalesce(t.note, '')) like :search escape '\\'
@@ -121,43 +127,11 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
             @Param("householdId") UUID householdId,
             @Param("accountId") UUID accountId,
             @Param("categoryId") UUID categoryId,
+            @Param("uncategorisedOnly") boolean uncategorisedOnly,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("search") String search,
             Pageable pageable);
-
-    /**
-     * The "Needs a category" list — transactions with no category at all.
-     *
-     * <p>A separate method rather than a flag on {@link #findLedger}, because a null {@code
-     * categoryId} there already means "every category". Conflating the two would make
-     * "uncategorised only" unexpressible, and it is the one filter a person actually acts on: it is
-     * the work queue that makes a budget usable.
-     *
-     * <p><b>Transfers are excluded, even though they have no category.</b> Moving money between
-     * your own accounts is not income and not spending (docs/domain/model.md), so there is no
-     * category that could be right for it and nothing for a person to do about it. Leaving them in
-     * would put two permanently unanswerable rows into the work queue for every transfer ever made
-     * — which is how a queue stops being something anybody tries to empty. Found by the browser
-     * check on the fixtures, which include a transfer.
-     */
-    @Query(
-            value =
-                    """
-                    select t from Transaction t
-                    where t.householdId = :householdId
-                      and t.categoryId is null
-                      and t.transferGroupId is null
-                    order by t.date desc, t.id desc
-                    """,
-            countQuery =
-                    """
-                    select count(t) from Transaction t
-                    where t.householdId = :householdId
-                      and t.categoryId is null
-                      and t.transferGroupId is null
-                    """)
-    Page<Transaction> findUncategorised(@Param("householdId") UUID householdId, Pageable pageable);
 
     /**
      * The posted total per account, with each account's currency alongside it.

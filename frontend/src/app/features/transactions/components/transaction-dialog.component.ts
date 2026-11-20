@@ -25,7 +25,7 @@ import { Category } from '../../categories/data/category.models';
 import { pickableCategories } from '../../categories/data/category-tree';
 import { TransactionFormValue, directionOf, magnitudeOf } from '../data/transaction-patch';
 import {
-  TRANSACTION_STATUSES,
+  SETTABLE_TRANSACTION_STATUSES,
   Transaction,
   TransactionStatus,
   transactionStatusKey,
@@ -86,7 +86,8 @@ export class TransactionDialogComponent {
   readonly payeeTyped = output<string>();
   readonly closed = output<void>();
 
-  protected readonly statuses = TRANSACTION_STATUSES;
+  /** Not every status: see {@link SETTABLE_TRANSACTION_STATUSES}. */
+  protected readonly statuses = SETTABLE_TRANSACTION_STATUSES;
   protected readonly statusKey = transactionStatusKey;
   protected readonly editing = computed(() => this.transaction() !== null);
   protected readonly titleKey = computed<MessageKey>(() =>

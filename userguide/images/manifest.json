@@ -4,8 +4,8 @@
     "file": "userguide/images/add-an-account--accounts.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen: accounts grouped by currency, each group with its own subtotal.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -13,8 +13,8 @@
     "file": "userguide/images/add-an-account--add-filled.png",
     "guide": "add-an-account",
     "caption": "The Add an account window filled in for a credit card, with Save account at the bottom.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -22,8 +22,8 @@
     "file": "userguide/images/add-an-account--add-form.png",
     "guide": "add-an-account",
     "caption": "The Add an account window, before anything is filled in.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -31,8 +31,8 @@
     "file": "userguide/images/add-an-account--added.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen after adding the card: \"Account added.\" and the new row in the US Dollar group.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -40,8 +40,8 @@
     "file": "userguide/images/add-an-account--currency-locked.png",
     "guide": "add-an-account",
     "caption": "The Edit account window with Currency greyed out and the reason printed under it.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -49,8 +49,8 @@
     "file": "userguide/images/add-an-account--edit-form.png",
     "guide": "add-an-account",
     "caption": "The Edit account window, filled in with what the account says now.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -58,8 +58,8 @@
     "file": "userguide/images/add-an-account--empty.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen with no accounts yet, offering Add your first account.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -67,8 +67,8 @@
     "file": "userguide/images/add-an-account--one-currency.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen for a household with one currency: a plain list, no currency headings and no subtotal.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -76,8 +76,8 @@
     "file": "userguide/images/add-an-account--opening-balance.png",
     "guide": "add-an-account",
     "caption": "The Opening balance field, reached by scrolling down inside the window, with a negative amount in it.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -85,8 +85,8 @@
     "file": "userguide/images/add-an-account--saved.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen after saving: \"Account saved.\" and the new name in the list.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -94,8 +94,8 @@
     "file": "userguide/images/add-an-account--viewer.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen for someone whose role is Viewer: the balances, and nothing to click.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -103,8 +103,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archive-button.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Travel Card row, with its Archive button.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -112,8 +112,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archive-confirm.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to archive Travel Card.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -121,8 +121,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archived.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after archiving: the card has left the list and the Archived section now says Show 2 archived.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -130,8 +130,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archived-shown.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Archived section opened, listing the archived accounts with a Bring back button each.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -139,17 +139,17 @@
     "file": "userguide/images/archive-or-delete-an-account--brought-back.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after bringing the card back: \"That account is back in your lists.\"",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
     "name": "archive-or-delete-an-account--delete-confirm",
     "file": "userguide/images/archive-or-delete-an-account--delete-confirm.png",
     "guide": "archive-or-delete-an-account",
-    "caption": "The window asking whether to delete Travel Card, saying it cannot be undone.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "caption": "The window asking whether to delete Berlin Savings, saying it cannot be undone.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -157,8 +157,8 @@
     "file": "userguide/images/archive-or-delete-an-account--delete-not-offered.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Everyday Checking row, which has transactions: Edit and Archive, and no Delete.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -166,8 +166,8 @@
     "file": "userguide/images/archive-or-delete-an-account--delete-refused.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The message shown when an account has transactions: it cannot be deleted, and archiving is offered instead.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -175,17 +175,17 @@
     "file": "userguide/images/archive-or-delete-an-account--deleted.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after deleting: \"That account has been deleted.\" and the row gone.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
     "name": "create-your-account--setup-done",
     "file": "userguide/images/create-your-account--setup-done.png",
     "guide": "create-your-account",
-    "caption": "The Household screen you land on after creating your account.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "caption": "The Transactions screen you land on after creating your account, with nothing recorded yet.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -193,8 +193,8 @@
     "file": "userguide/images/create-your-account--setup-filled.png",
     "guide": "create-your-account",
     "caption": "The setup form filled in.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -202,8 +202,8 @@
     "file": "userguide/images/create-your-account--setup-form.png",
     "guide": "create-your-account",
     "caption": "The Set up Budget Owl screen with an empty form.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -211,8 +211,35 @@
     "file": "userguide/images/create-your-account--setup-password-short.png",
     "guide": "create-your-account",
     "caption": "The password field asking for at least 12 characters.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "give-a-transaction-a-category--choose",
+    "file": "userguide/images/give-a-transaction-a-category--choose.png",
+    "guide": "give-a-transaction-a-category",
+    "caption": "The Edit transaction window with the Category list open.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "give-a-transaction-a-category--filtered",
+    "file": "userguide/images/give-a-transaction-a-category--filtered.png",
+    "guide": "give-a-transaction-a-category",
+    "caption": "The list narrowed to just the transactions that still need a category.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "give-a-transaction-a-category--needs-a-category",
+    "file": "userguide/images/give-a-transaction-a-category--needs-a-category.png",
+    "guide": "give-a-transaction-a-category",
+    "caption": "A transaction in the list marked \"Needs a category\", with the Needs a category filter button circled.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -220,8 +247,8 @@
     "file": "userguide/images/invite-someone--household.png",
     "guide": "invite-someone",
     "caption": "The Household screen as an owner, with the Invite someone button.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -229,8 +256,8 @@
     "file": "userguide/images/invite-someone--invite-copied.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window just after selecting Copy link, with \"Link copied.\" beside the button.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -238,8 +265,8 @@
     "file": "userguide/images/invite-someone--invite-filled.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window with an email address and the Viewer role chosen.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -247,8 +274,8 @@
     "file": "userguide/images/invite-someone--invite-form.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window, before anything is filled in.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -256,8 +283,8 @@
     "file": "userguide/images/invite-someone--invite-link.png",
     "guide": "invite-someone",
     "caption": "The invitation link, with the warning to treat it like a password.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -265,8 +292,8 @@
     "file": "userguide/images/invite-someone--invite-revoked.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window after the link has been revoked.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -274,8 +301,8 @@
     "file": "userguide/images/join-a-household--join-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen after joining.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -283,8 +310,8 @@
     "file": "userguide/images/join-a-household--join-existing.png",
     "guide": "join-a-household",
     "caption": "The invitation screen as someone who already has an account on this instance.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -292,8 +319,8 @@
     "file": "userguide/images/join-a-household--join-existing-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen for someone who already had an account.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -301,8 +328,8 @@
     "file": "userguide/images/join-a-household--join-form.png",
     "guide": "join-a-household",
     "caption": "The invitation screen, with the notice about who can see what you record.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -310,8 +337,8 @@
     "file": "userguide/images/join-a-household--join-needs-details.png",
     "guide": "join-a-household",
     "caption": "The invitation screen asking for a name and password.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -319,8 +346,8 @@
     "file": "userguide/images/join-a-household--join-sign-in.png",
     "guide": "join-a-household",
     "caption": "The Sign in screen after joining, with a message that you have joined the household.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -328,8 +355,8 @@
     "file": "userguide/images/join-a-household--join-signed-in.png",
     "guide": "join-a-household",
     "caption": "The screen asking you to sign out before you accept an invitation.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -337,8 +364,8 @@
     "file": "userguide/images/join-a-household--join-unusable.png",
     "guide": "join-a-household",
     "caption": "The message shown when an invitation link has expired, been used, or been cancelled.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -346,8 +373,8 @@
     "file": "userguide/images/manage-members--members-leave-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm leaving the household.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -355,8 +382,8 @@
     "file": "userguide/images/manage-members--members-member-view.png",
     "guide": "manage-members",
     "caption": "The Household screen as a member: settings are read-only and a Leave button is shown.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -364,8 +391,8 @@
     "file": "userguide/images/manage-members--members-no-household.png",
     "guide": "manage-members",
     "caption": "The screen shown to someone who is signed in but belongs to no household.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -373,8 +400,8 @@
     "file": "userguide/images/manage-members--members-only-owner.png",
     "guide": "manage-members",
     "caption": "The note shown to the only owner, explaining why there is no Leave button.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -382,8 +409,8 @@
     "file": "userguide/images/manage-members--members-owner.png",
     "guide": "manage-members",
     "caption": "The Household screen as an owner, listing three people and their roles.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -391,8 +418,8 @@
     "file": "userguide/images/manage-members--members-remove-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm removing Sam Rivera.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -400,8 +427,80 @@
     "file": "userguide/images/manage-members--members-role-changed.png",
     "guide": "manage-members",
     "caption": "Jordan Rivera now shown with the Member role.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "organise-your-categories--add",
+    "file": "userguide/images/organise-your-categories--add.png",
+    "guide": "organise-your-categories",
+    "caption": "The Add a category window with Childcare typed in the Name box.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "organise-your-categories--delete",
+    "file": "userguide/images/organise-your-categories--delete.png",
+    "guide": "organise-your-categories",
+    "caption": "The confirmation for deleting a category, saying your transactions are kept and will need a category again.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "organise-your-categories--sub-category",
+    "file": "userguide/images/organise-your-categories--sub-category.png",
+    "guide": "organise-your-categories",
+    "caption": "The Add a category window opened from Bills, with Sits under already set to Bills and Kind greyed out.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "organise-your-categories--tree",
+    "file": "userguide/images/organise-your-categories--tree.png",
+    "guide": "organise-your-categories",
+    "caption": "The Categories screen: Income and Spending groups, with sub-categories indented under their parent.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "record-a-transaction--filled",
+    "file": "userguide/images/record-a-transaction--filled.png",
+    "guide": "record-a-transaction",
+    "caption": "The filled-in window: 18.40 out of Everyday Checking, Greenfield Market, Groceries.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "record-a-transaction--form",
+    "file": "userguide/images/record-a-transaction--form.png",
+    "guide": "record-a-transaction",
+    "caption": "The Record a transaction window as it opens, with today's date already filled in and Money out chosen.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "record-a-transaction--ledger",
+    "file": "userguide/images/record-a-transaction--ledger.png",
+    "guide": "record-a-transaction",
+    "caption": "The Transactions screen: what has happened to your money, newest first, with the Record a transaction button circled.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "record-a-transaction--payee",
+    "file": "userguide/images/record-a-transaction--payee.png",
+    "guide": "record-a-transaction",
+    "caption": "The Who it was with box with \"Green\" typed, showing Greenfield Market suggested underneath.",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -409,8 +508,8 @@
     "file": "userguide/images/sign-in--login-expired.png",
     "guide": "sign-in",
     "caption": "The sign-in screen explaining that your session ended.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -418,8 +517,8 @@
     "file": "userguide/images/sign-in--login-form.png",
     "guide": "sign-in",
     "caption": "The sign-in screen.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -427,8 +526,8 @@
     "file": "userguide/images/sign-in--login-too-many.png",
     "guide": "sign-in",
     "caption": "The message asking you to wait before trying to sign in again.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -436,8 +535,8 @@
     "file": "userguide/images/sign-in--login-wrong-password.png",
     "guide": "sign-in",
     "caption": "The message shown when the email address or password is wrong.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -445,8 +544,8 @@
     "file": "userguide/images/your-devices--devices.png",
     "guide": "your-devices",
     "caption": "The Devices screen listing this browser, another browser, and a phone.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -454,8 +553,8 @@
     "file": "userguide/images/your-devices--devices-confirm-current.png",
     "guide": "your-devices",
     "caption": "The window warning that you are about to sign out of the browser you are using.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -463,8 +562,8 @@
     "file": "userguide/images/your-devices--devices-revoked.png",
     "guide": "your-devices",
     "caption": "The Devices screen after signing the other browser out.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -472,8 +571,8 @@
     "file": "userguide/images/your-display-settings--preferences.png",
     "guide": "your-display-settings",
     "caption": "The Your preferences screen.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -481,8 +580,8 @@
     "file": "userguide/images/your-display-settings--preferences-chosen.png",
     "guide": "your-display-settings",
     "caption": "Euro and German chosen, before saving.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   },
   {
@@ -490,8 +589,8 @@
     "file": "userguide/images/your-display-settings--preferences-saved.png",
     "guide": "your-display-settings",
     "caption": "The preferences screen confirming that they were saved.",
-    "capturedAt": "2026-11-16",
-    "commit": "91434ff",
+    "capturedAt": "2026-11-20",
+    "commit": "eba8f21",
     "viewport": "1280x720"
   }
 ]
