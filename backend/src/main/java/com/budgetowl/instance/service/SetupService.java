@@ -2,6 +2,7 @@ package com.budgetowl.instance.service;
 
 import com.budgetowl.auth.domain.UserAccount;
 import com.budgetowl.auth.service.UserRegistrationService;
+import com.budgetowl.category.service.CategoryService;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
 import com.budgetowl.common.InvalidRequestException;
@@ -48,6 +49,7 @@ public class SetupService {
     private final HouseholdRepository households;
     private final HouseholdMemberRepository members;
     private final UserRegistrationService registration;
+    private final CategoryService categories;
     private final Clock clock;
 
     public SetupService(
@@ -55,11 +57,13 @@ public class SetupService {
             HouseholdRepository households,
             HouseholdMemberRepository members,
             UserRegistrationService registration,
+            CategoryService categories,
             Clock clock) {
         this.settings = settings;
         this.households = households;
         this.members = members;
         this.registration = registration;
+        this.categories = categories;
         this.clock = clock;
     }
 
@@ -95,6 +99,12 @@ public class SetupService {
         UserAccount owner = registration.register(email, displayName, rawPassword, true);
         Household household = households.save(Household.named(householdName.strip(), currency));
         members.save(HouseholdMember.of(household, owner, HouseholdRole.OWNER));
+
+        // Inside this transaction on purpose: a household is never created with half a category
+        // list, and never with none. A first-run app whose category picker is empty looks broken,
+        // and "add your first category" is not the question somebody opening a budgeting app for
+        // the first time wants to be asked (docs/features/categories.md).
+        categories.seedDefaultsFor(household);
 
         log.info("instance setup completed userId={} householdId={}", owner.id(), household.id());
         return new FirstUserCreated(

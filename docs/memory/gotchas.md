@@ -815,3 +815,40 @@ container when they are unset (confirmed with `docker compose run --rm x env`). 
 config` renders them as `null`, which is the tell.
 
 *Added 2026-11-16 — ADR-0030.*
+
+## A nullable JPQL parameter inside `IS NULL` or `LIKE` can have no SQL type
+
+**Symptom.** `GET /api/transactions` returned `500` for any request with a date range, and before
+that for any request at all. Two different PostgreSQL errors, same root cause:
+
+- `could not determine data type of parameter $6`
+- `function lower(bytea) does not exist`
+
+**Cause.** Hibernate renders *every occurrence* of a named parameter as its own placeholder, so the
+idiomatic optional filter
+
+```sql
+(:from is null or t.date >= :from)
+```
+
+becomes `(? is null or date >= ?)` — **two binds**. The second takes its type from the column it is
+compared against; the first has no context at all. Whether that is fatal depends on the driver:
+pgjdbc sends a `UUID` with its type OID, so `? is null` resolves, but it sends a `LocalDate`
+*unspecified*, and the server gives up. A `like` pattern has the same problem, and `lower(:param)`
+fails even earlier because the untyped bind is guessed as `bytea`.
+
+**What does not work.** An HQL `cast(:from as LocalDate)` or `cast(:search as String)`. The Java
+type already matches the cast target, so Hibernate emits no SQL cast and nothing carries the type.
+
+**What works.** Do not bind null. Express "no filter" as a value that matches everything:
+
+- dates → `LedgerFilter.EARLIEST` / `LATEST` (`0001-01-01`, `9999-12-31`)
+- `like` patterns → `"%"`
+- lowercasing → do it in Java, on the pattern, and `lower()` only the column
+
+Keep `(:id is null or ...)` for UUIDs: those binds are typed, and there is no sentinel UUID that
+would read more clearly than the null.
+
+**How it was found.** The ledger integration tests exercise each filter *separately*. An unfiltered
+list passes while every filtered one fails, so a single "the ledger returns rows" test would have
+shipped this.

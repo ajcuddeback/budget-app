@@ -51,6 +51,40 @@ public enum ErrorCode {
     /** Deleting an account with transactions would destroy financial history. Archive instead. */
     ACCOUNT_NOT_EMPTY("account-not-empty", 409, "This account still has transactions"),
 
+    /**
+     * An account that has been retired takes no new transactions. Un-archive it to record against
+     * it again — which is a deliberate act, rather than an archived account quietly accepting money
+     * and disappearing from the list it would have appeared in.
+     */
+    ACCOUNT_ARCHIVED("account-archived", 409, "This account is archived"),
+
+    /**
+     * Two categories with the same name at the same level are a data-entry mistake, not a choice:
+     * nothing downstream could tell the user which "Groceries" a transaction is filed under.
+     * Enforced by {@code ux_categories_household_parent_name} as well as checked here.
+     */
+    CATEGORY_NAME_TAKEN("category-name-taken", 409, "A category with this name already exists"),
+
+    /**
+     * The category hierarchy is two levels (docs/domain/model.md). Reported for a parent that is
+     * itself a child, and for moving a category that has children of its own.
+     */
+    CATEGORY_DEPTH_EXCEEDED(
+            "category-depth-exceeded", 409, "Categories can only be nested two levels deep"),
+
+    /**
+     * A household is capped at {@code CategoryService.MAXIMUM_PER_HOUSEHOLD} categories, which is
+     * the API's maximum page size — so the whole tree always fits in one response and a picker
+     * never has to page. A household that wants more has a different problem.
+     */
+    CATEGORY_LIMIT_REACHED("category-limit-reached", 409, "This household has too many categories"),
+
+    /**
+     * A category's kind is fixed at creation. Re-kinding one in use would reinterpret every
+     * transaction already filed under it, turning a year of salary into a year of spending.
+     */
+    CATEGORY_KIND_IMMUTABLE("category-kind-immutable", 409, "A category's kind cannot be changed"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 

@@ -59,8 +59,9 @@ public abstract class ApiTestBase extends PostgresTestBase {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute(
                 """
-                TRUNCATE accounts, household_invitations, auth_tokens, household_members,
-                         households, users, spring_session_attributes, spring_session
+                TRUNCATE transactions, payees, categories, accounts, household_invitations,
+                         auth_tokens, household_members, households, users,
+                         spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE
                 """);
         jdbc.update(
@@ -199,6 +200,66 @@ public abstract class ApiTestBase extends PostgresTestBase {
                                         name, lastFour == null ? "null" : "\"" + lastFour + "\""));
         if (response.status() != 201) {
             throw new AssertionError("could not create an account: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * A category, created through the API.
+     *
+     * @param parentId null for a top-level category
+     * @return its id
+     */
+    protected UUID createCategory(ApiClient client, String name, String kind, UUID parentId) {
+        ApiResponse response =
+                client.post(
+                        "/api/categories",
+                        """
+                        {"name":"%s","kind":%s,"parentId":%s}
+                        """
+                                .formatted(
+                                        name,
+                                        kind == null ? "null" : "\"" + kind + "\"",
+                                        parentId == null ? "null" : "\"" + parentId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a category: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * One of the categories every household is seeded with at setup, by name.
+     *
+     * <p>Read straight from the database rather than through the list endpoint: a test that wants a
+     * category to file a transaction under should not also be exercising the listing, or it fails
+     * for two unrelated reasons at once.
+     */
+    protected UUID seededCategoryId(String name) {
+        return jdbc.queryForObject(
+                "SELECT id FROM categories WHERE lower(name) = lower(?)", UUID.class, name);
+    }
+
+    /**
+     * A transaction, created through the API as a caller who may write.
+     *
+     * @param amount a signed decimal string — negative is money leaving the account
+     * @return its id
+     */
+    protected UUID createTransaction(
+            ApiClient client, UUID accountId, String date, String amount, UUID categoryId) {
+        ApiResponse response =
+                client.post(
+                        "/api/transactions",
+                        """
+                        {"accountId":"%s","date":"%s","amount":"%s","categoryId":%s}
+                        """
+                                .formatted(
+                                        accountId,
+                                        date,
+                                        amount,
+                                        categoryId == null ? "null" : "\"" + categoryId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a transaction: " + response.body());
         }
         return UUID.fromString(response.stringField("id"));
     }
