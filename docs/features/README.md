@@ -32,9 +32,9 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Household management (invites, roles) | Planned | _not written_ |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
-| Accounts (money containers) | In progress — API and web UI done, user guide outstanding | [accounts.md](accounts.md) |
-| Transactions | Planned | _not written_ |
-| Categories | Planned | _not written_ |
+| Accounts (money containers) | Built — API, web UI and user guide | [accounts.md](accounts.md) |
+| Transactions | Built — API and web UI; user guide outstanding | [transactions.md](transactions.md) |
+| Categories | Built — API and web UI; user guide outstanding | [categories.md](categories.md) |
 | Bills & income (incl. charge mapping) | Planned | _not written_ |
 | Transfers | Planned | _not written_ |
 | Admin console (instance operation) | Planned | _not written_ |

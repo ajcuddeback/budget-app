@@ -82,7 +82,14 @@ describe('App', () => {
     const links = Array.from<HTMLAnchorElement>(
       fixture.nativeElement.querySelectorAll('nav a'),
     ).map((link) => link.textContent?.trim());
-    expect(links).toEqual(['Accounts', 'Household', 'Devices', 'Preferences']);
+    expect(links).toEqual([
+      'Transactions',
+      'Accounts',
+      'Categories',
+      'Household',
+      'Devices',
+      'Preferences',
+    ]);
 
     const signOut = Array.from<HTMLButtonElement>(
       fixture.nativeElement.querySelectorAll('button'),

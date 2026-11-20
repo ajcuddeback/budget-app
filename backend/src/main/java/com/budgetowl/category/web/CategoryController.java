@@ -55,8 +55,8 @@ public class CategoryController {
      *
      * <p>Paginated because every collection is (docs/guides/api-style.md), and in practice always
      * one page: a household is capped at {@link CategoryService#MAXIMUM_PER_HOUSEHOLD} categories,
-     * which equals the maximum page size. A client that wants the tree in one call asks for
-     * {@code size=200} and is guaranteed to get it.
+     * which equals the maximum page size. A client that wants the tree in one call asks for {@code
+     * size=200} and is guaranteed to get it.
      *
      * @param includeArchived default false: archived categories disappear from pickers, but a
      *     client that asks for them can show history correctly

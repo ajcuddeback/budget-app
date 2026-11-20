@@ -1,0 +1,230 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'categories.title' | t }}</h1>
+    <p class="page-lede">{{ 'categories.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <section class="card" aria-labelledby="categories-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="categories-heading">{{ 'categories.heading' | t }}</h2>
+        @if (canWrite() && active().length > 0) {
+          <button type="button" class="btn btn-primary" (click)="openAdd()">
+            {{ 'categories.add' | t }}
+          </button>
+        }
+      </div>
+
+      <div class="stack">
+        <app-error-alert [error]="actionError()" [subject]="actionErrorCategory()" />
+        @if (notice(); as said) {
+          <div class="alert alert-success" role="status">
+            <p>{{ said | t }}</p>
+          </div>
+        }
+
+        @if (active().length === 0) {
+          <p class="card-note">{{ 'categories.emptyBody' | t }}</p>
+          @if (canWrite()) {
+            <div>
+              <button type="button" class="btn btn-primary" (click)="openAdd()">
+                {{ 'categories.addFirst' | t }}
+              </button>
+            </div>
+          } @else {
+            <p class="field-hint">{{ 'categories.emptyReadOnly' | t }}</p>
+          }
+        } @else {
+          @for (group of groups(); track group.kind) {
+            <section class="kind-group" [attr.aria-label]="kindKey(group.kind) | t">
+              <h3 class="kind-heading">{{ kindKey(group.kind) | t }}</h3>
+              <ul class="category-tree">
+                @for (branch of group.branches; track branch.parent.id) {
+                  <li class="branch">
+                    <div class="cluster row">
+                      <span class="row-name">{{ branch.parent.name }}</span>
+                      @if (canWrite()) {
+                        <span class="cluster row-actions">
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [disabled]="busyId() === branch.parent.id"
+                            (click)="openAddChild(branch.parent)"
+                          >
+                            {{ 'categories.addChild' | t }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [disabled]="busyId() === branch.parent.id"
+                            (click)="openEdit(branch.parent)"
+                          >
+                            {{ 'common.edit' | t }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [disabled]="busyId() === branch.parent.id"
+                            (click)="askToArchive(branch.parent)"
+                          >
+                            {{ 'categories.archive' | t }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-danger btn-small"
+                            [disabled]="busyId() === branch.parent.id"
+                            (click)="askToDelete(branch.parent)"
+                          >
+                            {{ 'categories.delete' | t }}
+                          </button>
+                        </span>
+                      }
+                    </div>
+
+                    @if (branch.children.length > 0) {
+                      <ul class="children">
+                        @for (child of branch.children; track child.id) {
+                          <li class="cluster row">
+                            <span class="row-name child-name">{{ child.name }}</span>
+                            @if (canWrite()) {
+                              <span class="cluster row-actions">
+                                <button
+                                  type="button"
+                                  class="btn btn-secondary btn-small"
+                                  [disabled]="busyId() === child.id"
+                                  (click)="openEdit(child)"
+                                >
+                                  {{ 'common.edit' | t }}
+                                </button>
+                                <button
+                                  type="button"
+                                  class="btn btn-secondary btn-small"
+                                  [disabled]="busyId() === child.id"
+                                  (click)="askToArchive(child)"
+                                >
+                                  {{ 'categories.archive' | t }}
+                                </button>
+                                <button
+                                  type="button"
+                                  class="btn btn-danger btn-small"
+                                  [disabled]="busyId() === child.id"
+                                  (click)="askToDelete(child)"
+                                >
+                                  {{ 'categories.delete' | t }}
+                                </button>
+                              </span>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        }
+      </div>
+    </section>
+
+    @if (archived().length > 0) {
+      <section class="card" aria-labelledby="archived-categories-heading">
+        <div class="cluster section-head">
+          <h2 class="card-title" id="archived-categories-heading">
+            {{ 'categories.archivedHeading' | t }}
+          </h2>
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            aria-controls="archived-categories"
+            [attr.aria-expanded]="showArchived()"
+            (click)="toggleArchived()"
+          >
+            {{
+              (showArchived() ? 'categories.hideArchived' : 'categories.showArchived')
+                | t: { count: archived().length }
+            }}
+          </button>
+        </div>
+
+        <div id="archived-categories">
+          @if (showArchived()) {
+            <p class="card-note">{{ 'categories.archivedNote' | t }}</p>
+            <ul class="category-tree">
+              @for (category of archived(); track category.id) {
+                <li class="cluster row archived-row">
+                  <span class="row-name">
+                    @if (category.parentName) {
+                      {{
+                        'categories.childLabel'
+                          | t: { parent: category.parentName, name: category.name }
+                      }}
+                    } @else {
+                      {{ category.name }}
+                    }
+                  </span>
+                  @if (canWrite()) {
+                    <span class="cluster row-actions">
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-small"
+                        [disabled]="busyId() === category.id"
+                        (click)="unarchive(category)"
+                      >
+                        {{ 'categories.unarchive' | t }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-small"
+                        [disabled]="busyId() === category.id"
+                        (click)="askToDelete(category)"
+                      >
+                        {{ 'categories.delete' | t }}
+                      </button>
+                    </span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>
+
+@if (dialog(); as target) {
+  <app-category-dialog
+    [category]="target.category"
+    [all]="all()"
+    [defaultParentId]="target.parentId"
+    [hasChildren]="dialogHasChildren()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submit($event)"
+    (closed)="closeDialog()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [tone]="text.tone"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmPending()"
+    (cancelled)="cancelPending()"
+  />
+}

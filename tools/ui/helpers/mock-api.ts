@@ -1,6 +1,10 @@
 import type { Page, Route } from '@playwright/test';
 import {
   DEMO_ACCOUNTS,
+  DEMO_CATEGORIES,
+  DEMO_CATEGORIES_ACTIVE,
+  DEMO_PAYEE_SUGGESTIONS,
+  DEMO_TRANSACTIONS,
   DEMO_ACCOUNTS_ACTIVE,
   DEMO_API,
   DEMO_HOUSEHOLD,
@@ -222,6 +226,151 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         delete changes['version'];
         const patched = { ...found, ...changes, version: found.version + 1 };
         return json(route, 200, { ...patched, balance: rebalanced(found, patched.openingBalance) });
+      }
+      return json(route, 200, found);
+    }
+
+    // ---- categories -----------------------------------------------------------------------
+    // Enough of the real contract that a capture is honest: the tree arrives flat with a
+    // `parentId`, the default list hides archived rows, and a write answers with a category so
+    // the screen's own re-render is exercised rather than skipped.
+    if (at === 'GET /api/categories') {
+      const all = url.searchParams.get('includeArchived') === 'true';
+      const rows = all ? DEMO_CATEGORIES : DEMO_CATEGORIES_ACTIVE;
+      return json(route, 200, { content: rows, page: 0, size: 200, totalElements: rows.length, totalPages: 1 });
+    }
+    if (at === 'POST /api/categories') {
+      const parentId = field('parentId') ?? null;
+      const parent = DEMO_CATEGORIES.find((one) => one.id === parentId);
+      return json(route, 201, {
+        ...DEMO_CATEGORIES[0],
+        id: 'cat-0099',
+        name: field('name') ?? 'New category',
+        // A child takes its parent's kind. The server decides this, so the mock must too, or a
+        // capture would show a combination the real API cannot produce.
+        kind: parent ? parent.kind : (field('kind') ?? 'EXPENSE'),
+        parentId: parent ? parent.id : null,
+        parentName: parent ? parent.name : null,
+        archived: false,
+        version: 0,
+      });
+    }
+    const category = /^\/api\/categories\/([^/]+)(?:\/(archive|unarchive))?$/.exec(url.pathname);
+    if (category) {
+      const found = DEMO_CATEGORIES.find((one) => one.id === category[1]) ?? DEMO_CATEGORIES[0];
+      if (method === 'DELETE') {
+        // 204, and no transaction is touched: the server nulls their category_id instead.
+        return route.fulfill({ status: 204 });
+      }
+      if (category[2]) {
+        return json(route, 200, { ...found, archived: category[2] === 'archive', version: found.version + 1 });
+      }
+      if (method === 'PATCH') {
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        // The three-way `parentId` is visible here: absent leaves the parent, null promotes it to
+        // the top level, an id moves it.
+        const parentId = 'parentId' in changes ? (changes['parentId'] as string | null) : found.parentId;
+        const parent = DEMO_CATEGORIES.find((one) => one.id === parentId);
+        return json(route, 200, {
+          ...found,
+          ...changes,
+          parentId: parent ? parent.id : null,
+          parentName: parent ? parent.name : null,
+          version: found.version + 1,
+        });
+      }
+      return json(route, 200, found);
+    }
+
+    // ---- transactions ---------------------------------------------------------------------
+    // The filters are the part worth modelling: each one narrows the fixture rows the way the
+    // server's query does, so a capture of a filtered ledger shows what the real one would.
+    if (at === 'GET /api/transactions') {
+      const accountId = url.searchParams.get('accountId');
+      const categoryId = url.searchParams.get('categoryId');
+      const uncategorised = url.searchParams.get('uncategorised') === 'true';
+      const from = url.searchParams.get('from');
+      const to = url.searchParams.get('to');
+      const search = (url.searchParams.get('search') ?? '').toLowerCase();
+
+      const rows = DEMO_TRANSACTIONS.filter((one) => {
+        if (accountId && one.accountId !== accountId) return false;
+        // Transfers have no category and never will: moving money between your own accounts is
+        // neither income nor spending, so they stay out of the work queue (the server agrees).
+        if (uncategorised && (one.categoryId !== null || one.transfer)) return false;
+        if (categoryId && one.categoryId !== categoryId) return false;
+        if (from && one.date < from) return false;
+        if (to && one.date > to) return false;
+        if (search) {
+          const haystack = `${one.payeeName ?? ''} ${one.note ?? ''}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+        return true;
+      });
+
+      // One currency across every fixture row, so there is always a total. A page that mixed them
+      // would carry null here and the screen says so rather than converting (ADR-0022).
+      const currencies = new Set(rows.map((one) => one.currency));
+      const total = currencies.size === 1
+        ? rows.reduce((sum, one) => sum + Number(one.amount), 0).toFixed(2)
+        : null;
+
+      return json(route, 200, {
+        content: rows,
+        pageTotal: total,
+        pageTotalCurrency: currencies.size === 1 ? [...currencies][0] : null,
+        page: 0,
+        size: 50,
+        totalElements: rows.length,
+        totalPages: rows.length === 0 ? 0 : 1,
+      });
+    }
+    if (at === 'GET /api/transactions/payee-suggestions') {
+      const typed = (url.searchParams.get('typed') ?? '').toLowerCase();
+      return json(
+        route,
+        200,
+        DEMO_PAYEE_SUGGESTIONS.filter((name) => name.toLowerCase().startsWith(typed)),
+      );
+    }
+    if (at === 'POST /api/transactions') {
+      const account = DEMO_ACCOUNTS.find((one) => one.id === field('accountId'));
+      const categoryId = field('categoryId') ?? null;
+      const chosen = DEMO_CATEGORIES.find((one) => one.id === categoryId);
+      return json(route, 201, {
+        ...DEMO_TRANSACTIONS[0],
+        id: 'txn-0099',
+        accountId: account?.id ?? DEMO_ACCOUNTS[0].id,
+        accountName: account?.name ?? DEMO_ACCOUNTS[0].name,
+        date: field('date') ?? '2026-08-21',
+        // The string the client sent, unparsed: a mock that re-formatted an amount would hide the
+        // one defect ADR-0006 exists to prevent.
+        amount: field('amount') ?? '-1.00',
+        currency: account?.currency ?? 'USD',
+        payeeId: field('payeeName') ? 'pay-0099' : null,
+        payeeName: field('payeeName') ?? null,
+        categoryId: chosen?.id ?? null,
+        categoryName: chosen?.name ?? null,
+        categoryParentName: chosen?.parentName ?? null,
+        note: field('note') ?? null,
+        status: field('status') ?? 'CLEARED',
+        transfer: false,
+        version: 0,
+      });
+    }
+    const transaction = /^\/api\/transactions\/([^/]+)$/.exec(url.pathname);
+    if (transaction) {
+      const found = DEMO_TRANSACTIONS.find((one) => one.id === transaction[1]) ?? DEMO_TRANSACTIONS[0];
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'PATCH') {
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        return json(route, 200, { ...found, ...changes, version: found.version + 1 });
       }
       return json(route, 200, found);
     }

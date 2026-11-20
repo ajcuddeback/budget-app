@@ -1,0 +1,229 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'transactions.title' | t }}</h1>
+    <p class="page-lede">{{ 'transactions.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else if (openAccounts().length === 0 && accounts().length === 0) {
+    <!-- A transaction has to go somewhere. Saying so beats an entry form with an empty picker. -->
+    <section class="card">
+      <p class="card-note">{{ 'transactions.noAccountsBody' | t }}</p>
+      <div>
+        <a class="btn btn-primary" routerLink="/accounts">{{ 'transactions.goToAccounts' | t }}</a>
+      </div>
+    </section>
+  } @else {
+    <section class="card" aria-labelledby="ledger-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="ledger-heading">{{ 'transactions.heading' | t }}</h2>
+        @if (canWrite() && openAccounts().length > 0) {
+          <button type="button" class="btn btn-primary" (click)="openAdd()">
+            {{ 'transactions.add' | t }}
+          </button>
+        }
+      </div>
+
+      <div class="stack">
+        <app-error-alert [error]="actionError()" [subject]="actionErrorSubject()" />
+        @if (notice(); as said) {
+          <div class="alert alert-success" role="status">
+            <p>{{ said | t }}</p>
+          </div>
+        }
+
+        <form class="filters" [attr.aria-label]="'transactions.filtersLabel' | t">
+          <div class="field">
+            <label for="filter-account">{{ 'transactions.account' | t }}</label>
+            <select
+              id="filter-account"
+              [value]="filterAccountId()"
+              (change)="setAccountFilter($any($event.target).value)"
+            >
+              <option value="">{{ 'transactions.allAccounts' | t }}</option>
+              @for (account of accounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filter-category">{{ 'transactions.category' | t }}</label>
+            <select
+              id="filter-category"
+              [value]="filterCategoryId()"
+              (change)="setCategoryFilter($any($event.target).value)"
+            >
+              <option value="">{{ 'transactions.allCategories' | t }}</option>
+              @for (category of pickableCategories(); track category.id) {
+                <option [value]="category.id">
+                  @if (category.parentName) {
+                    {{
+                      'transactions.categoryPath'
+                        | t: { parent: category.parentName, name: category.name }
+                    }}
+                  } @else {
+                    {{ category.name }}
+                  }
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filter-from">{{ 'transactions.from' | t }}</label>
+            <input
+              id="filter-from"
+              type="date"
+              [value]="filterFrom()"
+              (change)="setFrom($any($event.target).value)"
+            />
+          </div>
+
+          <div class="field">
+            <label for="filter-to">{{ 'transactions.to' | t }}</label>
+            <input
+              id="filter-to"
+              type="date"
+              [value]="filterTo()"
+              (change)="setTo($any($event.target).value)"
+            />
+          </div>
+
+          <div class="field filter-search">
+            <label for="filter-search">{{ 'transactions.search' | t }}</label>
+            <input
+              id="filter-search"
+              type="search"
+              [value]="filterSearch()"
+              (change)="setSearch($any($event.target).value)"
+            />
+            <p class="field-hint">{{ 'transactions.searchHint' | t }}</p>
+          </div>
+
+          <div class="cluster filter-actions">
+            <!-- The work queue, given a button of its own rather than buried in the category
+                 list: "any category" and "no category" are different questions. -->
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              [attr.aria-pressed]="filterUncategorised()"
+              (click)="toggleUncategorised()"
+            >
+              {{ 'transactions.needsCategoryFilter' | t }}
+            </button>
+            @if (filtered()) {
+              <button type="button" class="btn btn-secondary btn-small" (click)="clearFilters()">
+                {{ 'transactions.clearFilters' | t }}
+              </button>
+            }
+          </div>
+        </form>
+
+        @if (transactions().length === 0) {
+          @if (filtered()) {
+            <p class="card-note">{{ 'transactions.noMatches' | t }}</p>
+          } @else {
+            <p class="card-note">{{ 'transactions.emptyBody' | t }}</p>
+            @if (canWrite() && openAccounts().length > 0) {
+              <div>
+                <button type="button" class="btn btn-primary" (click)="openAdd()">
+                  {{ 'transactions.addFirst' | t }}
+                </button>
+              </div>
+            } @else if (!canWrite()) {
+              <p class="field-hint">{{ 'transactions.emptyReadOnly' | t }}</p>
+            }
+          }
+        } @else {
+          <app-transaction-list
+            [transactions]="transactions()"
+            [canWrite]="canWrite()"
+            [busyId]="busyId()"
+            [showAccount]="showAccountColumn()"
+            (editRequested)="openEdit($event)"
+            (categoriseRequested)="openEdit($event)"
+            (deleteRequested)="askToDelete($event)"
+          />
+
+          <div class="cluster ledger-foot">
+            <p class="ledger-count">
+              {{ 'transactions.showing' | t: { shown: transactions().length, total: totalElements() } }}
+            </p>
+            @if (pageTotal(); as total) {
+              <p class="ledger-total">
+                {{ 'transactions.pageTotal' | t }}
+                <span class="total-amount">{{ total | money: pageTotalCurrency() }}</span>
+              </p>
+            } @else {
+              <!-- Mixed currencies. Never a converted figure (ADR-0022). -->
+              <p class="ledger-total field-hint">{{ 'transactions.mixedCurrencies' | t }}</p>
+            }
+          </div>
+
+          @if (totalPages() > 1) {
+            <nav class="cluster pager" [attr.aria-label]="'transactions.pagerLabel' | t">
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="page() === 0"
+                (click)="goToPage(page() - 1)"
+              >
+                {{ 'common.previous' | t }}
+              </button>
+              <span class="pager-position" role="status">
+                {{ 'transactions.pageOf' | t: { page: page() + 1, pages: totalPages() } }}
+              </span>
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="page() + 1 >= totalPages()"
+                (click)="goToPage(page() + 1)"
+              >
+                {{ 'common.next' | t }}
+              </button>
+            </nav>
+          }
+        }
+      </div>
+    </section>
+  }
+</div>
+
+@if (dialog(); as target) {
+  <app-transaction-dialog
+    [transaction]="target.transaction"
+    [accounts]="target.transaction ? accounts() : openAccounts()"
+    [categories]="categories()"
+    [defaultAccountId]="defaultAccountId()"
+    [today]="today()"
+    [payeeSuggestions]="payeeSuggestions()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submit($event)"
+    (payeeTyped)="suggestPayees($event)"
+    (closed)="closeDialog()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [tone]="text.tone"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+}

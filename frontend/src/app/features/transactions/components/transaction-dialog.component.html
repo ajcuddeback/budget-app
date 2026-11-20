@@ -1,0 +1,153 @@
+<dialog
+  appModal
+  class="dialog"
+  aria-labelledby="transaction-dialog-title"
+  (closed)="closed.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="transaction-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="transaction-account">{{ 'transactions.account' | t }}</label>
+      <select id="transaction-account" class="input" formControlName="accountId"
+        aria-describedby="transaction-account-error">
+        @for (account of accounts(); track account.id) {
+          <option [value]="account.id">{{ account.name }} ({{ account.currency }})</option>
+        }
+      </select>
+      @if (editing()) {
+        <!-- Said rather than hidden: the server does not accept an account change. -->
+        <p class="field-hint">{{ 'transactions.accountFixedHint' | t }}</p>
+      }
+      <app-field-error [control]="form.controls.accountId" errorId="transaction-account-error" />
+    </div>
+
+    <div class="field">
+      <label for="transaction-date">{{ 'transactions.date' | t }}</label>
+      <input
+        id="transaction-date"
+        class="input"
+        type="date"
+        formControlName="date"
+        aria-describedby="transaction-date-error"
+      />
+      <app-field-error [control]="form.controls.date" errorId="transaction-date-error" />
+    </div>
+
+    <fieldset class="field">
+      <legend>{{ 'transactions.direction' | t }}</legend>
+      <!-- Radios rather than a select: two options, both worth seeing at once, and getting this
+           wrong records income as spending. -->
+      <label class="choice">
+        <input type="radio" formControlName="direction" value="out" />
+        {{ 'transactions.directionOut' | t }}
+      </label>
+      <label class="choice">
+        <input type="radio" formControlName="direction" value="in" />
+        {{ 'transactions.directionIn' | t }}
+      </label>
+    </fieldset>
+
+    <div class="field">
+      <label for="transaction-amount">{{ 'transactions.amount' | t }}</label>
+      <!-- Deliberately type="text": a number input hands back a double (ADR-0006). -->
+      <input
+        id="transaction-amount"
+        type="text"
+        class="input"
+        inputmode="decimal"
+        formControlName="amount"
+        autocomplete="off"
+        aria-describedby="transaction-amount-currency transaction-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      @if (currency()) {
+        <p class="field-hint" id="transaction-amount-currency">
+          {{ 'transactions.amountHint' | t: { currency: currency() } }}
+        </p>
+      }
+      <app-field-error [control]="form.controls.amount" errorId="transaction-amount-error" />
+    </div>
+
+    <div class="field">
+      <label for="transaction-payee">{{ 'transactions.payee' | t }}</label>
+      <input
+        id="transaction-payee"
+        type="text"
+        formControlName="payeeName"
+        maxlength="80"
+        class="input"
+        list="transaction-payee-suggestions"
+        aria-describedby="transaction-payee-hint"
+        autocomplete="off"
+        (input)="onPayeeInput($any($event.target).value)"
+      />
+      <!-- A native datalist: keyboard and screen-reader support for free, and if suggestions
+           never arrive this is still an ordinary text field. -->
+      <datalist id="transaction-payee-suggestions">
+        @for (suggestion of payeeSuggestions(); track suggestion) {
+          <option [value]="suggestion"></option>
+        }
+      </datalist>
+      <p class="field-hint" id="transaction-payee-hint">{{ 'transactions.payeeHint' | t }}</p>
+    </div>
+
+    <div class="field">
+      <label for="transaction-category">{{ 'transactions.category' | t }}</label>
+      <select id="transaction-category" class="input" formControlName="categoryId">
+        <!-- First, and named: leaving it uncategorised is a choice, not a failure to choose. -->
+        <option value="">{{ 'transactions.needsCategory' | t }}</option>
+        @for (category of choosableCategories(); track category.id) {
+          <option [value]="category.id">
+            @if (category.parentName) {
+              {{
+                'transactions.categoryPath'
+                  | t: { parent: category.parentName, name: category.name }
+              }}
+            } @else {
+              {{ category.name }}
+            }
+          </option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="transaction-note">{{ 'transactions.note' | t }}</label>
+      <input
+        id="transaction-note"
+        type="text"
+        class="input"
+        formControlName="note"
+        maxlength="500"
+        aria-describedby="transaction-note-error"
+        autocomplete="off"
+      />
+      <app-field-error [control]="form.controls.note" errorId="transaction-note-error" />
+    </div>
+
+    <div class="field">
+      <label for="transaction-status">{{ 'transactions.statusLabel' | t }}</label>
+      <select id="transaction-status" class="input" formControlName="status"
+        aria-describedby="transaction-status-hint">
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ statusKey(status) | t }}</option>
+        }
+      </select>
+      <p class="field-hint" id="transaction-status-hint">{{ 'transactions.statusHint' | t }}</p>
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

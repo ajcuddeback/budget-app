@@ -48,8 +48,7 @@ public class PostedTransactions implements AccountTransactions {
         Map<UUID, Money> totals = new HashMap<>();
         for (AccountTotal row : transactions.totalsByAccount(householdId, accountIds)) {
             totals.put(
-                    row.accountId(),
-                    Money.of(row.total(), Currency.getInstance(row.currency())));
+                    row.accountId(), Money.of(row.total(), Currency.getInstance(row.currency())));
         }
         return totals;
     }

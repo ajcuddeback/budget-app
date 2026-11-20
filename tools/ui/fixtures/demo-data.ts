@@ -209,9 +209,9 @@ export const DEMO_PROBLEMS = {
  * client composes `name •1234` so a right-to-left locale can reorder it (ADR-0023).
  */
 export const DEMO_ACCOUNTS = [
-  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', empty: true, archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
-  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', empty: true, archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
-  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', empty: true, archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
+  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', empty: false, archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
+  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', empty: false, archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
+  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', empty: false, archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
   { id: 'acc-0004', name: 'Berlin Savings', lastFour: null, type: 'SAVINGS', currency: 'EUR', openingBalance: '1200.00', balance: '1200.00', empty: true, archived: false, createdAt: '2026-06-04T07:30:00Z', updatedAt: '2026-06-04T07:30:00Z', version: 0 },
   { id: 'acc-0005', name: 'Old Joint Account', lastFour: '0041', type: 'CHECKING', currency: 'USD', openingBalance: '84.60', balance: '84.60', empty: true, archived: true, createdAt: '2026-06-01T09:12:00Z', updatedAt: '2026-07-18T16:45:00Z', version: 4 },
 ] as const;
@@ -219,43 +219,94 @@ export const DEMO_ACCOUNTS = [
 /**
  * The default list is unarchived only; `?includeArchived=true` is what returns all of them.
  *
- * Every row reports `empty: true` because no transaction table exists yet (slice 5) — a fact about
- * the data, not about the code. It is its own field rather than something a client derives from
- * the two balances: an account with a +50 and a -50 nets to nothing and still has history.
+ * `empty` is its own field rather than something a client derives from the two balances: an account
+ * with a +50 and a -50 nets to nothing and still has history, so it can be neither deleted nor
+ * re-denominated. These fixtures have transactions, so every account that appears in
+ * `DEMO_TRANSACTIONS` reports `empty: false`.
  */
 export const DEMO_ACCOUNTS_ACTIVE = DEMO_ACCOUNTS.filter((account) => !account.archived);
 
+/**
+ * The household's categories, in the shape `CategoryResponse` actually sends.
+ *
+ * Two levels, and the tree arrives FLAT with a `parentId` — the endpoint is paginated like every
+ * other collection, and a page boundary must not be able to fall between a parent and its
+ * children, so the client assembles the tree (docs/features/categories.md).
+ *
+ * `parentName` is sent alongside so a child can be rendered on its own, in a transaction row or a
+ * picker, without a second lookup. It is never pre-joined into one label: the client composes
+ * `Bills → Utilities` through a translated template so a right-to-left locale can reorder it.
+ */
 export const DEMO_CATEGORIES = [
-  { id: 'cat-0001', name: 'Salary', kind: 'INCOME' },
-  { id: 'cat-0002', name: 'Rent', kind: 'EXPENSE' },
-  { id: 'cat-0003', name: 'Groceries', kind: 'EXPENSE' },
-  { id: 'cat-0004', name: 'Transport', kind: 'EXPENSE' },
-  { id: 'cat-0005', name: 'Eating out', kind: 'EXPENSE' },
-  { id: 'cat-0006', name: 'Utilities', kind: 'EXPENSE' },
+  { id: 'cat-0001', name: 'Income', kind: 'INCOME', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0002', name: 'Salary', kind: 'INCOME', parentId: 'cat-0001', parentName: 'Income', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0003', name: 'Bills', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0004', name: 'Rent', kind: 'EXPENSE', parentId: 'cat-0003', parentName: 'Bills', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0005', name: 'Utilities', kind: 'EXPENSE', parentId: 'cat-0003', parentName: 'Bills', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0006', name: 'Groceries', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0007', name: 'Transport', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  { id: 'cat-0008', name: 'Eating Out', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  // Archived: kept so past transactions still read correctly, absent from every picker.
+  { id: 'cat-0009', name: 'Wedding', kind: 'EXPENSE', parentId: null, parentName: null, archived: true, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-07-20T09:00:00Z', version: 1 },
 ] as const;
 
+export const DEMO_CATEGORIES_ACTIVE = DEMO_CATEGORIES.filter((category) => !category.archived);
+
+/**
+ * The ledger, in the shape `TransactionResponse` actually sends.
+ *
+ * Points worth keeping as the fixtures change:
+ *
+ * - **`amount` is a signed STRING** (ADR-0006). Negative is money leaving. There is no separate
+ *   income/expense flag, because the sign already says it.
+ * - **There is no currency on a transaction in the database** — it is denominated by its account —
+ *   but the response carries the account's, because an amount means nothing without one.
+ * - **`categoryId: null` is "Needs a category"**, a real state the UI shows and the work queue a
+ *   person acts on. `txn-0010` is deliberately in it.
+ * - **A transfer is two rows sharing a group id**, never one row with two accounts. Neither leg is
+ *   income or expense (`txn-0008`, `txn-0009`).
+ */
 export const DEMO_TRANSACTIONS = [
-  { id: 'txn-0001', accountId: 'acc-0001', date: '2026-08-01', payee: 'Northwind Systems', categoryId: 'cat-0001', amount: '3200.00', status: 'CLEARED' },
-  { id: 'txn-0002', accountId: 'acc-0001', date: '2026-08-01', payee: 'Fairview Lettings', categoryId: 'cat-0002', amount: '-1450.00', status: 'CLEARED' },
-  { id: 'txn-0003', accountId: 'acc-0001', date: '2026-08-03', payee: 'Greenfield Market', categoryId: 'cat-0003', amount: '-86.40', status: 'CLEARED' },
-  { id: 'txn-0004', accountId: 'acc-0003', date: '2026-08-05', payee: 'City Transit', categoryId: 'cat-0004', amount: '-62.00', status: 'CLEARED' },
-  { id: 'txn-0005', accountId: 'acc-0003', date: '2026-08-09', payee: 'Corner Kitchen', categoryId: 'cat-0005', amount: '-41.20', status: 'CLEARED' },
-  { id: 'txn-0006', accountId: 'acc-0001', date: '2026-08-12', payee: 'Greenfield Market', categoryId: 'cat-0003', amount: '-104.75', status: 'CLEARED' },
-  { id: 'txn-0007', accountId: 'acc-0001', date: '2026-08-15', payee: 'Metro Power', categoryId: 'cat-0006', amount: '-128.30', status: 'CLEARED' },
-  // A transfer: two legs, equal and opposite, sharing a group id. Neither is income or expense.
-  { id: 'txn-0008', accountId: 'acc-0001', date: '2026-08-16', payee: 'Transfer to Emergency Fund', categoryId: null, amount: '-500.00', status: 'CLEARED', transferGroupId: 'trf-0001' },
-  { id: 'txn-0009', accountId: 'acc-0002', date: '2026-08-16', payee: 'Transfer from Everyday Checking', categoryId: null, amount: '500.00', status: 'CLEARED', transferGroupId: 'trf-0001' },
-  { id: 'txn-0010', accountId: 'acc-0001', date: '2026-08-20', payee: 'Greenfield Market', categoryId: 'cat-0003', amount: '-92.15', status: 'PENDING' },
+  { id: 'txn-0010', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-20', amount: '-92.15', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: null, categoryName: null, categoryParentName: null, note: null, status: 'PENDING', transfer: false, createdAt: '2026-08-20T18:30:00Z', updatedAt: '2026-08-20T18:30:00Z', version: 0 },
+  { id: 'txn-0009', accountId: 'acc-0002', accountName: 'Emergency Fund', date: '2026-08-16', amount: '500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer from Everyday Checking', status: 'CLEARED', transfer: true, createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
+  { id: 'txn-0008', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-16', amount: '-500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer to Emergency Fund', status: 'CLEARED', transfer: true, createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
+  { id: 'txn-0007', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-15', amount: '-128.30', currency: 'USD', payeeId: 'pay-0006', payeeName: 'Metro Power', categoryId: 'cat-0005', categoryName: 'Utilities', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-15T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0 },
+  { id: 'txn-0006', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-12', amount: '-104.75', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: 'big shop', status: 'CLEARED', transfer: false, createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
+  { id: 'txn-0005', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-09', amount: '-41.20', currency: 'USD', payeeId: 'pay-0005', payeeName: 'Corner Kitchen', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-09T20:05:00Z', updatedAt: '2026-08-09T20:05:00Z', version: 0 },
+  { id: 'txn-0004', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-05', amount: '-62.00', currency: 'USD', payeeId: 'pay-0004', payeeName: 'City Transit', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-05T08:40:00Z', updatedAt: '2026-08-05T08:40:00Z', version: 0 },
+  { id: 'txn-0003', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-03', amount: '-86.40', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
+  { id: 'txn-0002', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '-1450.00', currency: 'USD', payeeId: 'pay-0002', payeeName: 'Fairview Lettings', categoryId: 'cat-0004', categoryName: 'Rent', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-01T07:00:00Z', updatedAt: '2026-08-01T07:00:00Z', version: 0 },
+  { id: 'txn-0001', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '3200.00', currency: 'USD', payeeId: 'pay-0001', payeeName: 'Northwind Systems', categoryId: 'cat-0002', categoryName: 'Salary', categoryParentName: 'Income', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-01T06:00:00Z', updatedAt: '2026-08-01T06:00:00Z', version: 0 },
+] as const;
+
+/**
+ * The ledger's page total, as the server computes it: the sum of this page's amounts.
+ *
+ * Every fixture row is in USD, so there is one. A page that mixed currencies would carry `null`
+ * here and the screen says so rather than converting (ADR-0022).
+ */
+export const DEMO_LEDGER_PAGE_TOTAL = '1235.20';
+
+/** Payee names the entry form suggests. The server returns names only; it resolves the id. */
+export const DEMO_PAYEE_SUGGESTIONS = [
+  'City Transit',
+  'Corner Kitchen',
+  'Fairview Lettings',
+  'Greenfield Market',
+  'Metro Power',
+  'Northwind Systems',
 ] as const;
 
 export const DEMO_BUDGET = {
   period: '2026-08',
   lines: [
-    { categoryId: 'cat-0002', planned: '1450.00', spent: '1450.00' }, // exactly on plan
-    { categoryId: 'cat-0003', planned: '350.00', spent: '283.30' },   // under
-    { categoryId: 'cat-0004', planned: '80.00', spent: '62.00' },     // under
-    { categoryId: 'cat-0005', planned: '30.00', spent: '41.20' },     // over — the interesting case
-    { categoryId: 'cat-0006', planned: '140.00', spent: '128.30' },   // under
+    // Ids match DEMO_CATEGORIES above. Spent figures match DEMO_TRANSACTIONS, so a budget screen
+    // built on these fixtures agrees with the ledger rather than quietly contradicting it.
+    { categoryId: 'cat-0004', planned: '1450.00', spent: '1450.00' }, // Rent — exactly on plan
+    { categoryId: 'cat-0006', planned: '350.00', spent: '283.30' },   // Groceries — under
+    { categoryId: 'cat-0007', planned: '80.00', spent: '62.00' },     // Transport — under
+    { categoryId: 'cat-0008', planned: '30.00', spent: '41.20' },     // Eating Out — over
+    { categoryId: 'cat-0005', planned: '140.00', spent: '128.30' },   // Utilities — under
   ],
 } as const;
 
@@ -267,7 +318,8 @@ export const DEMO_API: Record<string, unknown> = {
   '/api/households/current': { ...DEMO_HOUSEHOLD, role: 'OWNER' },
   '/api/households/current/members': { content: DEMO_MEMBERS, page: 0, size: 50, totalElements: DEMO_MEMBERS.length, totalPages: 1 },
   '/api/accounts': { content: DEMO_ACCOUNTS_ACTIVE, page: 0, size: 50, totalElements: DEMO_ACCOUNTS_ACTIVE.length, totalPages: 1 },
-  '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 50, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
-  '/api/transactions': { content: DEMO_TRANSACTIONS, page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },
+  '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 200, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
+  '/api/transactions': { content: DEMO_TRANSACTIONS, pageTotal: DEMO_LEDGER_PAGE_TOTAL, pageTotalCurrency: 'USD', page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },
+  '/api/transactions/payee-suggestions': DEMO_PAYEE_SUGGESTIONS,
   '/api/budgets/2026-08': DEMO_BUDGET,
 };

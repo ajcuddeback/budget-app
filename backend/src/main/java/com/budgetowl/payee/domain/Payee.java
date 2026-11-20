@@ -83,18 +83,6 @@ public class Payee implements HouseholdOwned {
         return name;
     }
 
-    public Instant createdAt() {
-        return createdAt;
-    }
-
-    public Instant updatedAt() {
-        return updatedAt;
-    }
-
-    public long version() {
-        return version;
-    }
-
     /** 1–80 characters once trimmed; stored trimmed, so raw and trimmed bounds agree. */
     public void rename(String newName) {
         String trimmed = Objects.requireNonNull(newName, "name").strip();

@@ -17,8 +17,8 @@ import org.springframework.data.repository.query.Param;
  * <p><b>Every method takes a {@code householdId}</b>, or takes the entity itself — see {@link
  * com.budgetowl.account.persistence.AccountRepository} for the full reasoning. {@code
  * ArchitectureTest.household_owned_data_is_unreachable_without_its_household} fails the build if an
- * unscoped lookup is added, and checks the query text rather than only the signature, so a {@code
- * @Query} that takes the parameter and forgets to use it fails too.
+ * unscoped lookup is added, and checks the query text rather than only the signature, so a
+ * {@code @Query} that takes the parameter and forgets to use it fails too.
  *
  * <p>Sorting is fixed in the queries, never taken from a parameter.
  */
@@ -53,8 +53,8 @@ public interface CategoryRepository extends Repository<Category, UUID> {
      * always returns the whole tree and a picker never pages even though it could.
      *
      * <p>Ordered by kind, then name case-insensitively, with a stable tiebreak on id so paging
-     * cannot repeat or skip a row. {@code ix_categories_household_kind_name} carries
-     * {@code (household_id, kind, lower(name), id)}, so this order is read out of the index.
+     * cannot repeat or skip a row. {@code ix_categories_household_kind_name} carries {@code
+     * (household_id, kind, lower(name), id)}, so this order is read out of the index.
      */
     @Query(
             value =

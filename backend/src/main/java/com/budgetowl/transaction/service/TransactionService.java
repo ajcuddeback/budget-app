@@ -44,17 +44,16 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Scoping and roles work as everywhere else — membership resolved first, every repository call
  * given that household's id, a {@code VIEWER} never writes, another household's row a {@code 404}
- * and never a {@code 403}. The database carries the same rule structurally:
- * {@code fk_transactions_account} is composite on {@code (account_id, household_id)}, so a
- * transaction cannot physically reference another household's account however wrong this class
- * gets.
+ * and never a {@code 403}. The database carries the same rule structurally: {@code
+ * fk_transactions_account} is composite on {@code (account_id, household_id)}, so a transaction
+ * cannot physically reference another household's account however wrong this class gets.
  *
  * <p>Four rules are specific to this service:
  *
  * <ul>
  *   <li><b>An amount is in its account's currency.</b> There is no currency on a transaction and
- *       none accepted from the caller: it is read from the account. This is what makes
- *       {@code account-currency-immutable} meaningful rather than decorative.
+ *       none accepted from the caller: it is read from the account. This is what makes {@code
+ *       account-currency-immutable} meaningful rather than decorative.
  *   <li><b>An archived account takes no new transactions.</b> Un-archiving is one click and is a
  *       deliberate act; an archived account quietly accepting money and then not appearing in the
  *       list it was recorded against is the bug that behaviour would cause.
@@ -65,8 +64,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>The account cannot be edited.</b> See {@link TransactionChanges}.
  * </ul>
  *
- * <p><b>Nothing here logs an amount, a payee or a note.</b> Audit lines carry ids only. An amount is
- * somebody's money, a payee says where they shop and a note is whatever they wrote.
+ * <p><b>Nothing here logs an amount, a payee or a note.</b> Audit lines carry ids only. An amount
+ * is somebody's money, a payee says where they shop and a note is whatever they wrote.
  */
 @Service
 public class TransactionService {
@@ -296,10 +295,11 @@ public class TransactionService {
     private Account requireAccount(UUID accountId, UUID householdId) {
         if (accountId == null) {
             throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED, "an account is required", Map.of("field", "accountId"));
+                    ErrorCode.VALIDATION_FAILED,
+                    "an account is required",
+                    Map.of("field", "accountId"));
         }
-        return accounts
-                .findByIdAndHouseholdId(accountId, householdId)
+        return accounts.findByIdAndHouseholdId(accountId, householdId)
                 .orElseThrow(() -> new NotFoundException("no such account"));
     }
 
@@ -501,10 +501,19 @@ public class TransactionService {
      * exists to prevent.
      */
     private static Money money(String text, Currency currency) {
+        // Checked rather than caught: a missing amount and an unparseable one are the same answer
+        // to the caller, but catching NullPointerException to discover it is the kind of control
+        // flow that hides a real NPE from somewhere else in the method.
+        if (text == null) {
+            throw new InvalidRequestException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "an amount is required",
+                    Map.of("field", "amount"));
+        }
         BigDecimal parsed;
         try {
             parsed = new BigDecimal(text.strip());
-        } catch (NumberFormatException | NullPointerException malformed) {
+        } catch (NumberFormatException malformed) {
             throw new InvalidRequestException(
                     ErrorCode.VALIDATION_FAILED, "unparseable amount", Map.of("field", "amount"));
         }

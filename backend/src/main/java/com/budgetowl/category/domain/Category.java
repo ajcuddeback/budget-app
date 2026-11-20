@@ -76,20 +76,33 @@ public class Category implements HouseholdOwned {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /** Two people renaming one category is a normal household; the loser is told, not overwritten. */
+    /**
+     * Two people renaming one category is a normal household; the loser is told, not overwritten.
+     */
     @Version
     @Column(name = "version", nullable = false)
     private long version;
 
+    /**
+     * For Hibernate, and for the factories below.
+     *
+     * <p>It does nothing and cannot throw, deliberately. A constructor that validates leaves a
+     * partially-initialised object behind when it rejects something, which SpotBugs reports as
+     * {@code CT_CONSTRUCTOR_THROW}; {@link com.budgetowl.account.domain.Account} and {@link
+     * com.budgetowl.payee.domain.Payee} are built the same way, by a static factory that assigns
+     * through the mutators that already carry the rules.
+     */
     protected Category() {
-        // Hibernate.
+        // Hibernate, and the factories below.
     }
 
-    private Category(UUID householdId, String name, CategoryKind kind, UUID parentId) {
-        this.householdId = Objects.requireNonNull(householdId, "householdId");
-        this.kind = Objects.requireNonNull(kind, "kind");
-        this.parentId = parentId;
-        rename(name);
+    private static Category of(UUID householdId, String name, CategoryKind kind, UUID parentId) {
+        Category category = new Category();
+        category.householdId = Objects.requireNonNull(householdId, "householdId");
+        category.kind = Objects.requireNonNull(kind, "kind");
+        category.parentId = parentId;
+        category.rename(name);
+        return category;
     }
 
     /**
@@ -99,7 +112,7 @@ public class Category implements HouseholdOwned {
      *     an id a caller supplied, which is never evidence of ownership
      */
     public static Category topLevel(Household household, String name, CategoryKind kind) {
-        return new Category(Objects.requireNonNull(household, "household").id(), name, kind, null);
+        return of(Objects.requireNonNull(household, "household").id(), name, kind, null);
     }
 
     /**
@@ -114,7 +127,7 @@ public class Category implements HouseholdOwned {
         if (!parent.isTopLevel()) {
             throw new IllegalArgumentException("the category hierarchy is limited to two levels");
         }
-        return new Category(parent.householdId(), name, parent.kind(), parent.id());
+        return of(parent.householdId(), name, parent.kind(), parent.id());
     }
 
     public UUID id() {

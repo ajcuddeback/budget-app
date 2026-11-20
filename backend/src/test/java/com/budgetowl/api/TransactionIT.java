@@ -28,7 +28,11 @@ class TransactionIT extends ApiTestBase {
                 .isEqualTo("100.0000");
 
         createTransaction(
-                household.owner(), account, "2026-11-01", "-30.5000", seededCategoryId("Groceries"));
+                household.owner(),
+                account,
+                "2026-11-01",
+                "-30.5000",
+                seededCategoryId("Groceries"));
 
         ApiResponse after = household.owner().get("/api/accounts/" + account);
         assertThat(after.stringField("balance"))
@@ -45,7 +49,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -66,7 +71,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -85,7 +91,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -103,7 +110,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -122,7 +130,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -148,7 +157,8 @@ class TransactionIT extends ApiTestBase {
                 .as("no category filter means every category, including none")
                 .isEqualTo(2);
         assertThat(
-                        household.owner()
+                        household
+                                .owner()
                                 .get("/api/transactions?uncategorised=true")
                                 .numberField("totalElements"))
                 .isEqualTo(1);
@@ -160,7 +170,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse first =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -169,7 +180,8 @@ class TransactionIT extends ApiTestBase {
                                 """
                                         .formatted(account));
         ApiResponse second =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -193,7 +205,8 @@ class TransactionIT extends ApiTestBase {
     void payee_suggestions_match_a_prefix_and_treat_a_percent_sign_as_a_literal() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
-        household.owner()
+        household
+                .owner()
                 .post(
                         "/api/transactions",
                         """
@@ -201,7 +214,8 @@ class TransactionIT extends ApiTestBase {
                          "payeeName":"100%% Chiropractic"}
                         """
                                 .formatted(account));
-        household.owner()
+        household
+                .owner()
                 .post(
                         "/api/transactions",
                         """
@@ -220,11 +234,34 @@ class TransactionIT extends ApiTestBase {
     }
 
     @Test
+    void an_empty_search_suggests_nothing_rather_than_the_whole_payee_list() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+        household
+                .owner()
+                .post(
+                        "/api/transactions",
+                        """
+                        {"accountId":"%s","date":"2026-11-10","amount":"-20.0000",
+                         "payeeName":"Waitrose"}
+                        """
+                                .formatted(account));
+
+        // Returning every payee to a form that has been clicked into but not typed in would leak
+        // more than the question asked for, and suggest nothing anybody could use.
+        assertThat(household.owner().get("/api/transactions/payee-suggestions?typed=").body())
+                .isEqualTo("[]");
+        assertThat(household.owner().get("/api/transactions/payee-suggestions?typed=%20").body())
+                .isEqualTo("[]");
+    }
+
+    @Test
     void patching_one_field_leaves_the_others_alone() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -234,7 +271,8 @@ class TransactionIT extends ApiTestBase {
                                         .formatted(account, seededCategoryId("Health")));
 
         ApiResponse patched =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/transactions/" + created.stringField("id"),
                                 """
@@ -258,7 +296,8 @@ class TransactionIT extends ApiTestBase {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -268,7 +307,8 @@ class TransactionIT extends ApiTestBase {
                                         .formatted(account, seededCategoryId("Health")));
 
         ApiResponse cleared =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/transactions/" + created.stringField("id"),
                                 """
@@ -290,7 +330,8 @@ class TransactionIT extends ApiTestBase {
         household.owner().post("/api/accounts/" + account + "/archive", null);
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -316,7 +357,8 @@ class TransactionIT extends ApiTestBase {
         assertThat(deletion.body()).contains("account-not-empty");
 
         ApiResponse redenomination =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/accounts/" + account,
                                 """
@@ -350,7 +392,8 @@ class TransactionIT extends ApiTestBase {
         UUID savings = createAccount(household.owner(), "Savings", null);
         UUID groceries = seededCategoryId("Groceries");
 
-        household.owner()
+        household
+                .owner()
                 .post(
                         "/api/transactions",
                         """
@@ -362,24 +405,35 @@ class TransactionIT extends ApiTestBase {
         createTransaction(household.owner(), savings, "2026-06-11", "-13.0000", null);
 
         assertThat(
-                        household.owner()
+                        household
+                                .owner()
                                 .get("/api/transactions?accountId=" + savings)
                                 .numberField("totalElements"))
                 .isEqualTo(1);
         assertThat(
-                        household.owner()
+                        household
+                                .owner()
                                 .get("/api/transactions?categoryId=" + groceries)
                                 .numberField("totalElements"))
                 .isEqualTo(1);
         assertThat(
-                        household.owner()
+                        household
+                                .owner()
                                 .get("/api/transactions?from=2026-06-01&to=2026-06-30")
                                 .numberField("totalElements"))
                 .isEqualTo(2);
-        assertThat(household.owner().get("/api/transactions?search=weekly").numberField("totalElements"))
+        assertThat(
+                        household
+                                .owner()
+                                .get("/api/transactions?search=weekly")
+                                .numberField("totalElements"))
                 .as("the note is searched")
                 .isEqualTo(1);
-        assertThat(household.owner().get("/api/transactions?search=lidl").numberField("totalElements"))
+        assertThat(
+                        household
+                                .owner()
+                                .get("/api/transactions?search=lidl")
+                                .numberField("totalElements"))
                 .as("and so is the payee's name, case-insensitively")
                 .isEqualTo(1);
     }
@@ -410,7 +464,8 @@ class TransactionIT extends ApiTestBase {
         assertThat(single.stringField("pageTotalCurrency")).isEqualTo("GBP");
 
         ApiResponse euro =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/accounts",
                                 """
@@ -435,7 +490,8 @@ class TransactionIT extends ApiTestBase {
         Household household = seedHousehold();
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -454,7 +510,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """
@@ -470,12 +527,14 @@ class TransactionIT extends ApiTestBase {
     void a_viewer_may_read_the_ledger_and_never_write_to_it() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
-        UUID transaction = createTransaction(household.owner(), account, "2026-11-20", "-3.0000", null);
+        UUID transaction =
+                createTransaction(household.owner(), account, "2026-11-20", "-3.0000", null);
 
         assertThat(household.viewer().get("/api/transactions").status()).isEqualTo(200);
 
         ApiResponse created =
-                household.viewer()
+                household
+                        .viewer()
                         .post(
                                 "/api/transactions",
                                 """
@@ -508,10 +567,13 @@ class TransactionIT extends ApiTestBase {
     void a_stale_version_is_refused_rather_than_overwriting_somebody_elses_correction() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
-        UUID transaction = createTransaction(household.owner(), account, "2026-11-20", "-9.0000", null);
-        long stale = household.owner().get("/api/transactions/" + transaction).numberField("version");
+        UUID transaction =
+                createTransaction(household.owner(), account, "2026-11-20", "-9.0000", null);
+        long stale =
+                household.owner().get("/api/transactions/" + transaction).numberField("version");
 
-        household.owner()
+        household
+                .owner()
                 .patch(
                         "/api/transactions/" + transaction,
                         """
@@ -520,7 +582,8 @@ class TransactionIT extends ApiTestBase {
                                 .formatted(stale));
 
         ApiResponse second =
-                household.member()
+                household
+                        .member()
                         .patch(
                                 "/api/transactions/" + transaction,
                                 """
@@ -538,7 +601,8 @@ class TransactionIT extends ApiTestBase {
         UUID account = createAccount(household.owner(), "Current", null);
 
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/transactions",
                                 """

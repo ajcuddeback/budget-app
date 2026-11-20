@@ -52,8 +52,10 @@ class DefaultCategoriesTest {
     void the_migration_seeds_exactly_the_categories_a_new_household_gets() {
         String sql = read();
 
-        Map<String, CategoryKind> parentsInSql = parentsIn(section(sql, "parents (name, kind, sort)"));
-        Map<String, List<String>> childrenInSql = childrenIn(section(sql, "children (parent_name, name)"));
+        Map<String, CategoryKind> parentsInSql =
+                parentsIn(section(sql, "parents (name, kind, sort)"));
+        Map<String, List<String>> childrenInSql =
+                childrenIn(section(sql, "children (parent_name, name)"));
 
         Map<String, CategoryKind> parentsInCode = new LinkedHashMap<>();
         Map<String, List<String>> childrenInCode = new LinkedHashMap<>();
@@ -97,7 +99,8 @@ class DefaultCategoriesTest {
 
         assertThat(total)
                 .as("defaults should leave a household plenty of room to add its own")
-                .isLessThan(com.budgetowl.category.service.CategoryService.MAXIMUM_PER_HOUSEHOLD / 2);
+                .isLessThan(
+                        com.budgetowl.category.service.CategoryService.MAXIMUM_PER_HOUSEHOLD / 2);
     }
 
     private static Map<String, CategoryKind> parentsIn(String section) {
@@ -106,7 +109,9 @@ class DefaultCategoriesTest {
         while (matcher.find()) {
             parents.put(matcher.group(1), CategoryKind.valueOf(matcher.group(2)));
         }
-        assertThat(parents).as("parsed no parent rows — has the migration's shape changed?").isNotEmpty();
+        assertThat(parents)
+                .as("parsed no parent rows — has the migration's shape changed?")
+                .isNotEmpty();
         return parents;
     }
 
@@ -117,7 +122,9 @@ class DefaultCategoriesTest {
             children.computeIfAbsent(matcher.group(1), key -> new ArrayList<>())
                     .add(matcher.group(2));
         }
-        assertThat(children).as("parsed no child rows — has the migration's shape changed?").isNotEmpty();
+        assertThat(children)
+                .as("parsed no child rows — has the migration's shape changed?")
+                .isNotEmpty();
         return children;
     }
 

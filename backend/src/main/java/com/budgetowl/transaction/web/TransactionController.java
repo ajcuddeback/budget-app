@@ -85,9 +85,7 @@ public class TransactionController {
         return new LedgerResponse(
                 found.transactions().stream().map(TransactionController::response).toList(),
                 found.pageTotal() == null ? null : found.pageTotal().amount(),
-                found.pageTotal() == null
-                        ? null
-                        : found.pageTotal().currency().getCurrencyCode(),
+                found.pageTotal() == null ? null : found.pageTotal().currency().getCurrencyCode(),
                 found.page(),
                 found.size(),
                 found.totalElements(),

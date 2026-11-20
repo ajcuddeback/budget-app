@@ -30,6 +30,18 @@
   gap: var(--space-3);
 }
 
+/* A card's heading with its primary action pushed to the far end. Shared rather than repeated:
+   four screens use it, and when it lived in each page's own stylesheet the fifth one to need it
+   simply looked different. */
+.section-head {
+  justify-content: space-between;
+  margin-block-end: var(--space-3);
+}
+
+.section-head .card-title {
+  margin-block-end: 0;
+}
+
 .page-narrow {
   max-inline-size: 32rem;
 }

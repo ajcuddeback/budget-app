@@ -71,7 +71,9 @@ public class Transaction implements HouseholdOwned {
     @Column(name = "account_id", nullable = false, updatable = false)
     private UUID accountId;
 
-    /** A calendar date, not an instant: see {@code V12}'s note on why a timestamptz would be wrong. */
+    /**
+     * A calendar date, not an instant: see {@code V12}'s note on why a timestamptz would be wrong.
+     */
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
@@ -217,8 +219,7 @@ public class Transaction implements HouseholdOwned {
     public void correctAmount(Money corrected, java.util.Currency accountCurrency) {
         Objects.requireNonNull(corrected, "amount");
         if (!corrected.currency().equals(accountCurrency)) {
-            throw new IllegalArgumentException(
-                    "an amount must be in its account's currency");
+            throw new IllegalArgumentException("an amount must be in its account's currency");
         }
         if (corrected.isZero()) {
             throw new IllegalArgumentException("a transaction of zero moves no money");

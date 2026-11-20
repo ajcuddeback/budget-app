@@ -21,7 +21,20 @@ export const routes: Routes = [
     path: '',
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'household' },
+      // The ledger is the screen somebody opens the app to use, so it is what '/' lands on.
+      { path: '', pathMatch: 'full', redirectTo: 'transactions' },
+      {
+        path: 'transactions',
+        title: 'title.transactions',
+        loadChildren: () =>
+          import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES),
+      },
+      {
+        path: 'categories',
+        title: 'title.categories',
+        loadChildren: () =>
+          import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES),
+      },
       {
         path: 'accounts',
         title: 'title.accounts',

@@ -38,7 +38,7 @@ test.describe('first-run setup', () => {
         expect(calls.some((c) => c.method === 'POST')).toBe(false);
     });
 
-    test('creates the account and lands signed in on the household', async ({ page, ui }) => {
+    test('creates the account and lands signed in on the ledger', async ({ page, ui }) => {
         await mockApi(page, { session: 'anonymous', freshInstance: true });
         await page.goto('/setup');
 
@@ -48,15 +48,15 @@ test.describe('first-run setup', () => {
         await page.getByLabel('Household name').fill('Rivera Household');
         await page.getByRole('button', { name: 'Create account' }).click();
 
-        await expect(page).toHaveURL(/\/household$/);
-        await expect(page.getByRole('heading', { name: 'Household', level: 1 })).toBeVisible();
+        await expect(page).toHaveURL(/\/transactions$/);
+        await expect(page.getByRole('heading', { name: 'Transactions', level: 1 })).toBeVisible();
         await ui.shot('setup-done');
         ui.noErrors();
     });
 });
 
 test.describe('sign in', () => {
-    test('signs in and lands on the household', async ({ page, ui }) => {
+    test('signs in and lands on the ledger', async ({ page, ui }) => {
         await mockApi(page, { session: 'anonymous' });
         await page.goto('/login');
 
@@ -65,7 +65,7 @@ test.describe('sign in', () => {
         await page.getByLabel('Password').fill('a fixture password');
         await page.getByRole('button', { name: 'Sign in' }).click();
 
-        await expect(page).toHaveURL(/\/household$/);
+        await expect(page).toHaveURL(/\/transactions$/);
         await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
         ui.noErrors();
     });
@@ -126,7 +126,7 @@ test.describe('sign in', () => {
         await page.getByLabel('Email address').fill('alex@example.test');
         await page.getByLabel('Password').fill('a fixture password');
         await page.getByRole('button', { name: 'Sign in' }).click();
-        await expect(page).toHaveURL(/\/household$/);
+        await expect(page).toHaveURL(/\/transactions$/);
 
         const login = calls.find((c) => c.method === 'POST' && c.path === '/api/auth/login');
         expect(login?.headers?.['x-xsrf-token']).toBe('fixture-csrf-value');

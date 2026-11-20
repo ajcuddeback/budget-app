@@ -54,7 +54,8 @@ class CategoryIT extends ApiTestBase {
         UUID bills = seededCategoryId("Bills");
 
         ApiResponse created =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/categories",
                                 """
@@ -75,7 +76,8 @@ class CategoryIT extends ApiTestBase {
         UUID bills = seededCategoryId("Bills");
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/categories",
                                 """
@@ -93,7 +95,8 @@ class CategoryIT extends ApiTestBase {
         UUID utilities = seededCategoryId("Utilities");
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/categories",
                                 """
@@ -113,7 +116,8 @@ class CategoryIT extends ApiTestBase {
         long version = household.owner().get("/api/categories/" + bills).numberField("version");
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/categories/" + bills,
                                 """
@@ -128,11 +132,55 @@ class CategoryIT extends ApiTestBase {
     }
 
     @Test
+    void a_category_cannot_be_moved_under_a_parent_of_another_kind() {
+        Household household = seedHousehold();
+        UUID groceries = seededCategoryId("Groceries");
+        UUID income = seededCategoryId("Income");
+        long version = household.owner().get("/api/categories/" + groceries).numberField("version");
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .patch(
+                                "/api/categories/" + groceries,
+                                """
+                                {"parentId":"%s","version":%d}
+                                """
+                                        .formatted(income, version));
+
+        // Not category-kind-immutable: nobody asked to change a kind. The MOVE is what is refused,
+        // because it would file spending under income and make every roll-up ambiguous.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.body()).contains("validation-failed").contains("parentId");
+    }
+
+    @Test
+    void a_category_cannot_be_moved_under_itself() {
+        Household household = seedHousehold();
+        UUID groceries = seededCategoryId("Groceries");
+        long version = household.owner().get("/api/categories/" + groceries).numberField("version");
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .patch(
+                                "/api/categories/" + groceries,
+                                """
+                                {"parentId":"%s","version":%d}
+                                """
+                                        .formatted(groceries, version));
+
+        assertThat(refused.status()).isEqualTo(409);
+        assertThat(refused.body()).contains("category-depth-exceeded");
+    }
+
+    @Test
     void a_duplicate_name_at_the_same_level_is_refused() {
         Household household = seedHousehold();
 
         ApiResponse refused =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/categories",
                                 """
@@ -154,7 +202,8 @@ class CategoryIT extends ApiTestBase {
         assertThat(createCategory(household.owner(), "Phone", null, bills)).isNotNull();
 
         ApiResponse second =
-                household.owner()
+                household
+                        .owner()
                         .post(
                                 "/api/categories",
                                 """
@@ -174,7 +223,8 @@ class CategoryIT extends ApiTestBase {
         long version = household.owner().get("/api/categories/" + utilities).numberField("version");
 
         ApiResponse renamedOnly =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/categories/" + utilities,
                                 """
@@ -188,7 +238,8 @@ class CategoryIT extends ApiTestBase {
                 .isEqualTo("Bills");
 
         ApiResponse promoted =
-                household.owner()
+                household
+                        .owner()
                         .patch(
                                 "/api/categories/" + utilities,
                                 """
@@ -245,7 +296,8 @@ class CategoryIT extends ApiTestBase {
         assertThat(household.viewer().get("/api/categories").status()).isEqualTo(200);
 
         ApiResponse refused =
-                household.viewer()
+                household
+                        .viewer()
                         .post(
                                 "/api/categories",
                                 """
@@ -262,7 +314,8 @@ class CategoryIT extends ApiTestBase {
         UUID groceries = seededCategoryId("Groceries");
         long stale = household.owner().get("/api/categories/" + groceries).numberField("version");
 
-        household.owner()
+        household
+                .owner()
                 .patch(
                         "/api/categories/" + groceries,
                         """
@@ -271,7 +324,8 @@ class CategoryIT extends ApiTestBase {
                                 .formatted(stale));
 
         ApiResponse second =
-                household.member()
+                household
+                        .member()
                         .patch(
                                 "/api/categories/" + groceries,
                                 """
@@ -288,8 +342,11 @@ class CategoryIT extends ApiTestBase {
         Household household = seedHousehold();
         UUID entertainment = seededCategoryId("Entertainment");
 
-        assertThat(household.owner().post("/api/categories/" + entertainment + "/archive", null)
-                        .status())
+        assertThat(
+                        household
+                                .owner()
+                                .post("/api/categories/" + entertainment + "/archive", null)
+                                .status())
                 .isEqualTo(200);
 
         assertThat(household.owner().get("/api/categories?size=200").body())
@@ -299,13 +356,64 @@ class CategoryIT extends ApiTestBase {
     }
 
     @Test
+    void a_household_is_capped_so_the_whole_tree_always_fits_in_one_page() {
+        Household household = seedHousehold();
+        long existing =
+                household
+                        .owner()
+                        .get("/api/categories?size=200&includeArchived=true")
+                        .numberField("totalElements");
+
+        // Fill up to the cap, which is also the API's maximum page size. That equality is the
+        // point: one request always returns the whole tree, so a picker never has to page.
+        for (long i = existing; i < 200; i++) {
+            ApiResponse accepted =
+                    household
+                            .owner()
+                            .post(
+                                    "/api/categories",
+                                    """
+                                    {"name":"Filler %d","kind":"EXPENSE"}
+                                    """
+                                            .formatted(i));
+            assertThat(accepted.status()).isEqualTo(201);
+        }
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/categories",
+                                """
+                                {"name":"One too many","kind":"EXPENSE"}
+                                """);
+
+        assertThat(refused.status()).isEqualTo(409);
+        assertThat(refused.body()).contains("category-limit-reached");
+        assertThat(household.owner().get("/api/categories?size=200").numberField("totalPages"))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void a_child_of_an_archived_parent_still_reports_its_parents_name() {
+        Household household = seedHousehold();
+        UUID bills = seededCategoryId("Bills");
+        household.owner().post("/api/categories/" + bills + "/archive", null);
+
+        // The default listing excludes the archived parent, so the name cannot come from the page
+        // in hand — the server looks it up rather than leaving the child unlabelled.
+        ApiResponse listed = household.owner().get("/api/categories?size=200");
+
+        assertThat(listed.body()).contains("Utilities");
+        assertThat(listed.body()).contains("\"parentName\":\"Bills\"");
+    }
+
+    @Test
     void a_category_that_is_not_this_households_is_indistinguishable_from_one_that_never_existed() {
         Household household = seedHousehold();
 
         ApiResponse response = household.owner().get("/api/categories/" + UUID.randomUUID());
 
-        assertThat(response.status())
-                .as("a 403 would confirm the row exists")
-                .isEqualTo(404);
+        assertThat(response.status()).as("a 403 would confirm the row exists").isEqualTo(404);
     }
 }

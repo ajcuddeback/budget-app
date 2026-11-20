@@ -182,9 +182,11 @@ test.describe('accounts, as an owner', () => {
 
     test('deleting asks first, says permanently, and offers archiving instead', async ({ page, ui }) => {
         await page.goto('/accounts');
-        await page.getByRole('button', { name: /Delete\s+Travel Card/ }).click();
+        // Berlin Savings, because it is the one fixture account with no transactions — Delete is
+        // offered only for an account with nothing to lose, and the server refuses the rest.
+        await page.getByRole('button', { name: /Delete\s+Berlin Savings/ }).click();
 
-        const confirm = page.getByRole('dialog', { name: 'Delete Travel Card?' });
+        const confirm = page.getByRole('dialog', { name: 'Delete Berlin Savings?' });
         await expect(confirm).toBeVisible();
         await expect(confirm.getByText(/permanently/)).toBeVisible();
         await expect(confirm.getByText(/archive it instead/i)).toBeVisible();
@@ -194,24 +196,25 @@ test.describe('accounts, as an owner', () => {
 
         await confirm.getByRole('button', { name: 'Delete' }).click();
         await expect(page.getByText('That account has been deleted.')).toBeVisible();
-        await expect(page.getByText('Travel Card •8820')).toHaveCount(0);
         ui.noErrors();
     });
 
     test('a refused delete is explained beside the list and the list is left alone', async ({ page, ui }) => {
         await page.route(
-            (url) => url.pathname === `/api/accounts/${DEMO_ACCOUNTS[2].id}`,
+            (url) => url.pathname === `/api/accounts/${DEMO_ACCOUNTS[3].id}`,
             (route) =>
                 route.request().method() === 'DELETE'
                     ? route.fulfill({ status: 409, contentType: 'application/problem+json', body: JSON.stringify(DEMO_PROBLEMS.accountNotEmpty) })
                     : route.fallback(),
         );
         await page.goto('/accounts');
-        await page.getByRole('button', { name: /Delete\s+Travel Card/ }).click();
-        await page.getByRole('dialog', { name: 'Delete Travel Card?' }).getByRole('button', { name: 'Delete' }).click();
+        await page.getByRole('button', { name: /Delete\s+Berlin Savings/ }).click();
+        await page.getByRole('dialog', { name: 'Delete Berlin Savings?' }).getByRole('button', { name: 'Delete' }).click();
 
         await expect(page.getByRole('alert')).toContainText('Archive it instead');
-        await expect(page.getByText('Travel Card •8820')).toBeVisible();
+        // Refused, so the row is still there: a failed write must not empty a list of money.
+        // Scoped to the list, because the alert and the confirmation also name the account.
+        await expect(page.getByRole('region', { name: 'Your accounts' }).getByRole('listitem').filter({ hasText: 'Berlin Savings' })).toHaveCount(1);
         await ui.shot('accounts-delete-refused');
         await ui.noOverflow();
     });
@@ -242,18 +245,15 @@ test.describe('accounts, as an owner', () => {
     });
 
     test('an account with history is offered no Delete, and a currency locked with the reason', async ({ page, ui }) => {
-        // The one state the fixtures cannot reach on their own: `empty: false` is what the server
-        // says once an account has transactions, and it is what gates both of these.
-        const withHistory = DEMO_ACCOUNTS.map((one) =>
-            one.id === DEMO_ACCOUNTS[0].id ? { ...one, empty: false } : one,
-        );
-        await serveAccounts(page, { content: withHistory, page: 0, size: 200, totalElements: withHistory.length, totalPages: 1 });
+        // Straight from the fixtures now that they carry a ledger: Everyday Checking has
+        // transactions (`empty: false`) and Berlin Savings has none. Both states are what the
+        // server actually reports, rather than something this test arranges for itself.
         await page.goto('/accounts');
 
         // Delete would be refused, so it is not offered; archiving still is.
         await expect(page.getByRole('button', { name: /Delete\s+Everyday Checking/ })).toHaveCount(0);
         await expect(page.getByRole('button', { name: /Archive\s+Everyday Checking/ })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Delete\s+Emergency Fund/ })).toBeVisible();
+        await expect(page.getByRole('button', { name: /Delete\s+Berlin Savings/ })).toBeVisible();
 
         await page.getByRole('button', { name: /Edit\s+Everyday Checking/ }).click();
         const dialog = page.getByRole('dialog', { name: 'Edit account' });
@@ -374,8 +374,8 @@ test.describe('accounts, in the dark theme', () => {
         expect(await ui.a11y('accounts, add dialog in dark')).toBe(0);
 
         await page.keyboard.press('Escape');
-        await page.getByRole('button', { name: /Delete\s+Travel Card/ }).click();
-        await expect(page.getByRole('dialog', { name: 'Delete Travel Card?' })).toBeVisible();
+        await page.getByRole('button', { name: /Delete\s+Berlin Savings/ }).click();
+        await expect(page.getByRole('dialog', { name: 'Delete Berlin Savings?' })).toBeVisible();
         await ui.shot('accounts-delete-confirm-dark');
         expect(await ui.a11y('accounts, delete confirm in dark')).toBe(0);
         await ui.noOverflow();

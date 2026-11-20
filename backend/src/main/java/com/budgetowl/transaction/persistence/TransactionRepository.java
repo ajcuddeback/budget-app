@@ -23,14 +23,15 @@ import org.springframework.data.repository.query.Param;
  * <p><b>Filters are nullable bound parameters, not assembled SQL.</b> The ledger takes an account,
  * a category, a date range and a free-text search; each one is applied by an {@code (:param is null
  * or ...)} clause so there is a single query with a single plan rather than a string built from
- * caller input. An {@code ORDER BY} is never taken from a parameter (docs/guides/database-style.md).
+ * caller input. An {@code ORDER BY} is never taken from a parameter
+ * (docs/guides/database-style.md).
  *
  * <p>Sorting is {@code date DESC, id DESC} throughout, matching {@code
  * ix_transactions_household_date}: the tiebreak on {@code id} is what stops paging repeating or
  * skipping a row when several transactions share a date, which for a ledger is the normal case.
  *
- * <p><b>Why "no filter" is a match-all VALUE for the text and date filters, and a null only for
- * the ids.</b> Hibernate renders every occurrence of a named parameter as its own placeholder, so
+ * <p><b>Why "no filter" is a match-all VALUE for the text and date filters, and a null only for the
+ * ids.</b> Hibernate renders every occurrence of a named parameter as its own placeholder, so
  * {@code (:from is null or t.date >= :from)} becomes {@code (? is null or date >= ?)} — two binds.
  * A bind that appears only inside {@code IS NULL} has no context to take a type from, and whether
  * that is fatal depends on the driver: pgjdbc sends a UUID with its type OID, so {@code ? is null}
@@ -40,11 +41,12 @@ import org.springframework.data.repository.query.Param;
  * An HQL {@code cast(:from as LocalDate)} is no help either: the Java type already matches, so
  * Hibernate emits no SQL cast to carry the type.
  *
- * <p>So the date bounds and the search pattern are always real values — {@code LedgerFilter.EARLIEST}
- * / {@code LATEST} and {@code "%"} — and mean "everything" by matching everything. The id filters
- * keep {@code (:id is null or ...)} because their binds are typed and the null reads more clearly
- * than a sentinel UUID, which does not exist. All of it was found by the ledger tests, which is
- * why they exercise each filter separately rather than only the unfiltered list.
+ * <p>So the date bounds and the search pattern are always real values — {@code
+ * LedgerFilter.EARLIEST} / {@code LATEST} and {@code "%"} — and mean "everything" by matching
+ * everything. The id filters keep {@code (:id is null or ...)} because their binds are typed and
+ * the null reads more clearly than a sentinel UUID, which does not exist. All of it was found by
+ * the ledger tests, which is why they exercise each filter separately rather than only the
+ * unfiltered list.
  */
 public interface TransactionRepository extends Repository<Transaction, UUID> {
 
@@ -58,9 +60,9 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
      *
      * <p>A real delete rather than a tombstone: a household that mistypes an amount needs the wrong
      * figure gone, not struck through for ever. "Append-mostly" in {@code docs/domain/model.md}
-     * describes corrections keeping an audit trail, which is what {@code created_at} /
-     * {@code updated_at} and the version counter are for — not a graveyard of deleted rows that
-     * every later sum has to remember to exclude.
+     * describes corrections keeping an audit trail, which is what {@code created_at} / {@code
+     * updated_at} and the version counter are for — not a graveyard of deleted rows that every
+     * later sum has to remember to exclude.
      */
     void delete(Transaction transaction);
 
@@ -74,10 +76,10 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
      * @param categoryId null for every category — note that this cannot express "uncategorised
      *     only", which {@link #findUncategorised} does, because a null here already means "do not
      *     filter"
-     * @param from the inclusive lower bound, and <b>never null</b> — "no lower bound" is
-     *     {@code LedgerFilter.EARLIEST}. See the class note on why.
-     * @param to the inclusive upper bound, never null — "no upper bound" is
-     *     {@code LedgerFilter.LATEST}
+     * @param from the inclusive lower bound, and <b>never null</b> — "no lower bound" is {@code
+     *     LedgerFilter.EARLIEST}. See the class note on why.
+     * @param to the inclusive upper bound, never null — "no upper bound" is {@code
+     *     LedgerFilter.LATEST}
      * @param search null for no text search; otherwise an already-lowercased, already-escaped
      *     {@code like} pattern. <b>The lowercasing happens in Java, not in SQL.</b> {@code
      *     lower(:search)} would read better, but this parameter is nullable and Hibernate cannot
@@ -131,6 +133,13 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
      * categoryId} there already means "every category". Conflating the two would make
      * "uncategorised only" unexpressible, and it is the one filter a person actually acts on: it is
      * the work queue that makes a budget usable.
+     *
+     * <p><b>Transfers are excluded, even though they have no category.</b> Moving money between
+     * your own accounts is not income and not spending (docs/domain/model.md), so there is no
+     * category that could be right for it and nothing for a person to do about it. Leaving them in
+     * would put two permanently unanswerable rows into the work queue for every transfer ever made
+     * — which is how a queue stops being something anybody tries to empty. Found by the browser
+     * check on the fixtures, which include a transfer.
      */
     @Query(
             value =
@@ -138,6 +147,7 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
                     select t from Transaction t
                     where t.householdId = :householdId
                       and t.categoryId is null
+                      and t.transferGroupId is null
                     order by t.date desc, t.id desc
                     """,
             countQuery =
@@ -145,9 +155,9 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
                     select count(t) from Transaction t
                     where t.householdId = :householdId
                       and t.categoryId is null
+                      and t.transferGroupId is null
                     """)
-    Page<Transaction> findUncategorised(
-            @Param("householdId") UUID householdId, Pageable pageable);
+    Page<Transaction> findUncategorised(@Param("householdId") UUID householdId, Pageable pageable);
 
     /**
      * The posted total per account, with each account's currency alongside it.
@@ -192,7 +202,9 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
             @Param("householdId") UUID householdId,
             @Param("accountIds") Collection<UUID> accountIds);
 
-    /** Whether this one account has any transaction. Used by the delete and re-denominate guards. */
+    /**
+     * Whether this one account has any transaction. Used by the delete and re-denominate guards.
+     */
     @Query(
             """
             select count(t) > 0 from Transaction t

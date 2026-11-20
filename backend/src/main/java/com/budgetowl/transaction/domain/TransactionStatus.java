@@ -7,9 +7,9 @@ package com.budgetowl.transaction.domain;
  * would renumber every row the day a fourth status is inserted anywhere but the end.
  *
  * <p><b>With no bank connection, everything a person types is {@link #CLEARED}.</b> That is not a
- * shortcut: the person entering it watched it happen and is the authority on whether it did.
- * {@link #PENDING} exists for the case they want to record something they expect to settle — a
- * cheque in the post, a card authorisation — and for imports (slice 12) whose source says so.
+ * shortcut: the person entering it watched it happen and is the authority on whether it did. {@link
+ * #PENDING} exists for the case they want to record something they expect to settle — a cheque in
+ * the post, a card authorisation — and for imports (slice 12) whose source says so.
  */
 public enum TransactionStatus {
 

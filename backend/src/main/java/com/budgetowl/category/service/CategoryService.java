@@ -246,9 +246,7 @@ public class CategoryService {
             }
         }
         log.info(
-                "default categories seeded householdId={} count={}",
-                household.id(),
-                seeded.size());
+                "default categories seeded householdId={} count={}", household.id(), seeded.size());
     }
 
     // ------------------------------------------------------------------------------- internals

@@ -38,7 +38,9 @@ public final class CategoryResponses {
             Instant updatedAt,
             long version) {
 
-        /** Redacted: a category name is whatever the user typed, and MVC logs responses at DEBUG. */
+        /**
+         * Redacted: a category name is whatever the user typed, and MVC logs responses at DEBUG.
+         */
         @Override
         public String toString() {
             return "CategoryResponse[id=" + id + ", kind=" + kind + ", archived=" + archived + "]";

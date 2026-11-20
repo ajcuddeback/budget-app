@@ -60,8 +60,7 @@ public class PayeeService {
         try {
             return payees.saveAndFlush(Payee.named(household, trimmed));
         } catch (DataIntegrityViolationException lostTheRace) {
-            return payees.findByName(householdId, trimmed)
-                    .orElseThrow(() -> lostTheRace);
+            return payees.findByName(householdId, trimmed).orElseThrow(() -> lostTheRace);
         }
     }
 
@@ -82,10 +81,5 @@ public class PayeeService {
         String escaped = trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         return payees.findByNamePrefix(
                 householdId, escaped + "%", PageRequest.of(0, SUGGESTION_LIMIT));
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<Payee> find(UUID householdId, UUID payeeId) {
-        return payees.findByIdAndHouseholdId(payeeId, householdId);
     }
 }

@@ -7,8 +7,14 @@
 
   @if (signedIn()) {
     <nav class="nav" [attr.aria-label]="'nav.label' | t">
+      <a routerLink="/transactions" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.transactions' | t
+      }}</a>
       <a routerLink="/accounts" routerLinkActive="active" ariaCurrentWhenActive="page">{{
         'nav.accounts' | t
+      }}</a>
+      <a routerLink="/categories" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.categories' | t
       }}</a>
       <a routerLink="/household" routerLinkActive="active" ariaCurrentWhenActive="page">{{
         'nav.household' | t

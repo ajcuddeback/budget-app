@@ -145,16 +145,30 @@ CREATE INDEX ix_transactions_household_date
 CREATE INDEX ix_transactions_account_date
     ON transactions (account_id, date DESC, id DESC);
 
--- Category roll-ups, and the lookup the category FK consults when a category is deleted. Partial:
--- uncategorised rows are found through the household index, and excluding them keeps this index
--- small on exactly the instance where many rows are uncategorised.
-CREATE INDEX ix_transactions_category
+-- Category roll-ups: one household's spending under one category, in date order.
+--
+-- Partial, because uncategorised rows are found through the household index and excluding them
+-- keeps this small on exactly the instance where many rows have no category.
+CREATE INDEX ix_transactions_household_category
     ON transactions (household_id, category_id, date DESC)
     WHERE category_id IS NOT NULL;
 
-CREATE INDEX ix_transactions_payee
+CREATE INDEX ix_transactions_household_payee
     ON transactions (household_id, payee_id, date DESC)
     WHERE payee_id IS NOT NULL;
+
+-- The foreign keys' own indexes, which are NOT the same thing as the two above.
+--
+-- PostgreSQL consults a child index when a parent row is deleted, and it needs one whose LEADING
+-- column is the referencing column. The roll-up indexes lead with `household_id` and are partial,
+-- so neither can serve that scan: deleting a category would sequentially scan every transaction in
+-- the instance, and deleting a category is an ordinary thing to do. `SchemaMigrationIT`
+-- .everyForeignKeyIsIndexed is what caught this, and is why it exists.
+CREATE INDEX ix_transactions_category_id
+    ON transactions (category_id);
+
+CREATE INDEX ix_transactions_payee_id
+    ON transactions (payee_id);
 
 -- Finds the other half of a transfer (slice 8).
 CREATE INDEX ix_transactions_transfer_group
