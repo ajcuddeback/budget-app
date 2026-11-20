@@ -332,6 +332,209 @@ export const DEMO_ENVELOPE_ENTRIES = [
 /** The months this household has envelopes for, newest first. */
 export const DEMO_ENVELOPE_PERIODS = ['2026-08', '2026-07'] as const;
 
+/**
+ * The household's bills for one month, in the shape `BillResponse` sends.
+ *
+ * Chosen so that every case the screen has to get right is on it at once, because a fixture set
+ * where everything is a comfortable monthly direct debit would never show any of them:
+ *
+ * - **`bil-0002` is weekly**, with four occurrences in August and the third one paid. A screen
+ *   that renders one row per bill rather than one per occurrence is visibly wrong here.
+ * - **`bil-0003` varies** and was paid £43.10 over a £120 plan, outside its £22 tolerance, so it
+ *   is `surprising` and both figures have to show.
+ * - **`bil-0004` is overdue** — due on the 10th and still DUE — and nothing had to sweep it.
+ * - **`bil-0005` is irregular**: listed, projecting nothing, which is what ADR-0032 asks for.
+ * - **`bil-0006` is retired**, so it projects nothing and keeps the record it already had.
+ * - **`bil-0007` is yearly** and falls outside August, so it is listed with no occurrences.
+ *
+ * An occurrence with `recorded: false` has no row behind it and no `version`: it is DUE because
+ * the schedule says so, not because anybody said so.
+ */
+const occurrence = (
+  billId: string,
+  dueDate: string,
+  expectedAmount: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  billId,
+  dueDate,
+  expectedAmount,
+  status: 'DUE',
+  actualAmount: null,
+  paidDate: null,
+  transactionId: null,
+  statusSource: 'MANUAL',
+  recorded: false,
+  overdue: false,
+  surprising: false,
+  version: null,
+  ...extra,
+});
+
+const PAID = { status: 'PAID', statusSource: 'MANUAL', recorded: true, version: 0 };
+
+export const DEMO_BILLS = [
+  {
+    id: 'bil-0001', name: 'Rent', categoryId: 'cat-0004', categoryName: 'Rent',
+    categoryParentName: null, expectedAmount: '1450.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 1, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: false, tolerance: null, active: true,
+    occurrences: [
+      occurrence('bil-0001', '2026-08-01', '1450.0000', {
+        ...PAID, actualAmount: '1450.0000', paidDate: '2026-08-01',
+      }),
+    ],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0002', name: 'Cleaner', categoryId: null, categoryName: null,
+    categoryParentName: null, expectedAmount: '40.0000', currency: 'USD',
+    schedule: { kind: 'WEEKLY', dayOfMonth: null, month: null, dayOfWeek: 'FRIDAY', anchorDate: null },
+    amountVaries: false, tolerance: null, active: true,
+    occurrences: [
+      occurrence('bil-0002', '2026-08-07', '40.0000', { ...PAID, actualAmount: '40.0000', paidDate: '2026-08-07' }),
+      occurrence('bil-0002', '2026-08-14', '40.0000', { ...PAID, actualAmount: '40.0000', paidDate: '2026-08-14' }),
+      occurrence('bil-0002', '2026-08-21', '40.0000'),
+      occurrence('bil-0002', '2026-08-28', '40.0000'),
+    ],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-14T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0003', name: 'Phone', categoryId: 'cat-0005', categoryName: 'Utilities',
+    categoryParentName: null, expectedAmount: '120.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 14, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: true, tolerance: '22.0000', active: true,
+    occurrences: [
+      // £43.10 over a £120 plan that allows £22 of variation, so the app says so rather than
+      // letting it pass as ordinary.
+      occurrence('bil-0003', '2026-08-14', '120.0000', {
+        ...PAID, actualAmount: '163.1000', paidDate: '2026-08-15', surprising: true,
+      }),
+    ],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0004', name: 'Council tax', categoryId: null, categoryName: null,
+    categoryParentName: null, expectedAmount: '186.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 10, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: false, tolerance: null, active: true,
+    occurrences: [occurrence('bil-0004', '2026-08-10', '186.0000', { overdue: true })],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0005', name: 'Vet', categoryId: null, categoryName: null,
+    categoryParentName: null, expectedAmount: '0.0000', currency: 'USD',
+    schedule: { kind: 'IRREGULAR', dayOfMonth: null, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: false, tolerance: null, active: true,
+    occurrences: [],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0007', name: 'Car insurance', categoryId: null, categoryName: null,
+    categoryParentName: null, expectedAmount: '480.0000', currency: 'USD',
+    schedule: { kind: 'YEARLY', dayOfMonth: 30, month: 4, dayOfWeek: null, anchorDate: null },
+    amountVaries: false, tolerance: null, active: true,
+    occurrences: [],
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'bil-0006', name: 'Old gym', categoryId: null, categoryName: null,
+    categoryParentName: null, expectedAmount: '35.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 5, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: false, tolerance: null, active: false,
+    occurrences: [],
+    createdAt: '2026-05-01T09:00:00Z', updatedAt: '2026-07-20T09:00:00Z', version: 1,
+  },
+] as const;
+
+export const DEMO_BILLS_ACTIVE = DEMO_BILLS.filter((bill) => bill.active);
+
+/**
+ * The household's income sources, in the shape `IncomeResponse` sends.
+ *
+ * `inc-0002` is **fortnightly**, arriving on the 7th and the 21st of August — two arrivals, where
+ * another month holds three. The figure is the month counted, not a monthly average, and `dates`
+ * is what the screen shows to explain the total.
+ */
+export const DEMO_INCOME = [
+  {
+    id: 'inc-0001', name: 'Salary', amount: '3200.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 28, month: null, dayOfWeek: null, anchorDate: null },
+    accountId: 'acc-0001', accountName: 'Everyday Checking', sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: true, dates: ['2026-08-28'], expectedForPeriod: '3200.0000',
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'inc-0002', name: 'Weekend work', amount: '220.0000', currency: 'USD',
+    schedule: { kind: 'FORTNIGHTLY', dayOfMonth: null, month: null, dayOfWeek: 'FRIDAY', anchorDate: '2026-08-07' },
+    accountId: null, accountName: null, sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: true, dates: ['2026-08-07', '2026-08-21'], expectedForPeriod: '440.0000',
+    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+  },
+  {
+    id: 'inc-0003', name: 'Old retainer', amount: '500.0000', currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 15, month: null, dayOfWeek: null, anchorDate: null },
+    accountId: null, accountName: null, sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: false, dates: [], expectedForPeriod: '0.0000',
+    createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-06-30T09:00:00Z', version: 1,
+  },
+] as const;
+
+export const DEMO_INCOME_ACTIVE = DEMO_INCOME.filter((source) => source.active);
+
+/**
+ * What the household has left to spend in August, in the shape `SummaryResponse` sends.
+ *
+ * **Every figure is derived from the fixtures above, not typed independently**, so a screen built
+ * on these cannot show a headline its own blocks disagree with — which is the defect the single
+ * summary endpoint exists to prevent, and it would be silly for the fixtures to reintroduce it.
+ *
+ * Bills count whether or not they are paid: rent that has gone is not money still available.
+ */
+const sum = (figures: readonly string[]) =>
+  figures.reduce((total, figure) => total + Number(figure), 0);
+
+const BILL_FIGURES = DEMO_BILLS_ACTIVE.flatMap((bill) =>
+  bill.occurrences
+    .filter((one) => one.status !== 'SKIPPED')
+    .map((one) => ({
+      amount: one.status === 'PAID' ? (one.actualAmount ?? one.expectedAmount) : one.expectedAmount,
+      outstanding: one.status !== 'PAID',
+      overdue: one.overdue,
+    })),
+);
+
+const BILLS_TOTAL = sum(BILL_FIGURES.map((one) => one.amount));
+const BILLS_OUTSTANDING = sum(BILL_FIGURES.filter((one) => one.outstanding).map((one) => one.amount));
+const BILLS_OVERDUE = sum(BILL_FIGURES.filter((one) => one.overdue).map((one) => one.amount));
+const INCOME_TOTAL = sum(DEMO_INCOME_ACTIVE.map((source) => source.expectedForPeriod));
+const ENVELOPES_ALLOCATED = sum(
+  DEMO_ENVELOPES_ACTIVE.filter((envelope) => envelope.period === '2026-08').map((e) => e.amount),
+);
+
+export const DEMO_PERIOD_SUMMARY = {
+  period: '2026-08',
+  income: INCOME_TOTAL.toFixed(4),
+  bills: BILLS_TOTAL.toFixed(4),
+  billsOutstanding: BILLS_OUTSTANDING.toFixed(4),
+  billsOverdue: BILLS_OVERDUE.toFixed(4),
+  envelopesAllocated: ENVELOPES_ALLOCATED.toFixed(4),
+  left: (INCOME_TOTAL - BILLS_TOTAL - ENVELOPES_ALLOCATED).toFixed(4),
+  currency: 'USD',
+} as const;
+
+/**
+ * The same month for a household that is short.
+ *
+ * A screen that clamps a negative figure to zero hides exactly what somebody needs to know in the
+ * month they most need to know it, so the capture run has to be able to show one.
+ */
+export const DEMO_PERIOD_SUMMARY_SHORT = {
+  ...DEMO_PERIOD_SUMMARY,
+  income: '1800.0000',
+  left: (1800 - BILLS_TOTAL - ENVELOPES_ALLOCATED).toFixed(4),
+} as const;
+
 export const DEMO_BUDGET = {
   period: '2026-08',
   lines: [
@@ -358,4 +561,5 @@ export const DEMO_API: Record<string, unknown> = {
   '/api/transactions/payee-suggestions': DEMO_PAYEE_SUGGESTIONS,
   '/api/envelopes/periods': DEMO_ENVELOPE_PERIODS,
   '/api/budgets/2026-08': DEMO_BUDGET,
+  '/api/periods/2026-08/summary': DEMO_PERIOD_SUMMARY,
 };

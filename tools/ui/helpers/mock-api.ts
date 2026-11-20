@@ -1,6 +1,8 @@
 import type { Page, Route } from '@playwright/test';
 import {
   DEMO_ACCOUNTS,
+  DEMO_BILLS,
+  DEMO_BILLS_ACTIVE,
   DEMO_ENVELOPES,
   DEMO_ENVELOPES_ACTIVE,
   DEMO_ENVELOPE_ENTRIES,
@@ -11,12 +13,15 @@ import {
   DEMO_ACCOUNTS_ACTIVE,
   DEMO_API,
   DEMO_HOUSEHOLD,
+  DEMO_INCOME,
+  DEMO_INCOME_ACTIVE,
   DEMO_INVITATION,
   DEMO_ME,
   DEMO_ME_MEMBER,
   DEMO_ME_NO_HOUSEHOLD,
   DEMO_ME_VIEWER,
   DEMO_MEMBERS,
+  DEMO_PERIOD_SUMMARY,
   DEMO_PROBLEMS,
   DEMO_TOKENS,
   DEMO_USER,
@@ -35,6 +40,83 @@ import {
  * It also makes captures deterministic: the same bytes every run, so a screenshot diff means
  * the UI changed rather than that a balance moved.
  */
+
+/**
+ * The dates a schedule falls on in a month — the same five rules as the server's `Recurrence`.
+ *
+ * <b>Why the mock projects at all.</b> The fixtures describe one household in August 2026, but
+ * the bills screen opens on the CURRENT month: bills recur, so unlike envelopes it never has to
+ * hunt for a month that has any. Serving August's dates whatever month was asked for produced a
+ * page headed "November 2026" with every row dated August — which is incoherent in a screenshot
+ * and would be worse in the user guide, where the capture is the documentation (ADR-0012).
+ */
+function datesIn(
+  schedule: { kind: string; dayOfMonth: number | null; month: number | null; dayOfWeek: string | null; anchorDate: string | null },
+  period: string,
+): string[] {
+  const [year, month] = period.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const on = (day: number) => `${period}-${String(day).padStart(2, '0')}`;
+  const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+  const everyMatchingWeekday = (): number[] => {
+    const wanted = WEEKDAYS.indexOf(schedule.dayOfWeek ?? '');
+    const days: number[] = [];
+    for (let day = 1; day <= lastDay; day += 1) {
+      if (new Date(Date.UTC(year, month - 1, day)).getUTCDay() === wanted) days.push(day);
+    }
+    return days;
+  };
+
+  switch (schedule.kind) {
+    case 'MONTHLY':
+      // Clamped, so a bill due on the 31st falls on the 30th of April.
+      return [on(Math.min(schedule.dayOfMonth ?? 1, lastDay))];
+    case 'YEARLY':
+      return schedule.month === month ? [on(Math.min(schedule.dayOfMonth ?? 1, lastDay))] : [];
+    case 'WEEKLY':
+      return everyMatchingWeekday().map(on);
+    case 'FORTNIGHTLY': {
+      const anchor = Date.parse(`${schedule.anchorDate ?? `${period}-01`}T00:00:00Z`);
+      return everyMatchingWeekday()
+        .filter((day) => {
+          const weeks = Math.round((Date.UTC(year, month - 1, day) - anchor) / 604800000);
+          // The same floorMod the server uses, so a date before the anchor steps correctly.
+          return ((weeks % 2) + 2) % 2 === 0;
+        })
+        .map(on);
+    }
+    default:
+      // IRREGULAR projects nothing. Recording against a date is what creates its occurrence.
+      return [];
+  }
+}
+
+/**
+ * One bill's occurrences in a month: the projected dates, carrying the fixture's recorded
+ * statuses in order.
+ *
+ * That ordering is what keeps every case the fixtures were chosen for — a paid one, an overdue
+ * one, one paid for a surprising amount — present in whatever month the screen is showing.
+ */
+function occurrencesIn(bill: (typeof DEMO_BILLS)[number], period: string) {
+  const dates = bill.active ? datesIn(bill.schedule, period) : [];
+  return dates.map((dueDate, index) => {
+    const fixture = bill.occurrences[index];
+    if (!fixture) {
+      return {
+        billId: bill.id, dueDate, expectedAmount: bill.expectedAmount, status: 'DUE',
+        actualAmount: null, paidDate: null, transactionId: null, statusSource: 'MANUAL',
+        recorded: false, overdue: false, surprising: false, version: null,
+      };
+    }
+    return {
+      ...fixture,
+      dueDate,
+      paidDate: fixture.paidDate ? dueDate : null,
+    };
+  });
+}
 
 /** Requests that reached the mock, so a spec can assert the page asked for what it needed. */
 export type ApiCall = {
@@ -373,6 +455,132 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
+        return json(route, 200, { ...found, ...changes, version: found.version + 1 });
+      }
+      return json(route, 200, found);
+    }
+
+    // ---- bills, income and the month's summary ---------------------------------------------
+    // An occurrence is addressed by its DUE DATE, not an id (ADR-0032), because for most of its
+    // life it has no row. The routes below are matched in that shape so a spec can assert that a
+    // tap on one Friday's "Mark paid" went to that Friday and to no other.
+    if (at === 'GET /api/bills') {
+      const all = url.searchParams.get('includeInactive') === 'true';
+      const period = url.searchParams.get('period') ?? '2026-08';
+      const rows = (all ? DEMO_BILLS : DEMO_BILLS_ACTIVE).map((bill) => ({
+        ...bill,
+        occurrences: occurrencesIn(bill, period),
+      }));
+      return json(route, 200, {
+        content: rows,
+        total: DEMO_PERIOD_SUMMARY.bills,
+        outstanding: DEMO_PERIOD_SUMMARY.billsOutstanding,
+        overdue: DEMO_PERIOD_SUMMARY.billsOverdue,
+        currency: 'USD',
+      });
+    }
+    if (at === 'POST /api/bills') {
+      return json(route, 201, {
+        ...DEMO_BILLS[0],
+        id: 'bil-0099',
+        name: field('name') ?? 'New bill',
+        expectedAmount: field('expectedAmount') ?? '0.0000',
+        categoryId: field('categoryId') ?? null,
+        categoryName: null,
+        categoryParentName: null,
+        amountVaries: body?.['amountVaries'] === true,
+        tolerance: field('tolerance') ?? null,
+        // A write answers with no occurrences: which month the client is looking at is the
+        // client's question, and the list endpoint is where it asks.
+        occurrences: [],
+        version: 0,
+      });
+    }
+    const occurrenceRoute = /^\/api\/bills\/([^/]+)\/occurrences\/([^/]+)$/.exec(url.pathname);
+    if (occurrenceRoute) {
+      const [, billId, dueDate] = occurrenceRoute;
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      const bill = DEMO_BILLS.find((one) => one.id === billId) ?? DEMO_BILLS[0];
+      const status = field('status') ?? 'PAID';
+      const paid = status === 'PAID';
+      return json(route, 200, {
+        billId,
+        dueDate,
+        expectedAmount: bill.expectedAmount,
+        status,
+        actualAmount: paid ? (field('actualAmount') ?? bill.expectedAmount) : null,
+        paidDate: paid ? (field('paidDate') ?? dueDate) : null,
+        transactionId: null,
+        statusSource: 'MANUAL',
+        recorded: true,
+        overdue: false,
+        surprising: false,
+        version: 0,
+      });
+    }
+    const billRoute = /^\/api\/bills\/([^/]+)$/.exec(url.pathname);
+    if (billRoute) {
+      const found = DEMO_BILLS.find((one) => one.id === billRoute[1]) ?? DEMO_BILLS[0];
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'PATCH') {
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        delete changes['schedule'];
+        return json(route, 200, { ...found, ...changes, version: found.version + 1 });
+      }
+      return json(route, 200, found);
+    }
+
+    // Any month, answered with August's figures. The screen opens on the CURRENT month — right
+    // for bills, which recur, unlike envelopes which have to find a month that has any — so a
+    // mock keyed on one month would answer nothing on every run after August 2026.
+    const summaryRoute = /^\/api\/periods\/([^/]+)\/summary$/.exec(url.pathname);
+    if (summaryRoute && method === 'GET') {
+      return json(route, 200, { ...DEMO_PERIOD_SUMMARY, period: summaryRoute[1] });
+    }
+
+    if (at === 'GET /api/income') {
+      const all = url.searchParams.get('includeInactive') === 'true';
+      const period = url.searchParams.get('period') ?? '2026-08';
+      const rows = (all ? DEMO_INCOME : DEMO_INCOME_ACTIVE).map((source) => ({
+        ...source,
+        dates: source.active ? datesIn(source.schedule, period) : [],
+      }));
+      return json(route, 200, {
+        content: rows,
+        total: DEMO_PERIOD_SUMMARY.income,
+        currency: 'USD',
+      });
+    }
+    if (at === 'POST /api/income') {
+      return json(route, 201, {
+        ...DEMO_INCOME[0],
+        id: 'inc-0099',
+        name: field('name') ?? 'New income',
+        amount: field('amount') ?? '0.0000',
+        accountId: field('accountId') ?? null,
+        accountName: null,
+        dates: [],
+        expectedForPeriod: '0.0000',
+        version: 0,
+      });
+    }
+    const incomeRoute = /^\/api\/income\/([^/]+)$/.exec(url.pathname);
+    if (incomeRoute) {
+      const found = DEMO_INCOME.find((one) => one.id === incomeRoute[1]) ?? DEMO_INCOME[0];
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'PATCH') {
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        delete changes['schedule'];
         return json(route, 200, { ...found, ...changes, version: found.version + 1 });
       }
       return json(route, 200, found);

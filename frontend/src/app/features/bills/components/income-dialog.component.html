@@ -1,0 +1,68 @@
+<dialog appModal class="dialog" aria-labelledby="income-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="income-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="income-name">{{ 'bills.income.name' | t }}</label>
+      <input
+        id="income-name"
+        class="input"
+        type="text"
+        maxlength="80"
+        autocomplete="off"
+        formControlName="name"
+        aria-describedby="income-name-hint income-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="income-name-hint">{{ 'bills.income.nameHint' | t }}</p>
+      <app-field-error [control]="form.controls.name" errorId="income-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="income-amount">{{ 'bills.income.amount' | t }}</label>
+      <!-- type="text" with inputmode="decimal": a number input hands back a double (ADR-0006). -->
+      <input
+        id="income-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="amount"
+        aria-describedby="income-amount-hint income-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      <!-- What arrives each time, said plainly: the month's total is the server's arithmetic. -->
+      <p class="field-hint" id="income-amount-hint">
+        {{ 'bills.income.amountHint' | t: { currency: currency() } }}
+      </p>
+      <app-field-error [control]="form.controls.amount" errorId="income-amount-error" />
+    </div>
+
+    <app-schedule-fields [form]="form.controls.schedule" idPrefix="income" />
+
+    <div class="field">
+      <label for="income-account">{{ 'bills.income.account' | t }}</label>
+      <select id="income-account" class="input" formControlName="accountId">
+        <option value="">{{ 'bills.income.noAccount' | t }}</option>
+        @for (account of choosableAccounts(); track account.id) {
+          <option [value]="account.id">{{ account.name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

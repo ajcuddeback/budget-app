@@ -38,6 +38,26 @@ export class MoneyPipe implements PipeTransform {
   }
 }
 
+/** `{{ 8 | monthName }}` — "August". For a month picker, which has no year to show. */
+@Pipe({ name: 'monthName', pure: false })
+export class MonthNamePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(month: number): string {
+    return this.i18n.formatMonthName(month);
+  }
+}
+
+/** `{{ 3 | weekdayName }}` — "Wednesday", from the ISO weekday number, Monday first. */
+@Pipe({ name: 'weekdayName', pure: false })
+export class WeekdayNamePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(isoDay: number): string {
+    return this.i18n.formatWeekday(isoDay);
+  }
+}
+
 @Pipe({ name: 'currencyName', pure: false })
 export class CurrencyNamePipe implements PipeTransform {
   private readonly i18n = inject(I18nService);

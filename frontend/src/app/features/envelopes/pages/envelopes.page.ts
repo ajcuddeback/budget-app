@@ -6,6 +6,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { MessageKey } from '../../../core/i18n/messages';
 import { DateOnlyPipe, MoneyPipe } from '../../../core/i18n/format.pipes';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
+import { currentPeriod, shiftPeriod } from '../../../core/period';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog.component';
 import { ErrorAlertComponent } from '../../../shared/components/error-alert.component';
 import { NoHouseholdComponent } from '../../../shared/components/no-household.component';
@@ -22,7 +23,6 @@ import {
   buildEnvelopePatch,
   patchIsEmpty,
 } from '../data/envelope-patch';
-import { currentPeriod, periodAsDate, shiftPeriod } from '../data/envelope-period';
 import { Envelope, EnvelopeEntry, entrySourceKey } from '../data/envelope.models';
 import { EnvelopesService } from '../data/envelopes.service';
 
@@ -108,17 +108,8 @@ export class EnvelopesPage {
   protected readonly currency = computed(
     () => this.totals()?.currency ?? this.auth.membership()?.baseCurrency ?? '',
   );
-  /**
-   * The month, named for the viewer's locale — "August 2026", never "2026-08".
-   *
-   * Formatted here rather than through a pipe because no existing pipe takes a month style, and
-   * the period is the one date on this screen that is a month rather than a day.
-   */
-  protected readonly periodName = computed(() =>
-    new Intl.DateTimeFormat(this.i18n.locale(), { month: 'long', year: 'numeric' }).format(
-      periodAsDate(this.period()),
-    ),
-  );
+  /** The month, named for the viewer's locale — "August 2026", never "2026-08". */
+  protected readonly periodName = computed(() => this.i18n.formatMonth(this.period()));
   protected readonly sourceKey = entrySourceKey;
 
   protected readonly envelopeDialog = signal<EnvelopeDialogTarget | null>(null);

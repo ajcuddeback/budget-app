@@ -4,6 +4,10 @@
  * Everything here is string arithmetic on `YYYY-MM`. Going through `Date` would drag a timezone
  * into a question that has none: "which month am I budgeting" is a calendar question, and a
  * household near a date line should not get a different answer from the same click.
+ *
+ * In `core/` rather than in a feature because three screens now ask the same question — envelopes,
+ * bills and income all list a month at a time — and a second copy of month arithmetic is a second
+ * place for December to be wrong.
  */
 
 /** The current month, in the viewer's own calendar. */

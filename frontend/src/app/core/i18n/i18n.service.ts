@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { isAmount } from '../money';
+import { isPeriod, periodAsDate } from '../period';
 import { ENGLISH, MessageKey, MessageParams } from './messages';
 
 const RIGHT_TO_LEFT = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ckb']);
@@ -106,6 +107,64 @@ export class I18nService {
   }
 
   /**
+   * A period — `2026-08` — as the month it names: "August 2026", never "2026-08".
+   *
+   * A month label is not a date, so it is not {@link formatDate}'s job: the period has no day in
+   * it and inventing one for display would show "1 August 2026" for a whole month. An empty
+   * string for anything that is not a period, for the reason {@link formatMoney} gives.
+   */
+  formatMonth(period: string | null | undefined): string {
+    if (!period || !isPeriod(period)) {
+      return '';
+    }
+    return new Intl.DateTimeFormat(this.locale(), { month: 'long', year: 'numeric' }).format(
+      periodAsDate(period),
+    );
+  }
+
+  /** "August" — month `1`–`12` named in the active locale, for a month picker. */
+  formatMonthName(month: number): string {
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return '';
+    }
+    return new Intl.DateTimeFormat(this.locale(), { month: 'long' }).format(
+      new Date(2026, month - 1, 1),
+    );
+  }
+
+  /**
+   * "15 August" — a day in a month, with no year, in the active locale's own order.
+   *
+   * A yearly bill falls on a day of a month and in no particular year, so the year is absent
+   * rather than set to this one. The order is `Intl`'s, never a template: "August 15" and
+   * "15 August" are both right, in different places.
+   */
+  formatMonthDay(month: number, day: number): string {
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return '';
+    }
+    return new Intl.DateTimeFormat(this.locale(), { month: 'long', day: 'numeric' }).format(
+      new Date(2026, month - 1, clampDay(month, day)),
+    );
+  }
+
+  /**
+   * "Wednesday" — the ISO weekday `1`–`7`, Monday first, named in the active locale.
+   *
+   * Taken from `Intl` rather than from the message catalogue: seven names per language that every
+   * calendar already knows is seven more strings for a translator to get wrong.
+   */
+  formatWeekday(isoDay: number): string {
+    if (!Number.isInteger(isoDay) || isoDay < 1 || isoDay > 7) {
+      return '';
+    }
+    // 2024-01-01 was a Monday, so the offset is the ISO number itself.
+    return new Intl.DateTimeFormat(this.locale(), { weekday: 'long' }).format(
+      new Date(2024, 0, isoDay),
+    );
+  }
+
+  /**
    * An amount in its own currency, for the active locale.
    *
    * **The string the API sent is handed straight to `Intl`** (ADR-0006). `Intl.NumberFormat`
@@ -162,6 +221,12 @@ export class I18nService {
     const hours = Math.ceil(minutes / 60);
     return hours === 1 ? this.t('duration.hour') : this.t('duration.hours', { count: hours });
   }
+}
+
+/** The last day of a month, so a bill on the 31st does not display as the 1st of the next. */
+function clampDay(month: number, day: number): number {
+  const last = new Date(2026, month, 0).getDate();
+  return Math.min(Math.max(Number.isInteger(day) ? day : 1, 1), last);
 }
 
 function platformLocale(): string {

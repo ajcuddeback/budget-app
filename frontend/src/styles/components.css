@@ -261,6 +261,23 @@ select.input {
   padding-inline-end: var(--space-6);
 }
 
+/* A checkbox and its words are one target: the whole label is clickable, and the box keeps a
+   24px hit area so a thumb can find it (WCAG 2.5.8). */
+.checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.checkbox input[type='checkbox'] {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
 /* ---- alerts ------------------------------------------------------------------------------ */
 
 .alert {

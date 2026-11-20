@@ -1,0 +1,59 @@
+<dialog appModal class="dialog" aria-labelledby="record-payment-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="record-payment-title">
+      {{ titleKey() | t: { name: bill().name } }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    @if (choosesDate()) {
+      <div class="field">
+        <label for="record-due-date">{{ 'bills.dueDate' | t }}</label>
+        <input
+          id="record-due-date"
+          class="input"
+          type="date"
+          formControlName="dueDate"
+          aria-describedby="record-due-date-hint record-due-date-error"
+        />
+        <!-- An irregular bill projects nothing, so this date is what creates the occurrence. -->
+        <p class="field-hint" id="record-due-date-hint">{{ 'bills.dueDateHint' | t }}</p>
+        <app-field-error [control]="form.controls.dueDate" errorId="record-due-date-error" />
+      </div>
+    }
+
+    <div class="field">
+      <label for="record-amount">{{ 'bills.actualAmount' | t }}</label>
+      <!-- type="text" with inputmode="decimal": a number input hands back a double (ADR-0006). -->
+      <input
+        id="record-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="actualAmount"
+        aria-describedby="record-amount-hint record-amount-error"
+        [attr.aria-invalid]="
+          form.controls.actualAmount.invalid && form.controls.actualAmount.touched ? 'true' : null
+        "
+      />
+      <!-- Pre-filled with what was budgeted, which is the figure most people are confirming. -->
+      <p class="field-hint" id="record-amount-hint">{{ 'bills.actualAmountHint' | t }}</p>
+      <app-field-error [control]="form.controls.actualAmount" errorId="record-amount-error" />
+    </div>
+
+    <div class="field">
+      <label for="record-paid-date">{{ 'bills.paidDate' | t }}</label>
+      <input id="record-paid-date" class="input" type="date" formControlName="paidDate" />
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'bills.recordIt') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

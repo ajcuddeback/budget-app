@@ -19,7 +19,7 @@ That figure is income, minus the month's bills, minus what is set aside in envel
 subtraction and the page leads with it.
 
 **Bills count whether or not they are paid.** Rent that has already gone is not money still
-available, so subtracting only the unpaid ones would make "what's left" *rise* every time somebody
+available, so subtracting only the unpaid ones would make "what's left" _rise_ every time somebody
 ticked a bill off — the figure would be most optimistic on the day the household had least left.
 A paid occurrence contributes what was really paid; an unpaid one contributes what is budgeted; a
 skipped one contributes nothing. The outstanding figure is reported alongside, so the page can say
@@ -103,14 +103,14 @@ settle two bills, for the reason ADR-0031 gives about envelope entries.
 
 ## API
 
-| Method                              | Path                                   | Notes                                         |
-| ----------------------------------- | -------------------------------------- | --------------------------------------------- |
-| `GET`                               | `/api/bills?period=2026-08`            | Bills with this period's projected occurrence |
-| `POST` · `PATCH` · `DELETE`         | `/api/bills[/{id}]`                    |                                               |
-| `PUT`                               | `/api/bills/{id}/occurrences/{date}`   | Record a status. Idempotent; creates the row  |
-| `DELETE`                            | `/api/bills/{id}/occurrences/{date}`   | Back to projected — forget what was recorded  |
-| `GET` · `POST` · `PATCH` · `DELETE` | `/api/income[/{id}]`                   |                                               |
-| `GET`                               | `/api/periods/{period}/summary`        | Income, bills, envelopes and what is left     |
+| Method                              | Path                                 | Notes                                         |
+| ----------------------------------- | ------------------------------------ | --------------------------------------------- |
+| `GET`                               | `/api/bills?period=2026-08`          | Bills with this period's projected occurrence |
+| `POST` · `PATCH` · `DELETE`         | `/api/bills[/{id}]`                  |                                               |
+| `PUT`                               | `/api/bills/{id}/occurrences/{date}` | Record a status. Idempotent; creates the row  |
+| `DELETE`                            | `/api/bills/{id}/occurrences/{date}` | Back to projected — forget what was recorded  |
+| `GET` · `POST` · `PATCH` · `DELETE` | `/api/income[/{id}]`                 |                                               |
+| `GET`                               | `/api/periods/{period}/summary`      | Income, bills, envelopes and what is left     |
 
 `PUT` rather than `POST` for an occurrence: the URL is valid before anything exists at it, and
 recording the same status twice is the same request twice. `{date}` is the occurrence's due date,
@@ -125,15 +125,43 @@ erased.
 
 ## UI
 
-`/bills` — Bills & Income, with three blocks in the order the designs show them:
+`/bills` — Bills & Income, with four blocks in the order the designs show them, under a month
+picker (previous / next) that every block follows at once:
 
 1. **What's left** — the one figure the page is for, with its three terms beneath it, and the
-   outstanding bills figure as a secondary line.
-2. **Income** — sources and the expected total.
-3. **Bills** — each with its due date, status, and a one-tap **Mark paid**.
-4. **Envelopes** — the block slice 6 deliberately did not build, because this page did not exist.
+   outstanding bills figure as a secondary line. It comes from
+   `GET /api/periods/{period}/summary` rather than from adding the other blocks up, so the
+   headline cannot disagree with them. **It is rendered negative when it is negative** — never
+   clamped — and a negative figure is coloured with `--color-accent-text`, because the olive
+   accent reads as success.
+2. **Income** — sources and the expected total. A source shows what arrives each time, the
+   month's figure, and **how many arrivals the month has**: a fortnightly wage lands two or three
+   times, and that is the month the household has rather than a figure averaged flat.
+3. **Bills** — each bill with **one row per occurrence**, and each row its own due date, status
+   and one-tap **Mark paid** (`PUT` to that row's date, no amount and no date in the body). A
+   weekly bill is four or five rows; a bill with no occurrence this month is still listed and
+   says why. Beside Mark paid: **Paid a different amount…**, **Skip**, **Mark as due**, and
+   **Forget** — the last only on a `recorded` occurrence, with a confirmation that says it is
+   not the same as marking it due. An `IRREGULAR` bill gets **Record a payment**, which chooses
+   the date, because recording against one is what brings its occurrence into being.
+4. **Envelopes** — a summary block using `envelopesAllocated`, linking to `/envelopes`. The
+   block slice 6 deliberately did not build, because this page did not exist; it is a link and a
+   figure, not a second envelopes screen.
 
-A bill that is overdue says so. A bill paid for other than its expected amount shows both figures.
+A bill that is overdue says so. A bill paid for other than its expected amount shows both
+figures, labelled, and is tagged as not what was budgeted. A recorded occurrence says **who**
+recorded it (`statusSource`), so a figure somebody asserted is never shown as one the app
+inferred.
+
+The bill and income dialogs share one schedule editor: a kind, and only the parameters that kind
+uses. **Changing the kind clears the parameters that stopped applying**, and the request is built
+from the same table the editor reads, because sending a parameter a kind has no use for is a
+`400`. `amountVaries` and `tolerance` move together — the tolerance field appears only when the
+box is ticked, and a patch sends both or neither.
+
+A `VIEWER` sees every figure, both totals, every occurrence row, and no write control at all.
+Retiring a bill or a source is `PATCH active: false` and is offered as **Retire** with
+**Restore** beside the retired list; deleting is separate, destructive, and says what it keeps.
 
 ## Security considerations
 
@@ -153,7 +181,7 @@ A bill that is overdue says so. A bill paid for other than its expected amount s
 
 - Changing a bill's schedule re-projects **past** periods that nobody recorded anything against.
   ADR-0032 explains why that is the right trade; it is still a surprise worth knowing about.
-- **A bill and an envelope can double-count the same plan.** Rent recorded as a bill *and* given
+- **A bill and an envelope can double-count the same plan.** Rent recorded as a bill _and_ given
   an envelope is subtracted twice from what's left. Nothing stops it, because nothing can tell the
   two apart, and the alternative — matching bills to envelopes by name or category — would be
   guessing. The page shows the three terms, so the double is visible rather than hidden.
@@ -166,3 +194,10 @@ A bill that is overdue says so. A bill paid for other than its expected amount s
   idempotent `PUT`, and that a projected period and an untouched one read identically.
 - `BillProjectionTest` — the schedule arithmetic as a unit, including February and leap years.
 - `IncomeIT`, `PeriodSummaryIT` — the figure the page leads with.
+- `bills-data.spec.ts` — the request builders: a schedule sends only its own parameters, a kind
+  change clears and re-requires them, `amountVaries` and `tolerance` travel together, an amount
+  stays a string, and recording a status is a `PUT` to a date with no version.
+- `bills.page.spec.ts` — what a person sees: `left` rendered negative and styled as bad, a weekly
+  bill as four independently markable rows, Mark paid reaching the tapped date and no other,
+  overdue and surprising, Forget offered only on a recorded occurrence, and a `VIEWER` with every
+  figure and no button.
