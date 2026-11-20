@@ -16,9 +16,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <b>Another household's categories and transactions are indistinguishable from rows that never
  * existed.</b>
  *
- * <p>{@code AccountCrossHouseholdIT} does this for slice 3. This is the same test for the tables
- * that hold the amounts, and it exists because the version written with the slice did not: it sent
- * a {@code UUID.randomUUID()}, which answers {@code 404} even against a completely unscoped {@code
+ * <p>{@code AccountCrossHouseholdIT} does this for slice 3. This is the same test for every table
+ * that holds an amount — categories and transactions, and now bills, their occurrences and income
+ * sources — and it exists because the version written with the slice did not: it sent a {@code
+ * UUID.randomUUID()}, which answers {@code 404} even against a completely unscoped {@code
  * findById}. A test that cannot fail for the reason it was written is worse than no test, because
  * it reads in a diff as though the box is ticked. A security review caught it.
  *
@@ -42,11 +43,27 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
     private static final String THEIR_CATEGORY = "Grace's secret category";
     private static final String THEIR_PAYEE = "Grace's bookshop";
     private static final String THEIR_NOTE = "Grace's note";
+    private static final String THEIR_BILL = "Grace's rent";
+    private static final String THEIR_INCOME = "Grace's salary";
+
+    /**
+     * Distinctive, because the envelope term of the summary is a <b>SUM</b> rather than a row. An
+     * unscoped sum leaks a number, not a record — it reads as the household being several hundred
+     * pounds worse off than it is, and nobody files a bug about that.
+     */
+    private static final String THEIR_ENVELOPE_AMOUNT = "654.0000";
 
     @Autowired private PlatformTransactionManager transactionManager;
 
     /** The ids of the second household's rows, filled in by {@link #seedASecondHousehold()}. */
-    private record Theirs(UUID household, UUID account, UUID category, UUID transaction) {}
+    private record Theirs(
+            UUID household,
+            UUID account,
+            UUID category,
+            UUID transaction,
+            UUID bill,
+            UUID income,
+            UUID envelope) {}
 
     @AfterEach
     void restoreTheSingletonIndex() {
@@ -249,6 +266,156 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
     }
 
     @Test
+    void answers404AndNever403ForAnotherHouseholdsBill() {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        ApiClient us = signIn(OWNER_EMAIL, OWNER_SECRET);
+
+        assertThat(us.get("/api/bills/" + theirs.bill() + "?period=2099-03").status())
+                .isEqualTo(404);
+        assertThat(
+                        us.patch("/api/bills/" + theirs.bill(), "{\"name\":\"Ours\",\"version\":0}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(us.delete("/api/bills/" + theirs.bill()).status()).isEqualTo(404);
+        // The occurrence routes too: a bill id in a path is a lookup key, and so is a date.
+        assertThat(
+                        us.put(
+                                        "/api/bills/" + theirs.bill() + "/occurrences/2099-03-09",
+                                        "{\"status\":\"PAID\"}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(us.delete("/api/bills/" + theirs.bill() + "/occurrences/2099-03-09").status())
+                .isEqualTo(404);
+    }
+
+    @Test
+    void answers404AndNever403ForAnotherHouseholdsIncomeSource() {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        ApiClient us = signIn(OWNER_EMAIL, OWNER_SECRET);
+
+        assertThat(us.get("/api/income/" + theirs.income() + "?period=2099-03").status())
+                .isEqualTo(404);
+        assertThat(us.patch("/api/income/" + theirs.income(), "{\"version\":0}").status())
+                .isEqualTo(404);
+        assertThat(us.delete("/api/income/" + theirs.income()).status()).isEqualTo(404);
+    }
+
+    @Test
+    void doesNotLeakAnotherHouseholdsBillsOrIncomeIntoTheMonth() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse bills = household.owner().get("/api/bills?period=2099-03&includeInactive=true");
+        ApiResponse income =
+                household.owner().get("/api/income?period=2099-03&includeInactive=true");
+
+        assertThat(bills.status()).isEqualTo(200);
+        assertThat(bills.body()).doesNotContain(THEIR_BILL).doesNotContain("777.0000");
+        assertThat(income.body()).doesNotContain(THEIR_INCOME).doesNotContain("8888.0000");
+        assertThat(bills.stringField("total")).isEqualTo("0.0000");
+        assertThat(income.stringField("total")).isEqualTo("0.0000");
+    }
+
+    @Test
+    void doesNotCountAnotherHouseholdsPlanInWhatIsLeftToSpend() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse summary = household.owner().get("/api/periods/2099-03/summary");
+
+        // The headline the page leads with. A leak here would not look like a leak — it would look
+        // like the household being eight thousand pounds better off than it is.
+        assertThat(summary.stringField("income")).isEqualTo("0.0000");
+        assertThat(summary.stringField("bills")).isEqualTo("0.0000");
+        // The envelope term is a SUM, so this is the assertion that fails if the household
+        // predicate ever leaves `allocatedForPeriod`. Without an envelope seeded for the second
+        // household it could not fail, which a security review caught.
+        assertThat(summary.stringField("envelopesAllocated")).isEqualTo("0.0000");
+        assertThat(summary.body()).doesNotContain(THEIR_ENVELOPE_AMOUNT);
+        assertThat(summary.stringField("left")).isEqualTo("0.0000");
+    }
+
+    @Test
+    void doesNotLeakAnotherHouseholdsEnvelopesIntoTheMonth() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse listed =
+                household.owner().get("/api/envelopes?period=2099-03&includeArchived=true");
+
+        assertThat(listed.status()).isEqualTo(200);
+        assertThat(listed.body())
+                .doesNotContain("Grace's envelope")
+                .doesNotContain(THEIR_ENVELOPE_AMOUNT);
+        assertThat(listed.stringField("totalAllocated")).isEqualTo("0.0000");
+        assertThat(listed.numberField("totalElements")).isZero();
+    }
+
+    @Test
+    void cannotFileOneOfOurBillsUnderOneOfTheirCategories() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/bills",
+                                """
+                                {"name":"Rent","expectedAmount":"1200.00",
+                                 "schedule":{"kind":"MONTHLY","dayOfMonth":15},
+                                 "categoryId":"%s"}
+                                """
+                                        .formatted(theirs.category()));
+
+        // Filing under their category would have leaked its name through `categoryName`.
+        assertThat(refused.status()).isEqualTo(404);
+    }
+
+    @Test
+    void cannotPointOneOfOurIncomeSourcesAtOneOfTheirAccounts() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/income",
+                                """
+                                {"name":"Salary","amount":"2400.00",
+                                 "schedule":{"kind":"MONTHLY","dayOfMonth":28},
+                                 "accountId":"%s"}
+                                """
+                                        .formatted(theirs.account()));
+
+        assertThat(refused.status()).isEqualTo(404);
+    }
+
+    @Test
+    void leavesAnotherHouseholdsOccurrenceUntouchedByARefusedWrite() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+
+        household
+                .owner()
+                .put(
+                        "/api/bills/" + theirs.bill() + "/occurrences/2099-03-09",
+                        "{\"status\":\"PAID\"}");
+        household.owner().delete("/api/bills/" + theirs.bill() + "/occurrences/2099-03-09");
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM bill_occurrences WHERE bill_id = ?",
+                                String.class,
+                                theirs.bill()))
+                .as("their record of their own month, exactly as it was")
+                .isEqualTo("DUE");
+    }
+
+    @Test
     void reallyHasTwoHouseholdsInTheDatabase() {
         // Without this, every assertion above would also pass against a single household — which
         // is the way a scoping test most often ends up proving nothing at all.
@@ -259,6 +426,10 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                 .isEqualTo(2L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class))
                 .isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM bills", Long.class)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM income_sources", Long.class))
+                .isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM envelopes", Long.class)).isEqualTo(1L);
     }
 
     /** Seeds a whole second household — user, membership, account, category, payee, transaction. */
@@ -273,6 +444,9 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         UUID category = UUID.randomUUID();
         UUID payee = UUID.randomUUID();
         UUID transaction = UUID.randomUUID();
+        UUID bill = UUID.randomUUID();
+        UUID income = UUID.randomUUID();
+        UUID envelope = UUID.randomUUID();
 
         // A household and its first OWNER have to be committed together: the at-least-one-owner
         // constraint is DEFERRABLE INITIALLY DEFERRED and re-reads the counter at COMMIT.
@@ -330,7 +504,43 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                                     payee,
                                     category,
                                     THEIR_NOTE);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO bills (id, household_id, name, expected_amount,
+                                                       schedule, day_of_month)
+                                    VALUES (?, ?, ?, 777.0000, 'MONTHLY', 9)
+                                    """,
+                                    bill,
+                                    household,
+                                    THEIR_BILL);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO bill_occurrences (id, household_id, bill_id, period,
+                                                                  due_date, expected_amount, status)
+                                    VALUES (?, ?, ?, DATE '2099-03-01', DATE '2099-03-09',
+                                            777.0000, 'DUE')
+                                    """,
+                                    UUID.randomUUID(),
+                                    household,
+                                    bill);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO income_sources (id, household_id, name, amount,
+                                                                schedule, day_of_month)
+                                    VALUES (?, ?, ?, 8888.0000, 'MONTHLY', 28)
+                                    """,
+                                    income,
+                                    household,
+                                    THEIR_INCOME);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO envelopes (id, household_id, name, period, amount)
+                                    VALUES (?, ?, 'Grace''s envelope', DATE '2099-03-01',
+                                            654.0000)
+                                    """,
+                                    envelope,
+                                    household);
                         });
-        return new Theirs(household, account, category, transaction);
+        return new Theirs(household, account, category, transaction, bill, income, envelope);
     }
 }

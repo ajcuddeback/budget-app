@@ -108,7 +108,35 @@ class AuthorizationIT extends ApiTestBase {
                         "PATCH",
                         "/api/envelopes/" + any + "/entries/" + any,
                         "{\"version\":0,\"amount\":\"13.00\"}"),
-                new Endpoint("DELETE", "/api/envelopes/" + any + "/entries/" + any, null));
+                new Endpoint("DELETE", "/api/envelopes/" + any + "/entries/" + any, null),
+                new Endpoint("GET", "/api/bills?period=2099-03", null),
+                new Endpoint(
+                        "POST",
+                        "/api/bills",
+                        """
+                        {"name":"Rent","expectedAmount":"1200.00",
+                         "schedule":{"kind":"MONTHLY","dayOfMonth":15}}
+                        """),
+                new Endpoint("GET", "/api/bills/" + any + "?period=2099-03", null),
+                new Endpoint("PATCH", "/api/bills/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("DELETE", "/api/bills/" + any, null),
+                new Endpoint(
+                        "PUT",
+                        "/api/bills/" + any + "/occurrences/2099-03-15",
+                        "{\"status\":\"PAID\"}"),
+                new Endpoint("DELETE", "/api/bills/" + any + "/occurrences/2099-03-15", null),
+                new Endpoint("GET", "/api/income?period=2099-03", null),
+                new Endpoint(
+                        "POST",
+                        "/api/income",
+                        """
+                        {"name":"Salary","amount":"2400.00",
+                         "schedule":{"kind":"MONTHLY","dayOfMonth":28}}
+                        """),
+                new Endpoint("GET", "/api/income/" + any + "?period=2099-03", null),
+                new Endpoint("PATCH", "/api/income/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("DELETE", "/api/income/" + any, null),
+                new Endpoint("GET", "/api/periods/2099-03/summary", null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */

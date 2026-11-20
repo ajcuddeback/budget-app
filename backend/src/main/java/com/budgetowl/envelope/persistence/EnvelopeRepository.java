@@ -1,6 +1,7 @@
 package com.budgetowl.envelope.persistence;
 
 import com.budgetowl.envelope.domain.Envelope;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -75,6 +76,31 @@ public interface EnvelopeRepository extends Repository<Envelope, UUID> {
     List<LocalDate> periodsWithEnvelopes(@Param("householdId") UUID householdId);
 
     long countByHouseholdId(UUID householdId);
+
+    /**
+     * What one month's envelopes set aside in all.
+     *
+     * <p>A sum in the database rather than a page of views summed in Java: the Bills &amp; Income
+     * page needs this one figure and nothing else about the envelopes, and loading two hundred rows
+     * with their spend to add up one column would be the wrong shape for a headline.
+     *
+     * <p><b>Archived envelopes are excluded</b>, matching {@code EnvelopeService.list}: a retired
+     * envelope is not part of the plan, and counting one would overstate what is set aside and
+     * understate what is left — by a figure that would look perfectly reasonable.
+     *
+     * @return null when the household has no envelopes that month. {@code coalesce} is deliberately
+     *     not used: "no envelopes" and "envelopes totalling nothing" are different facts, and the
+     *     caller decides what to do about it
+     */
+    @Query(
+            """
+            select sum(e.amount) from Envelope e
+            where e.householdId = :householdId
+              and e.period = :period
+              and e.archived = false
+            """)
+    BigDecimal allocatedForPeriod(
+            @Param("householdId") UUID householdId, @Param("period") LocalDate period);
 
     /**
      * How much has been logged against each of these envelopes, and how many entries that is.

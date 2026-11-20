@@ -4,6 +4,7 @@ import com.budgetowl.account.domain.Account;
 import com.budgetowl.account.persistence.AccountRepository;
 import com.budgetowl.category.domain.Category;
 import com.budgetowl.category.persistence.CategoryRepository;
+import com.budgetowl.common.AmountText;
 import com.budgetowl.common.Change;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
@@ -21,7 +22,6 @@ import com.budgetowl.payee.service.PayeeService;
 import com.budgetowl.transaction.domain.Transaction;
 import com.budgetowl.transaction.domain.TransactionStatus;
 import com.budgetowl.transaction.persistence.TransactionRepository;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Currency;
 import java.util.HashMap;
@@ -496,44 +496,8 @@ public class TransactionService {
         }
     }
 
-    /**
-     * Parses a decimal string into the account's currency.
-     *
-     * <p>The edge's {@code @Pattern} produces the good message for a malformed amount; this is the
-     * backstop for anything reaching the service without passing it, and the rejected text is never
-     * echoed back — it is an amount. Zero and an over-precise amount are rejected here rather than
-     * silently rounded: rounding somebody's money without telling them is the defect ADR-0006
-     * exists to prevent.
-     */
+    /** See {@link AmountText}: the shape and precision rules live there, once. */
     private static Money money(String text, Currency currency) {
-        // Checked rather than caught: a missing amount and an unparseable one are the same answer
-        // to the caller, but catching NullPointerException to discover it is the kind of control
-        // flow that hides a real NPE from somewhere else in the method.
-        if (text == null) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "an amount is required",
-                    Map.of("field", "amount"));
-        }
-        BigDecimal parsed;
-        try {
-            parsed = new BigDecimal(text.strip());
-        } catch (NumberFormatException malformed) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED, "unparseable amount", Map.of("field", "amount"));
-        }
-        if (parsed.signum() == 0) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "a transaction of zero moves no money",
-                    Map.of("field", "amount"));
-        }
-        if (parsed.stripTrailingZeros().scale() > Money.SCALE) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "an amount may have at most " + Money.SCALE + " decimal places",
-                    Map.of("field", "amount"));
-        }
-        return Money.of(parsed, currency);
+        return AmountText.parse(text, currency, AmountText.Sign.NON_ZERO, "amount");
     }
 }

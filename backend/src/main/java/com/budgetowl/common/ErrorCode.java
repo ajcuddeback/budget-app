@@ -105,6 +105,22 @@ public enum ErrorCode {
     TRANSACTION_ALREADY_IN_ENVELOPE(
             "transaction-already-in-envelope", 409, "This transaction is already in an envelope"),
 
+    /**
+     * Two bills with the same name are a data-entry mistake: nothing downstream could tell the user
+     * which "Council tax" an occurrence belongs to.
+     */
+    BILL_NAME_TAKEN("bill-name-taken", 409, "A bill with this name already exists"),
+
+    /**
+     * A retired bill projects no occurrences and takes no new records. It is kept so the periods
+     * somebody already settled still read correctly — not so a plan nobody has any more can keep
+     * being ticked off.
+     */
+    BILL_INACTIVE("bill-inactive", 409, "This bill is retired"),
+
+    /** Two income sources with the same name, for the reason {@link #BILL_NAME_TAKEN} gives. */
+    INCOME_NAME_TAKEN("income-name-taken", 409, "An income source with this name already exists"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 

@@ -66,6 +66,23 @@ public final class Money implements Comparable<Money> {
         return new Money(amount.subtract(other.amount), currency);
     }
 
+    /**
+     * This amount {@code times} over.
+     *
+     * <p>A whole number of times, not a rate: three paydays in a month is three of the same figure.
+     * Multiplying by an integer is exact at {@code NUMERIC(19,4)}, so there is no rounding mode to
+     * choose and no decision to get wrong — which is exactly why the parameter is an {@code int}
+     * and there is no overload taking a {@code BigDecimal}.
+     *
+     * @throws IllegalArgumentException if {@code times} is negative. Zero is fine and gives zero
+     */
+    public Money times(int times) {
+        if (times < 0) {
+            throw new IllegalArgumentException("Cannot multiply money by " + times);
+        }
+        return new Money(amount.multiply(BigDecimal.valueOf(times)), currency);
+    }
+
     public Money negated() {
         return new Money(amount.negate(), currency);
     }

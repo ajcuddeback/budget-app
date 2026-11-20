@@ -852,3 +852,57 @@ would read more clearly than the null.
 **How it was found.** The ledger integration tests exercise each filter *separately*. An unfiltered
 list passes while every filtered one fails, so a single "the ledger returns rows" test would have
 shipped this.
+
+---
+
+## A `smallint` column fails schema validation against an `Integer` field
+
+**Symptom.** Every integration test in a new feature errors at once, with one line buried in the
+context-startup failure:
+
+```
+Schema validation: wrong column type encountered in column [day_of_month] in table [bills];
+found [int2 (Types#SMALLINT)], but expecting [integer (Types#INTEGER)]
+```
+
+**Cause.** `ddl-auto: validate` compares the entity's JDBC type to the column's. `Integer` maps to
+`INTEGER`, and a migration that writes `smallint` — which is the right type for a day of the month —
+does not match. The application does not start at all, so it reads as "the whole feature is broken"
+rather than "one column is two bytes narrower than Hibernate assumed".
+
+**Fix.** Keep the narrow column and spell the JDBC type out:
+
+```java
+@JdbcTypeCode(SqlTypes.SMALLINT)
+@Column(name = "day_of_month")
+private Integer dayOfMonth;
+```
+
+Not a `Short` field: that pushes the narrower type through every value object and caller for no
+gain. Not a wider column either — the schema is right and the mapping was incomplete.
+
+---
+
+## Jackson refuses a record whose primitive component is missing from the body
+
+**Symptom.** A request that leaves an optional-looking field out is a `400 malformed-request` with
+no field named, while the same request with `"amountVaries":false` present is a `201`.
+
+**Cause.** A record component declared `boolean` has no absent state. Jackson does not default it —
+it refuses to construct the record, and the failure surfaces as a deserialization error rather than
+as validation, so the problem body names nothing.
+
+**Fix.** Box it, and say what absent means:
+
+```java
+Boolean amountVaries,
+...
+public boolean varies() {
+    return Boolean.TRUE.equals(amountVaries);
+}
+```
+
+**Why it matters more than it looks.** The fields this bites are exactly the ones most requests omit
+— a flag that is false for the common case. The first test written for the endpoint sends a full
+body and passes; the defect is in the request every real client makes. `BillIT`'s
+`a_bill_needs_nothing_but_a_name_an_amount_and_a_schedule` exists to catch it.

@@ -2,6 +2,7 @@ package com.budgetowl.envelope.service;
 
 import com.budgetowl.category.domain.Category;
 import com.budgetowl.category.persistence.CategoryRepository;
+import com.budgetowl.common.AmountText;
 import com.budgetowl.common.Change;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
@@ -151,6 +152,23 @@ public class EnvelopeService {
         return envelopes.periodsWithEnvelopes(membership.household().id()).stream()
                 .map(YearMonth::from)
                 .toList();
+    }
+
+    /**
+     * What one month's envelopes set aside in all — one figure, one query.
+     *
+     * <p>For the Bills &amp; Income page, whose headline is income minus bills minus this. It is
+     * the same definition as {@code list}'s {@code totalAllocated}, archived envelopes excluded,
+     * and the repository's Javadoc says why it is a sum rather than a sum of views.
+     */
+    @Transactional(readOnly = true)
+    public Money allocatedFor(UUID actorId, YearMonth period) {
+        HouseholdMember membership = memberships.requireMembership(actorId);
+        Household household = membership.household();
+        BigDecimal allocated = envelopes.allocatedForPeriod(household.id(), period.atDay(1));
+        return allocated == null
+                ? Money.zero(household.baseCurrency())
+                : Money.of(allocated, household.baseCurrency());
     }
 
     @Transactional(readOnly = true)
@@ -665,43 +683,16 @@ public class EnvelopeService {
     }
 
     /**
-     * Parses a decimal string into the household's base currency.
-     *
-     * <p>The edge's {@code @Pattern} produces the good message; this is the backstop for anything
-     * reaching the service without passing it, and the rejected text is never echoed back — it is
-     * an amount. An over-precise amount is refused rather than rounded (ADR-0006).
+     * See {@link AmountText}: the shape and precision rules live there, once.
      *
      * @param mustBePositive true for an entry, where zero used nothing; false for an envelope,
      *     where deciding to spend nothing is a real decision
      */
     private static Money money(String text, Currency currency, boolean mustBePositive) {
-        if (text == null) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "an amount is required",
-                    Map.of("field", "amount"));
-        }
-        BigDecimal parsed;
-        try {
-            parsed = new BigDecimal(text.strip());
-        } catch (NumberFormatException malformed) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED, "unparseable amount", Map.of("field", "amount"));
-        }
-        if (parsed.stripTrailingZeros().scale() > Money.SCALE) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "an amount may have at most " + Money.SCALE + " decimal places",
-                    Map.of("field", "amount"));
-        }
-        if (parsed.signum() < 0 || (mustBePositive && parsed.signum() == 0)) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    mustBePositive
-                            ? "an entry must be a positive amount"
-                            : "an envelope amount cannot be negative",
-                    Map.of("field", "amount"));
-        }
-        return Money.of(parsed, currency);
+        return AmountText.parse(
+                text,
+                currency,
+                mustBePositive ? AmountText.Sign.POSITIVE : AmountText.Sign.NOT_NEGATIVE,
+                "amount");
     }
 }
