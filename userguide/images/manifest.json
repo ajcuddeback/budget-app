@@ -369,6 +369,42 @@
     "viewport": "1280x720"
   },
   {
+    "name": "log-spend-in-an-envelope--envelope",
+    "file": "userguide/images/log-spend-in-an-envelope--envelope.png",
+    "guide": "log-spend-in-an-envelope",
+    "caption": "The Groceries envelope showing $116.70 left, the bar part filled, and the Log spend button circled.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-spend-in-an-envelope--log",
+    "file": "userguide/images/log-spend-in-an-envelope--log.png",
+    "guide": "log-spend-in-an-envelope",
+    "caption": "The Groceries log: three entries, each marked either Typed or From a transaction.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-spend-in-an-envelope--overspent",
+    "file": "userguide/images/log-spend-in-an-envelope--overspent.png",
+    "guide": "log-spend-in-an-envelope",
+    "caption": "The Eating Out envelope showing -$11.20 over, with its bar full and marked.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-spend-in-an-envelope--quick-add",
+    "file": "userguide/images/log-spend-in-an-envelope--quick-add.png",
+    "guide": "log-spend-in-an-envelope",
+    "caption": "The Log spend window with 18.40 typed into Amount and everything else empty.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
+    "viewport": "1280x720"
+  },
+  {
     "name": "manage-members--members-leave-confirm",
     "file": "userguide/images/manage-members--members-leave-confirm.png",
     "guide": "manage-members",
@@ -501,6 +537,24 @@
     "caption": "The Who it was with box with \"Green\" typed, showing Greenfield Market suggested underneath.",
     "capturedAt": "2026-11-20",
     "commit": "eba8f21",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "set-up-an-envelope--form",
+    "file": "userguide/images/set-up-an-envelope--form.png",
+    "guide": "set-up-an-envelope",
+    "caption": "The Add an envelope window with a name, the month and an amount filled in.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "set-up-an-envelope--list",
+    "file": "userguide/images/set-up-an-envelope--list.png",
+    "guide": "set-up-an-envelope",
+    "caption": "The Envelopes screen for August 2026: each envelope leads with what is left, with the month and the totals above.",
+    "capturedAt": "2026-11-20",
+    "commit": "466ce78",
     "viewport": "1280x720"
   },
   {

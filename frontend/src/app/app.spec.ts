@@ -85,6 +85,7 @@ describe('App', () => {
     expect(links).toEqual([
       'Transactions',
       'Accounts',
+      'Envelopes',
       'Categories',
       'Household',
       'Devices',

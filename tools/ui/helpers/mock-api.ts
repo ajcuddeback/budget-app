@@ -1,6 +1,9 @@
 import type { Page, Route } from '@playwright/test';
 import {
   DEMO_ACCOUNTS,
+  DEMO_ENVELOPES,
+  DEMO_ENVELOPES_ACTIVE,
+  DEMO_ENVELOPE_ENTRIES,
   DEMO_CATEGORIES,
   DEMO_CATEGORIES_ACTIVE,
   DEMO_PAYEE_SUGGESTIONS,
@@ -365,6 +368,117 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const found = DEMO_TRANSACTIONS.find((one) => one.id === transaction[1]) ?? DEMO_TRANSACTIONS[0];
       if (method === 'DELETE') {
         return route.fulfill({ status: 204 });
+      }
+      if (method === 'PATCH') {
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        return json(route, 200, { ...found, ...changes, version: found.version + 1 });
+      }
+      return json(route, 200, found);
+    }
+
+    // ---- envelopes ------------------------------------------------------------------------
+    // The period filter is the part worth modelling: a month that has no envelopes must come back
+    // empty rather than showing August's, or the empty state would never be capturable.
+    if (at === 'GET /api/envelopes') {
+      const period = url.searchParams.get('period') ?? '2026-08';
+      const all = url.searchParams.get('includeArchived') === 'true';
+      const rows = (all ? DEMO_ENVELOPES : DEMO_ENVELOPES_ACTIVE).filter(
+        (envelope) => envelope.period === period,
+      );
+      // Archived envelopes are returned but never totalled: a retired envelope is not part of
+      // the month's plan, and the server agrees.
+      const planned = rows.filter((envelope) => !envelope.archived);
+      const sum = (pick: (e: (typeof DEMO_ENVELOPES)[number]) => string) =>
+        planned.reduce((total, envelope) => total + Number(pick(envelope)), 0).toFixed(4);
+      return json(route, 200, {
+        content: rows,
+        totalAllocated: sum((e) => e.amount),
+        totalSpent: sum((e) => e.spent),
+        totalRemaining: sum((e) => e.remaining),
+        currency: 'USD',
+        page: 0,
+        size: 200,
+        totalElements: rows.length,
+        totalPages: rows.length === 0 ? 0 : 1,
+      });
+    }
+    if (at === 'POST /api/envelopes') {
+      return json(route, 201, {
+        ...DEMO_ENVELOPES[1],
+        id: 'env-0099',
+        name: field('name') ?? 'New envelope',
+        period: field('period') ?? '2026-08',
+        amount: field('amount') ?? '0.0000',
+        spent: '0.0000',
+        // Everything remaining, nothing logged — what a new envelope actually looks like.
+        remaining: field('amount') ?? '0.0000',
+        categoryId: field('categoryId') ?? null,
+        categoryName: null,
+        categoryParentName: null,
+        entryCount: 0,
+        empty: true,
+        archived: false,
+        version: 0,
+      });
+    }
+    const entryRoute = /^\/api\/envelopes\/([^/]+)\/entries(?:\/([^/]+))?$/.exec(url.pathname);
+    if (entryRoute) {
+      const envelopeId = entryRoute[1];
+      if (method === 'GET') {
+        const rows = DEMO_ENVELOPE_ENTRIES.filter((entry) => entry.envelopeId === envelopeId);
+        return json(route, 200, {
+          content: rows,
+          page: 0,
+          size: 50,
+          totalElements: rows.length,
+          totalPages: rows.length === 0 ? 0 : 1,
+        });
+      }
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'POST') {
+        return json(route, 201, {
+          ...DEMO_ENVELOPE_ENTRIES[1],
+          id: 'ent-0099',
+          envelopeId,
+          date: field('date') ?? '2026-08-20',
+          // The string the client sent, unparsed: a mock that re-formatted an amount would hide
+          // the one defect ADR-0006 exists to prevent.
+          amount: field('amount') ?? '1.0000',
+          payeeName: field('payeeName') ?? null,
+          payeeId: field('payeeName') ? 'pay-0099' : null,
+          note: field('note') ?? null,
+          // Attaching a transaction is what makes an entry SYNCED; typing one never does.
+          source: field('transactionId') ? 'SYNCED' : 'MANUAL',
+          transactionId: field('transactionId') ?? null,
+          version: 0,
+        });
+      }
+      if (method === 'PATCH') {
+        const found =
+          DEMO_ENVELOPE_ENTRIES.find((entry) => entry.id === entryRoute[2]) ??
+          DEMO_ENVELOPE_ENTRIES[0];
+        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const changes = { ...sent };
+        delete changes['version'];
+        return json(route, 200, { ...found, ...changes, version: found.version + 1 });
+      }
+    }
+    const envelope = /^\/api\/envelopes\/([^/]+)(?:\/(archive|unarchive))?$/.exec(url.pathname);
+    if (envelope && envelope[1] !== 'periods') {
+      const found = DEMO_ENVELOPES.find((one) => one.id === envelope[1]) ?? DEMO_ENVELOPES[0];
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (envelope[2]) {
+        return json(route, 200, {
+          ...found,
+          archived: envelope[2] === 'archive',
+          version: found.version + 1,
+        });
       }
       if (method === 'PATCH') {
         const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};

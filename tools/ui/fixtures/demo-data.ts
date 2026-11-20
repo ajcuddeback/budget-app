@@ -297,6 +297,41 @@ export const DEMO_PAYEE_SUGGESTIONS = [
   'Northwind Systems',
 ] as const;
 
+/**
+ * The household's envelopes for one month, in the shape `EnvelopeResponse` sends.
+ *
+ * `remaining` is computed by the server and is **negative** on `env-0004`, deliberately: an
+ * overspent envelope is the case the screens most need to get right, and a fixture set where
+ * everything is comfortably under plan would never show it.
+ *
+ * `period` is a LABEL (ADR-0031) — "the envelope for August 2026" — not a date range.
+ */
+export const DEMO_ENVELOPES = [
+  { id: 'env-0001', name: 'Groceries', period: '2026-08', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, amount: '400.0000', spent: '283.3000', remaining: '116.7000', currency: 'USD', entryCount: 3, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
+  { id: 'env-0002', name: 'Adhoc', period: '2026-08', categoryId: null, categoryName: null, categoryParentName: null, amount: '150.0000', spent: '0.0000', remaining: '150.0000', currency: 'USD', entryCount: 0, empty: true, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
+  { id: 'env-0003', name: 'Fuel', period: '2026-08', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, amount: '120.0000', spent: '62.0000', remaining: '58.0000', currency: 'USD', entryCount: 1, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
+  // Overspent on purpose: the case the design most needs to handle honestly.
+  { id: 'env-0004', name: 'Eating Out', period: '2026-08', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, amount: '30.0000', spent: '41.2000', remaining: '-11.2000', currency: 'USD', entryCount: 1, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
+  { id: 'env-0005', name: 'Summer trip', period: '2026-08', categoryId: null, categoryName: null, categoryParentName: null, amount: '250.0000', spent: '0.0000', remaining: '250.0000', currency: 'USD', entryCount: 0, empty: true, archived: true, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-10T09:00:00Z', version: 1 },
+] as const;
+
+export const DEMO_ENVELOPES_ACTIVE = DEMO_ENVELOPES.filter((envelope) => !envelope.archived);
+
+/**
+ * One envelope's log, with both sources present.
+ *
+ * `MANUAL` was typed; `SYNCED` is a transaction somebody attached. Both are a person's decision —
+ * the app never files a transaction on its own — and the log says which on every row.
+ */
+export const DEMO_ENVELOPE_ENTRIES = [
+  { id: 'ent-0003', envelopeId: 'env-0001', date: '2026-08-12', amount: '104.7500', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', note: 'big shop', source: 'SYNCED', transactionId: 'txn-0006', createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
+  { id: 'ent-0002', envelopeId: 'env-0001', date: '2026-08-06', amount: '92.1500', currency: 'USD', payeeId: null, payeeName: null, note: null, source: 'MANUAL', transactionId: null, createdAt: '2026-08-06T18:02:00Z', updatedAt: '2026-08-06T18:02:00Z', version: 0 },
+  { id: 'ent-0001', envelopeId: 'env-0001', date: '2026-08-03', amount: '86.4000', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', note: null, source: 'SYNCED', transactionId: 'txn-0003', createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
+] as const;
+
+/** The months this household has envelopes for, newest first. */
+export const DEMO_ENVELOPE_PERIODS = ['2026-08', '2026-07'] as const;
+
 export const DEMO_BUDGET = {
   period: '2026-08',
   lines: [
@@ -321,5 +356,6 @@ export const DEMO_API: Record<string, unknown> = {
   '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 200, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
   '/api/transactions': { content: DEMO_TRANSACTIONS, pageTotal: DEMO_LEDGER_PAGE_TOTAL, pageTotalCurrency: 'USD', page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },
   '/api/transactions/payee-suggestions': DEMO_PAYEE_SUGGESTIONS,
+  '/api/envelopes/periods': DEMO_ENVELOPE_PERIODS,
   '/api/budgets/2026-08': DEMO_BUDGET,
 };

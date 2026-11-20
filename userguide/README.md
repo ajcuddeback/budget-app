@@ -27,7 +27,8 @@ account to seeing your first month's budget.
 | [Record a transaction](features/record-a-transaction.md) | Write down what you spent or received, and fix it if you get it wrong |
 | [Give a transaction a category](features/give-a-transaction-a-category.md) | Work through everything you left unfiled |
 | [Organise your categories](features/organise-your-categories.md) | Rename, group and retire the categories you file things under |
-| _Budgets_ | Not written yet |
+| [Set up an envelope](features/set-up-an-envelope.md) | Set money aside for the spending that changes week to week |
+| [Log spend in an envelope](features/log-spend-in-an-envelope.md) | Write down what you spent and see what's left, straight away |
 | _Transfers_ | Not written yet |
 | _Recurring transactions_ | Not written yet |
 | _Reports_ | Not written yet |

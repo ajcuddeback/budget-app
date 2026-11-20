@@ -119,6 +119,13 @@ public class EnvelopeService {
         Money allocated = Money.zero(currency);
         Money spent = Money.zero(currency);
         for (EnvelopeView view : views) {
+            // ARCHIVED ENVELOPES ARE NOT PART OF THE PLAN, even when the caller asked for them so
+            // it could show them separately. Counting a retired envelope in "set aside this month"
+            // would overstate the plan and understate what is left — and the figure would look
+            // perfectly reasonable, which is why a UI test is what caught it.
+            if (view.archived()) {
+                continue;
+            }
             allocated = allocated.plus(view.amount());
             spent = spent.plus(view.spent());
         }
@@ -305,7 +312,7 @@ public class EnvelopeService {
         entry.payTo(resolvePayee(household, requested.payeeName()));
         entry.annotate(requested.note());
 
-        EnvelopeEntry saved = saveEntryDistinctly(household.id(), entry);
+        EnvelopeEntry saved = saveEntryDistinctly(entry);
         log.info(
                 "envelope entry logged householdId={} envelopeId={} entryId={} byUserId={}"
                         + " source={}",
@@ -390,15 +397,15 @@ public class EnvelopeService {
                         .findByIdAndHouseholdId(requested.transactionId(), household.id())
                         .orElseThrow(() -> new NotFoundException("no such transaction"));
 
-        entries.findByTransaction(household.id(), transaction.id())
-                .ifPresent(
-                        existing -> {
-                            throw new ConflictException(
-                                    ErrorCode.TRANSACTION_ALREADY_IN_ENVELOPE,
-                                    existing.envelopeId().equals(envelope.id())
-                                            ? "this transaction is already in this envelope"
-                                            : "this transaction is already in another envelope");
-                        });
+        // One message, not two. An earlier version said "already in this envelope" or "already in
+        // another one" depending on where it was — but the problem body renders from the error
+        // CODE and its params (docs/guides/api-style.md), so neither sentence ever reached a
+        // client. A branch whose output nothing can observe reads as a feature and is not one.
+        if (entries.findByTransaction(household.id(), transaction.id()).isPresent()) {
+            throw new ConflictException(
+                    ErrorCode.TRANSACTION_ALREADY_IN_ENVELOPE,
+                    "this transaction is already in an envelope");
+        }
 
         // Money OUT of an account is a negative transaction; an entry records how much of a
         // decided amount was used, which only goes one way. Income filed against an envelope is
@@ -419,10 +426,6 @@ public class EnvelopeService {
                 household.baseCurrency());
     }
 
-    private EnvelopeView setArchivedView(Household household, Envelope saved) {
-        return views(household, List.of(saved)).getFirst();
-    }
-
     private EnvelopeView setArchived(UUID actorId, UUID envelopeId, boolean archived) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
@@ -441,7 +444,7 @@ public class EnvelopeService {
                 household.id(),
                 envelopeId,
                 actorId);
-        return setArchivedView(household, saved);
+        return views(household, List.of(saved)).getFirst();
     }
 
     private UUID resolvePayee(Household household, String typedName) {
@@ -501,7 +504,7 @@ public class EnvelopeService {
      * control. Two members attaching the same transaction at the same moment both pass that check
      * and one of them still has to be told.
      */
-    private EnvelopeEntry saveEntryDistinctly(UUID householdId, EnvelopeEntry entry) {
+    private EnvelopeEntry saveEntryDistinctly(EnvelopeEntry entry) {
         try {
             return entries.saveAndFlush(entry);
         } catch (DataIntegrityViolationException violation) {

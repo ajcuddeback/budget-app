@@ -175,6 +175,12 @@
 
 .btn-danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  /* The text darkens with the background. Without this the hover tint takes the contrast to
+     4.48:1 — a hair under the 4.5:1 AA needs — which axe caught on a phone-width run where the
+     tap left the button hovered. The same tint is used by every destructive button in the app,
+     so this was wrong everywhere and visible nowhere. */
+  color: var(--color-accent-800);
+  border-color: var(--color-accent-800);
 }
 
 .btn-small {

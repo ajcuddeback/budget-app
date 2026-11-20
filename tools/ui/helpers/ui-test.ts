@@ -80,7 +80,10 @@ export const test = base.extend<UiFixtures>({
           severity: (v.impact as never) ?? 'moderate',
           category: 'a11y',
           summary: `${v.id}: ${v.help}`,
-          detail: v.helpUrl,
+          // axe's own failureSummary, not just the rule's help URL. For colour contrast that is
+          // the difference between "contrast failed somewhere" and "4.1:1, needs 4.5:1" — the
+          // second is actionable, the first sends you measuring tokens by hand.
+          detail: [v.nodes[0]?.failureSummary, v.helpUrl].filter(Boolean).join('\n'),
           where: `${label} — ${v.nodes.length} element(s): ${v.nodes[0]?.target.join(' ')}`,
           viewport: vpLabel(),
         });

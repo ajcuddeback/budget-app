@@ -166,6 +166,25 @@ class EnvelopeIT extends ApiTestBase {
     }
 
     @Test
+    void an_archived_envelope_is_listed_but_never_counted_in_the_month_s_plan() {
+        Household household = seedHousehold();
+        createEnvelope(household.owner(), "Groceries", AUGUST, "400.00");
+        UUID retired =
+                envelopeId(createEnvelope(household.owner(), "Summer trip", AUGUST, "250.00"));
+        household.owner().post("/api/envelopes/" + retired + "/archive", null);
+
+        ApiResponse listed =
+                household.owner().get("/api/envelopes?period=" + AUGUST + "&includeArchived=true");
+
+        // Returned, so the screen can show it in its own section...
+        assertThat(listed.body()).contains("Summer trip");
+        // ...and NOT counted, because a retired envelope is not part of this month's plan.
+        // Counting it would overstate the plan and understate what is left, and the figure would
+        // look perfectly reasonable — which is why this is asserted rather than assumed.
+        assertThat(listed.stringField("totalAllocated")).isEqualTo("400.0000");
+    }
+
+    @Test
     void the_period_is_a_label_not_a_bound_on_entry_dates() {
         Household household = seedHousehold();
         UUID groceries =
@@ -462,6 +481,155 @@ class EnvelopeIT extends ApiTestBase {
         assertThat(household.owner().get("/api/transactions/" + transaction).status())
                 .as("a transaction outlives any plan it was filed under")
                 .isEqualTo(200);
+    }
+
+    @Test
+    void attaching_the_same_transaction_twice_is_refused_even_in_the_same_envelope() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+        UUID transaction =
+                createTransaction(household.owner(), account, "2026-08-03", "-86.4000", null);
+        UUID groceries =
+                envelopeId(createEnvelope(household.owner(), "Groceries", AUGUST, "400.00"));
+        attach(household.owner(), groceries, transaction);
+
+        ApiResponse refused = attach(household.owner(), groceries, transaction);
+
+        // Same code as attaching it to a different envelope: the rule is one transaction, one
+        // entry, and where the first one lives does not change the answer.
+        assertThat(refused.status()).isEqualTo(409);
+        assertThat(refused.body()).contains("transaction-already-in-envelope");
+    }
+
+    @Test
+    void an_envelope_reports_its_categorys_parent_so_a_client_can_render_the_path() {
+        Household household = seedHousehold();
+        UUID utilities = seededCategoryId("Utilities");
+
+        ApiResponse created =
+                household
+                        .owner()
+                        .post(
+                                "/api/envelopes",
+                                """
+                                {"name":"Power","period":"%s","amount":"90.00","categoryId":"%s"}
+                                """
+                                        .formatted(AUGUST, utilities));
+
+        assertThat(created.status()).isEqualTo(201);
+        assertThat(created.stringField("categoryName")).isEqualTo("Utilities");
+        assertThat(created.stringField("categoryParentName")).isEqualTo("Bills");
+    }
+
+    @Test
+    void a_category_can_be_added_and_cleared_without_touching_anything_else() {
+        Household household = seedHousehold();
+        UUID groceries =
+                envelopeId(createEnvelope(household.owner(), "Groceries", AUGUST, "400.00"));
+        UUID category = seededCategoryId("Groceries");
+        long version = household.owner().get("/api/envelopes/" + groceries).numberField("version");
+
+        ApiResponse filed =
+                household
+                        .owner()
+                        .patch(
+                                "/api/envelopes/" + groceries,
+                                """
+                                {"categoryId":"%s","version":%d}
+                                """
+                                        .formatted(category, version));
+        assertThat(filed.stringField("categoryName")).isEqualTo("Groceries");
+        assertThat(filed.stringField("amount")).isEqualTo("400.0000");
+
+        ApiResponse cleared =
+                household
+                        .owner()
+                        .patch(
+                                "/api/envelopes/" + groceries,
+                                """
+                                {"categoryId":null,"version":%d}
+                                """
+                                        .formatted(filed.numberField("version")));
+        assertThat(cleared.body()).contains("\"categoryId\":null");
+    }
+
+    @Test
+    void an_archived_envelope_can_be_restored_and_takes_entries_again() {
+        Household household = seedHousehold();
+        UUID groceries =
+                envelopeId(createEnvelope(household.owner(), "Groceries", AUGUST, "400.00"));
+        household.owner().post("/api/envelopes/" + groceries + "/archive", null);
+
+        ApiResponse restored =
+                household.owner().post("/api/envelopes/" + groceries + "/unarchive", null);
+
+        assertThat(restored.status()).isEqualTo(200);
+        assertThat(restored.body()).contains("\"archived\":false");
+        assertThat(logEntry(household.owner(), groceries, "5.00").status()).isEqualTo(201);
+    }
+
+    @Test
+    void an_amount_with_too_many_decimal_places_is_refused_not_rounded() {
+        Household household = seedHousehold();
+
+        ApiResponse refused = createEnvelope(household.owner(), "Precise", AUGUST, "10.123456");
+
+        // Rounding somebody's money without telling them is the defect ADR-0006 exists to prevent.
+        assertThat(refused.status()).isEqualTo(400);
+    }
+
+    @Test
+    void an_entrys_note_and_payee_can_be_cleared() {
+        Household household = seedHousehold();
+        UUID groceries =
+                envelopeId(createEnvelope(household.owner(), "Groceries", AUGUST, "400.00"));
+        ApiResponse logged =
+                household
+                        .owner()
+                        .post(
+                                "/api/envelopes/" + groceries + "/entries",
+                                """
+                                {"amount":"12.00","payeeName":"Lidl","note":"milk"}
+                                """);
+
+        ApiResponse cleared =
+                household
+                        .owner()
+                        .patch(
+                                "/api/envelopes/"
+                                        + groceries
+                                        + "/entries/"
+                                        + logged.stringField("id"),
+                                """
+                                {"payeeName":null,"note":null,"version":%d}
+                                """
+                                        .formatted(logged.numberField("version")));
+
+        assertThat(cleared.status()).isEqualTo(200);
+        assertThat(cleared.body()).contains("\"payeeId\":null").contains("\"note\":null");
+    }
+
+    @Test
+    void an_entry_can_be_moved_to_another_date() {
+        Household household = seedHousehold();
+        UUID groceries =
+                envelopeId(createEnvelope(household.owner(), "Groceries", AUGUST, "400.00"));
+        ApiResponse logged = logEntry(household.owner(), groceries, "12.00");
+
+        ApiResponse moved =
+                household
+                        .owner()
+                        .patch(
+                                "/api/envelopes/"
+                                        + groceries
+                                        + "/entries/"
+                                        + logged.stringField("id"),
+                                """
+                                {"date":"2026-08-09","version":%d}
+                                """
+                                        .formatted(logged.numberField("version")));
+
+        assertThat(moved.stringField("date")).isEqualTo("2026-08-09");
     }
 
     // ----------------------------------------------------------------------------------- roles
