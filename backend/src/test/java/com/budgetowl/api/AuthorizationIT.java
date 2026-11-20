@@ -88,7 +88,27 @@ class AuthorizationIT extends ApiTestBase {
                         "/api/transactions/" + any,
                         "{\"version\":0,\"amount\":\"-2.00\"}"),
                 new Endpoint("DELETE", "/api/transactions/" + any, null),
-                new Endpoint("GET", "/api/transactions/payee-suggestions?typed=te", null));
+                new Endpoint("GET", "/api/transactions/payee-suggestions?typed=te", null),
+                new Endpoint("GET", "/api/envelopes?period=2026-08", null),
+                new Endpoint("GET", "/api/envelopes/periods", null),
+                new Endpoint(
+                        "POST",
+                        "/api/envelopes",
+                        "{\"name\":\"Groceries\",\"period\":\"2026-08\",\"amount\":\"400\"}"),
+                new Endpoint("GET", "/api/envelopes/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/envelopes/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/envelopes/" + any + "/archive", null),
+                new Endpoint("POST", "/api/envelopes/" + any + "/unarchive", null),
+                new Endpoint("DELETE", "/api/envelopes/" + any, null),
+                new Endpoint("GET", "/api/envelopes/" + any + "/entries", null),
+                new Endpoint(
+                        "POST", "/api/envelopes/" + any + "/entries", "{\"amount\":\"12.00\"}"),
+                new Endpoint(
+                        "PATCH",
+                        "/api/envelopes/" + any + "/entries/" + any,
+                        "{\"version\":0,\"amount\":\"13.00\"}"),
+                new Endpoint("DELETE", "/api/envelopes/" + any + "/entries/" + any, null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */

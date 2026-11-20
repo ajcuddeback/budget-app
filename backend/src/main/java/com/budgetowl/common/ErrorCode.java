@@ -85,6 +85,26 @@ public enum ErrorCode {
      */
     CATEGORY_KIND_IMMUTABLE("category-kind-immutable", 409, "A category's kind cannot be changed"),
 
+    /**
+     * Two envelopes with the same name in the same month are a data-entry mistake. The same name in
+     * two different months is two different decisions, and both must exist.
+     */
+    ENVELOPE_NAME_TAKEN("envelope-name-taken", 409, "An envelope with this name already exists"),
+
+    /**
+     * An archived envelope takes no new entries. It is kept so its log still reads correctly, not
+     * so spending can keep being filed against a plan somebody retired.
+     */
+    ENVELOPE_ARCHIVED("envelope-archived", 409, "This envelope is archived"),
+
+    /**
+     * A transaction may be attached to at most one envelope entry, ever (ADR-0031). The same
+     * purchase counted in two envelopes would overstate spending in both and understate what is
+     * left in each — and both figures would still look plausible.
+     */
+    TRANSACTION_ALREADY_IN_ENVELOPE(
+            "transaction-already-in-envelope", 409, "This transaction is already in an envelope"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 

@@ -114,7 +114,12 @@ month end — that is the whole point, because the remaining figure is the numbe
 while standing in a shop.
 
 Fields: `id`, `householdId`, `name`, `categoryId`, `period` (`YearMonth`), `amount` (`Money`),
-`rollover` (boolean), `archived`.
+`archived`.
+
+> `rollover` was listed here and **is deliberately not in the schema** (ADR-0031). A column that is
+> always `false` reads as a feature and is not one. The period is stored as a *label* — the first
+> day of the labelled month — so that slice 9's configurable month start changes what people log
+> where, not what any existing row means.
 
 `EnvelopeEntry`: `envelopeId`, `date`, `amount` (`Money`), `payeeId` (**nullable — an amount
 alone is a valid entry**), `note`, `source` (`MANUAL` | `SYNCED`), `transactionId` (nullable,
@@ -139,10 +144,11 @@ user attached an entry to a real transaction, not that the app did it unprompted
 envelope a record of intent rather than a guess, and it is the same principle as marking a bill
 paid by hand (ADR-0025).
 
-> **Open:** rollover. The field is here because the designs show a `rollover` affordance
-> ("Roll into next week / Target becomes $543"), but the designs do not say whether an unspent
-> envelope carries forward automatically, on request, or not at all — nor what happens to an
-> *overspent* one. Needs a feature doc before implementation.
+> **Decided, by not building it:** rollover. The designs show a `rollover` affordance ("Roll into
+> next week / Target becomes $543") but say nothing about an *overspent* envelope, which is the
+> half that matters for the households this feature is for. ADR-0031 ships slice 6 without it:
+> unspent does not carry, and an overspend shows as a negative remaining. Building it needs its own
+> ADR answering the overspend question first.
 
 > **Open:** `Budget`/`BudgetLine` are gone from this model. The designs have no budget page —
 > planning happens on Bills & Income (bills, income, envelopes) and on the debt plan. If a

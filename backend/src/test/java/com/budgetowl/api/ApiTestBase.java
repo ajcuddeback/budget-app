@@ -59,7 +59,8 @@ public abstract class ApiTestBase extends PostgresTestBase {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute(
                 """
-                TRUNCATE transactions, payees, categories, accounts, household_invitations,
+                TRUNCATE envelope_entries, envelopes, transactions, payees, categories, accounts,
+                         household_invitations,
                          auth_tokens, household_members, households, users,
                          spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE

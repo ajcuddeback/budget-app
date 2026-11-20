@@ -42,7 +42,8 @@ class SchemaMigrationIT extends PersistenceTestBase {
                         "V9__accounts.sql",
                         "V10__application_role_grants.sql",
                         "V11__categories.sql",
-                        "V12__payees_and_transactions.sql");
+                        "V12__payees_and_transactions.sql",
+                        "V13__envelopes.sql");
 
         Integer failures =
                 jdbc.queryForObject(
@@ -164,7 +165,8 @@ class SchemaMigrationIT extends PersistenceTestBase {
                            AND c.table_name IN ('users', 'households', 'household_members',
                                                 'household_invitations', 'auth_tokens',
                                                 'accounts', 'categories', 'payees',
-                                                'transactions')
+                                                'transactions', 'envelopes',
+                                                'envelope_entries')
                            AND c.udt_name <> 'uuid'
                         """,
                         String.class);
