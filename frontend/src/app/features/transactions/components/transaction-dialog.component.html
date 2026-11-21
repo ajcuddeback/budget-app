@@ -2,7 +2,7 @@
   appModal
   class="dialog"
   aria-labelledby="transaction-dialog-title"
-  (closed)="closed.emit()"
+  (dismissed)="closed.emit()"
 >
   <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
     <h2 class="card-title" id="transaction-dialog-title">{{ titleKey() | t }}</h2>

@@ -56,6 +56,7 @@
             <label for="filter-account">{{ 'transactions.account' | t }}</label>
             <select
               id="filter-account"
+              class="input"
               [value]="filterAccountId()"
               (change)="setAccountFilter($any($event.target).value)"
             >
@@ -70,6 +71,7 @@
             <label for="filter-category">{{ 'transactions.category' | t }}</label>
             <select
               id="filter-category"
+              class="input"
               [value]="filterCategoryId()"
               (change)="setCategoryFilter($any($event.target).value)"
             >
@@ -93,6 +95,7 @@
             <label for="filter-from">{{ 'transactions.from' | t }}</label>
             <input
               id="filter-from"
+              class="input"
               type="date"
               [value]="filterFrom()"
               (change)="setFrom($any($event.target).value)"
@@ -103,6 +106,7 @@
             <label for="filter-to">{{ 'transactions.to' | t }}</label>
             <input
               id="filter-to"
+              class="input"
               type="date"
               [value]="filterTo()"
               (change)="setTo($any($event.target).value)"
@@ -113,6 +117,7 @@
             <label for="filter-search">{{ 'transactions.search' | t }}</label>
             <input
               id="filter-search"
+              class="input"
               type="search"
               [value]="filterSearch()"
               (change)="setSearch($any($event.target).value)"

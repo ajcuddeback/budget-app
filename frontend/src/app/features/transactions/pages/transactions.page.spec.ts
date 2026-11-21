@@ -317,4 +317,19 @@ describe('TransactionsPage', () => {
       expect.objectContaining({ accountId: 'a1', amount: '-42.50' }),
     );
   });
+
+  it('closes the transaction dialog when it is dismissed, not only when it is saved', async () => {
+    const fixture = await render();
+    buttonNamed(root(fixture), /Record a transaction/).click();
+    await settle(fixture);
+    expect(root(fixture).querySelector('dialog')).not.toBeNull();
+
+    // The native event is `close` and the directive emits `dismissed`; the template listened for
+    // `closed`, which nothing emits — so pressing Escape left the page holding a dialog it
+    // believed was open, and the next Record a transaction opened nothing.
+    root(fixture).querySelector('dialog')!.dispatchEvent(new Event('close'));
+    await settle(fixture);
+
+    expect(root(fixture).querySelector('dialog')).toBeNull();
+  });
 });
