@@ -8,6 +8,22 @@ import { ENGLISH, MessageKey, MessageParams } from './messages';
 const RIGHT_TO_LEFT = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ckb']);
 
 /**
+ * A derived rate, as the server writes one: a plain decimal, to six places (`TransferService`).
+ *
+ * Not {@link isAmount}, which allows the four places `NUMERIC(19,4)` stores — a rate is a division
+ * carried further than any amount, and reusing the amount shape silently dropped every one of them.
+ */
+const RATE = /^-?[0-9]{1,15}(\.[0-9]{1,10})?$/;
+
+/**
+ * Narrows a rate to the string shape `Intl.NumberFormat` formats exactly, as {@link isAmount} does
+ * for an amount: the proof the regex just produced, handed to `Intl` instead of a cast.
+ */
+function isRate(value: string): value is `${number}` {
+  return RATE.test(value);
+}
+
+/**
  * Runtime internationalisation (ADR-0023).
  *
  * The locale is a per-user, run-time choice, so this is not Angular's build-time i18n, which would
@@ -185,6 +201,30 @@ export class I18nService {
     } catch {
       // A code `Intl` does not know. The figure and the code are still true and still readable.
       return `${value} ${currency}`;
+    }
+  }
+
+  /**
+   * A **derived** rate, formatted for the active locale.
+   *
+   * Separate from {@link formatMoney} because a rate is not money: it has no currency, it carries
+   * more places than an amount does, and nothing in this app reads one back (ADR-0022). The string
+   * the server sent is handed to `Intl` exactly as an amount is — a rate shown beside somebody's
+   * transfer is still arithmetic about their money, and `parseFloat` has no business near it.
+   *
+   * An empty string for anything that is not a plain decimal, for the reason {@link formatMoney}
+   * gives.
+   */
+  formatRate(rate: string | null | undefined): string {
+    const value = (rate ?? '').trim();
+    if (!isRate(value)) {
+      return '';
+    }
+    try {
+      return new Intl.NumberFormat(this.locale(), { maximumFractionDigits: 6 }).format(value);
+    } catch {
+      // No locale `Intl` will accept. The digits are still true and still readable.
+      return value;
     }
   }
 

@@ -190,7 +190,12 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
 
     /** For the empty state, which on first run is the common case rather than an error. */
     /**
-     * Both legs of one transfer, oldest-written first.
+     * Both legs of one transfer, <b>the leaving one first</b>.
+     *
+     * <p>Ordered by amount ascending, and {@code TransferService} depends on it: the trigger
+     * guarantees one negative leg and one positive one, so the negative is always first — in a
+     * cross-currency pair too, where the magnitudes differ. The ordering is a literal in the query
+     * and not a parameter, so no caller can change what {@code legs.get(0)} means.
      *
      * <p>Scoped on the household as every method here is. The group id comes from a path, so it is
      * a lookup key and never evidence of ownership — another household's group returns nothing and

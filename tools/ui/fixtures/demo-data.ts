@@ -264,20 +264,51 @@ export const DEMO_CATEGORIES_ACTIVE = DEMO_CATEGORIES.filter((category) => !cate
  * - **`categoryId: null` is "Needs a category"**, a real state the UI shows and the work queue a
  *   person acts on. `txn-0010` is deliberately in it.
  * - **A transfer is two rows sharing a group id**, never one row with two accounts. Neither leg is
- *   income or expense (`txn-0008`, `txn-0009`).
+ *   income or expense (`txn-0008`, `txn-0009`), and both carry the same `transferGroupId`: that id
+ *   is what lets a ledger row edit or delete the *pair*, which is the only thing either half can
+ *   be written to as (ADR-0033).
  */
 export const DEMO_TRANSACTIONS = [
-  { id: 'txn-0010', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-20', amount: '-92.15', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: null, categoryName: null, categoryParentName: null, note: null, status: 'PENDING', transfer: false, createdAt: '2026-08-20T18:30:00Z', updatedAt: '2026-08-20T18:30:00Z', version: 0 },
-  { id: 'txn-0009', accountId: 'acc-0002', accountName: 'Emergency Fund', date: '2026-08-16', amount: '500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer from Everyday Checking', status: 'CLEARED', transfer: true, createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
-  { id: 'txn-0008', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-16', amount: '-500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer to Emergency Fund', status: 'CLEARED', transfer: true, createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
-  { id: 'txn-0007', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-15', amount: '-128.30', currency: 'USD', payeeId: 'pay-0006', payeeName: 'Metro Power', categoryId: 'cat-0005', categoryName: 'Utilities', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-15T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0 },
-  { id: 'txn-0006', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-12', amount: '-104.75', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: 'big shop', status: 'CLEARED', transfer: false, createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
-  { id: 'txn-0005', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-09', amount: '-41.20', currency: 'USD', payeeId: 'pay-0005', payeeName: 'Corner Kitchen', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-09T20:05:00Z', updatedAt: '2026-08-09T20:05:00Z', version: 0 },
-  { id: 'txn-0004', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-05', amount: '-62.00', currency: 'USD', payeeId: 'pay-0004', payeeName: 'City Transit', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-05T08:40:00Z', updatedAt: '2026-08-05T08:40:00Z', version: 0 },
-  { id: 'txn-0003', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-03', amount: '-86.40', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
-  { id: 'txn-0002', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '-1450.00', currency: 'USD', payeeId: 'pay-0002', payeeName: 'Fairview Lettings', categoryId: 'cat-0004', categoryName: 'Rent', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-01T07:00:00Z', updatedAt: '2026-08-01T07:00:00Z', version: 0 },
-  { id: 'txn-0001', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '3200.00', currency: 'USD', payeeId: 'pay-0001', payeeName: 'Northwind Systems', categoryId: 'cat-0002', categoryName: 'Salary', categoryParentName: 'Income', note: null, status: 'CLEARED', transfer: false, createdAt: '2026-08-01T06:00:00Z', updatedAt: '2026-08-01T06:00:00Z', version: 0 },
+  { id: 'txn-0010', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-20', amount: '-92.15', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: null, categoryName: null, categoryParentName: null, note: null, status: 'PENDING', transfer: false, transferGroupId: null, createdAt: '2026-08-20T18:30:00Z', updatedAt: '2026-08-20T18:30:00Z', version: 0 },
+  { id: 'txn-0009', accountId: 'acc-0002', accountName: 'Emergency Fund', date: '2026-08-16', amount: '500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer from Everyday Checking', status: 'CLEARED', transfer: true, transferGroupId: 'tgr-0001', createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
+  { id: 'txn-0008', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-16', amount: '-500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer to Emergency Fund', status: 'CLEARED', transfer: true, transferGroupId: 'tgr-0001', createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
+  { id: 'txn-0007', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-15', amount: '-128.30', currency: 'USD', payeeId: 'pay-0006', payeeName: 'Metro Power', categoryId: 'cat-0005', categoryName: 'Utilities', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-15T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0 },
+  { id: 'txn-0006', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-12', amount: '-104.75', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: 'big shop', status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
+  { id: 'txn-0005', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-09', amount: '-41.20', currency: 'USD', payeeId: 'pay-0005', payeeName: 'Corner Kitchen', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-09T20:05:00Z', updatedAt: '2026-08-09T20:05:00Z', version: 0 },
+  { id: 'txn-0004', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-05', amount: '-62.00', currency: 'USD', payeeId: 'pay-0004', payeeName: 'City Transit', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-05T08:40:00Z', updatedAt: '2026-08-05T08:40:00Z', version: 0 },
+  { id: 'txn-0003', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-03', amount: '-86.40', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
+  { id: 'txn-0002', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '-1450.00', currency: 'USD', payeeId: 'pay-0002', payeeName: 'Fairview Lettings', categoryId: 'cat-0004', categoryName: 'Rent', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-01T07:00:00Z', updatedAt: '2026-08-01T07:00:00Z', version: 0 },
+  { id: 'txn-0001', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '3200.00', currency: 'USD', payeeId: 'pay-0001', payeeName: 'Northwind Systems', categoryId: 'cat-0002', categoryName: 'Salary', categoryParentName: 'Income', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-01T06:00:00Z', updatedAt: '2026-08-01T06:00:00Z', version: 0 },
 ] as const;
+
+/**
+ * The transfer `txn-0008` and `txn-0009` are the two halves of, as `TransferResponse` sends it.
+ *
+ * **Addressed by its group id**, never by either leg's transaction id: the pair is the object, and
+ * naming one leg would make the other's id a second name for the same thing (ADR-0033).
+ *
+ * Both fixture accounts are in USD, so `crossCurrency` is false, `received` is the same figure as
+ * `sent`, and `impliedRate` is null — there is no rate, and we would not invent one (ADR-0022).
+ * `version` is the **pair's**: the sum of the two legs', which is why it is two and not one.
+ */
+export const DEMO_TRANSFER = {
+  id: 'tgr-0001',
+  fromAccountId: 'acc-0001',
+  fromAccountName: 'Everyday Checking',
+  toAccountId: 'acc-0002',
+  toAccountName: 'Emergency Fund',
+  date: '2026-08-16',
+  sent: '500.00',
+  sentCurrency: 'USD',
+  received: '500.00',
+  receivedCurrency: 'USD',
+  crossCurrency: false,
+  impliedRate: null,
+  note: 'Transfer to Emergency Fund',
+  createdAt: '2026-08-16T08:00:00Z',
+  updatedAt: '2026-08-16T08:00:00Z',
+  version: 0,
+} as const;
 
 /**
  * The ledger's page total, as the server computes it: the sum of this page's amounts.

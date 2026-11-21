@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { DateOnlyPipe, MoneyPipe } from '../../../core/i18n/format.pipes';
+import { MessageKey } from '../../../core/i18n/messages';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
-import { Transaction, transactionStatusKey } from '../data/transaction.models';
+import { Transaction, transactionStatusKey, transferGroupIdOf } from '../data/transaction.models';
 
 /**
  * The ledger.
@@ -17,6 +18,11 @@ import { Transaction, transactionStatusKey } from '../data/transaction.models';
  *   page mixes currencies (ADR-0022); this component has no addition in it at all.
  * - **"Needs a category" is a state, not a blank.** An uncategorised row says so, because it is
  *   the thing a person is meant to act on rather than an absence they should overlook.
+ * - **A transfer leg is acted on as a pair, never on its own.** Editing or deleting one half is
+ *   refused (`409 transfer-leg-not-separate`), so a transfer row's buttons report
+ *   {@link transferEditRequested} and {@link transferDeleteRequested}, which the page takes to the
+ *   transfer's own endpoints. It also reads as a transfer rather than as a payee-less spend: "No
+ *   payee" on money moved between your own accounts looks like missing data, and it is not.
  */
 @Component({
   selector: 'app-transaction-list',
@@ -36,8 +42,27 @@ export class TransactionListComponent {
   readonly editRequested = output<Transaction>();
   readonly deleteRequested = output<Transaction>();
   readonly categoriseRequested = output<Transaction>();
+  /** Both carry the leg; the page resolves the pair it belongs to. */
+  readonly transferEditRequested = output<Transaction>();
+  readonly transferDeleteRequested = output<Transaction>();
 
   protected readonly statusKey = transactionStatusKey;
+
+  /**
+   * The transfer this leg belongs to, or `null` when the ledger has not said which.
+   *
+   * `TransactionResponse` does not carry `transferGroupId` yet, and a transfer cannot be addressed
+   * without it — so the row offers no write buttons rather than buttons that would be refused.
+   * See `transferGroupIdOf`.
+   */
+  protected groupId(transaction: Transaction): string | null {
+    return transferGroupIdOf(transaction);
+  }
+
+  /** Which way this leg went, in words: the sign is the only record of it. */
+  protected transferDirectionKey(transaction: Transaction): MessageKey {
+    return this.outgoing(transaction) ? 'transactions.transferOut' : 'transactions.transferIn';
+  }
 
   /** An outflow. Read from the sign, which is the only place the direction is recorded. */
   protected outgoing(transaction: Transaction): boolean {

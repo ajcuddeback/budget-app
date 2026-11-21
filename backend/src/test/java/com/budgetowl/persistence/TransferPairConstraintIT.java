@@ -155,6 +155,84 @@ class TransferPairConstraintIT extends PersistenceTestBase {
     }
 
     @Test
+    void refusesAPairThatSpansTwoHouseholds() {
+        UUID otherHousehold = UUID.randomUUID();
+        UUID theirAccount = UUID.randomUUID();
+        UUID group = UUID.randomUUID();
+
+        // uq_households_singleton permits one household row, so it comes off for the duration —
+        // the same shape MoneyCrossHouseholdIT uses, and for the same reason: a scoping rule
+        // cannot be tested against a world with only one household in it.
+        jdbc.execute("DROP INDEX IF EXISTS uq_households_singleton");
+        try {
+            transaction.executeWithoutResult(
+                    status -> {
+                        // A household and its first OWNER have to be committed together: the
+                        // at-least-one-owner rule is DEFERRABLE INITIALLY DEFERRED and re-reads
+                        // the counter at COMMIT.
+                        UUID theirOwner = UUID.randomUUID();
+                        jdbc.update(
+                                "INSERT INTO users (id, email, display_name)"
+                                        + " VALUES (?, 'grace-elsewhere@example.com', 'Grace')",
+                                theirOwner);
+                        jdbc.update(
+                                "INSERT INTO households (id, name, base_currency)"
+                                        + " VALUES (?, 'Hopper', 'GBP')",
+                                otherHousehold);
+                        jdbc.update(
+                                """
+                                INSERT INTO household_members (id, household_id, user_id, role)
+                                VALUES (?, ?, ?, 'OWNER')
+                                """,
+                                UUID.randomUUID(),
+                                otherHousehold,
+                                theirOwner);
+                        jdbc.update(
+                                """
+                                INSERT INTO accounts (id, household_id, name, type, currency,
+                                                      opening_balance)
+                                VALUES (?, ?, 'Theirs', 'CHECKING', 'GBP', 0.0000)
+                                """,
+                                theirAccount,
+                                otherHousehold);
+                    });
+
+            // The branch with the strongest claim in the trigger, and until now the only one no
+            // test exercised — so it could have been deleted as dead code with the gate staying
+            // green. Each leg's own foreign key only forces it to match ITS OWN account's
+            // household; nothing but this stops the two legs being in different ones.
+            assertThatThrownBy(
+                            () ->
+                                    transaction.executeWithoutResult(
+                                            status -> {
+                                                insertLeg(group, accountA, "-250.0000");
+                                                jdbc.update(
+                                                        """
+                                                        INSERT INTO transactions (id, household_id,
+                                                            account_id, date, amount,
+                                                            transfer_group_id)
+                                                        VALUES (?, ?, ?, DATE '2026-08-12',
+                                                                250.0000, ?)
+                                                        """,
+                                                        UUID.randomUUID(),
+                                                        otherHousehold,
+                                                        theirAccount,
+                                                        group);
+                                            }))
+                    .hasMessageContaining("more than one household");
+        } finally {
+            // Both halves matter: leaving the index off would run every later test in this JVM
+            // without ADR-0026's guarantee.
+            jdbc.update("DELETE FROM transactions WHERE household_id = ?", otherHousehold);
+            jdbc.update("DELETE FROM accounts WHERE household_id = ?", otherHousehold);
+            jdbc.update("DELETE FROM households WHERE id = ?", otherHousehold);
+            jdbc.update("DELETE FROM users WHERE email = 'grace-elsewhere@example.com'");
+            jdbc.execute("DROP INDEX IF EXISTS uq_households_singleton");
+            jdbc.execute("CREATE UNIQUE INDEX uq_households_singleton ON households ((true))");
+        }
+    }
+
+    @Test
     void refusesATransferFiledUnderACategory() {
         UUID group = UUID.randomUUID();
         UUID category = UUID.randomUUID();

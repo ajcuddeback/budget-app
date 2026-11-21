@@ -49,6 +49,21 @@ export function amount(control: AbstractControl): ValidationErrors | null {
 }
 
 /**
+ * An **unsigned** decimal that fits `NUMERIC(19,4)`, mirroring `TransferRequests.AMOUNT`.
+ *
+ * Where {@link amount} allows a sign because a transaction's direction *is* its sign, the amounts
+ * on a transfer are magnitudes: the direction is which account each one belongs to, so a minus here
+ * is a mistake worth catching rather than a figure to fold in. It never parses the value (ADR-0006).
+ */
+export function positiveAmount(control: AbstractControl): ValidationErrors | null {
+  const value: unknown = control.value;
+  if (typeof value !== 'string' || value === '') {
+    return null;
+  }
+  return /^[0-9]{1,15}(\.[0-9]{1,4})?$/.test(value.trim()) ? null : { positiveAmount: true };
+}
+
+/**
  * Marks the controls the server rejected. Client validation mirrors the server's rules for quick
  * feedback and never replaces them, so the server can still say no to something the form let
  * through — and when it does, the field it named should say so.

@@ -36,6 +36,19 @@ export function transactionStatusKey(status: string): MessageKey {
 }
 
 /**
+ * The transfer this row is half of, or `null` when there is none to act on.
+ *
+ * Both halves of the pair carry it, so either row can edit or delete the transfer. It is read
+ * through a function rather than straight off the field for the two cases that are not a transfer:
+ * an ordinary transaction (`null`, as the server sends it) and the nonsense of a group id on a row
+ * not marked as a transfer, which is a server this client should not act on the word of. Absent
+ * information is never an id — a UI that invented one would delete a pair chosen by guesswork.
+ */
+export function transferGroupIdOf(transaction: Transaction): string | null {
+  return transaction.transfer ? (transaction.transferGroupId ?? null) : null;
+}
+
+/**
  * One transaction, exactly as `TransactionResponse` sends it.
  *
  * **`amount` is a string and stays a string** (ADR-0006). It is signed: negative is money leaving
@@ -66,6 +79,18 @@ export interface Transaction {
   status: TransactionStatus;
   /** One half of a transfer. Reporting must not count it as income or expense. */
   transfer: boolean;
+  /**
+   * The `transferGroupId` this leg belongs to, and `null` on everything that is not a transfer.
+   *
+   * **This is how a ledger row acts on the pair.** A transfer is addressed by its group id — a
+   * leg's own id names a leg, and writing to one is refused (`409 transfer-leg-not-separate`) — so
+   * without this a row could say it was a transfer and offer nothing to do about it.
+   *
+   * Never derive it. Two legs of two different transfers, same day, same two accounts, are
+   * indistinguishable from one pair, and a guess that was wrong deletes somebody else's transfer.
+   * {@link transferGroupIdOf} is the only reader, and it treats a missing one as "offer nothing".
+   */
+  transferGroupId: string | null;
   createdAt: string;
   updatedAt: string;
   /** What a `PATCH` must send back, or the optimistic lock cannot work. */

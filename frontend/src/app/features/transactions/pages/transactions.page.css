@@ -60,3 +60,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Record and Move money sit together, and wrap together on a narrow screen. */
+.head-actions {
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

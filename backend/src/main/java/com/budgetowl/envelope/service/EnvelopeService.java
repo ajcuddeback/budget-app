@@ -1,5 +1,7 @@
 package com.budgetowl.envelope.service;
 
+import com.budgetowl.account.domain.Account;
+import com.budgetowl.account.persistence.AccountRepository;
 import com.budgetowl.category.domain.Category;
 import com.budgetowl.category.persistence.CategoryRepository;
 import com.budgetowl.common.AmountText;
@@ -75,6 +77,7 @@ public class EnvelopeService {
     private static final Logger log = LoggerFactory.getLogger(EnvelopeService.class);
 
     private final EnvelopeRepository envelopes;
+    private final AccountRepository accounts;
     private final EnvelopeEntryRepository entries;
     private final CategoryRepository categories;
     private final PayeeRepository payees;
@@ -85,6 +88,7 @@ public class EnvelopeService {
 
     public EnvelopeService(
             EnvelopeRepository envelopes,
+            AccountRepository accounts,
             EnvelopeEntryRepository entries,
             CategoryRepository categories,
             PayeeRepository payees,
@@ -93,6 +97,7 @@ public class EnvelopeService {
             MembershipService memberships,
             Clock clock) {
         this.envelopes = envelopes;
+        this.accounts = accounts;
         this.entries = entries;
         this.categories = categories;
         this.payees = payees;
@@ -425,6 +430,22 @@ public class EnvelopeService {
                     "this transaction is already in an envelope");
         }
 
+        // A TRANSFER IS NOT SPENDING. Moving £250 from Current to Savings produces a negative
+        // leg that looks exactly like a purchase, so without this the envelope's spent total
+        // would include money that never left the household — understating what is left, with a
+        // SYNCED badge claiming a real transaction backs it. It would also outlive the transfer:
+        // fk_envelope_entries_transaction is ON DELETE SET NULL, so deleting the transfer leaves
+        // a phantom entry with nothing to trace it to.
+        //
+        // Unreachable before slice 8 — TransactionService.delete's comment said as much — and
+        // reachable the moment transfers could be created. A security review caught it.
+        if (transaction.isTransfer()) {
+            throw new InvalidRequestException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "a transfer is not spending, so it cannot be logged against an envelope",
+                    Map.of("field", "transactionId"));
+        }
+
         // Money OUT of an account is a negative transaction; an entry records how much of a
         // decided amount was used, which only goes one way. Income filed against an envelope is
         // refused rather than silently flipped: it is not spending, and counting it as such would
@@ -433,6 +454,22 @@ public class EnvelopeService {
             throw new InvalidRequestException(
                     ErrorCode.VALIDATION_FAILED,
                     "only money leaving an account can be logged against an envelope",
+                    Map.of("field", "transactionId"));
+        }
+
+        // An envelope is denominated in the household's base currency, and a transaction is in
+        // its account's. Relabelling one as the other is a conversion at a rate of 1.0 — a
+        // number nobody agreed to, which is exactly what ADR-0022 forbids. Refused rather than
+        // converted, because there is no rate to convert with and inventing one is the defect.
+        Account account =
+                accounts.findByIdAndHouseholdId(transaction.accountId(), household.id())
+                        .orElseThrow(
+                                () -> new IllegalStateException("a transaction has no account"));
+        if (!account.currency().equals(household.baseCurrency())) {
+            throw new InvalidRequestException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "this account is not in the household's currency, so its transactions cannot"
+                            + " be logged against an envelope",
                     Map.of("field", "transactionId"));
         }
 

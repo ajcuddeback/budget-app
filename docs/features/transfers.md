@@ -1,6 +1,6 @@
 # Feature: Transfers
 
-- **Status:** In progress — slice 8
+- **Status:** In progress — slice 8 (API and UI landed)
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-21
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency),
@@ -104,25 +104,53 @@ bumped together, so the sum moves by two on every edit, is stale exactly when ei
 only ever moves forward. A stale one is a `409`, as everywhere else. `PATCH` carries no account
 ids.
 
-The ledger (`GET /api/transactions`) is unchanged: both legs appear, already marked.
+The ledger (`GET /api/transactions`) carries both legs, each marked `transfer: true` and each
+carrying the pair's `transferGroupId` — **which is what lets a ledger row act on the transfer**.
+Without it a row could show a transfer and offer nothing to do with it, because a leg's own id
+addresses nothing and a guessed group id would edit somebody else's pair.
 
 ## UI
 
-A **Move money** action on the ledger, opening a sheet:
+A **Move money** button on the ledger, beside *Record a transaction*, opening a sheet. It is
+offered only to an `OWNER` or `MEMBER`, and only when the household has **two** accounts that can
+still take a transaction — with one, the sheet could offer nothing but an account to itself.
 
-1. **From** and **To** — account pickers. Choosing the same account in both is refused inline
-   rather than on submit.
-2. **Amount** — one field when the two accounts share a currency.
-3. **Amount received** — a second field, appearing only when they do not, labelled with the
-   receiving account's currency and explaining why it is being asked for.
+1. **Out of** and **Into** — account pickers. Archived accounts are not listed, because either
+   side being archived is a `409`. Choosing the same account in both is refused **inline, as it is
+   chosen**, not on submit.
+2. **Amount that left** — one field when the two accounts share a currency. `type="text"` with
+   `inputmode="decimal"`, never `type="number"` (ADR-0006), and unsigned: the direction is the two
+   pickers.
+3. **Amount that arrived** — a second field, appearing only when the currencies differ, labelled
+   with the receiving account's currency and explaining why it is being asked for. It lives in an
+   `aria-live` region, so appearing is announced rather than silent. Within one currency the field
+   is **not on screen and is never sent**; across two it is required. Both mistakes are a `400`.
+4. **Date**, and an optional **note** (the note goes on both legs).
 
-Editing offers the date, the figures and the note. To move a transfer to different accounts you
-delete it and make it again, and the sheet says so rather than leaving somebody hunting for a
-picker that is not there.
-4. **Date**, and an optional **note**.
+There is **no category picker and no payee field anywhere on the sheet**, and it says why in a
+sentence rather than leaving the absence to be noticed.
 
-A transfer in the ledger reads as a transfer, with the other account named, and offers **Edit**
-and **Delete** that act on the pair. There is no category picker on it at all.
+**Editing** offers the date, the figures and the note. It has **no account pickers at all**: the
+two accounts are named, and the sheet says that moving a transfer to different accounts means
+deleting it and making it again — rather than leaving somebody hunting for a picker that is not
+there. The patch carries **only what changed**: an absent `amountReceived` means "leave the
+receiving leg alone", so a note-only edit of a cross-currency transfer is a note-only edit. Within
+one currency it is never sent at all — there it would be a second name for `amount`, and the server
+refuses it.
+
+The **implied rate** is shown beside a cross-currency transfer in the sheet, formatted through
+`Intl` and labelled as worked out from the two figures — never as the rate the bank gave, which had
+a fee inside it (ADR-0022).
+
+A transfer in the ledger **reads as a transfer**: "Transfer out" / "Transfer in" where a payee's
+name would go (a transfer has none, and a blank there reads as missing data), the "Between your
+accounts" label instead of a category, and a *Transfer* badge. Its **Edit** and **Delete** act on
+the pair, through `/api/transfers/{transferGroupId}` — never on the leg, which the server refuses
+with `409 transfer-leg-not-separate`. Deleting says that **both halves go** before it happens. A
+leg that somehow arrives with no `transferGroupId` offers neither button and says that both halves
+change together, rather than offering a write that could only be refused or aimed by guesswork.
+
+A `VIEWER` sees every transfer, both legs and every figure, and no write control.
 
 ## Security considerations
 
@@ -146,7 +174,25 @@ and **Delete** that act on the pair. There is no category picker on it at all.
 
 ## Known gaps
 
-_To be filled in as the slice lands._
+- **A leg does not name the account on the other side.** The ledger row carries its own
+  `accountName` and the pair's `transferGroupId`, so it can say which way the money went and act
+  on the pair, but not where it went without fetching the transfer. Naming it would mean either a
+  second account name on every transaction row or a client-side fetch per transfer; neither is
+  worth it until a screen needs it.
+- **A household roll-up cannot net a cross-currency transfer out.** The two legs are in different
+  currencies, so subtracting one from the other needs a rate the instance may not have. Reporting
+  (slice 13) must exclude both legs rather than cancel them.
+- **A transfer's accounts cannot be edited.** Moving one to a different account is a delete and a
+  re-create. See the rule above for why; it is a real cost and it is the right one.
+- **Nothing records who made a transfer.** The log line carries the acting user; the row does not.
+  The same gap bills have.
+- **The implied rate is not the rate anybody got.** It is what the two figures divide to. The
+  bank's fee is usually inside its rate, so the two differ and the screen must not call ours "the
+  rate you got".
+- **There is no transfers list.** `GET /api/transfers/{id}` takes one group id and there is no
+  collection route, so nothing can show "all transfers" — the ledger, with both legs in it, is the
+  only view. That matches the data model (a transfer *is* two transactions) and is only a gap if a
+  screen ever wants the pairs on their own.
 
 ## Testing notes
 
@@ -157,3 +203,13 @@ _To be filled in as the slice lands._
   account cannot be either side, and its transfer is a `404` on every route.
 - A constraint test proving the deferred trigger refuses a one-legged group, a two-legged group
   in one account, and two legs with the same sign.
+- `transfers-data.spec.ts` — the second figure is sent across currencies and omitted within one;
+  amounts leave as strings, unsigned; a patch carries only what changed, so a note-only edit of a
+  cross-currency pair leaves the receiving leg alone; an unchanged form patches nothing; a group id
+  in a path is encoded; a leg with no `transferGroupId`, or a group id on a row not marked a
+  transfer, yields none.
+- `transfers.page.spec.ts` — the second field appears only for a cross-currency pair and
+  disappears again when the pair stops being one; the same account twice is refused inline and
+  sends nothing; an archived account is not offered; there is no category picker; a transfer row's
+  Edit and Delete call `/api/transfers`, never the leg's own endpoints; an edit has no account
+  pickers; the implied rate is labelled as derived; a `VIEWER` gets no write control.

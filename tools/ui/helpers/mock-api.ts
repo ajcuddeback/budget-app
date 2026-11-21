@@ -24,6 +24,7 @@ import {
   DEMO_PERIOD_SUMMARY,
   DEMO_PROBLEMS,
   DEMO_TOKENS,
+  DEMO_TRANSFER,
   DEMO_USER,
 } from '../fixtures/demo-data.js';
 
@@ -488,6 +489,55 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return json(route, 200, { ...found, ...changes, version: found.version + 1 });
       }
       return json(route, 200, found);
+    }
+
+    // ---- transfers ------------------------------------------------------------------------
+    // Addressed by the GROUP id, never by either leg's transaction id: the pair is the object, and
+    // editing or deleting half of one is refused by the real API (ADR-0033). The fixture household
+    // moves money between two USD accounts, so there is one figure; a cross-currency pair would
+    // carry two and an implied rate.
+    if (at === 'POST /api/transfers') {
+      const from = DEMO_ACCOUNTS.find((one) => one.id === field('fromAccountId'));
+      const to = DEMO_ACCOUNTS.find((one) => one.id === field('toAccountId'));
+      const sent = (field('amount') as string | undefined) ?? '0.00';
+      // The strings the client sent, unparsed: a mock that re-formatted an amount would hide the
+      // one defect ADR-0006 exists to prevent.
+      const received = (field('amountReceived') as string | undefined) ?? sent;
+      return json(route, 201, {
+        ...DEMO_TRANSFER,
+        id: 'tgr-0099',
+        fromAccountId: from?.id ?? DEMO_TRANSFER.fromAccountId,
+        fromAccountName: from?.name ?? DEMO_TRANSFER.fromAccountName,
+        toAccountId: to?.id ?? DEMO_TRANSFER.toAccountId,
+        toAccountName: to?.name ?? DEMO_TRANSFER.toAccountName,
+        date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+        sent,
+        sentCurrency: from?.currency ?? 'USD',
+        received,
+        receivedCurrency: to?.currency ?? 'USD',
+        crossCurrency: (from?.currency ?? 'USD') !== (to?.currency ?? 'USD'),
+        note: (field('note') as string | undefined) ?? null,
+      });
+    }
+    const transfer = /^\/api\/transfers\/([^/]+)$/.exec(url.pathname);
+    if (transfer) {
+      if (method === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'PATCH') {
+        const sent = (field('amount') as string | undefined) ?? DEMO_TRANSFER.sent;
+        return json(route, 200, {
+          ...DEMO_TRANSFER,
+          date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+          sent,
+          // Within one currency the legs are equal, and the real API refuses a second figure here.
+          received: (field('amountReceived') as string | undefined) ?? sent,
+          note: field('note') === undefined ? DEMO_TRANSFER.note : (field('note') as string | null),
+          // The pair's version moves by two: both legs are written together.
+          version: DEMO_TRANSFER.version + 2,
+        });
+      }
+      return json(route, 200, DEMO_TRANSFER);
     }
 
     // ---- bills, income and the month's summary ---------------------------------------------

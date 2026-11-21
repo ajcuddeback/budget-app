@@ -17,6 +17,10 @@ import java.util.UUID;
  * @param categoryId null means "Needs a category": a real state the UI shows, not missing data
  * @param categoryParentName null when the category is top-level or absent; lets the client render
  *     {@code Bills → Utilities} without looking the parent up
+ * @param transferGroupId the pair this leg belongs to, or null. <b>A client needs it to act on the
+ *     transfer</b>: a transfer is addressed by its group id, so without this a ledger row could
+ *     show a transfer and offer nothing to do with it — the id is not derivable from the leg, and
+ *     guessing one would edit somebody else's pair
  * @param transfer true when this is one half of a transfer (slice 8). Reporting must not count it
  *     as income or expense
  */
@@ -33,6 +37,7 @@ public record TransactionView(
         String categoryParentName,
         String note,
         TransactionStatus status,
+        UUID transferGroupId,
         boolean transfer,
         Instant createdAt,
         Instant updatedAt,

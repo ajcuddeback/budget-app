@@ -38,6 +38,21 @@ export class MoneyPipe implements PipeTransform {
   }
 }
 
+/**
+ * `{{ transfer.impliedRate | rate }}` — a derived rate, never money.
+ *
+ * Deliberately not the `money` pipe: a rate has no currency, and formatting one as currency would
+ * dress a division up as a figure somebody could spend. See `I18nService.formatRate`.
+ */
+@Pipe({ name: 'rate', pure: false })
+export class RatePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(rate: string | null | undefined): string {
+    return this.i18n.formatRate(rate);
+  }
+}
+
 /** `{{ 8 | monthName }}` — "August". For a month picker, which has no year to show. */
 @Pipe({ name: 'monthName', pure: false })
 export class MonthNamePipe implements PipeTransform {

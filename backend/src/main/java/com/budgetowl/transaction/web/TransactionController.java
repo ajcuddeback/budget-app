@@ -174,6 +174,7 @@ public class TransactionController {
                 transaction.categoryParentName(),
                 transaction.note(),
                 transaction.status(),
+                transaction.transferGroupId(),
                 transaction.transfer(),
                 transaction.createdAt(),
                 transaction.updatedAt(),

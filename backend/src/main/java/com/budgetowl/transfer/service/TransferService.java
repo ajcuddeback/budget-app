@@ -63,6 +63,11 @@ public class TransferService {
      * <p>Six, which is more than a bank quotes and enough that the division does not look rounded
      * to the figure it came from. It is a derived label, not an input — see {@code
      * TransferView.impliedRate}.
+     *
+     * <p><b>{@code HALF_UP}, where ADR-0006 mandates {@code HALF_EVEN} for money.</b> This is not
+     * money: it is a ratio printed beside two figures that are themselves exact, nothing adds it
+     * up, and no balance depends on it. {@code HALF_EVEN} exists to stop rounding bias accumulating
+     * across many sums, and there is no sum here to accumulate across.
      */
     private static final int RATE_SCALE = 6;
 
@@ -160,7 +165,7 @@ public class TransferService {
                 changes.amount() == null
                         ? Money.of(out.amount().abs(), from.currency())
                         : amount(changes.amount(), from.currency(), "amount");
-        Money received = received(changes.amountReceived(), sent, from, to);
+        Money received = receivedAfter(changes.amountReceived(), sent, in, from, to);
         String note = noteAfter(changes.note(), out);
 
         out.on(date);
@@ -211,6 +216,42 @@ public class TransferService {
     }
 
     /**
+     * What arrives after an edit.
+     *
+     * <p><b>Absent means unchanged</b>, as every other field in every other {@code PATCH} in this
+     * codebase does — so a note-only edit of a cross-currency transfer is a note-only edit.
+     * Requiring the figure on every edit, as an earlier version did, made {@code PATCH
+     * {"note":"holiday money","version":4}} a {@code 400} naming a field the caller had no reason
+     * to send.
+     *
+     * <p>Within one currency the two legs must agree, so a changed {@code amount} moves both and
+     * {@code amountReceived} is still refused: there it would be a second name for the same figure
+     * and a chance for the two to disagree with no tie-break.
+     */
+    private static Money receivedAfter(
+            String text, Money sent, Transaction in, Account from, Account to) {
+        if (from.currency().equals(to.currency())) {
+            if (text != null) {
+                throw refuseSecondFigure();
+            }
+            return Money.of(sent.amount(), to.currency());
+        }
+        // Across currencies the legs are independent facts, so leaving one alone leaves it alone.
+        // Recomputing it from the other would silently rewrite a balance nobody asked to change.
+        return text == null
+                ? Money.of(in.amount(), to.currency())
+                : amount(text, to.currency(), "amountReceived");
+    }
+
+    private static InvalidRequestException refuseSecondFigure() {
+        return new InvalidRequestException(
+                ErrorCode.VALIDATION_FAILED,
+                "both accounts are in the same currency, so the amount received is the amount"
+                        + " sent",
+                Map.of("field", "amountReceived"));
+    }
+
+    /**
      * What arrives, and whether the caller was allowed to say.
      *
      * <p>Required across currencies and refused within one. Refused rather than ignored: a second
@@ -221,11 +262,7 @@ public class TransferService {
         boolean crossCurrency = !from.currency().equals(to.currency());
         if (!crossCurrency) {
             if (text != null) {
-                throw new InvalidRequestException(
-                        ErrorCode.VALIDATION_FAILED,
-                        "both accounts are in the same currency, so the amount received is the"
-                                + " amount sent",
-                        Map.of("field", "amountReceived"));
+                throw refuseSecondFigure();
             }
             return Money.of(sent.amount(), to.currency());
         }

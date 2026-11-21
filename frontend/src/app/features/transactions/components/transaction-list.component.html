@@ -4,7 +4,11 @@
       <div class="row-main">
         <p class="row-primary">
           <span class="row-payee">
-            @if (transaction.payeeName) {
+            @if (transaction.transfer) {
+              <!-- Not "No payee": a transfer has none by nature, and a blank where a name goes
+                   reads as data somebody forgot to enter. -->
+              {{ transferDirectionKey(transaction) | t }}
+            } @else if (transaction.payeeName) {
               {{ transaction.payeeName }}
             } @else {
               <span class="unnamed">{{ 'transactions.noPayee' | t }}</span>
@@ -39,10 +43,11 @@
                 <!-- Composed through a template so a right-to-left locale can reorder it. -->
                 {{
                   'transactions.categoryPath'
-                    | t: {
-                        parent: transaction.categoryParentName,
-                        name: transaction.categoryName,
-                      }
+                    | t
+                      : {
+                          parent: transaction.categoryParentName,
+                          name: transaction.categoryName,
+                        }
                 }}
               } @else {
                 {{ transaction.categoryName }}
@@ -71,32 +76,58 @@
 
       @if (canWrite()) {
         <div class="cluster row-actions">
-          @if (!transaction.categoryId && !transaction.transfer) {
+          @if (transaction.transfer) {
+            @if (groupId(transaction); as transferGroupId) {
+              <!-- Both act on the pair. A leg on its own is refused by the server. -->
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="transferEditRequested.emit(transaction)"
+              >
+                {{ 'common.edit' | t }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="transferDeleteRequested.emit(transaction)"
+              >
+                {{ 'common.delete' | t }}
+              </button>
+            } @else {
+              <!-- The ledger has not said which transfer this is half of, so there is nothing
+                   honest to offer: a leg cannot be edited or deleted alone. -->
+              <p class="row-hint">{{ 'transactions.transferPairOnly' | t }}</p>
+            }
+          } @else {
+            @if (!transaction.categoryId && !transaction.transfer) {
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="categoriseRequested.emit(transaction)"
+              >
+                {{ 'transactions.categorise' | t }}
+              </button>
+            }
             <button
               type="button"
               class="btn btn-secondary btn-small"
               [disabled]="busyId() === transaction.id"
-              (click)="categoriseRequested.emit(transaction)"
+              (click)="editRequested.emit(transaction)"
             >
-              {{ 'transactions.categorise' | t }}
+              {{ 'common.edit' | t }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger btn-small"
+              [disabled]="busyId() === transaction.id"
+              (click)="deleteRequested.emit(transaction)"
+            >
+              {{ 'common.delete' | t }}
             </button>
           }
-          <button
-            type="button"
-            class="btn btn-secondary btn-small"
-            [disabled]="busyId() === transaction.id"
-            (click)="editRequested.emit(transaction)"
-          >
-            {{ 'common.edit' | t }}
-          </button>
-          <button
-            type="button"
-            class="btn btn-danger btn-small"
-            [disabled]="busyId() === transaction.id"
-            (click)="deleteRequested.emit(transaction)"
-          >
-            {{ 'common.delete' | t }}
-          </button>
         </div>
       }
     </li>

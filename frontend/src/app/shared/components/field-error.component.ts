@@ -55,6 +55,12 @@ export class FieldErrorComponent {
     if (errors['amount']) {
       return message('validation.amount');
     }
+    if (errors['positiveAmount']) {
+      return message('validation.positiveAmount');
+    }
+    if (errors['sameAccount']) {
+      return message('validation.sameAccount');
+    }
     if (errors['minlength']) {
       return message('validation.minLength', { min: Number(errors['minlength'].requiredLength) });
     }

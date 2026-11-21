@@ -67,6 +67,7 @@ const SHOP: Transaction = {
   note: 'weekly shop',
   status: 'CLEARED',
   transfer: false,
+  transferGroupId: null,
   createdAt: '2026-11-11T09:00:00Z',
   updatedAt: '2026-11-11T09:00:00Z',
   version: 2,

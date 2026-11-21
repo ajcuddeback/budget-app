@@ -28,9 +28,18 @@
       <div class="cluster section-head">
         <h2 class="card-title" id="ledger-heading">{{ 'transactions.heading' | t }}</h2>
         @if (canWrite() && openAccounts().length > 0) {
-          <button type="button" class="btn btn-primary" (click)="openAdd()">
-            {{ 'transactions.add' | t }}
-          </button>
+          <div class="cluster head-actions">
+            <button type="button" class="btn btn-primary" (click)="openAdd()">
+              {{ 'transactions.add' | t }}
+            </button>
+            @if (canTransfer()) {
+              <!-- Moving money between your own accounts is neither income nor spending, so it is
+                   its own action rather than a transaction with a strange category. -->
+              <button type="button" class="btn btn-secondary" (click)="openTransfer()">
+                {{ 'transfers.move' | t }}
+              </button>
+            }
+          </div>
         }
       </div>
 
@@ -154,11 +163,15 @@
             (editRequested)="openEdit($event)"
             (categoriseRequested)="openEdit($event)"
             (deleteRequested)="askToDelete($event)"
+            (transferEditRequested)="openTransferEdit($event)"
+            (transferDeleteRequested)="askToDeleteTransfer($event)"
           />
 
           <div class="cluster ledger-foot">
             <p class="ledger-count">
-              {{ 'transactions.showing' | t: { shown: transactions().length, total: totalElements() } }}
+              {{
+                'transactions.showing' | t: { shown: transactions().length, total: totalElements() }
+              }}
             </p>
             @if (pageTotal(); as total) {
               <p class="ledger-total">
@@ -213,6 +226,30 @@
     (submitted)="submit($event)"
     (payeeTyped)="suggestPayees($event)"
     (closed)="closeDialog()"
+  />
+}
+
+@if (transferDialog(); as target) {
+  <app-transfer-dialog
+    [transfer]="target.transfer"
+    [accounts]="openAccounts()"
+    [today]="today()"
+    [busy]="transferBusy()"
+    [error]="transferError()"
+    (submitted)="submitTransfer($event)"
+    (closed)="closeTransferDialog()"
+  />
+}
+
+@if (transferConfirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [tone]="text.tone"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmTransferDelete()"
+    (cancelled)="cancelTransferDelete()"
   />
 }
 

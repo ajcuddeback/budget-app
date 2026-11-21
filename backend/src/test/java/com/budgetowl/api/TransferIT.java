@@ -74,17 +74,42 @@ class TransferIT extends ApiTestBase {
         UUID savings = createAccount(household.owner(), "Savings", "8765");
         transfer(household.owner(), current, savings, "250.00");
 
-        // Not in the queue of things waiting for a category, and not filed under one. Moving
-        // your own money is not spending, and counting it would say you spent your savings.
+        // Not in the queue of things waiting for a category. Moving your own money is not
+        // spending, and counting it would say you spent your savings.
         ApiResponse uncategorised = household.owner().get("/api/transactions?uncategorised=true");
         assertThat(uncategorised.numberField("totalElements")).isZero();
+
+        // And the request the feature doc says is refused, actually refused. Asserting over SQL
+        // that no transfer row carries a category proves nothing: no request shape can set one,
+        // so that query returns zero whatever the code does. A security review caught it.
         assertThat(
-                        jdbc.queryForObject(
-                                "SELECT count(*) FROM transactions"
-                                        + " WHERE transfer_group_id IS NOT NULL"
-                                        + " AND (category_id IS NOT NULL OR payee_id IS NOT NULL)",
-                                Integer.class))
-                .isZero();
+                        household
+                                .owner()
+                                .post(
+                                        "/api/transfers",
+                                        """
+                                        {"fromAccountId":"%s","toAccountId":"%s","date":"%s",
+                                         "amount":"1.00","categoryId":"%s"}
+                                        """
+                                                .formatted(
+                                                        current,
+                                                        savings,
+                                                        DATE,
+                                                        seededCategoryId("Groceries")))
+                                .status())
+                .isEqualTo(400);
+        assertThat(
+                        household
+                                .owner()
+                                .post(
+                                        "/api/transfers",
+                                        """
+                                        {"fromAccountId":"%s","toAccountId":"%s","date":"%s",
+                                         "amount":"1.00","payeeName":"Someone"}
+                                        """
+                                                .formatted(current, savings, DATE))
+                                .status())
+                .isEqualTo(400);
     }
 
     @Test
@@ -244,6 +269,82 @@ class TransferIT extends ApiTestBase {
                                 "SELECT count(DISTINCT date) FROM transactions", Integer.class))
                 .as("both legs moved to the new date")
                 .isEqualTo(1);
+    }
+
+    @Test
+    void a_note_only_edit_of_a_cross_currency_transfer_leaves_both_figures_alone() {
+        Household household = seedHousehold();
+        UUID pounds = createAccount(household.owner(), "Current", "4321");
+        UUID euros = createAccountIn(household.owner(), "Holiday", "EUR");
+        ApiResponse created = crossCurrency(household.owner(), pounds, euros);
+        UUID id = UUID.fromString(created.stringField("id"));
+
+        ApiResponse edited =
+                household
+                        .owner()
+                        .patch(
+                                "/api/transfers/" + id,
+                                "{\"note\":\"holiday money\",\"version\":"
+                                        + created.numberField("version")
+                                        + "}");
+
+        // Absent means unchanged, as it does in every other PATCH here. An earlier version
+        // demanded the received figure on every edit, which made a note edit a 400 naming a
+        // field the caller had no reason to send.
+        assertThat(edited.status()).isEqualTo(200);
+        assertThat(edited.stringField("sent")).isEqualTo("200.0000");
+        assertThat(edited.stringField("received")).isEqualTo("228.4000");
+        assertThat(edited.stringField("note")).isEqualTo("holiday money");
+    }
+
+    @Test
+    void changing_one_side_of_a_cross_currency_transfer_leaves_the_other_where_it_was() {
+        Household household = seedHousehold();
+        UUID pounds = createAccount(household.owner(), "Current", "4321");
+        UUID euros = createAccountIn(household.owner(), "Holiday", "EUR");
+        ApiResponse created = crossCurrency(household.owner(), pounds, euros);
+        UUID id = UUID.fromString(created.stringField("id"));
+
+        ApiResponse edited =
+                household
+                        .owner()
+                        .patch(
+                                "/api/transfers/" + id,
+                                "{\"amount\":\"210.00\",\"version\":"
+                                        + created.numberField("version")
+                                        + "}");
+
+        // Across currencies the two legs are independent facts. Recomputing the second from the
+        // first would silently rewrite a balance nobody asked to change, at a rate we made up.
+        assertThat(edited.stringField("sent")).isEqualTo("210.0000");
+        assertThat(edited.stringField("received")).isEqualTo("228.4000");
+        assertThat(household.owner().get("/api/accounts/" + euros).stringField("balance"))
+                .isEqualTo("228.4000");
+    }
+
+    @Test
+    void a_transfer_leg_cannot_be_logged_as_envelope_spending() {
+        Household household = seedHousehold();
+        UUID current = createAccount(household.owner(), "Current", "4321");
+        UUID savings = createAccount(household.owner(), "Savings", "8765");
+        transfer(household.owner(), current, savings, "250.00");
+        UUID groceries = createEnvelope(household.owner(), "Groceries", "400.00");
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/envelopes/" + groceries + "/entries",
+                                "{\"transactionId\":\"" + legIds().get(0) + "\"}");
+
+        // The leg looks exactly like a purchase. Without this guard the envelope's spent total
+        // would include money that never left the household, wearing a SYNCED badge claiming a
+        // real transaction backs it — and deleting the transfer would leave the entry behind,
+        // because fk_envelope_entries_transaction is ON DELETE SET NULL. Unreachable before this
+        // slice existed, reachable the moment it did, and found by a security review.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(household.owner().get("/api/envelopes/" + groceries).stringField("spent"))
+                .isEqualTo("0.0000");
     }
 
     @Test
@@ -434,6 +535,30 @@ class TransferIT extends ApiTestBase {
                                 .formatted(name, currency));
         if (response.status() != 201) {
             throw new AssertionError("could not create an account: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    private ApiResponse crossCurrency(ApiClient client, UUID pounds, UUID euros) {
+        return client.post(
+                "/api/transfers",
+                """
+                {"fromAccountId":"%s","toAccountId":"%s","date":"%s",
+                 "amount":"200.00","amountReceived":"228.40"}
+                """
+                        .formatted(pounds, euros, DATE));
+    }
+
+    private UUID createEnvelope(ApiClient client, String name, String amount) {
+        ApiResponse response =
+                client.post(
+                        "/api/envelopes",
+                        """
+                        {"name":"%s","period":"2026-08","amount":"%s"}
+                        """
+                                .formatted(name, amount));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create an envelope: " + response.body());
         }
         return UUID.fromString(response.stringField("id"));
     }

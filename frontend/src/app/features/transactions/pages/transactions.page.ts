@@ -17,18 +17,44 @@ import { CategoriesService } from '../../categories/data/categories.service';
 import { pickableCategories } from '../../categories/data/category-tree';
 import { TransactionDialogComponent } from '../components/transaction-dialog.component';
 import { TransactionListComponent } from '../components/transaction-list.component';
+import { TransferDialogComponent } from '../components/transfer-dialog.component';
 import {
   TransactionFormValue,
   buildTransactionCreate,
   buildTransactionPatch,
   patchIsEmpty,
 } from '../data/transaction-patch';
-import { Ledger, LedgerQuery, Transaction } from '../data/transaction.models';
+import { Ledger, LedgerQuery, Transaction, transferGroupIdOf } from '../data/transaction.models';
 import { LEDGER_PAGE_SIZE, TransactionsService } from '../data/transactions.service';
+import {
+  TransferFormValue,
+  buildTransferCreate,
+  buildTransferPatch,
+  isCrossCurrency,
+  transferPatchIsEmpty,
+} from '../data/transfer-patch';
+import { Transfer } from '../data/transfer.models';
+import { TransfersService } from '../data/transfers.service';
 
 /** What the dialog is open for. A `null` transaction means "record one". */
 interface DialogTarget {
   transaction: Transaction | null;
+}
+
+/** What the transfer sheet is open for. A `null` transfer means "move money". */
+interface TransferTarget {
+  transfer: Transfer | null;
+}
+
+/**
+ * A transfer somebody asked to delete, with the leg they clicked.
+ *
+ * Both halves are needed: the group id is what `DELETE` takes, and the leg is what the row's busy
+ * state and any error are about.
+ */
+interface PendingTransferDelete {
+  transferGroupId: string;
+  leg: Transaction;
 }
 
 /**
@@ -48,6 +74,10 @@ interface DialogTarget {
  *   account-archived`; the picker simply does not list them.
  * - **The role decides what is offered; the server decides what is allowed.** A `VIEWER` sees no
  *   write buttons and would still be refused with `403 read-only-role`.
+ * - **A transfer is one thing with two rows in this list** (ADR-0033). Both legs appear, because an
+ *   account whose balance moved for no visible reason is a bug report, but Edit and Delete on
+ *   either of them go to the transfer's own endpoints: a leg on its own is refused with `409
+ *   transfer-leg-not-separate`.
  */
 @Component({
   selector: 'app-transactions-page',
@@ -59,6 +89,7 @@ interface DialogTarget {
     NoHouseholdComponent,
     TransactionListComponent,
     TransactionDialogComponent,
+    TransferDialogComponent,
     ConfirmDialogComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,6 +98,7 @@ interface DialogTarget {
 })
 export class TransactionsPage {
   private readonly service = inject(TransactionsService);
+  private readonly transfersService = inject(TransfersService);
   private readonly accountsService = inject(AccountsService);
   private readonly categoriesService = inject(CategoriesService);
   private readonly auth = inject(AuthService);
@@ -152,6 +184,33 @@ export class TransactionsPage {
     return {
       heading: this.i18n.t('transactions.deleteHeading'),
       message: this.i18n.t('transactions.deleteMessage'),
+      action: this.i18n.t('common.delete'),
+      tone: 'destructive' as const,
+    };
+  });
+
+  // ------------------------------------------------------------------------------- transfers
+
+  protected readonly transferDialog = signal<TransferTarget | null>(null);
+  protected readonly transferBusy = signal(false);
+  protected readonly transferError = signal<ApiError | null>(null);
+  protected readonly pendingTransferDelete = signal<PendingTransferDelete | null>(null);
+
+  /**
+   * Whether moving money is possible at all: it takes two accounts that can still take a
+   * transaction. With one, the sheet could only offer an account to itself, which is refused.
+   */
+  protected readonly canTransfer = computed(() => this.openAccounts().length >= 2);
+
+  protected readonly transferConfirmText = computed(() => {
+    if (!this.pendingTransferDelete()) {
+      return null;
+    }
+    return {
+      heading: this.i18n.t('transfers.deleteHeading'),
+      // Says that both halves go: a person who clicked Delete on one row is owed that sentence
+      // before two balances move.
+      message: this.i18n.t('transfers.deleteMessage'),
       action: this.i18n.t('common.delete'),
       tone: 'destructive' as const,
     };
@@ -284,12 +343,14 @@ export class TransactionsPage {
   protected openAdd(): void {
     this.resetDialogState();
     this.payeeSuggestions.set([]);
+    this.transferDialog.set(null);
     this.dialog.set({ transaction: null });
   }
 
   protected openEdit(transaction: Transaction): void {
     this.resetDialogState();
     this.payeeSuggestions.set([]);
+    this.transferDialog.set(null);
     this.dialog.set({ transaction });
   }
 
@@ -356,6 +417,122 @@ export class TransactionsPage {
     }
     this.pendingDelete.set(null);
     await this.run(target, () => this.service.remove(target.id), 'transactions.deleted');
+  }
+
+  // ------------------------------------------------------------------------- moving money
+
+  protected openTransfer(): void {
+    this.resetTransferState();
+    // One sheet at a time: two open dialogs would trap focus in whichever rendered last.
+    this.dialog.set(null);
+    this.transferDialog.set({ transfer: null });
+  }
+
+  /**
+   * Opens the transfer a leg belongs to.
+   *
+   * **Fetched, not assembled from the row.** The sheet needs both accounts, both figures and the
+   * pair's version, and a leg carries none of them — and fetching means the version being edited is
+   * the one the server holds now rather than one from whenever this page was loaded.
+   */
+  protected async openTransferEdit(leg: Transaction): Promise<void> {
+    const transferGroupId = transferGroupIdOf(leg);
+    if (!transferGroupId) {
+      return;
+    }
+    this.resetTransferState();
+    this.dialog.set(null);
+    this.busyId.set(leg.id);
+    try {
+      const transfer = await firstValueFrom(this.transfersService.get(transferGroupId));
+      this.transferDialog.set({ transfer });
+    } catch (thrown) {
+      this.actionError.set(asApiError(thrown));
+      this.actionErrorSubject.set(leg.accountName);
+    } finally {
+      this.busyId.set(null);
+    }
+  }
+
+  protected closeTransferDialog(): void {
+    this.transferDialog.set(null);
+    this.resetTransferState();
+  }
+
+  protected async submitTransfer(form: TransferFormValue): Promise<void> {
+    const target = this.transferDialog();
+    if (!target) {
+      return;
+    }
+    this.transferBusy.set(true);
+    this.transferError.set(null);
+    try {
+      if (target.transfer === null) {
+        // Whether a second figure is sent is decided from the account list this page already
+        // holds. Sending one within a single currency is a 400, and so is omitting one across
+        // two: there is no safe default, only the right answer.
+        const crossCurrency = isCrossCurrency(
+          this.accounts(),
+          form.fromAccountId,
+          form.toAccountId,
+        );
+        await firstValueFrom(
+          this.transfersService.create(buildTransferCreate(form, crossCurrency)),
+        );
+        this.notice.set('transfers.created');
+      } else {
+        const patch = buildTransferPatch(target.transfer, form);
+        if (transferPatchIsEmpty(patch)) {
+          // Nothing to save. A PATCH would bump the pair's version for no reason.
+          this.closeTransferDialog();
+          return;
+        }
+        await firstValueFrom(this.transfersService.update(target.transfer.id, patch));
+        this.notice.set('transfers.updated');
+      }
+      this.transferDialog.set(null);
+      await this.reloadLedger();
+      // Two balances moved, not one.
+      await this.refreshAccounts();
+    } catch (thrown) {
+      this.transferError.set(asApiError(thrown));
+    } finally {
+      this.transferBusy.set(false);
+    }
+  }
+
+  protected askToDeleteTransfer(leg: Transaction): void {
+    const transferGroupId = transferGroupIdOf(leg);
+    if (!transferGroupId) {
+      return;
+    }
+    this.pendingTransferDelete.set({ transferGroupId, leg });
+  }
+
+  protected cancelTransferDelete(): void {
+    this.pendingTransferDelete.set(null);
+  }
+
+  protected async confirmTransferDelete(): Promise<void> {
+    const target = this.pendingTransferDelete();
+    if (!target) {
+      return;
+    }
+    this.pendingTransferDelete.set(null);
+    // The group id, never the leg's id: `DELETE /api/transactions/{leg}` is refused, and rightly.
+    await this.run(
+      target.leg,
+      () => this.transfersService.remove(target.transferGroupId),
+      'transfers.deleted',
+    );
+  }
+
+  private resetTransferState(): void {
+    this.transferBusy.set(false);
+    this.transferError.set(null);
+    this.notice.set(null);
+    this.actionError.set(null);
+    this.actionErrorSubject.set(null);
   }
 
   private async run(

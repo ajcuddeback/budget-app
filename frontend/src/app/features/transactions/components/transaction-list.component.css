@@ -120,3 +120,17 @@
     justify-content: flex-start;
   }
 }
+
+/* The note that stands where a transfer row's buttons would be. It sits inside the reserved
+   actions column, so it wraps there rather than pushing the amounts out of line. */
+.row-hint {
+  margin: 0;
+  color: var(--color-muted);
+  text-align: end;
+}
+
+@media (max-width: 40rem) {
+  .row-hint {
+    text-align: start;
+  }
+}

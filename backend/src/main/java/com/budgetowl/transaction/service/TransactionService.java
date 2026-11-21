@@ -443,6 +443,7 @@ public class TransactionService {
                 parentName,
                 transaction.note().orElse(null),
                 transaction.status(),
+                transaction.transferGroupId().orElse(null),
                 transaction.isTransfer(),
                 transaction.createdAt(),
                 transaction.updatedAt(),

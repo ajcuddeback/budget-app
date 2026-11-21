@@ -25,6 +25,9 @@ public final class TransactionResponses {
      * @param currency the account's own. Never a converted figure — conversion is display-only and
      *     never leaves the client's read path (ADR-0022)
      * @param categoryId null means "Needs a category": a real state the UI shows, not an error
+     * @param transferGroupId the pair this leg belongs to, or null. A client acts on the
+     *     <b>transfer</b> — {@code /api/transfers/{transferGroupId}} — because editing or deleting
+     *     a leg on its own is a {@code 409}
      * @param transfer true for one half of a transfer; reporting must not count it as income or
      *     expense
      */
@@ -42,6 +45,7 @@ public final class TransactionResponses {
             String categoryParentName,
             String note,
             TransactionStatus status,
+            UUID transferGroupId,
             boolean transfer,
             Instant createdAt,
             Instant updatedAt,
