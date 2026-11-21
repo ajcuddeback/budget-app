@@ -18,13 +18,13 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 0e | Designs imported; docs reconciled to them | 0d | **Done** |
 | 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | **Done** |
 | 2 | [Authentication & households](features/authentication-and-households.md) | 1 | **Done** |
-| 3 | Accounts (money containers) | 2 | Next |
-| 4 | Categories + defaults on household creation | 2 | Planned |
-| 5 | Transactions (create, list, edit, delete) | 3, 4 | Planned |
-| 6 | **Envelopes** — set an amount, log against it, fully unsynced | 4, 5 | Planned |
-| 7 | **Bills & Income** — the scheduled page, incl. charge mapping | 5 | Planned |
-| 8 | Transfers between accounts | 5 | Planned |
-| 9 | **Admin console** — the instance the operator runs | 2 | Planned |
+| 3 | [Accounts](features/accounts.md) (money containers) | 2 | **Done** |
+| 4 | [Categories](features/categories.md) + defaults on household creation | 2 | **Done** |
+| 5 | [Transactions](features/transactions.md) (create, list, edit, delete) | 3, 4 | **Done** |
+| 6 | **[Envelopes](features/envelopes.md)** — set an amount, log against it, fully unsynced | 4, 5 | **Done** |
+| 7 | **[Bills & Income](features/bills-and-income.md)** — the scheduled page | 5 | **Done** (charge mapping deferred to 16) |
+| 8 | [Transfers](features/transfers.md) between accounts | 5 | **Done** |
+| 9 | **Admin console** — the instance the operator runs | 2 | Next |
 | 10 | **Debt plan & debt detail** — terms solver, payments, strategies | 7 | Planned |
 | 11 | Goals | 5 | Planned |
 | 12 | File import (CSV / OFX / QIF) | 5 | Planned |
