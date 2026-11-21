@@ -555,6 +555,7 @@
   "transfers.addTitle": "Move money between your accounts",
   "transfers.editTitle": "Edit this transfer",
   "transfers.noCategoryNote": "Moving money between two of your own accounts isn't spending and isn't income, so a transfer has no category and nobody to pay.",
+  "transfers.editBothHalves": "Changes here apply to both halves — what left one account and what arrived in the other stay in step.",
   "transfers.from": "Out of",
   "transfers.to": "Into",
   "transfers.chooseAccount": "Choose an account",

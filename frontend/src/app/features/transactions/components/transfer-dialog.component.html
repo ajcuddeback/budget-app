@@ -7,6 +7,13 @@
     <!-- Said once, plainly: this is why there is no category and no payee on this form. -->
     <p class="card-note">{{ 'transfers.noCategoryNote' | t }}</p>
 
+    @if (transfer()) {
+      <!-- The delete confirmation leads with "Both halves go"; editing said nothing, so the
+           reader was told the scary thing about the destructive action and left to infer it
+           about the quiet one. -->
+      <p class="card-note">{{ 'transfers.editBothHalves' | t }}</p>
+    }
+
     @if (transfer(); as existing) {
       <div class="field">
         <p class="field-label">{{ 'transfers.accountsLabel' | t }}</p>

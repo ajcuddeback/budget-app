@@ -119,7 +119,9 @@ test.describe('moving money, as an owner', () => {
     await dialog.getByLabel(/Out of/).selectOption({ label: 'Everyday Checking (USD)' });
     await dialog.getByLabel(/Into/).selectOption({ label: 'Emergency Fund (USD)' });
     await dialog.getByLabel(/Amount that left/).fill('250.00');
-    await dialog.getByRole('button', { name: /Move it|Save/ }).first().click();
+    // Exact. An alternation here tolerated whichever label shipped, so nobody could tell that
+    // the sheet says "Move money" and the button says "Save".
+    await dialog.getByRole('button', { name: 'Save' }).click();
 
     await expect
       .poll(() => calls.some((call) => call.method === 'POST' && call.path === '/api/transfers'))

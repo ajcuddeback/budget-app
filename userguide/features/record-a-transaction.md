@@ -26,6 +26,10 @@ the thing you'll do most, so it's built to be quick — and you never have to ti
 
    A window called **Record a transaction** opens.
 
+   **Money moving between two of your own accounts is not a transaction.** That's a transfer, and
+   **Move money**, beside this button, is what records it — see
+   [Move money between your own accounts](move-money-between-accounts.md).
+
 3. Check the **Account**.
 
    ![The Record a transaction window as it opens, with today's date already filled in and Money out chosen.](../images/record-a-transaction--form.png)

@@ -426,6 +426,27 @@ dialog.dialog::backdrop {
 }
 
 /*
+ * The dialog's heading stays put while its body scrolls.
+ *
+ * The dialog is its own scroll container with padding on all sides, so a heading that scrolls
+ * with the body slides up UNDER the dialog's own top edge and renders half-cut — which is what
+ * two user guides photographed. Sticky, full-bleed and opaque, exactly as .dialog-actions is at
+ * the other end: the same problem, and it already had this answer at the bottom.
+ */
+.dialog > form > .card-title,
+.dialog > .card-title,
+.dialog > form > .dialog-title,
+.dialog > .dialog-title {
+  position: sticky;
+  inset-block-start: calc(var(--space-6) * -1);
+  z-index: 1;
+  margin-inline: calc(var(--space-6) * -1);
+  margin-block-start: calc(var(--space-6) * -1);
+  padding: var(--space-6) var(--space-6) var(--space-3);
+  background: var(--color-surface);
+}
+
+/*
  * Sticky, because a dialog taller than the viewport scrolls its own content and the actions were
  * scrolling away with it. "Add an account" on a phone showed five fields and no way to save; the
  * stale-version conflict did it on a 1440x900 desktop too, and in the worst case put a DISABLED

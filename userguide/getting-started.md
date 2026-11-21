@@ -1,6 +1,6 @@
 # Getting started
 
-> **Status: partly written.** Steps 1, 1b, 2 and 6 below are written from the running app. The
+> **Status: partly written.** Steps 1, 1b, 2, 6 and 7 below are written from the running app. The
 > rest are still outlines, and each gets written, with real screenshots, once somebody has run
 > `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
 > order.
@@ -180,13 +180,15 @@ hasn't been earned. It's the same money in a different place, and it goes in as 
 
    ![The Move money between your accounts window as it opens, with Out of, Into, Amount that left and Date.](images/move-money-between-accounts--sheet.png)
 
-3. Choose the account the money left, in **Out of**, and the account it arrived in, in **Into**.
+3. Choose the account the money left, in **Out of**.
 
    Each account is listed with its currency, because that's what the amount will be in.
 
-4. Enter the **Amount that left** — the number on its own, with no minus sign.
+4. Choose the account it arrived in, in **Into**.
 
-5. Select **Save**.
+5. Enter the **Amount that left** — the number on its own, with no minus sign.
+
+6. Select **Save**.
 
    You'll see **Money moved.** above the list.
 

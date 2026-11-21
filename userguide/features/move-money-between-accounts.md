@@ -122,8 +122,7 @@ So when **Out of** and **Into** are in different currencies, a second box appear
     Both figures come off your statement. The second one is the amount your bank actually put in
     the receiving account, after whatever it charged — so copy it rather than working it out.
 
-The rest is the same: a date, an optional note, then **Save**. The two rows that appear are in
-different currencies, each showing its own account's figure.
+The rest is the same: check the date, add a note if you want, then select **Save**.
 
 If you change **Into** back to an account in the same currency, **Amount that arrived** disappears
 and one figure is all you're asked for.
@@ -134,9 +133,11 @@ and one figure is all you're asked for.
 
     ![The Edit this transfer window: Accounts reading "Everyday Checking → Emergency Fund" with no lists beside them, then Amount that left holding 500.00 and Date holding 08/16/2026.](../images/move-money-between-accounts--edit.png)
 
-12. Change the amount, the date or the note, and select **Save**.
+12. Change the amount, the date or the note.
 
-    Both rows change together.
+13. Select **Save**.
+
+    Both halves of the transfer change together — there's no way to change one on its own.
 
 **You can't change the accounts here.** They're named at the top — **Everyday Checking → Emergency
 Fund** — with no lists to change them, and the window says why: _A transfer stays between the two
@@ -145,13 +146,13 @@ delete it and make it again._
 
 ## Remove a transfer
 
-13. Select **Delete** on either row.
+14. Select **Delete** on either row.
 
     ![The Delete this transfer? window: "Both halves go, and both account balances go back to what they were. This can't be undone.", with Cancel and Delete buttons.](../images/move-money-between-accounts--delete-confirm.png)
 
-14. Select **Delete** in the **Delete this transfer?** window.
+15. Select **Delete** in the **Delete this transfer?** window.
 
-    Both rows go, not just the one you were looking at, and both balances go back to what they
+    Both rows go, not only the one you were looking at, and both balances go back to what they
     were. You can't undo it, but you can record the transfer again.
 
 ## What a viewer sees

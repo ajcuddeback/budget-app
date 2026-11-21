@@ -82,7 +82,17 @@ if [ -f "$MANIFEST" ]; then
 import json
 for s in json.load(open('$MANIFEST')): print(s['file'])
 " 2>/dev/null)
-  [ "$drift" -eq 0 ] && pass "manifest matches what is on disk"
+  # ...AND the other direction. Checking only manifest -> disk let 66 images sit on disk with no
+  # entry and still report "matches": the capture run had lost their entries to a parallel-write
+  # race, and because check 3 walks the MANIFEST, those 66 silently stopped being staleness-
+  # checked. A one-directional check on a two-directional claim is how a gate stops covering the
+  # thing it was built for while still printing a tick.
+  while IFS= read -r f; do
+    rel="userguide/images/$(basename "$f")"
+    grep -qF "\"$rel\"" "$MANIFEST" 2>/dev/null \
+      || { fail "image on disk is in no manifest entry: $rel"; drift=1; }
+  done < <(find "$IMAGES" -name '*.png')
+  [ "$drift" -eq 0 ] && pass "manifest and the images on disk agree, both ways"
 fi
 
 # 5. Internal links between guides resolve.

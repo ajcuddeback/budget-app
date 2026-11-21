@@ -96,6 +96,12 @@ else
   status=$?
 fi
 
+# Fold this run's per-shot files into the manifest, now that every worker has exited. The
+# workers deliberately do not touch the manifest: they run in parallel processes, and a
+# read-modify-write of one shared file lost two thirds of its entries (see mergeManifest).
+merged=$(cd "$UI" && npx tsx helpers/merge-manifest.ts 2>/dev/null | tail -1)
+[ -n "$merged" ] && echo "Manifest now lists ${merged} image(s)."
+
 count=$(find "$USERGUIDE_IMAGES" -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
 echo
 echo "Captured $count image(s) into ${USERGUIDE_IMAGES#$ROOT/}/"

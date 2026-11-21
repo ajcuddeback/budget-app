@@ -28,6 +28,7 @@ import path from 'node:path';
 const IMAGES_DIR = path.resolve(
   process.env.USERGUIDE_IMAGES ?? path.join(process.cwd(), '../../userguide/images'),
 );
+const PARTS_DIR = path.join(IMAGES_DIR, '.manifest-parts');
 const MANIFEST = path.join(IMAGES_DIR, 'manifest.json');
 
 export type DocShot = {
@@ -48,22 +49,53 @@ function currentCommit(): string {
   }
 }
 
+/**
+ * One file per shot, merged into the manifest when the run finishes.
+ *
+ * <b>Not a read-modify-write of the shared manifest.</b> Playwright runs `fullyParallel` across
+ * several worker PROCESSES, so every worker read the manifest, added its own entry and wrote the
+ * whole file back — and the last writer won. A 46-test run took the manifest from 122 entries to
+ * 56 and nothing complained, because `userguide-check.sh` only checked manifest → disk. The 66
+ * images that fell out silently stopped being staleness-checked, which is the one thing that
+ * catches a guide whose screenshots no longer match the app.
+ *
+ * A file per shot has no shared mutable state, so there is nothing to race over. {@link
+ * mergeManifest} turns them back into the manifest, once, after every worker has finished.
+ */
 function appendManifest(shot: DocShot): void {
-  fs.mkdirSync(IMAGES_DIR, { recursive: true });
-  // Read and handle failure, rather than existsSync-then-read: the check-then-use pattern
-  // is a race (the file can vanish or change in between) and buys nothing, since the read
-  // has to be guarded against malformed JSON anyway.
+  fs.mkdirSync(PARTS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(PARTS_DIR, `${shot.name}.json`), JSON.stringify(shot) + '\n');
+}
+
+/**
+ * Folds this run's shots into the manifest, keeping entries for images it did not re-capture.
+ *
+ * <p>Called once after the Playwright run, from `tools/userguide-capture.sh` — a capture run is
+ * usually a subset of the guides, and dropping the rest would make every other guide's
+ * screenshots unchecked rather than merely unrefreshed.
+ */
+export function mergeManifest(): number {
   let all: DocShot[] = [];
   try {
     all = JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) as DocShot[];
   } catch {
     all = []; // absent on the first capture, or unparseable — either way, start fresh
   }
-  // Re-capturing replaces the entry rather than accumulating duplicates.
-  all = all.filter((s) => s.name !== shot.name);
-  all.push(shot);
+  let parts: string[] = [];
+  try {
+    parts = fs.readdirSync(PARTS_DIR).filter((f) => f.endsWith('.json'));
+  } catch {
+    return all.length; // nothing was captured
+  }
+  for (const part of parts) {
+    const shot = JSON.parse(fs.readFileSync(path.join(PARTS_DIR, part), 'utf8')) as DocShot;
+    all = all.filter((s) => s.name !== shot.name);
+    all.push(shot);
+  }
   all.sort((a, b) => a.name.localeCompare(b.name));
   fs.writeFileSync(MANIFEST, JSON.stringify(all, null, 2) + '\n');
+  fs.rmSync(PARTS_DIR, { recursive: true, force: true });
+  return all.length;
 }
 
 type CaptureOptions = {
