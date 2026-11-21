@@ -11,8 +11,12 @@
 
     <div class="field">
       <label for="transaction-account">{{ 'transactions.account' | t }}</label>
-      <select id="transaction-account" class="input" formControlName="accountId"
-        aria-describedby="transaction-account-error">
+      <select
+        id="transaction-account"
+        class="input"
+        formControlName="accountId"
+        aria-describedby="transaction-account-error"
+      >
         @for (account of accounts(); track account.id) {
           <option [value]="account.id">{{ account.name }} ({{ account.currency }})</option>
         }
@@ -132,8 +136,12 @@
 
     <div class="field">
       <label for="transaction-status">{{ 'transactions.statusLabel' | t }}</label>
-      <select id="transaction-status" class="input" formControlName="status"
-        aria-describedby="transaction-status-hint">
+      <select
+        id="transaction-status"
+        class="input"
+        formControlName="status"
+        aria-describedby="transaction-status-hint"
+      >
         @for (status of statuses; track status) {
           <option [value]="status">{{ statusKey(status) | t }}</option>
         }

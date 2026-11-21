@@ -23,8 +23,12 @@
 
     <div class="field">
       <label for="category-parent">{{ 'categories.parent' | t }}</label>
-      <select id="category-parent" class="input" formControlName="parentId"
-        aria-describedby="category-parent-hint">
+      <select
+        id="category-parent"
+        class="input"
+        formControlName="parentId"
+        aria-describedby="category-parent-hint"
+      >
         <option value="">{{ 'categories.noParent' | t }}</option>
         @for (parent of parents(); track parent.id) {
           <option [value]="parent.id">{{ parent.name }}</option>
@@ -41,8 +45,12 @@
 
     <div class="field">
       <label for="category-kind">{{ 'categories.kind' | t }}</label>
-      <select id="category-kind" class="input" formControlName="kind"
-        aria-describedby="category-kind-error">
+      <select
+        id="category-kind"
+        class="input"
+        formControlName="kind"
+        aria-describedby="category-kind-error"
+      >
         @for (kind of kinds; track kind) {
           <option [value]="kind">{{ kindKey(kind) | t }}</option>
         }

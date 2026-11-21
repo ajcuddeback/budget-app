@@ -9,14 +9,35 @@ import { MemberListComponent } from './member-list.component';
 
 const providers = [provideHttpClient(), provideHttpClientTesting()];
 
-const ALEX: Member = { id: 'm1', userId: 'u1', email: 'alex@example.test', displayName: 'Alex', role: 'OWNER', joinedAt: '2026-06-01T09:00:00Z', displayCurrency: null, locale: null };
-const SAM: Member = { ...ALEX, id: 'm2', userId: 'u2', email: 'sam@example.test', displayName: 'Sam', role: 'MEMBER' };
+const ALEX: Member = {
+  id: 'm1',
+  userId: 'u1',
+  email: 'alex@example.test',
+  displayName: 'Alex',
+  role: 'OWNER',
+  joinedAt: '2026-06-01T09:00:00Z',
+  displayCurrency: null,
+  locale: null,
+};
+const SAM: Member = {
+  ...ALEX,
+  id: 'm2',
+  userId: 'u2',
+  email: 'sam@example.test',
+  displayName: 'Sam',
+  role: 'MEMBER',
+};
 
 describe('HouseholdFormComponent', () => {
   async function render(canEdit: boolean) {
     TestBed.configureTestingModule({ providers });
     const fixture = TestBed.createComponent(HouseholdFormComponent);
-    fixture.componentRef.setInput('household', { id: 'h', name: 'Rivera Household', baseCurrency: 'USD', role: canEdit ? 'OWNER' : 'MEMBER' });
+    fixture.componentRef.setInput('household', {
+      id: 'h',
+      name: 'Rivera Household',
+      baseCurrency: 'USD',
+      role: canEdit ? 'OWNER' : 'MEMBER',
+    });
     fixture.componentRef.setInput('canEdit', canEdit);
     await settle(fixture);
     return fixture;
@@ -26,7 +47,9 @@ describe('HouseholdFormComponent', () => {
     const fixture = await render(true);
     const saved = vi.fn();
     fixture.componentInstance.saved.subscribe(saved);
-    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).value).toBe('Rivera Household');
+    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).value).toBe(
+      'Rivera Household',
+    );
 
     typeInto(fixture.nativeElement, '#household-name', '  The Riveras ');
     buttonNamed(fixture.nativeElement, 'Save').click();
@@ -50,7 +73,9 @@ describe('HouseholdFormComponent', () => {
   it('is read-only for anyone who is not an owner, with no save button', async () => {
     const fixture = await render(false);
 
-    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).disabled).toBe(true);
+    expect(
+      (fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).disabled,
+    ).toBe(true);
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Only an owner can change these.');
     fixture.componentInstance.form.enable();
@@ -144,7 +169,11 @@ describe('MemberListComponent', () => {
     fixture.componentInstance.leaveRequested.subscribe(left);
 
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
-    expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((b) => (b as HTMLElement).textContent?.trim())).toEqual(['Leave']);
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('button')).map((b) =>
+        (b as HTMLElement).textContent?.trim(),
+      ),
+    ).toEqual(['Leave']);
     buttonNamed(fixture.nativeElement, 'Leave').click();
 
     expect(left).toHaveBeenCalledWith(SAM);
@@ -158,7 +187,11 @@ describe('MemberListComponent', () => {
   });
 
   it('lets one of two owners leave', async () => {
-    const fixture = await render({ isOwner: true, me: 'm1', members: [ALEX, { ...SAM, role: 'OWNER' }] });
+    const fixture = await render({
+      isOwner: true,
+      me: 'm1',
+      members: [ALEX, { ...SAM, role: 'OWNER' }],
+    });
 
     expect(buttonNamed(fixture.nativeElement, 'Leave')).toBeTruthy();
   });
@@ -168,13 +201,22 @@ describe('MemberListComponent', () => {
     fixture.componentRef.setInput('busy', true);
     await settle(fixture);
 
-    expect((fixture.nativeElement.querySelector('select') as HTMLSelectElement).disabled).toBe(true);
+    expect((fixture.nativeElement.querySelector('select') as HTMLSelectElement).disabled).toBe(
+      true,
+    );
     expect(buttonNamed(fixture.nativeElement, 'Remove').disabled).toBe(true);
   });
 });
 
 describe('InviteDialogComponent', () => {
-  const INVITATION = { id: 'i1', email: 'riley@example.test', role: 'VIEWER' as const, token: 'T', acceptPath: '/join/T', expiresAt: '2026-10-09T09:00:00Z' };
+  const INVITATION = {
+    id: 'i1',
+    email: 'riley@example.test',
+    role: 'VIEWER' as const,
+    token: 'T',
+    acceptPath: '/join/T',
+    expiresAt: '2026-10-09T09:00:00Z',
+  };
 
   async function render(inputs: Record<string, unknown> = {}) {
     TestBed.configureTestingModule({ providers });
@@ -192,7 +234,7 @@ describe('InviteDialogComponent', () => {
 
     expect(root.querySelector('dialog')?.getAttribute('aria-labelledby')).toBe('invite-title');
     expect(root.querySelectorAll('input[type=radio]')).toHaveLength(3);
-    expect(root.textContent).toContain('can see the household\'s money, but not change it');
+    expect(root.textContent).toContain("can see the household's money, but not change it");
   });
 
   it('refuses a bad email, and otherwise emits a trimmed request with the chosen role', async () => {
@@ -215,12 +257,17 @@ describe('InviteDialogComponent', () => {
   });
 
   it('shows the link once made, with a credential warning, and lets it be revoked', async () => {
-    const fixture = await render({ invitation: INVITATION, link: 'https://budget.home.test/join/T' });
+    const fixture = await render({
+      invitation: INVITATION,
+      link: 'https://budget.home.test/join/T',
+    });
     const root = fixture.nativeElement as HTMLElement;
     const revoke = vi.fn();
     fixture.componentInstance.revokeRequested.subscribe(revoke);
 
-    expect((root.querySelector('#invite-link') as HTMLTextAreaElement).value).toBe('https://budget.home.test/join/T');
+    expect((root.querySelector('#invite-link') as HTMLTextAreaElement).value).toBe(
+      'https://budget.home.test/join/T',
+    );
     expect(root.textContent).toContain('Treat this link like a password');
     expect(root.textContent).toContain('Viewer');
     buttonNamed(root, 'Revoke link').click();
@@ -232,7 +279,10 @@ describe('InviteDialogComponent', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     try {
-      const fixture = await render({ invitation: INVITATION, link: 'https://budget.home.test/join/T' });
+      const fixture = await render({
+        invitation: INVITATION,
+        link: 'https://budget.home.test/join/T',
+      });
 
       buttonNamed(fixture.nativeElement, 'Copy link').click();
       await settle(fixture);
@@ -247,19 +297,30 @@ describe('InviteDialogComponent', () => {
   it('falls back to selecting the text when the page is not a secure context', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
     document.execCommand = vi.fn().mockReturnValue(false);
-    const fixture = await render({ invitation: INVITATION, link: 'https://budget.home.test/join/T' });
+    const fixture = await render({
+      invitation: INVITATION,
+      link: 'https://budget.home.test/join/T',
+    });
 
     buttonNamed(fixture.nativeElement, 'Copy link').click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('The link is selected. Copy it with your keyboard.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'The link is selected. Copy it with your keyboard.',
+    );
   });
 
   it('uses the legacy copy command when it works, and survives a clipboard that refuses', async () => {
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
     document.execCommand = vi.fn().mockReturnValue(true);
     try {
-      const fixture = await render({ invitation: INVITATION, link: 'https://budget.home.test/join/T' });
+      const fixture = await render({
+        invitation: INVITATION,
+        link: 'https://budget.home.test/join/T',
+      });
 
       buttonNamed(fixture.nativeElement, 'Copy link').click();
       await settle(fixture);
@@ -278,7 +339,11 @@ describe('InviteDialogComponent', () => {
   });
 
   it('confirms a revocation and offers no copy button after it', async () => {
-    const fixture = await render({ invitation: INVITATION, link: 'https://x/join/T', revoked: true });
+    const fixture = await render({
+      invitation: INVITATION,
+      link: 'https://x/join/T',
+      revoked: true,
+    });
 
     expect(fixture.nativeElement.textContent).toContain('This link has been revoked');
     expect(fixture.nativeElement.querySelector('#invite-link')).toBeNull();
@@ -304,7 +369,9 @@ describe('InviteDialogComponent', () => {
     const closed = vi.fn();
     fixture.componentInstance.closed.subscribe(closed);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('could not be created');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'could not be created',
+    );
     buttonNamed(fixture.nativeElement, 'Cancel').click();
     expect(closed).toHaveBeenCalled();
   });

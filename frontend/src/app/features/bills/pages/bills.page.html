@@ -415,58 +415,58 @@
                         <details class="occurrence-more">
                           <summary>{{ 'bills.moreActions' | t }}</summary>
                           <span class="row-actions">
-                          @if (occurrence.status === 'SKIPPED') {
-                            <!-- Reachable, but not competing with the tag that says it does not
+                            @if (occurrence.status === 'SKIPPED') {
+                              <!-- Reachable, but not competing with the tag that says it does not
                                  apply this month. -->
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="markPaid(bill, occurrence)"
+                              >
+                                {{ 'bills.markPaid' | t }}
+                              </button>
+                            }
                             <button
                               type="button"
                               class="btn btn-secondary btn-small"
                               [disabled]="busyId() === rowId(occurrence)"
-                              (click)="markPaid(bill, occurrence)"
+                              (click)="openPayment(bill, occurrence)"
                             >
-                              {{ 'bills.markPaid' | t }}
+                              {{ 'bills.otherAmount' | t }}
                             </button>
-                          }
-                          <button
-                            type="button"
-                            class="btn btn-secondary btn-small"
-                            [disabled]="busyId() === rowId(occurrence)"
-                            (click)="openPayment(bill, occurrence)"
-                          >
-                            {{ 'bills.otherAmount' | t }}
-                          </button>
-                          @if (occurrence.status !== 'SKIPPED') {
-                            <button
-                              type="button"
-                              class="btn btn-secondary btn-small"
-                              [disabled]="busyId() === rowId(occurrence)"
-                              (click)="skip(bill, occurrence)"
-                            >
-                              {{ 'bills.skip' | t }}
-                            </button>
-                          }
-                          @if (occurrence.status !== 'DUE') {
-                            <button
-                              type="button"
-                              class="btn btn-secondary btn-small"
-                              [disabled]="busyId() === rowId(occurrence)"
-                              (click)="markDue(bill, occurrence)"
-                            >
-                              {{ 'bills.markDue' | t }}
-                            </button>
-                          }
-                          @if (occurrence.recorded) {
-                            <!-- Only on a recorded one: there is nothing to forget about a
+                            @if (occurrence.status !== 'SKIPPED') {
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="skip(bill, occurrence)"
+                              >
+                                {{ 'bills.skip' | t }}
+                              </button>
+                            }
+                            @if (occurrence.status !== 'DUE') {
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="markDue(bill, occurrence)"
+                              >
+                                {{ 'bills.markDue' | t }}
+                              </button>
+                            }
+                            @if (occurrence.recorded) {
+                              <!-- Only on a recorded one: there is nothing to forget about a
                                  projection, and forgetting is not the same as marking it due. -->
-                            <button
-                              type="button"
-                              class="btn btn-danger btn-small"
-                              [disabled]="busyId() === rowId(occurrence)"
-                              (click)="askToForget(bill, occurrence)"
-                            >
-                              {{ 'bills.forget' | t }}
-                            </button>
-                          }
+                              <button
+                                type="button"
+                                class="btn btn-danger btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="askToForget(bill, occurrence)"
+                              >
+                                {{ 'bills.forget' | t }}
+                              </button>
+                            }
                           </span>
                         </details>
                       }

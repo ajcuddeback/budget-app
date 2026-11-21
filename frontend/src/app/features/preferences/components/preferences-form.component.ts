@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Membership } from '../../../core/auth.models';
 import { LocaleNamePipe } from '../../../core/i18n/format.pipes';
@@ -41,7 +49,9 @@ export class PreferencesFormComponent {
 
   protected readonly locales = computed(() => {
     const current = this.membership().locale;
-    return current && !LOCALE_CHOICES.includes(current) ? [current, ...LOCALE_CHOICES] : LOCALE_CHOICES;
+    return current && !LOCALE_CHOICES.includes(current)
+      ? [current, ...LOCALE_CHOICES]
+      : LOCALE_CHOICES;
   });
 
   constructor() {

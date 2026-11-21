@@ -81,10 +81,7 @@ export function buildEntryCreate(form: EntryFormValue): CreateEntryRequest {
   return request;
 }
 
-export function buildEntryPatch(
-  original: EnvelopeEntry,
-  form: EntryFormValue,
-): UpdateEntryRequest {
+export function buildEntryPatch(original: EnvelopeEntry, form: EntryFormValue): UpdateEntryRequest {
   const patch: UpdateEntryRequest = { version: original.version };
 
   if (form.date !== original.date) {

@@ -288,3 +288,20 @@ intermediate steps. Rounding to two happens once, explicitly, at the end.
 See ADR-0006.
 
 ---
+
+### 2026-11-21 — Prettier is checked in the gate, as spotless is for Java
+
+The backend has had `spotless:check` in `tools/verify.sh` since slice 1. The frontend had `lint`
+and nothing about formatting, and `.prettierrc` lived in `frontend/` — so **43 files had drifted
+from the house style**, and `.claude/hooks/format-changed.sh` reformatted whichever of them a
+session happened to touch, inside whatever commit that session was making.
+
+That is a bad failure mode: it puts unrelated whitespace churn in feature commits, and it bit an
+agent in slice 8 that had to revert seven files it never meant to change.
+
+So: a root `.prettierrc` (added in slice 7), one formatting pass over `frontend/src`, and
+`npm run format:check` added to the frontend gate.
+
+`tools/` and `userguide/` are **not** covered yet. They are reached by the same hook and will
+drift the same way; the pass was scoped to `frontend/` only because another session was editing
+`userguide/` at the time.

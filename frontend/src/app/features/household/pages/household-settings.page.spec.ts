@@ -5,15 +5,52 @@ import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
 import { Membership } from '../../../core/auth.models';
-import { OWNER, OWNER_MEMBERSHIP, apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
+import {
+  OWNER,
+  OWNER_MEMBERSHIP,
+  apiError,
+  buttonNamed,
+  fakeAuth,
+  FakeAuth,
+  settle,
+  type as typeInto,
+} from '../../../testing/helpers';
 import { Household, Invitation, Member } from '../data/household.models';
 import { HouseholdService } from '../data/household.service';
 import { HouseholdSettingsPage } from './household-settings.page';
 
-const HOUSEHOLD: Household = { id: 'h', name: 'Rivera Household', baseCurrency: 'USD', role: 'OWNER' };
-const ALEX: Member = { id: 'm1', userId: 'u1', email: 'alex@example.test', displayName: 'Alex', role: 'OWNER', joinedAt: '2026-06-01T09:00:00Z', displayCurrency: null, locale: null };
-const SAM: Member = { ...ALEX, id: 'm2', userId: 'u2', email: 'sam@example.test', displayName: 'Sam', role: 'MEMBER' };
-const INVITATION: Invitation = { id: 'i1', email: 'riley@example.test', role: 'MEMBER', token: 'T', acceptPath: '/join/T', expiresAt: '2026-10-09T09:00:00Z' };
+const HOUSEHOLD: Household = {
+  id: 'h',
+  name: 'Rivera Household',
+  baseCurrency: 'USD',
+  role: 'OWNER',
+};
+const ALEX: Member = {
+  id: 'm1',
+  userId: 'u1',
+  email: 'alex@example.test',
+  displayName: 'Alex',
+  role: 'OWNER',
+  joinedAt: '2026-06-01T09:00:00Z',
+  displayCurrency: null,
+  locale: null,
+};
+const SAM: Member = {
+  ...ALEX,
+  id: 'm2',
+  userId: 'u2',
+  email: 'sam@example.test',
+  displayName: 'Sam',
+  role: 'MEMBER',
+};
+const INVITATION: Invitation = {
+  id: 'i1',
+  email: 'riley@example.test',
+  role: 'MEMBER',
+  token: 'T',
+  acceptPath: '/join/T',
+  expiresAt: '2026-10-09T09:00:00Z',
+};
 
 describe('HouseholdSettingsPage', () => {
   let auth: FakeAuth;
@@ -28,8 +65,13 @@ describe('HouseholdSettingsPage', () => {
     revokeInvitation: vi.fn(),
   };
 
-  async function render(options: { membership?: Membership | null; role?: Membership['role']; me?: string } = {}) {
-    const membership = options.membership === undefined ? { ...OWNER_MEMBERSHIP, role: options.role ?? 'OWNER', membershipId: options.me ?? 'm1' } : options.membership;
+  async function render(
+    options: { membership?: Membership | null; role?: Membership['role']; me?: string } = {},
+  ) {
+    const membership =
+      options.membership === undefined
+        ? { ...OWNER_MEMBERSHIP, role: options.role ?? 'OWNER', membershipId: options.me ?? 'm1' }
+        : options.membership;
     auth = fakeAuth({ ...OWNER, household: membership });
     for (const fn of Object.values(service)) fn.mockReset();
     service.current.mockReturnValue(of({ ...HOUSEHOLD, role: membership?.role ?? 'OWNER' }));
@@ -55,7 +97,9 @@ describe('HouseholdSettingsPage', () => {
   it('shows the household and its members', async () => {
     const fixture = await render();
 
-    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).value).toBe('Rivera Household');
+    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).value).toBe(
+      'Rivera Household',
+    );
     expect(fixture.nativeElement.querySelectorAll('.rows > li')).toHaveLength(2);
     expect(buttonNamed(fixture.nativeElement, 'Invite someone')).toBeTruthy();
   });
@@ -72,7 +116,13 @@ describe('HouseholdSettingsPage', () => {
     service.current.mockReturnValue(throwError(() => apiError(403, 'not-a-member')));
     service.members.mockReturnValue(throwError(() => apiError(403, 'not-a-member')));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: auth }, { provide: HouseholdService, useValue: service }],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: auth },
+        { provide: HouseholdService, useValue: service },
+      ],
     });
     const fixture = TestBed.createComponent(HouseholdSettingsPage);
     await settle(fixture);
@@ -86,7 +136,13 @@ describe('HouseholdSettingsPage', () => {
     service.current.mockReturnValueOnce(throwError(() => apiError(500, 'internal-error')));
     service.members.mockReturnValue(of([ALEX]));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: auth }, { provide: HouseholdService, useValue: service }],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: auth },
+        { provide: HouseholdService, useValue: service },
+      ],
     });
     const fixture = TestBed.createComponent(HouseholdSettingsPage);
     await settle(fixture);
@@ -103,7 +159,9 @@ describe('HouseholdSettingsPage', () => {
     const fixture = await render({ role: 'MEMBER' });
 
     expect(() => buttonNamed(fixture.nativeElement, 'Invite someone')).toThrow();
-    expect((fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).disabled).toBe(true);
+    expect(
+      (fixture.nativeElement.querySelector('#household-name') as HTMLInputElement).disabled,
+    ).toBe(true);
   });
 
   it('saves a rename, refreshes the profile, and confirms', async () => {
@@ -127,7 +185,9 @@ describe('HouseholdSettingsPage', () => {
     buttonNamed(fixture.nativeElement, 'Save').click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('Only an owner');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'Only an owner',
+    );
     expect(text(fixture)).not.toContain('Household saved.');
   });
 
@@ -141,7 +201,9 @@ describe('HouseholdSettingsPage', () => {
     await settle(fixture);
 
     expect(service.changeRole).toHaveBeenCalledWith('m2', 'VIEWER');
-    expect((fixture.nativeElement.querySelector('#role-m2') as HTMLSelectElement).value).toBe('VIEWER');
+    expect((fixture.nativeElement.querySelector('#role-m2') as HTMLSelectElement).value).toBe(
+      'VIEWER',
+    );
   });
 
   it('explains a refused role change and leaves the list alone', async () => {
@@ -153,8 +215,12 @@ describe('HouseholdSettingsPage', () => {
     select.dispatchEvent(new Event('change'));
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('at least one owner');
-    expect((fixture.nativeElement.querySelector('#role-m2') as HTMLSelectElement).value).toBe('MEMBER');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'at least one owner',
+    );
+    expect((fixture.nativeElement.querySelector('#role-m2') as HTMLSelectElement).value).toBe(
+      'MEMBER',
+    );
   });
 
   it('asks before removing, and removes only on confirmation', async () => {
@@ -195,7 +261,9 @@ describe('HouseholdSettingsPage', () => {
     fixture.nativeElement.querySelector('dialog .btn-danger').click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('at least one owner');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'at least one owner',
+    );
     expect(fixture.nativeElement.querySelectorAll('.rows > li')).toHaveLength(2);
   });
 
@@ -207,7 +275,9 @@ describe('HouseholdSettingsPage', () => {
       buttonNamed(fixture.nativeElement, 'Leave').click();
       await settle(fixture);
 
-      expect(fixture.nativeElement.querySelector('dialog').textContent).toContain('Leave this household?');
+      expect(fixture.nativeElement.querySelector('dialog').textContent).toContain(
+        'Leave this household?',
+      );
       fixture.nativeElement.querySelector('dialog .btn-danger').click();
       await settle(fixture);
 
@@ -225,7 +295,9 @@ describe('HouseholdSettingsPage', () => {
       fixture.nativeElement.querySelector('dialog .btn-danger').click();
       await settle(fixture);
 
-      expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { reason: 'expired' } });
+      expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+        queryParams: { reason: 'expired' },
+      });
     });
   });
 
@@ -238,14 +310,19 @@ describe('HouseholdSettingsPage', () => {
       await settle(fixture);
     }
 
-    it('builds the link from this browser\'s origin and shows it', async () => {
+    it("builds the link from this browser's origin and shows it", async () => {
       const fixture = await render();
       service.createInvitation.mockReturnValue(of(INVITATION));
 
       await openAndCreate(fixture);
 
-      expect(service.createInvitation).toHaveBeenCalledWith({ email: 'riley@example.test', role: 'MEMBER' });
-      expect((fixture.nativeElement.querySelector('#invite-link') as HTMLTextAreaElement).value).toBe(`${window.location.origin}/join/T`);
+      expect(service.createInvitation).toHaveBeenCalledWith({
+        email: 'riley@example.test',
+        role: 'MEMBER',
+      });
+      expect(
+        (fixture.nativeElement.querySelector('#invite-link') as HTMLTextAreaElement).value,
+      ).toBe(`${window.location.origin}/join/T`);
     });
 
     it('revokes by the id from the creation response', async () => {
@@ -258,14 +335,20 @@ describe('HouseholdSettingsPage', () => {
       await settle(fixture);
 
       expect(service.revokeInvitation).toHaveBeenCalledWith('i1');
-      expect(fixture.nativeElement.querySelector('dialog').textContent).toContain('has been revoked');
+      expect(fixture.nativeElement.querySelector('dialog').textContent).toContain(
+        'has been revoked',
+      );
     });
 
     it('shows a failed revocation and a failed creation inside the dialog', async () => {
       const fixture = await render();
-      service.createInvitation.mockReturnValueOnce(throwError(() => apiError(409, 'invitation-refused')));
+      service.createInvitation.mockReturnValueOnce(
+        throwError(() => apiError(409, 'invitation-refused')),
+      );
       await openAndCreate(fixture);
-      expect(fixture.nativeElement.querySelector('dialog [role=alert]').textContent).toContain('could not be created');
+      expect(fixture.nativeElement.querySelector('dialog [role=alert]').textContent).toContain(
+        'could not be created',
+      );
 
       service.createInvitation.mockReturnValue(of(INVITATION));
       service.revokeInvitation.mockReturnValue(throwError(() => apiError(404, 'not-found')));
@@ -274,7 +357,9 @@ describe('HouseholdSettingsPage', () => {
       buttonNamed(fixture.nativeElement.querySelector('dialog'), 'Revoke link').click();
       await settle(fixture);
 
-      expect(fixture.nativeElement.querySelector('dialog [role=alert]').textContent).toContain('could not be found');
+      expect(fixture.nativeElement.querySelector('dialog [role=alert]').textContent).toContain(
+        'could not be found',
+      );
     });
 
     it('forgets the invitation when the dialog closes: the token cannot be shown twice', async () => {
@@ -309,7 +394,9 @@ describe('HouseholdSettingsPage', () => {
       service.createInvitation.mockReturnValue(new Subject());
       await openAndCreate(fixture);
 
-      expect(buttonNamed(fixture.nativeElement.querySelector('dialog'), 'Creating link').disabled).toBe(true);
+      expect(
+        buttonNamed(fixture.nativeElement.querySelector('dialog'), 'Creating link').disabled,
+      ).toBe(true);
     });
   });
 });

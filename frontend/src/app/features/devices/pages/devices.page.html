@@ -9,7 +9,9 @@
   } @else if (loadError(); as failure) {
     <app-error-alert [error]="failure" />
     <div>
-      <button type="button" class="btn btn-secondary" (click)="load()">{{ 'common.retry' | t }}</button>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
     </div>
   } @else {
     <section class="card" aria-labelledby="devices-heading">

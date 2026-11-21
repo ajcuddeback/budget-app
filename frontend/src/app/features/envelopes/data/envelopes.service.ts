@@ -79,11 +79,7 @@ export class EnvelopesService {
     return this.http.post<EnvelopeEntry>(`${BASE}/${encodeURIComponent(id)}/entries`, request);
   }
 
-  updateEntry(
-    id: string,
-    entryId: string,
-    request: UpdateEntryRequest,
-  ): Observable<EnvelopeEntry> {
+  updateEntry(id: string, entryId: string, request: UpdateEntryRequest): Observable<EnvelopeEntry> {
     return this.http.patch<EnvelopeEntry>(
       `${BASE}/${encodeURIComponent(id)}/entries/${encodeURIComponent(entryId)}`,
       request,

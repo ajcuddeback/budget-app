@@ -82,7 +82,9 @@ export function click(root: HTMLElement, selector: string): void {
 
 export function buttonNamed(root: HTMLElement, name: RegExp | string): HTMLButtonElement {
   const found = Array.from(root.querySelectorAll('button')).find((button) =>
-    typeof name === 'string' ? button.textContent?.includes(name) : name.test(button.textContent ?? ''),
+    typeof name === 'string'
+      ? button.textContent?.includes(name)
+      : name.test(button.textContent ?? ''),
   );
   if (!found) {
     throw new Error(`no button named ${String(name)}`);

@@ -4,7 +4,16 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
-import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, OWNER, settle, type as typeInto } from '../../../testing/helpers';
+import {
+  PASSPHRASE,
+  apiError,
+  buttonNamed,
+  fakeAuth,
+  FakeAuth,
+  OWNER,
+  settle,
+  type as typeInto,
+} from '../../../testing/helpers';
 import { InvitationService } from '../data/invitation.service';
 import { JoinPage } from './join.page';
 
@@ -74,11 +83,15 @@ describe('JoinPage', () => {
         expect(node.getAttribute('aria-hidden'), `${node.tagName} is aria-hidden`).not.toBe('true');
         expect(node.style.display, `${node.tagName} is display:none`).not.toBe('none');
         expect(node.style.visibility, `${node.tagName} is invisible`).not.toBe('hidden');
-        expect(node.tagName, 'the disclosure must not sit in a collapsed <details>').not.toBe('DETAILS');
+        expect(node.tagName, 'the disclosure must not sit in a collapsed <details>').not.toBe(
+          'DETAILS',
+        );
         expect(node.tagName).not.toBe('DIALOG');
       }
       expect(section.getAttribute('aria-labelledby')).toBe('join-disclosure-heading');
-      expect(section.querySelector('#join-disclosure-heading')?.textContent).toContain('who can see your finances');
+      expect(section.querySelector('#join-disclosure-heading')?.textContent).toContain(
+        'who can see your finances',
+      );
     });
 
     it('is in the flow, not a link to a policy', async () => {
@@ -96,8 +109,12 @@ describe('JoinPage', () => {
       const button = buttonNamed(root, 'Accept and join');
       const firstField = root.querySelector('input') as HTMLElement;
 
-      expect(section.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(section.compareDocumentPosition(firstField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        section.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        section.compareDocumentPosition(firstField) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     it('is read out when a screen-reader user reaches the button', async () => {
@@ -112,7 +129,9 @@ describe('JoinPage', () => {
     it('is still there after a failed attempt, while a request is in flight, and with an error showing', async () => {
       const fixture = await render();
       const root = fixture.nativeElement as HTMLElement;
-      accept.mockReturnValue(throwError(() => apiError(429, 'rate-limited', { retryAfterSeconds: 60 })));
+      accept.mockReturnValue(
+        throwError(() => apiError(429, 'rate-limited', { retryAfterSeconds: 60 })),
+      );
 
       buttonNamed(root, 'Accept and join').click();
       await settle(fixture);
@@ -134,14 +153,25 @@ describe('JoinPage', () => {
   it('asks the server to accept with the token from the link, and shows the new member where to go next', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
-    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'MEMBER', userCreated: true, email: 'chris@example.com' }));
+    accept.mockReturnValue(
+      of({
+        householdId: 'h',
+        householdName: 'Rivera Household',
+        role: 'MEMBER',
+        userCreated: true,
+        email: 'chris@example.com',
+      }),
+    );
     typeInto(root, '#join-name', 'Riley Okafor');
     typeInto(root, '#join-password', 'a long fixture passphrase');
 
     buttonNamed(root, 'Accept and join').click();
     await settle(fixture);
 
-    expect(accept).toHaveBeenCalledWith('tok-123', { displayName: 'Riley Okafor', password: PASSPHRASE });
+    expect(accept).toHaveBeenCalledWith('tok-123', {
+      displayName: 'Riley Okafor',
+      password: PASSPHRASE,
+    });
     expect(root.textContent).toContain('Welcome to Rivera Household');
     expect(root.textContent).toContain('Your account has been created.');
     // Nothing emails the address to them; this screen is where they learn what to sign in with.
@@ -152,7 +182,15 @@ describe('JoinPage', () => {
 
   it('lets an existing user accept with both fields empty', async () => {
     const fixture = await render();
-    accept.mockReturnValue(of({ householdId: 'h', householdName: 'Rivera Household', role: 'VIEWER', userCreated: false, email: 'chris@example.com' }));
+    accept.mockReturnValue(
+      of({
+        householdId: 'h',
+        householdName: 'Rivera Household',
+        role: 'VIEWER',
+        userCreated: false,
+        email: 'chris@example.com',
+      }),
+    );
 
     buttonNamed(fixture.nativeElement, 'Accept and join').click();
     await settle(fixture);
@@ -197,7 +235,14 @@ describe('JoinPage', () => {
   it('says which fields a brand-new account needs when the server refuses a bare acceptance', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
-    accept.mockReturnValue(throwError(() => apiError(400, 'validation-failed', { fields: ['displayName', 'password'] }, ['displayName', 'password'])));
+    accept.mockReturnValue(
+      throwError(() =>
+        apiError(400, 'validation-failed', { fields: ['displayName', 'password'] }, [
+          'displayName',
+          'password',
+        ]),
+      ),
+    );
 
     buttonNamed(root, 'Accept and join').click();
     await settle(fixture);
@@ -213,7 +258,9 @@ describe('JoinPage', () => {
     buttonNamed(root, 'Accept and join').click();
     await settle(fixture);
 
-    expect(root.querySelector('[role=alert]')?.textContent).toContain('may have expired, been used already, or been cancelled');
+    expect(root.querySelector('[role=alert]')?.textContent).toContain(
+      'may have expired, been used already, or been cancelled',
+    );
     expect(root.querySelector('form')).toBeNull();
     expect(root.querySelector('a[href="/login"]')).not.toBeNull();
   });

@@ -21,7 +21,9 @@
       formControlName="displayName"
       autocomplete="name"
       aria-describedby="join-name-error"
-      [attr.aria-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.displayName.invalid && form.controls.displayName.touched ? 'true' : null
+      "
     />
     <app-field-error [control]="form.controls.displayName" errorId="join-name-error" />
   </div>
@@ -35,7 +37,9 @@
       formControlName="password"
       autocomplete="new-password"
       aria-describedby="join-password-hint join-password-error"
-      [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.password.invalid && form.controls.password.touched ? 'true' : null
+      "
     />
     <p class="field-hint" id="join-password-hint">
       {{ 'setup.passwordHint' | t: { min: minimumLength } }}

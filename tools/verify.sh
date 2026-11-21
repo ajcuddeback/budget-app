@@ -127,6 +127,10 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
 
     [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci --no-audit --no-fund
     run "lint"                            npm --prefix frontend run lint
+    # The backend has had spotless:check in this gate since slice 1; the frontend had no
+    # equivalent, so 43 files had drifted from the house style and the format hook rewrote them
+    # piecemeal inside whatever commit happened to touch them next.
+    run "format (prettier)"               npm --prefix frontend run format:check
     run "typecheck"                       npm --prefix frontend run typecheck
     run "unit tests + coverage threshold" npm --prefix frontend run test:coverage
     run "build"                           npm --prefix frontend run build

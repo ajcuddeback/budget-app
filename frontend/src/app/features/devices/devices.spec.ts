@@ -10,21 +10,62 @@ import { summariseUserAgent } from './data/device-label';
 import { DevicesService } from './data/devices.service';
 import { DevicesPage } from './pages/devices.page';
 
-const CHROME_LINUX = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36';
+const CHROME_LINUX =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36';
 
-const HERE: Device = { id: 's-here', kind: 'SESSION', label: CHROME_LINUX, createdAt: '2026-10-02T08:15:00Z', lastUsedAt: '2026-10-02T09:40:00Z', expiresAt: null, current: true };
-const MAC: Device = { id: 's-mac', kind: 'SESSION', label: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15', createdAt: '2026-09-30T19:02:00Z', lastUsedAt: null, expiresAt: null, current: false };
-const PHONE: Device = { id: 't-phone', kind: 'BEARER', label: "Alex's Pixel", createdAt: '2026-08-14T10:00:00Z', lastUsedAt: '2026-10-02T06:30:00Z', expiresAt: null, current: false };
+const HERE: Device = {
+  id: 's-here',
+  kind: 'SESSION',
+  label: CHROME_LINUX,
+  createdAt: '2026-10-02T08:15:00Z',
+  lastUsedAt: '2026-10-02T09:40:00Z',
+  expiresAt: null,
+  current: true,
+};
+const MAC: Device = {
+  id: 's-mac',
+  kind: 'SESSION',
+  label:
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  createdAt: '2026-09-30T19:02:00Z',
+  lastUsedAt: null,
+  expiresAt: null,
+  current: false,
+};
+const PHONE: Device = {
+  id: 't-phone',
+  kind: 'BEARER',
+  label: "Alex's Pixel",
+  createdAt: '2026-08-14T10:00:00Z',
+  lastUsedAt: '2026-10-02T06:30:00Z',
+  expiresAt: null,
+  current: false,
+};
 
 describe('summariseUserAgent', () => {
   it.each([
     [CHROME_LINUX, { browser: 'Chrome', system: 'Linux' }],
     [MAC.label, { browser: 'Safari', system: 'macOS' }],
-    ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/139.0 Safari/537.36 Edg/139.0', { browser: 'Edge', system: 'Windows' }],
-    ['Mozilla/5.0 (Windows NT 10.0) Chrome/139 Safari/537.36 OPR/110', { browser: 'Opera', system: 'Windows' }],
-    ['Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0', { browser: 'Firefox', system: 'Linux' }],
-    ['Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/139 Mobile Safari/537.36', { browser: 'Chrome', system: 'Android' }],
-    ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile Safari/604.1', { browser: 'Safari', system: 'iOS' }],
+    [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/139.0 Safari/537.36 Edg/139.0',
+      { browser: 'Edge', system: 'Windows' },
+    ],
+    [
+      'Mozilla/5.0 (Windows NT 10.0) Chrome/139 Safari/537.36 OPR/110',
+      { browser: 'Opera', system: 'Windows' },
+    ],
+    [
+      'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0',
+      { browser: 'Firefox', system: 'Linux' },
+    ],
+    [
+      'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/139 Mobile Safari/537.36',
+      { browser: 'Chrome', system: 'Android' },
+    ],
+    [
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile Safari/604.1',
+      { browser: 'Safari', system: 'iOS' },
+    ],
     ['Mozilla/5.0 (X11; CrOS x86_64) Chrome/139', { browser: 'Chrome', system: 'ChromeOS' }],
   ])('recognises %s', (agent, expected) => {
     expect(summariseUserAgent(agent)).toEqual(expected);
@@ -39,13 +80,17 @@ describe('summariseUserAgent', () => {
 
 describe('DevicesService', () => {
   it('lists the page and revokes by encoded handle', () => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     const http = TestBed.inject(HttpTestingController);
     const service = TestBed.inject(DevicesService);
     let devices: unknown;
 
     service.list().subscribe((d) => (devices = d));
-    http.expectOne((r) => r.url === '/api/auth/devices').flush({ content: [PHONE], page: 0, size: 200, totalElements: 1, totalPages: 1 });
+    http
+      .expectOne((r) => r.url === '/api/auth/devices')
+      .flush({ content: [PHONE], page: 0, size: 200, totalElements: 1, totalPages: 1 });
     service.revoke('s-ab/c').subscribe();
 
     expect(devices).toEqual([PHONE]);
@@ -64,7 +109,13 @@ describe('DevicesPage', () => {
     service.revoke.mockReset();
     service.list.mockReturnValue(of([HERE, MAC, PHONE]));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: auth }, { provide: DevicesService, useValue: service }],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: auth },
+        { provide: DevicesService, useValue: service },
+      ],
     });
     const fixture = TestBed.createComponent(DevicesPage);
     await settle(fixture);
@@ -96,7 +147,11 @@ describe('DevicesPage', () => {
     const fixture = await render();
     service.revoke.mockReturnValue(of(undefined));
 
-    (fixture.nativeElement.querySelectorAll('.rows > li')[1].querySelector('button') as HTMLButtonElement).click();
+    (
+      fixture.nativeElement
+        .querySelectorAll('.rows > li')[1]
+        .querySelector('button') as HTMLButtonElement
+    ).click();
     await settle(fixture);
 
     expect(service.revoke).toHaveBeenCalledWith('s-mac');
@@ -109,9 +164,15 @@ describe('DevicesPage', () => {
     const fixture = await render();
     service.revoke.mockReturnValue(of(undefined));
 
-    (fixture.nativeElement.querySelectorAll('.rows > li')[0].querySelector('button') as HTMLButtonElement).click();
+    (
+      fixture.nativeElement
+        .querySelectorAll('.rows > li')[0]
+        .querySelector('button') as HTMLButtonElement
+    ).click();
     await settle(fixture);
-    expect(fixture.nativeElement.querySelector('dialog').textContent).toContain('Sign out of this browser?');
+    expect(fixture.nativeElement.querySelector('dialog').textContent).toContain(
+      'Sign out of this browser?',
+    );
     expect(service.revoke).not.toHaveBeenCalled();
 
     fixture.nativeElement.querySelector('dialog .btn-danger').click();
@@ -123,7 +184,11 @@ describe('DevicesPage', () => {
 
   it('lets the user back out of signing themselves out', async () => {
     const fixture = await render();
-    (fixture.nativeElement.querySelectorAll('.rows > li')[0].querySelector('button') as HTMLButtonElement).click();
+    (
+      fixture.nativeElement
+        .querySelectorAll('.rows > li')[0]
+        .querySelector('button') as HTMLButtonElement
+    ).click();
     await settle(fixture);
 
     buttonNamed(fixture.nativeElement.querySelector('dialog'), 'Cancel').click();
@@ -137,10 +202,16 @@ describe('DevicesPage', () => {
     const fixture = await render();
     service.revoke.mockReturnValue(throwError(() => apiError(404, 'not-found')));
 
-    (fixture.nativeElement.querySelectorAll('.rows > li')[1].querySelector('button') as HTMLButtonElement).click();
+    (
+      fixture.nativeElement
+        .querySelectorAll('.rows > li')[1]
+        .querySelector('button') as HTMLButtonElement
+    ).click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('could not be found');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'could not be found',
+    );
     expect(fixture.nativeElement.querySelectorAll('.rows > li')).toHaveLength(3);
   });
 

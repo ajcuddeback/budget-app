@@ -62,7 +62,12 @@
 
     <div class="dialog-actions">
       @if (!revoked()) {
-        <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="revokeRequested.emit()">
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="busy()"
+          (click)="revokeRequested.emit()"
+        >
           {{ 'invite.revoke' | t }}
         </button>
       }
@@ -89,7 +94,9 @@
           autocomplete="off"
           spellcheck="false"
           aria-describedby="invite-email-hint invite-email-error"
-          [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched ? 'true' : null"
+          [attr.aria-invalid]="
+            form.controls.email.invalid && form.controls.email.touched ? 'true' : null
+          "
         />
         <p class="field-hint" id="invite-email-hint">{{ 'invite.emailHint' | t }}</p>
         <app-field-error [control]="form.controls.email" errorId="invite-email-error" />

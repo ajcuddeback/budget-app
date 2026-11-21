@@ -110,21 +110,21 @@ Full steps: [Add an account](features/add-an-account.md). Closing an account lat
 
 ## 3. Set up your categories
 
-*Awaiting slice 4.*
+_Awaiting slice 4._
 
 Will cover: the categories you start with, renaming them to match how you actually think about
 your money, and adding your own.
 
 ## 4. Record your first transactions
 
-*Awaiting slice 5.*
+_Awaiting slice 5._
 
 Will cover: adding an expense, adding income, categorising as you go, and how your account
 balance updates.
 
 ## 5. Give your spending an envelope
 
-*Awaiting slice 6.*
+_Awaiting slice 6._
 
 Will cover: setting an amount for groceries, logging what you spend against it as you go, and
 reading the one number that matters — what is left. Works whether or not you ever connect a bank.
@@ -169,27 +169,60 @@ Full steps: [See what's left this month](features/see-whats-left-this-month.md),
 
 ## 7. Move money between your own accounts
 
-*Awaiting slice 8.*
+Money going from your current account into savings hasn't been spent, and money coming back out
+hasn't been earned. It's the same money in a different place, and it goes in as a **transfer**.
 
-Will cover: recording a transfer, and why a transfer is neither income nor an expense — the
-thing people most often get wrong and then wonder why their totals look off.
+1. Select **Transactions** in the menu across the top.
+
+2. Select **Move money**, beside **Record a transaction**.
+
+   A window opens, and says at the top that a transfer has no category and nobody to pay.
+
+   ![The Move money between your accounts window as it opens, with Out of, Into, Amount that left and Date.](images/move-money-between-accounts--sheet.png)
+
+3. Choose the account the money left, in **Out of**, and the account it arrived in, in **Into**.
+
+   Each account is listed with its currency, because that's what the amount will be in.
+
+4. Enter the **Amount that left** — the number on its own, with no minus sign.
+
+5. Select **Save**.
+
+   You'll see **Money moved.** above the list.
+
+**A transfer shows up as two rows**, one in each account: **Transfer out** where the money left,
+**Transfer in** where it landed.
+
+![The list showing one transfer as two rows: Transfer in, $500.00, Emergency Fund, and Transfer out, -$500.00, Everyday Checking, both labelled Between your accounts with a Transfer badge.](images/move-money-between-accounts--two-rows.png)
+
+Nothing is counted twice. An account's balance is worked out from the rows in that account, so
+each account has to carry its own side of the move. Both rows say **Between your accounts** rather
+than asking for a category — a transfer is never spending and never income, so no category could
+be right for it.
+
+**If the two accounts are in different currencies**, Budget Owl asks for a second figure: what
+arrived. It doesn't convert anything, because it doesn't know what your bank charged — the fee is
+usually inside the rate. Copy both figures off your statement.
+
+Full steps, correcting one, and deleting one:
+[Move money between your own accounts](features/move-money-between-accounts.md).
 
 ## 8. Make a plan for what you owe
 
-*Awaiting slice 10.*
+_Awaiting slice 10._
 
 Will cover: entering a debt's terms, choosing between paying the highest rate first or the
 smallest balance first, and seeing what each one does to the date you are finally clear.
 
 ## 9. See where your money went
 
-*Awaiting slice 13.*
+_Awaiting slice 13._
 
 Will cover: reading the reports, spotting the category that surprised you, and comparing months.
 
 ## 10. Put it on your phone
 
-*Awaiting slice 15.*
+_Awaiting slice 15._
 
 Will cover: installing the mobile app, pointing it at your own server, and adding a transaction
 while you are standing in the shop — which is where most budgeting actually happens.

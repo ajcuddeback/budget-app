@@ -1,4 +1,9 @@
-import { HttpClient, provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
+import {
+  HttpClient,
+  provideHttpClient,
+  withInterceptors,
+  withXsrfConfiguration,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
@@ -31,14 +36,16 @@ describe('HTTP interceptors', () => {
     document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   });
 
-  it('sends the session cookie to this instance\'s API, and only there', () => {
+  it("sends the session cookie to this instance's API, and only there", () => {
     http.get('/api/auth/me').subscribe();
     http.get('/i18n/de.json').subscribe();
     http.get('https://elsewhere.test/api/x').subscribe();
 
     expect(controller.expectOne('/api/auth/me').request.withCredentials).toBe(true);
     expect(controller.expectOne('/i18n/de.json').request.withCredentials).toBe(false);
-    expect(controller.expectOne('https://elsewhere.test/api/x').request.withCredentials).toBe(false);
+    expect(controller.expectOne('https://elsewhere.test/api/x').request.withCredentials).toBe(
+      false,
+    );
   });
 
   it('puts the CSRF token on a write, under the name the server reads', () => {
@@ -46,7 +53,9 @@ describe('HTTP interceptors', () => {
 
     http.post('/api/auth/login', {}).subscribe();
 
-    expect(controller.expectOne('/api/auth/login').request.headers.get('X-XSRF-TOKEN')).toBe('fixture-token');
+    expect(controller.expectOne('/api/auth/login').request.headers.get('X-XSRF-TOKEN')).toBe(
+      'fixture-token',
+    );
   });
 
   it('does not send the CSRF token on a read, or to another origin', () => {
@@ -56,16 +65,22 @@ describe('HTTP interceptors', () => {
     http.post('https://elsewhere.test/api/x', {}).subscribe();
 
     expect(controller.expectOne('/api/auth/me').request.headers.has('X-XSRF-TOKEN')).toBe(false);
-    expect(controller.expectOne('https://elsewhere.test/api/x').request.headers.has('X-XSRF-TOKEN')).toBe(false);
+    expect(
+      controller.expectOne('https://elsewhere.test/api/x').request.headers.has('X-XSRF-TOKEN'),
+    ).toBe(false);
   });
 
   it('turns a failure into a typed error, so callers never see a raw response', async () => {
-    const result = new Promise<unknown>((resolve) => http.get('/api/households/current').subscribe({ error: resolve }));
-
-    controller.expectOne('/api/households/current').flush(
-      { code: 'not-a-member', title: 'English', leak: 'must-not-travel' },
-      { status: 403, statusText: 'Forbidden' },
+    const result = new Promise<unknown>((resolve) =>
+      http.get('/api/households/current').subscribe({ error: resolve }),
     );
+
+    controller
+      .expectOne('/api/households/current')
+      .flush(
+        { code: 'not-a-member', title: 'English', leak: 'must-not-travel' },
+        { status: 403, statusText: 'Forbidden' },
+      );
     const error = await result;
 
     expect(error).toBeInstanceOf(ApiError);
@@ -74,9 +89,13 @@ describe('HTTP interceptors', () => {
   });
 
   it('sends a signed-in user whose session was revoked to sign-in', async () => {
-    const result = new Promise((resolve) => http.get('/api/households/current').subscribe({ error: resolve }));
+    const result = new Promise((resolve) =>
+      http.get('/api/households/current').subscribe({ error: resolve }),
+    );
 
-    controller.expectOne('/api/households/current').flush({ code: 'not-authenticated' }, { status: 401, statusText: 'x' });
+    controller
+      .expectOne('/api/households/current')
+      .flush({ code: 'not-authenticated' }, { status: 401, statusText: 'x' });
     await result;
 
     expect(sessionEnded).toHaveBeenCalledTimes(1);
@@ -98,7 +117,9 @@ describe('HTTP interceptors', () => {
   });
 
   it('leaves a failure on a non-API request exactly as it was', async () => {
-    const result = new Promise<unknown>((resolve) => http.get('/i18n/zz.json').subscribe({ error: resolve }));
+    const result = new Promise<unknown>((resolve) =>
+      http.get('/i18n/zz.json').subscribe({ error: resolve }),
+    );
 
     controller.expectOne('/i18n/zz.json').flush('', { status: 404, statusText: 'x' });
 

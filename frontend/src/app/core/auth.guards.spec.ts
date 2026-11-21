@@ -1,5 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+  provideRouter,
+} from '@angular/router';
 import { fakeAuth } from '../testing/helpers';
 import { authGuard, guestGuard } from './auth.guards';
 import { AuthService } from './auth.service';
@@ -13,7 +19,12 @@ describe('route guards', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
     });
-    return { auth, result: TestBed.runInInjectionContext(() => guard(route, state)) as Promise<boolean | UrlTree> };
+    return {
+      auth,
+      result: TestBed.runInInjectionContext(() => guard(route, state)) as Promise<
+        boolean | UrlTree
+      >,
+    };
   }
 
   it('lets a signed-in user through a private route', async () => {

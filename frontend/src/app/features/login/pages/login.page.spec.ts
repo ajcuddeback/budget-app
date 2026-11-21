@@ -4,7 +4,15 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/auth.service';
-import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
+import {
+  PASSPHRASE,
+  apiError,
+  buttonNamed,
+  fakeAuth,
+  FakeAuth,
+  settle,
+  type as typeInto,
+} from '../../../testing/helpers';
 import { LoginPage } from './login.page';
 
 describe('LoginPage', () => {
@@ -65,8 +73,12 @@ describe('LoginPage', () => {
     expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
       'The email address or password is not right.',
     );
-    expect((fixture.nativeElement.querySelector('#login-password') as HTMLInputElement).value).toBe('');
-    expect((fixture.nativeElement.querySelector('#login-email') as HTMLInputElement).value).toBe('alex@example.test');
+    expect((fixture.nativeElement.querySelector('#login-password') as HTMLInputElement).value).toBe(
+      '',
+    );
+    expect((fixture.nativeElement.querySelector('#login-email') as HTMLInputElement).value).toBe(
+      'alex@example.test',
+    );
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
@@ -75,12 +87,16 @@ describe('LoginPage', () => {
     auth.login.mockRejectedValueOnce(apiError(429, 'rate-limited', { retryAfterSeconds: 120 }));
     signIn(fixture.nativeElement);
     await settle(fixture);
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('Wait 2 minutes');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'Wait 2 minutes',
+    );
 
     auth.login.mockRejectedValueOnce(apiError(0));
     signIn(fixture.nativeElement);
     await settle(fixture);
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('could not be reached');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'could not be reached',
+    );
   });
 
   it.each([
@@ -103,8 +119,14 @@ describe('LoginPage', () => {
   it('labels both fields', async () => {
     const fixture = await render();
 
-    expect(fixture.nativeElement.querySelector('label[for=login-email]').textContent).toContain('Email address');
-    expect(fixture.nativeElement.querySelector('label[for=login-password]').textContent).toContain('Password');
-    expect(fixture.nativeElement.querySelector('#login-password').getAttribute('autocomplete')).toBe('current-password');
+    expect(fixture.nativeElement.querySelector('label[for=login-email]').textContent).toContain(
+      'Email address',
+    );
+    expect(fixture.nativeElement.querySelector('label[for=login-password]').textContent).toContain(
+      'Password',
+    );
+    expect(
+      fixture.nativeElement.querySelector('#login-password').getAttribute('autocomplete'),
+    ).toBe('current-password');
   });
 });

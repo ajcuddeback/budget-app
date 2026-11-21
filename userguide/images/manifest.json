@@ -720,6 +720,150 @@
     "viewport": "1280x720"
   },
   {
+    "name": "move-money-between-accounts--amount",
+    "file": "userguide/images/move-money-between-accounts--amount.png",
+    "guide": "move-money-between-accounts",
+    "caption": "Amount that left holding 250.00, with the hint underneath saying it is in USD, the currency of the account it leaves, and that there is no minus sign.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--cross-currency",
+    "file": "userguide/images/move-money-between-accounts--cross-currency.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The window with Into set to Berlin Savings (EUR): a second box, Amount that arrived, has appeared below Amount that left, with a hint saying the two accounts are in different currencies and only your statement knows what arrived.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--cross-currency-hint",
+    "file": "userguide/images/move-money-between-accounts--cross-currency-hint.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The hint under Amount that arrived, read in full: these two accounts are in different currencies, so what arrived is not the same number as what left, and only your statement knows it — copy it from there, in EUR.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--delete-confirm",
+    "file": "userguide/images/move-money-between-accounts--delete-confirm.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Delete this transfer? window, saying both halves go and both account balances go back to what they were, and that it cannot be undone.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--edit",
+    "file": "userguide/images/move-money-between-accounts--edit.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Edit this transfer window: the two accounts named as Everyday Checking to Emergency Fund with no lists to change them, then Amount that left, Date and Note.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--into",
+    "file": "userguide/images/move-money-between-accounts--into.png",
+    "guide": "move-money-between-accounts",
+    "caption": "Into set to Emergency Fund (USD), with the Into list circled, below Out of set to Everyday Checking (USD).",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--move-money-button",
+    "file": "userguide/images/move-money-between-accounts--move-money-button.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Transactions screen with the Move money button, beside Record a transaction, circled.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--moved",
+    "file": "userguide/images/move-money-between-accounts--moved.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Transactions screen with a Money moved. banner above the list.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--needs-a-category",
+    "file": "userguide/images/move-money-between-accounts--needs-a-category.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The list narrowed to what still needs a category: one shop transaction, and neither half of the transfer.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--note",
+    "file": "userguide/images/move-money-between-accounts--note.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The lower half of the window, reached by scrolling inside it: Date, then Note with a hint saying it is optional and both halves of the transfer get it.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--one-row",
+    "file": "userguide/images/move-money-between-accounts--one-row.png",
+    "guide": "move-money-between-accounts",
+    "caption": "One transfer row close up: Transfer out, -$500.00, Aug 16, 2026, Everyday Checking, Between your accounts, Transfer, with the note Transfer to Emergency Fund and Edit and Delete buttons.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--out-of",
+    "file": "userguide/images/move-money-between-accounts--out-of.png",
+    "guide": "move-money-between-accounts",
+    "caption": "Out of set to Everyday Checking (USD), with the Out of list circled. Every account in the list is followed by its currency.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--same-account",
+    "file": "userguide/images/move-money-between-accounts--same-account.png",
+    "guide": "move-money-between-accounts",
+    "caption": "Out of and Into both set to Everyday Checking (USD), with a message under Into saying it has to be a different account.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--sheet",
+    "file": "userguide/images/move-money-between-accounts--sheet.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Move money between your accounts window as it opens: a note saying a transfer has no category and nobody to pay, then Out of, Into, Amount that left, Date and Note.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--two-rows",
+    "file": "userguide/images/move-money-between-accounts--two-rows.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The list showing the same transfer twice: Transfer in, $500.00 into Emergency Fund, and Transfer out, -$500.00 from Everyday Checking, both dated Aug 16, 2026 and both labelled Between your accounts with a Transfer badge.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "move-money-between-accounts--viewer",
+    "file": "userguide/images/move-money-between-accounts--viewer.png",
+    "guide": "move-money-between-accounts",
+    "caption": "The Transactions screen as a viewer: the transfer rows are there with their amounts, and there is no Move money button and no buttons on any row.",
+    "capturedAt": "2026-11-21",
+    "commit": "98dbeed",
+    "viewport": "1280x720"
+  },
+  {
     "name": "organise-your-categories--add",
     "file": "userguide/images/organise-your-categories--add.png",
     "guide": "organise-your-categories",

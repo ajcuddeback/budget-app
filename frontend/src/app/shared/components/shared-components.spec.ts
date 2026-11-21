@@ -114,7 +114,9 @@ describe('CurrencyFieldComponent', () => {
     const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
     expect(fixture.nativeElement.querySelector('label').getAttribute('for')).toBe('cur');
     expect(select.options[0].textContent).toBe('Follow the household');
-    expect(Array.from(select.options).some((o) => /USD — US Dollar/.test(o.textContent ?? ''))).toBe(true);
+    expect(
+      Array.from(select.options).some((o) => /USD — US Dollar/.test(o.textContent ?? '')),
+    ).toBe(true);
     expect(select.value).toBe('EUR');
     expect(fixture.nativeElement.textContent).toContain('A hint');
   });
@@ -127,7 +129,9 @@ describe('CurrencyFieldComponent', () => {
     fixture.componentRef.setInput('label', 'Currency');
     await settle(fixture);
 
-    expect((fixture.nativeElement.querySelector('select') as HTMLSelectElement).options[0].value).toBe('ZZZ');
+    expect(
+      (fixture.nativeElement.querySelector('select') as HTMLSelectElement).options[0].value,
+    ).toBe('ZZZ');
   });
 });
 
@@ -170,7 +174,9 @@ describe('ConfirmDialogComponent and ModalDirective', () => {
     fixture.componentInstance.confirmed.subscribe(confirmed);
     fixture.componentInstance.cancelled.subscribe(cancelled);
     await settle(fixture);
-    const [cancel, confirm] = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'));
+    const [cancel, confirm] = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('button'),
+    );
 
     cancel.click();
     confirm.click();
@@ -226,8 +232,14 @@ describe('ConfirmDialogComponent and ModalDirective', () => {
     const close = vi.fn(function (this: HTMLDialogElement) {
       this.removeAttribute('open');
     });
-    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { value: show, configurable: true });
-    Object.defineProperty(HTMLDialogElement.prototype, 'close', { value: close, configurable: true });
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      value: show,
+      configurable: true,
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+      value: close,
+      configurable: true,
+    });
     try {
       const fixture = render();
       await settle(fixture);
@@ -242,7 +254,10 @@ describe('ConfirmDialogComponent and ModalDirective', () => {
   });
 });
 
-@Component({ imports: [ModalDirective], template: `<dialog appModal (dismissed)="n.set(n() + 1)"></dialog>` })
+@Component({
+  imports: [ModalDirective],
+  template: `<dialog appModal (dismissed)="n.set(n() + 1)"></dialog>`,
+})
 class Host {
   readonly n = signal(0);
 }

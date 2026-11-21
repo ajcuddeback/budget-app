@@ -107,9 +107,7 @@
                       envelope.remaining | money: envelope.currency
                     }}</span>
                     <span class="remaining-label">
-                      {{
-                        (overspent(envelope) ? 'envelopes.over' : 'envelopes.left') | t
-                      }}
+                      {{ (overspent(envelope) ? 'envelopes.over' : 'envelopes.left') | t }}
                     </span>
                   </p>
                 </div>
