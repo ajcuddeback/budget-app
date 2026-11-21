@@ -27,16 +27,16 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 
 | Feature | Status | Doc |
 |---|---|---|
-| Authentication & households | In progress — backend and web client built | [authentication-and-households.md](authentication-and-households.md) |
-| Envelopes | Planned — spec ready | [envelopes.md](envelopes.md) |
-| Household management (invites, roles) | Planned | _not written_ |
+| Authentication & households | Shipped — API, web UI and user guide | [authentication-and-households.md](authentication-and-households.md) |
+| Accounts (money containers) | Shipped — API, web UI and user guide | [accounts.md](accounts.md) |
+| Categories | Shipped — API and web UI; user guide outstanding | [categories.md](categories.md) |
+| Transactions | Shipped — API and web UI; user guide outstanding | [transactions.md](transactions.md) |
+| Envelopes | Shipped — API, web UI and user guide | [envelopes.md](envelopes.md) |
+| Bills & income | Shipped — API, web UI and user guide | [bills-and-income.md](bills-and-income.md) |
+| Transfers | In progress — slice 8 | [transfers.md](transfers.md) |
+| Household management (invites, roles) | Shipped with authentication & households | [authentication-and-households.md](authentication-and-households.md) |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
-| Accounts (money containers) | Built — API, web UI and user guide | [accounts.md](accounts.md) |
-| Transactions | Built — API and web UI; user guide outstanding | [transactions.md](transactions.md) |
-| Categories | Built — API and web UI; user guide outstanding | [categories.md](categories.md) |
-| Bills & income (incl. charge mapping) | Planned | _not written_ |
-| Transfers | Planned | _not written_ |
 | Admin console (instance operation) | Planned | _not written_ |
 | Debt plan & debt detail | Planned | _not written_ |
 | Goals | Planned | _not written_ |

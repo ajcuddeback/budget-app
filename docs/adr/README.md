@@ -56,3 +56,5 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0029](0029-one-instance-administrator.md)                       | Exactly one instance administrator, enforced in the schema      | Accepted                   | 2026-11-14 |
 | [0030](0030-the-runtime-cannot-change-the-schema.md)             | The runtime connects as a role that cannot change the schema    | Accepted                   | 2026-11-16 |
 | [0031](0031-envelope-periods-and-rollover.md)                    | An envelope's period is a label; rollover is not built yet      | Accepted                   | 2026-11-20 |
+| [0032](0032-bill-occurrences-are-projected-not-generated.md)     | Bill occurrences are projected on read, not generated           | Accepted                   | 2026-11-20 |
+| [0033](0033-a-transfer-is-a-linked-pair-and-may-cross-currencies.md) | A transfer is a linked pair; a cross-currency pair does not sum to zero | Accepted      | 2026-11-21 |

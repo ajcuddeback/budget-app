@@ -189,5 +189,26 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
             @Param("householdId") UUID householdId, @Param("accountId") UUID accountId);
 
     /** For the empty state, which on first run is the common case rather than an error. */
+    /**
+     * Both legs of one transfer, oldest-written first.
+     *
+     * <p>Scoped on the household as every method here is. The group id comes from a path, so it is
+     * a lookup key and never evidence of ownership — another household's group returns nothing and
+     * the service turns that into a {@code 404}.
+     *
+     * <p>Returns a {@code List} rather than a pair type on purpose: a group with anything other
+     * than two rows is exactly what {@code trg_transactions_transfer_pair} exists to prevent, and a
+     * service that received a pair type could not notice that it had happened anyway.
+     */
+    @Query(
+            """
+            select t from Transaction t
+            where t.householdId = :householdId
+              and t.transferGroupId = :transferGroupId
+            order by t.amount asc, t.id asc
+            """)
+    List<Transaction> findTransferLegs(
+            @Param("householdId") UUID householdId, @Param("transferGroupId") UUID transferGroupId);
+
     long countByHouseholdId(UUID householdId);
 }

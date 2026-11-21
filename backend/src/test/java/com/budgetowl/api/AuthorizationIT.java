@@ -136,7 +136,19 @@ class AuthorizationIT extends ApiTestBase {
                 new Endpoint("GET", "/api/income/" + any + "?period=2099-03", null),
                 new Endpoint("PATCH", "/api/income/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
                 new Endpoint("DELETE", "/api/income/" + any, null),
-                new Endpoint("GET", "/api/periods/2099-03/summary", null));
+                new Endpoint("GET", "/api/periods/2099-03/summary", null),
+                new Endpoint(
+                        "POST",
+                        "/api/transfers",
+                        """
+                        {"fromAccountId":"%s","toAccountId":"%s","date":"2026-08-12",
+                         "amount":"1.00"}
+                        """
+                                .formatted(any, any)),
+                new Endpoint("GET", "/api/transfers/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/transfers/" + any, "{\"amount\":\"1.00\",\"version\":0}"),
+                new Endpoint("DELETE", "/api/transfers/" + any, null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */

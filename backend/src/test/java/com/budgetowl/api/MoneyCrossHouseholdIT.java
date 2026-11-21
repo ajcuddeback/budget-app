@@ -63,7 +63,8 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
             UUID transaction,
             UUID bill,
             UUID income,
-            UUID envelope) {}
+            UUID envelope,
+            UUID transferGroup) {}
 
     @AfterEach
     void restoreTheSingletonIndex() {
@@ -201,7 +202,7 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         assertThat(refused.status()).isEqualTo(404);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class))
                 .as("their ledger must be exactly as long as it was")
-                .isEqualTo(1L);
+                .isEqualTo(3L);
     }
 
     @Test
@@ -416,6 +417,62 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
     }
 
     @Test
+    void answers404AndNever403ForAnotherHouseholdsTransfer() {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        ApiClient us = signIn(OWNER_EMAIL, OWNER_SECRET);
+
+        // 404, not 403 and not 500. Removing the household predicate from findTransferLegs makes
+        // these 500 rather than leak, because TransferService refuses to name an account this
+        // household cannot read — the same second layer TransactionService.view has. Asserting
+        // the status first is what tells a broken scope apart from a disclosure.
+        assertThat(us.get("/api/transfers/" + theirs.transferGroup()).status()).isEqualTo(404);
+        assertThat(
+                        us.patch(
+                                        "/api/transfers/" + theirs.transferGroup(),
+                                        "{\"amount\":\"1.00\",\"version\":0}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(us.delete("/api/transfers/" + theirs.transferGroup()).status()).isEqualTo(404);
+
+        // And their pair is exactly as it was: a refused write must touch nothing.
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM transactions WHERE transfer_group_id = ?",
+                                Long.class,
+                                theirs.transferGroup()))
+                .isEqualTo(2L);
+    }
+
+    @Test
+    void cannotMoveMoneyIntoOrOutOfAnotherHouseholdsAccount() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        UUID ours = createAccount(household.owner(), "Ours", null);
+
+        // The side door this check exists for: a transfer touches TWO accounts, so taking one of
+        // them on trust from the other would be a way to write a row into an account the caller
+        // cannot otherwise write to — and then to read its name back off the response.
+        assertThat(moveMoney(household.owner(), ours, theirs.account()).status()).isEqualTo(404);
+        assertThat(moveMoney(household.owner(), theirs.account(), ours).status()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class))
+                .as("their ledger must be exactly as long as it was")
+                .isEqualTo(3L);
+    }
+
+    @Test
+    void doesNotLeakAnotherHouseholdsTransferIntoOurLedger() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse ledger = household.owner().get("/api/transactions");
+
+        assertThat(ledger.status()).isEqualTo(200);
+        assertThat(ledger.body()).doesNotContain("543.0000").doesNotContain("Grace's savings");
+        assertThat(ledger.numberField("totalElements")).isZero();
+    }
+
+    @Test
     void reallyHasTwoHouseholdsInTheDatabase() {
         // Without this, every assertion above would also pass against a single household — which
         // is the way a scoping test most often ends up proving nothing at all.
@@ -425,7 +482,8 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM households", Long.class))
                 .isEqualTo(2L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class))
-                .isEqualTo(1L);
+                .as("their plain transaction, plus the two legs of their transfer")
+                .isEqualTo(3L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM bills", Long.class)).isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM income_sources", Long.class))
                 .isEqualTo(1L);
@@ -433,6 +491,16 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
     }
 
     /** Seeds a whole second household — user, membership, account, category, payee, transaction. */
+    /** A transfer attempt, as the caller's own household. */
+    private ApiResponse moveMoney(ApiClient client, UUID from, UUID to) {
+        return client.post(
+                "/api/transfers",
+                """
+                {"fromAccountId":"%s","toAccountId":"%s","date":"2026-08-12","amount":"1.00"}
+                """
+                        .formatted(from, to));
+    }
+
     private Theirs seedASecondHousehold() {
         // IF EXISTS so a previous run that failed to restore the index cannot cascade into a
         // confusing failure here instead of where the problem is.
@@ -447,6 +515,8 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         UUID bill = UUID.randomUUID();
         UUID income = UUID.randomUUID();
         UUID envelope = UUID.randomUUID();
+        UUID transferGroup = UUID.randomUUID();
+        UUID secondAccount = UUID.randomUUID();
 
         // A household and its first OWNER have to be committed together: the at-least-one-owner
         // constraint is DEFERRABLE INITIALLY DEFERRED and re-reads the counter at COMMIT.
@@ -540,7 +610,38 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                                     """,
                                     envelope,
                                     household);
+                            // A second account and a whole transfer, so the pair routes have
+                            // something real to be refused against rather than a random id.
+                            jdbc.update(
+                                    """
+                                    INSERT INTO accounts (id, household_id, name, type, currency,
+                                                          opening_balance)
+                                    VALUES (?, ?, 'Grace''s savings', 'SAVINGS', 'GBP', 0.0000)
+                                    """,
+                                    secondAccount,
+                                    household);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO transactions (id, household_id, account_id, date,
+                                                              amount, transfer_group_id)
+                                    VALUES (?, ?, ?, DATE '2026-07-02', -543.0000, ?)
+                                    """,
+                                    UUID.randomUUID(),
+                                    household,
+                                    account,
+                                    transferGroup);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO transactions (id, household_id, account_id, date,
+                                                              amount, transfer_group_id)
+                                    VALUES (?, ?, ?, DATE '2026-07-02', 543.0000, ?)
+                                    """,
+                                    UUID.randomUUID(),
+                                    household,
+                                    secondAccount,
+                                    transferGroup);
                         });
-        return new Theirs(household, account, category, transaction, bill, income, envelope);
+        return new Theirs(
+                household, account, category, transaction, bill, income, envelope, transferGroup);
     }
 }

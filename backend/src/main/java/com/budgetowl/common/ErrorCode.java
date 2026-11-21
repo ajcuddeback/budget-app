@@ -121,6 +121,13 @@ public enum ErrorCode {
     /** Two income sources with the same name, for the reason {@link #BILL_NAME_TAKEN} gives. */
     INCOME_NAME_TAKEN("income-name-taken", 409, "An income source with this name already exists"),
 
+    /**
+     * A transfer is a pair and is changed as one (ADR-0033). Editing or deleting a single leg would
+     * leave money that left one account and arrived nowhere, or — worse, because nothing downstream
+     * would notice — a same-currency pair whose two halves no longer agree.
+     */
+    TRANSFER_LEG_NOT_SEPARATE("transfer-leg-not-separate", 409, "This is one half of a transfer"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 

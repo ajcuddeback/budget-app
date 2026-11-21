@@ -94,8 +94,11 @@ signed — negative is an outflow), `payeeId`, `categoryId`, `note`, `status`
 (`PENDING` | `CLEARED` | `RECONCILED`), `externalId` for imports.
 
 A **transfer** between two accounts is a linked pair of transactions sharing a `transferGroupId`,
-equal and opposite. It is never a single row with two account columns, and a transfer is never
-counted as income or expense in reporting.
+with opposite signs. It is never a single row with two account columns, and a transfer is never
+counted as income or expense in reporting. Between two accounts in the same currency the legs are
+equal and opposite; across currencies each leg carries the figure that really moved in its own
+account and the household supplies both, because no rate we could invent would match the bank's
+(ADR-0033, ADR-0022).
 
 Transactions are **append-mostly**: correcting one keeps an audit trail rather than silently
 overwriting history.
@@ -321,7 +324,11 @@ These hold everywhere. A change that breaks one needs a very good reason and an 
 1. Every financial row has a non-null `household_id`, and every query filters on a household the
    authenticated user is a verified member of.
 2. Account balance always equals opening balance plus the sum of its transactions.
-3. A transfer's two legs always sum to zero and always share a `transferGroupId`.
+3. A transfer is exactly **two rows sharing a `transferGroupId`**, in two different accounts of
+   the same household, with opposite signs. Where both accounts share a currency the amounts are
+   equal in magnitude. Where they do not, each leg is the true figure for its own account and the
+   pair does **not** sum to zero — see ADR-0033, which explains why that is the absence of a lie
+   rather than a defect.
 4. `Money` arithmetic never mixes currencies. Totals group by currency first; conversion, if
    any, happens last and only for display.
 5. A transaction's amount is in its account's currency and is **never rewritten** by a conversion

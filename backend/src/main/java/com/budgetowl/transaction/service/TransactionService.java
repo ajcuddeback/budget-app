@@ -183,6 +183,13 @@ public class TransactionService {
         UUID householdId = household.id();
 
         Transaction transaction = require(transactionId, householdId);
+
+        // Half of a transfer is not an editable row. Correcting one leg's amount would leave a
+        // same-currency pair that no longer agrees, and nothing downstream would notice: the
+        // pair trigger deliberately does NOT compare amounts, because a cross-currency pair must
+        // not be forced to match (ADR-0033). So this is the only place the rule can live, and it
+        // is a sibling of the same guard in `delete`.
+        requireNotHalfOfATransfer(transaction);
         requireCurrentVersion(transaction, changes.version());
 
         // The account cannot change, so its currency is fixed for the life of the row — which is
@@ -252,11 +259,7 @@ public class TransactionService {
         UUID householdId = membership.household().id();
         Transaction transaction = require(transactionId, householdId);
 
-        if (transaction.isTransfer()) {
-            throw new ConflictException(
-                    ErrorCode.CONFLICT,
-                    "this is one half of a transfer; delete the transfer instead");
-        }
+        requireNotHalfOfATransfer(transaction);
 
         transactions.delete(transaction);
         log.info(
@@ -313,6 +316,21 @@ public class TransactionService {
 
     private UUID requireCategoryOrNull(UUID categoryId, UUID householdId) {
         return categoryId == null ? null : requireCategory(categoryId, householdId).id();
+    }
+
+    /**
+     * Refuses a row that is one leg of a transfer.
+     *
+     * <p>A transfer is a pair and is edited and removed as one (ADR-0033). Acting on a single leg
+     * would leave money that left one account and arrived nowhere, or a same-currency pair whose
+     * two halves disagree — and the latter is invisible to every later sum.
+     */
+    private static void requireNotHalfOfATransfer(Transaction transaction) {
+        if (transaction.isTransfer()) {
+            throw new ConflictException(
+                    ErrorCode.TRANSFER_LEG_NOT_SEPARATE,
+                    "this is one half of a transfer; change the transfer instead");
+        }
     }
 
     /** See {@code AccountService.requireCurrentVersion} — the clear message, not the control. */
