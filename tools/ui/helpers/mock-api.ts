@@ -327,6 +327,17 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     // mock that ignored the field would let that defect pass a green run.
     if (Object.hasOwn(sent, 'oidcClientSecret')) {
       adminSettings.oidcClientSecretSet = String(sent['oidcClientSecret'] ?? '').trim() !== '';
+      // ADR-0034: a changed credential is an unproven credential, so the proof goes and password
+      // login comes back — the same thing `configureOidc` does for a changed issuer. The mock has
+      // to carry this or the console would be developed against a server that is quieter than the
+      // real one, and "rotate the secret" would look like a change with no consequences.
+      //
+      // Sent-and-different is the closest this mock can get: it never holds the secret itself,
+      // only whether one is set. A spec that re-sends the identical secret would see a reset here
+      // and not on the server. No spec does, and the console only sends the field when somebody
+      // typed into an empty box — but it is a divergence, so it is written down rather than left
+      // for somebody to discover.
+      Object.assign(adminSettings, { oidcOwnerLoginAt: null, passwordLoginEnabled: true });
     }
     if (sent['oidcEnabled'] === false) {
       // `InstanceSettings.disableOidc`: the provider's configuration is cleared and password login
