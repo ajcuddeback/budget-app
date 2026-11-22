@@ -1,3 +1,9 @@
+/* Same reason as the signing-in form's rule: the conflict notice is three paragraphs and a list,
+   and `.alert p { margin: 0 }` ran "What changed:" onto the end of the sentence before it. */
+.alert p + p {
+  margin-block-start: var(--space-2);
+}
+
 /* The settings somebody else moved, named one per line so a list of three is readable. */
 .conflict-fields {
   margin: var(--space-1) 0 var(--space-2);

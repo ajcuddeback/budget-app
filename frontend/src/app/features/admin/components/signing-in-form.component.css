@@ -22,6 +22,14 @@
   font-size: 1.125rem;
 }
 
+/* `.alert p` has no margin, which is right for a block of one paragraph and wrong the moment a
+   second one appears beside it: ticking "let anyone create an account" adds an announcement under
+   the standing consequence, and with no space between them the new sentence read as the last line
+   of the old paragraph. Seen in a screenshot, not in a test. */
+.alert p + p {
+  margin-block-start: var(--space-2);
+}
+
 /* A fact about the instance, not an editable value: whether a secret exists, whether password
    sign-in is on. Full contrast, because it is the answer somebody came to the page for. */
 .state {

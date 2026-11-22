@@ -26,6 +26,9 @@ import {
   DEMO_TOKENS,
   DEMO_TRANSFER,
   DEMO_USER,
+  DEMO_ADMIN_ACCOUNTS,
+  DEMO_INSTANCE,
+  DEMO_INSTANCE_SETTINGS,
 } from '../fixtures/demo-data.js';
 
 /**
@@ -154,12 +157,43 @@ export type ApiCall = {
 /** Who the mocked session belongs to. `anonymous` answers 401 to `/api/auth/me`. */
 export type MockSession = 'anonymous' | 'owner' | 'member' | 'viewer' | 'no-household';
 
+/**
+ * The admin console's settings, as the mock holds them.
+ *
+ * `passwordLoginLocked` is NOT here: the server derives it from the provider's state and so does
+ * the mock, so no spec can describe an instance whose lock contradicts its own configuration.
+ */
+export type AdminSettingsState = {
+  registrationOpen: boolean;
+  passwordLoginEnabled: boolean;
+  oidcEnabled: boolean;
+  oidcIssuerUri: string | null;
+  oidcClientId: string | null;
+  /** Whether a secret is configured. Never what it is — there is no field for that anywhere. */
+  oidcClientSecretSet: boolean;
+  oidcProvisioningEnabled: boolean;
+  oidcOwnerLoginAt: string | null;
+  updatedAt: string;
+  version: number;
+};
+
 export type MockOptions = {
   /** Default `owner`: documentation captures show the signed-in app. */
   session?: MockSession;
   /** A fresh instance with no users: `/api/setup/status` says setup is not complete. */
   freshInstance?: boolean;
+  /** Where the admin console's settings start. Merged over `DEMO_INSTANCE_SETTINGS`. */
+  adminSettings?: Partial<AdminSettingsState>;
+  /**
+   * What another administrator changes between this page reading the settings and saving them.
+   * The next `PATCH /api/admin/settings` applies it and answers `409 stale-version`, which is the
+   * only way the console's conflict notice can name the fields that moved.
+   */
+  adminConflict?: Partial<AdminSettingsState>;
 };
+
+/** When a saved setting says it changed. A constant, because a capture has to be the same twice. */
+const SETTINGS_SAVED_AT = '2026-11-20T09:15:00Z';
 
 function json(route: Route, status: number, body: unknown, contentType = 'application/json'): Promise<void> {
   return route.fulfill({ status, contentType, body: JSON.stringify(body) });
@@ -246,6 +280,70 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     return ownPreferences && base.household ? { ...base, household: { ...base.household, ...ownPreferences } } : base;
   };
 
+  /**
+   * The console's settings, as state this run can move.
+   *
+   * Kept for the same reason the recorded occurrences are: the page re-reads after saving, and a
+   * mock that forgot would show a switch springing back in front of the person who just moved it.
+   * `passwordLoginLocked` is absent on purpose and derived below — see DEMO_INSTANCE_SETTINGS.
+   */
+  const adminSettings: AdminSettingsState = { ...DEMO_INSTANCE_SETTINGS, ...options.adminSettings };
+
+  /** What another administrator saved first, held until the next PATCH asks for it. */
+  let foreignChange: Partial<AdminSettingsState> | null = options.adminConflict ?? null;
+
+  /** The server's rule, not a setting: nothing may hide password login until a provider works. */
+  const passwordLoginLocked = (): boolean =>
+    !adminSettings.oidcEnabled || adminSettings.oidcOwnerLoginAt === null;
+
+  const settingsResponse = (): Record<string, unknown> => ({
+    ...adminSettings,
+    passwordLoginLocked: passwordLoginLocked(),
+  });
+
+  /** The server's issuer rule: https anywhere, or http on this machine. */
+  const usableIssuer = (value: string): boolean => {
+    try {
+      const parsed = new URL(value.trim());
+      return (
+        parsed.protocol === 'https:' ||
+        (parsed.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname))
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  const applySettingsPatch = (sent: Record<string, unknown>): void => {
+    for (const flag of ['registrationOpen', 'passwordLoginEnabled', 'oidcEnabled', 'oidcProvisioningEnabled'] as const) {
+      if (typeof sent[flag] === 'boolean') adminSettings[flag] = sent[flag];
+    }
+    for (const text of ['oidcIssuerUri', 'oidcClientId'] as const) {
+      if (typeof sent[text] === 'string') adminSettings[text] = sent[text];
+    }
+    // The secret is the one field whose PRESENCE is the message: present and blank CLEARS the
+    // stored one, absent leaves it alone (`AdminRequests.oidcClientSecretChange`). Modelled here
+    // because it is the behaviour the console's secret field exists to avoid tripping over, and a
+    // mock that ignored the field would let that defect pass a green run.
+    if (Object.hasOwn(sent, 'oidcClientSecret')) {
+      adminSettings.oidcClientSecretSet = String(sent['oidcClientSecret'] ?? '').trim() !== '';
+    }
+    if (sent['oidcEnabled'] === false) {
+      // `InstanceSettings.disableOidc`: the provider's configuration is cleared and password login
+      // comes back on, so nobody is left without a way in. The request says only `oidcEnabled`.
+      Object.assign(adminSettings, {
+        oidcIssuerUri: null,
+        oidcClientId: null,
+        oidcClientSecretSet: false,
+        oidcProvisioningEnabled: false,
+        oidcOwnerLoginAt: null,
+        passwordLoginEnabled: true,
+      });
+    }
+    adminSettings.version += 1;
+    adminSettings.updatedAt = SETTINGS_SAVED_AT;
+  };
+
   await page.route('**/api/**', async (route: Route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -286,6 +384,55 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const was = session;
       session = 'anonymous';
       return was === 'anonymous' ? problem(route, DEMO_PROBLEMS.notAuthenticated) : route.fulfill({ status: 204 });
+    }
+
+    // ---- the instance an operator runs ----------------------------------------------------
+    // Administrator-only, and that is enforced here rather than assumed: the console hides its
+    // link and the guard refuses the route, but `403 not-instance-admin` is the control (ADR-0029),
+    // so the mock answers one. Nothing here carries a figure of anybody's money.
+    if (url.pathname.startsWith('/api/admin/')) {
+      if (session === 'anonymous') {
+        return problem(route, DEMO_PROBLEMS.notAuthenticated);
+      }
+      if (!me().instanceAdmin) {
+        return problem(route, DEMO_PROBLEMS.notInstanceAdmin);
+      }
+      if (at === 'GET /api/admin/instance') {
+        return json(route, 200, DEMO_INSTANCE);
+      }
+      if (at === 'GET /api/admin/users') {
+        return json(route, 200, { content: DEMO_ADMIN_ACCOUNTS, total: DEMO_ADMIN_ACCOUNTS.length });
+      }
+      if (at === 'GET /api/admin/settings') {
+        return json(route, 200, settingsResponse());
+      }
+      if (at === 'PATCH /api/admin/settings') {
+        // Somebody else saved first. Their change is applied and this one refused, which is the
+        // order that matters: the console re-reads afterwards, and that re-read is the only way it
+        // can name the settings that moved.
+        if (foreignChange) {
+          Object.assign(adminSettings, foreignChange, {
+            version: adminSettings.version + 1,
+            updatedAt: SETTINGS_SAVED_AT,
+          });
+          foreignChange = null;
+          return problem(route, DEMO_PROBLEMS.staleVersion);
+        }
+        if (field('version') !== adminSettings.version) {
+          return problem(route, DEMO_PROBLEMS.staleVersion);
+        }
+        // The two refusals the console is written around, answered rather than assumed away: the
+        // database refuses to hide password login until a provider has been proved to work, and an
+        // issuer that is not https (or http on this machine) is a validation failure naming itself.
+        if (field('passwordLoginEnabled') === false && passwordLoginLocked()) {
+          return problem(route, DEMO_PROBLEMS.passwordLoginLocked);
+        }
+        if (typeof field('oidcIssuerUri') === 'string' && !usableIssuer(field('oidcIssuerUri') as string)) {
+          return problem(route, DEMO_PROBLEMS.invalidIssuerUri);
+        }
+        applySettingsPatch(typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {});
+        return json(route, 200, settingsResponse());
+      }
     }
 
     // ---- invitations ----------------------------------------------------------------------

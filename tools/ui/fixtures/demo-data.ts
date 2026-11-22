@@ -186,7 +186,83 @@ export const DEMO_PROBLEMS = {
   internal: { type: 'https://budgetowl.app/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
   staleVersion: { type: 'https://budgetowl.app/errors/stale-version', title: 'Somebody else changed this first', status: 409, code: 'stale-version', correlationId: 'demo0000000000000000000000000009' },
   accountNotEmpty: { type: 'https://budgetowl.app/errors/account-not-empty', title: 'This account has transactions', status: 409, code: 'account-not-empty', correlationId: 'demo0000000000000000000000000010' },
+  notInstanceAdmin: { type: 'https://budgetowl.app/errors/not-instance-admin', title: 'Not the instance administrator', status: 403, code: 'not-instance-admin', correlationId: 'demo0000000000000000000000000011' },
+  passwordLoginLocked: { type: 'https://budgetowl.app/errors/password-login-locked', title: 'Password sign-in cannot be turned off yet', status: 409, code: 'password-login-locked', correlationId: 'demo0000000000000000000000000012' },
+  invalidIssuerUri: { type: 'https://budgetowl.app/errors/validation-failed', title: 'Validation failed', status: 400, code: 'validation-failed', params: { field: 'oidcIssuerUri' }, correlationId: 'demo0000000000000000000000000013' },
 } as const;
+
+/**
+ * The operator's instance, as `GET /api/admin/instance` answers it (docs/features/admin-console.md).
+ *
+ * **Not one figure of anybody's money is here, and there must never be** (ADR-0026). The count is
+ * of accounts — people who can sign in — which is why it is derived from DEMO_ADMIN_ACCOUNTS
+ * rather than being a number invented beside them.
+ */
+export const DEMO_INSTANCE = {
+  version: '0.1.0',
+  setupCompletedAt: '2026-06-01T08:55:00Z',
+  administratorId: DEMO_USER.id,
+  administratorEmail: DEMO_USER.email,
+  administratorName: DEMO_USER.displayName,
+  accountCount: 4,
+} as const;
+
+/**
+ * How this instance lets people sign in: `GET /api/admin/settings`, in its default state.
+ *
+ * **There is no client secret field, because the response has none** — not masked, absent
+ * (`AdminResponses`). `oidcClientSecretSet` is the only thing said about one, and a fixture
+ * carrying a secret-shaped string would be the first place in this repository to put one on a
+ * screen.
+ *
+ * `passwordLoginLocked` is deliberately NOT stored here: the mock derives it the way the server
+ * does — no provider, or no `OWNER` has signed in through it (`AdminService`) — so no spec can set
+ * up an instance whose lock state contradicts its own configuration.
+ */
+export const DEMO_INSTANCE_SETTINGS = {
+  registrationOpen: false,
+  passwordLoginEnabled: true,
+  oidcEnabled: false,
+  oidcIssuerUri: null,
+  oidcClientId: null,
+  oidcClientSecretSet: false,
+  oidcProvisioningEnabled: false,
+  oidcOwnerLoginAt: null,
+  updatedAt: '2026-06-01T08:55:00Z',
+  version: 3,
+} as const;
+
+/**
+ * The same instance with a provider configured and an `OWNER`'s sign-in through it on record.
+ *
+ * The only state in which password sign-in can be turned off at all, so it is the only one that
+ * can show that switch, its recovery warning, and the provider's own fields.
+ */
+export const DEMO_INSTANCE_SETTINGS_OIDC = {
+  ...DEMO_INSTANCE_SETTINGS,
+  oidcEnabled: true,
+  oidcIssuerUri: 'https://id.example.test/realms/household',
+  oidcClientId: 'budget-owl',
+  oidcClientSecretSet: true,
+  oidcOwnerLoginAt: '2026-11-18T19:12:00Z',
+  updatedAt: '2026-11-18T19:30:00Z',
+  version: 7,
+} as const;
+
+/**
+ * Who can sign in to this instance: `GET /api/admin/users`.
+ *
+ * Operator data, not household data — no balance, no household role, and no password hash to have
+ * one. Four accounts rather than one, because the list has to show the `Administrator` tag on
+ * exactly one row (ADR-0029), the reader's own row, a `DISABLED` status, and a name and address
+ * long enough to find out what a row does at phone width.
+ */
+export const DEMO_ADMIN_ACCOUNTS = [
+  { id: DEMO_USER.id, email: DEMO_USER.email, displayName: DEMO_USER.displayName, status: 'ACTIVE', instanceAdmin: true, createdAt: '2026-06-01T08:55:00Z' },
+  { id: DEMO_MEMBERS[1].userId, email: DEMO_MEMBERS[1].email, displayName: DEMO_MEMBERS[1].displayName, status: 'ACTIVE', instanceAdmin: false, createdAt: '2026-06-03T18:28:00Z' },
+  { id: DEMO_MEMBERS[2].userId, email: DEMO_MEMBERS[2].email, displayName: DEMO_MEMBERS[2].displayName, status: 'ACTIVE', instanceAdmin: false, createdAt: '2026-07-12T11:58:00Z' },
+  { id: '99999999-9999-4999-8999-999999999999', email: 'riley.fitzgerald-okonkwo@example.test', displayName: 'Riley Fitzgerald-Okonkwo', status: 'DISABLED', instanceAdmin: false, createdAt: '2026-09-28T07:40:00Z' },
+] as const;
 
 /**
  * The accounts, in the shape `AccountResponse` really sends (docs/features/accounts.md).

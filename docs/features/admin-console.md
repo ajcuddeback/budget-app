@@ -284,3 +284,10 @@ As of the frontend half of slice 9:
   service (the secret goes in a `PATCH` body and never into a URL or a query parameter).
 - `app.spec.ts` and `auth.guards.spec.ts` — the masthead link is absent for a household `OWNER` who
   is not the administrator, and the guard sends them home rather than to sign-in.
+- `tools/ui/specs/app/admin.spec.ts` — the screen driven in a real browser, every state captured in
+  both viewports and both themes (`tools/ui-check.sh`). It covers what a unit test cannot see: that
+  the secret field renders nothing at all, that the lockout reads as an explanation rather than a
+  broken control, that the registration consequence is a block in the flow rather than a tooltip,
+  and that the conflict notice names fields without rendering their values. The admin routes are
+  served from `tools/ui/fixtures/demo-data.ts` through `helpers/mock-api.ts`, which derives
+  `passwordLoginLocked` the way the server does so no spec can describe an impossible instance.
