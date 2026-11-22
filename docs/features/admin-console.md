@@ -57,8 +57,13 @@ somebody's rent, and a `VIEWER` who becomes administrator should gain no new vie
 ### The OIDC client secret is write-only
 
 It can be set and it can be replaced. It is **never** returned, in any response, to anybody —
-including the administrator who typed it. The console reports _whether_ a secret is configured
-and when it last changed, never what it is.
+including the administrator who typed it. The console reports _whether_ a secret is configured,
+and nothing else about it.
+
+It does **not** say when the secret last changed, though this line used to promise that: there is
+no `oidc_client_secret_updated_at`, only an `updated_at` for the whole row, which moves when
+anything on it moves. Either the column lands or the promise goes; the promise has gone, because a
+doc that describes a field nobody built is how the next reader loses an afternoon.
 
 A secret that is read back is a secret that lands in a browser cache, a screenshot, an HTTP log
 and a bug report. There is no operational need: an administrator who cannot remember it replaces
@@ -86,8 +91,11 @@ password login and reports what it changed. It is the escape hatch for a provide
 its endpoints, a certificate that expired, or a container restored from a backup with stale
 configuration — the cases where the browser route is exactly what is unavailable.
 
-It is documented in the user guide and in `deploy/`, because a recovery path nobody can find at
-11pm is not a recovery path.
+It is `deploy/restore-password-login.sh`, documented in `deploy/README.md` and under "things that
+commonly go wrong" in `userguide/installing.md`, because a recovery path nobody can find at 11pm is
+not a recovery path. It shipped in the backend half of this slice with its name appearing nowhere
+outside its own file, which is the same as not having it; a security review caught that the doc you
+are reading already claimed otherwise.
 
 ### Every change is audited
 
@@ -179,9 +187,21 @@ per block, every colour, space and radius a token.
 
 - **Administrator-only, enforced in the service**, not by hiding the link. The nav hides it; the
   API refuses it.
-- **The OIDC client secret is never in a response, a log line, or a `toString`.** A disclosure
-  test captures the log at `INFO` and `DEBUG` across the whole journey, as `CredentialDisclosureIT`
-  does — a redacted `toString` is not a logging control.
+- **The OIDC client secret is never in a response, and never in a log line at `INFO` or
+  `DEBUG`.** `AdminDisclosureIT` captures the log across the whole journey, as
+  `CredentialDisclosureIT` does — a redacted `toString` is not a logging control.
+
+  The qualifier is load-bearing and the unqualified version was wrong. `oidc_client_secret` is a
+  mapped column on a managed entity, so Hibernate's own `EntityPrinter` would print it at
+  `org.hibernate.orm.core` DEBUG, and the settings row is read on **every login attempt**. What
+  stops that is the level pinned for that logger in `application.yml`, and because the disclosure
+  test raises the *root* logger it cannot detect the pin being removed. At `TRACE` the secret is
+  bound as a JDBC parameter, which is documented as a deliberate act. It is also stored in
+  plaintext and therefore sits in every database backup — acceptable under ADR-0026, where the
+  operator owns the box, but not the same claim as "never in a log".
+
+  Nothing structural protects this one the way `PasswordService` detaching the credential protects
+  the password hash. That asymmetry is known and not yet closed.
 - **No financial data on any route here**, which is also what stops this becoming the one screen
   that ignores household scoping.
 - Changing `registration_open` to true opens the instance to anyone who can reach it. The console
@@ -202,11 +222,28 @@ per block, every colour, space and radius a token.
 
 As of the frontend half of slice 9:
 
-- **The recovery command exists but is not in the user guide.** `deploy/restore-password-login.sh`
-  is the path the security model requires, and the console names it by filename at the moment it
-  matters — when somebody is about to hide password sign-in. Nothing in `userguide/` mentions it
-  yet, and "documented" in the security model means documented where an operator will look at
-  11pm, not only in a shell script's own header.
+- **The schema does not require a client secret, so SQL can still break the only login route.**
+  `ck_instance_settings_oidc_configured` demands a non-blank issuer and client id when OIDC is on,
+  and says nothing about the secret. The service refuses a missing one, so the edge holds — but
+  V8's own argument is against leaving it there: the database is the half that cannot be bypassed
+  by adding a caller. `UPDATE instance_settings SET oidc_client_secret = NULL` is accepted today
+  and leaves no working route when password login is hidden. **Not fixed, because the obvious
+  constraint forbids something legitimate**: a public OIDC client using PKCE has no secret at all.
+  The invariant wants to be "a secret, or PKCE declared", and migrations here are append-only, so
+  it is worth deciding before writing rather than after.
+- **OIDC login is not implemented**, which is why the lockout can only be reached in tests by
+  setting `oidc_owner_login_at` with SQL. `InstanceSettings.recordOwnerOidcLoginAt` has no caller
+  in `src/main`. Fail-safe today, with two consequences to pick up when the login path lands:
+  `/api/setup/status` already advertises `oidcEnabled` **publicly** for a route that does not
+  exist, and writing `oidcOwnerLoginAt` through the now-versioned entity will contend with admin
+  `PATCH`es — turning a *user login* into a `409`. That write wants its own conditional `UPDATE`,
+  the way `claimFirstUserSetup` does.
+- **`oidcIssuerUri` is 500 characters of arbitrary text at the API edge.** No scheme or URI check,
+  and the three `oidc_*` columns are unbounded `text` while V8 bounded every other
+  operator-supplied text column. Latent rather than live: the value is echoed to the console and
+  will eventually be fetched for discovery (admin-triggered SSRF) and possibly rendered as a link.
+  The Angular form validates it; the API does not. Worth a `@Pattern` and matching length CHECKs
+  when the OIDC client lands.
 - **A client secret can be replaced but not removed** from the console. Clearing one is a request
   the API accepts (a present-and-blank `oidcClientSecret`) and the form has no way to express,
   because an empty input has to mean "keep it" for the field to be safe to render at all. Clearing

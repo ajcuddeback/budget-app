@@ -66,6 +66,14 @@ Budget Owl on a machine with no identity provider, no internet access and no acc
   administrative command that re-enables password login must exist and be documented. This is
   the escape hatch when a provider changes its endpoints, a certificate expires, or a container
   is restored from a backup with stale configuration.
+
+  It is `deploy/restore-password-login.sh`, described in `deploy/README.md` and in the install
+  guide's "things that commonly go wrong", which is where an operator looks when they cannot sign
+  in. **"And be documented" is half the requirement**: the command shipped in slice 9 with its
+  name appearing nowhere but inside its own file, which is the same as not having it.
+  `SchemaConstraintsIT.acceptsTheRecoveryUpdateThatDeployRestorePasswordLoginRuns` holds the other
+  half — the statement it runs is one the constraints accept. Nobody exercises a recovery path
+  until they need it, and that is the worst moment to find out it was wrong.
 - **No auto-join.** An OIDC login may provision a *user* if the admin allows it, but never grants
   membership of a household (ADR-0017). Household access comes from an invitation, always.
   Otherwise anyone in the provider's directory would land inside someone's finances.
@@ -124,19 +132,32 @@ accountRepository.findByIdAndHouseholdId(accountId, request.householdId());
 accountRepository.findByIdAndHouseholdId(accountId, membership.householdId());
 ```
 
-**Two axes, both enforced in the service layer:**
+**Three axes, all enforced in the service layer:**
 
 1. *Which household* — resolved from the authenticated user's membership, never from the request.
-2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, delete
-   the household, **or reach the admin console**. Every write endpoint needs a test proving a
-   `VIEWER` gets `403`; every admin endpoint needs one proving a `MEMBER` does.
+2. *What may this role do* — `VIEWER` reads only; only `OWNER` may invite, remove members, or
+   delete the household. Every write endpoint needs a test proving a `VIEWER` gets `403`.
+3. *Is this the instance administrator* — a separate axis entirely, read from
+   `users.is_instance_admin`, not from any household role. See below.
 
 **An instance holds exactly one household (ADR-0026), and its `OWNER` is the instance operator.**
-That is who the admin console belongs to — there is no separate instance-admin role. Read the
-consequences of that ADR before relying on axis 1 for anything: with one household there is no
-second household to leak to, so *role enforcement and authentication now carry the weight that
-household scoping used to share*. Keep writing the scoped query anyway — the shape is what makes
-the dangerous call unwritable, and it is what a managed deployment would need.
+Read the consequences of that ADR before relying on axis 1 for anything: with one household there
+is no second household to leak to, so *role enforcement and authentication now carry the weight
+that household scoping used to share*. Keep writing the scoped query anyway — the shape is what
+makes the dangerous call unwritable, and it is what a managed deployment would need.
+
+**The admin console is on a third axis, and `OWNER` is not it.** This section used to say the
+console belonged to the household `OWNER` and that "there is no separate instance-admin role".
+ADR-0029 settled otherwise, and the shipped code follows ADR-0029: `/api/admin/**` is guarded by
+`AdministratorAccess.requireAdministrator`, which reads `users.is_instance_admin` from the database
+on every request and refuses everybody else with `403 not-instance-admin` — a household `OWNER`
+exactly like a `VIEWER`. Being trusted with the household's money is not being trusted with the
+server's login configuration, and on a single-household instance those two happen to be the same
+person only by default, not by rule. `AdminIT` proves it with a *second* `OWNER`, because
+the seeded one is also the administrator and would pass for the wrong reason.
+
+So: **every admin endpoint needs a test proving a household `OWNER` who is not the administrator
+gets `403`.** A test that only refuses a `MEMBER` proves nothing about the axis.
 
 - Never derive the acting user from a request body, query parameter, or path variable. It comes
   from the `SecurityContext`, always.
@@ -144,10 +165,11 @@ the dangerous call unwritable, and it is what a managed deployment would need.
   both return `404`. Returning `403` for "exists but not yours" tells an attacker the row exists.
 - Authorization lives in the service layer. Method security (`@PreAuthorize`) is fine as an
   additional gate, not as the only one.
-- Every new endpoint needs a test proving a lower-privileged role is refused: a `VIEWER` gets
-  `403` on any write, a `MEMBER` gets `403` on anything administrative. Since ADR-0026 this is the
-  single highest-value authorization test in the codebase — it replaces the cross-household test,
-  which no longer has a second household to prove anything against. See
+- Every new endpoint needs a test proving a lower-privileged caller is refused: a `VIEWER` gets
+  `403` on any write, and on `/api/admin/**` a household `OWNER` who is not the instance
+  administrator gets `403`. Since ADR-0026 this is the single highest-value authorization test in
+  the codebase — it replaces the cross-household test, which no longer has a second household to
+  prove anything against. See
   `docs/guides/testing-style.md`.
 
 ### The members of a household can see each other's finances
