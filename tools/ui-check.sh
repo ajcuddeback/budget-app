@@ -46,18 +46,48 @@ if [ "$SELFCHECK" -eq 1 ]; then
 fi
 
 # ------------------------------------------------------------------- serving
+#
+# The server runs in its OWN PROCESS GROUP and the whole group is killed on the way out.
+#
+# It used to be `( cd frontend && npm start ) &` with `kill "$SERVER_PID"`, and that leaks: $! is
+# the subshell, npm spawns `sh -c ng serve`, which spawns `ng serve`. SIGTERM to the subshell
+# leaves both grandchildren running, reparented to init, still holding port 4200 — and nothing
+# says so. The next run then finds something answering on 4200 and uses it.
+#
+# That failed in both directions on 2026-11-22. A leaked server from an earlier run failed
+# verify.sh's live UI checks, which cost an investigation. The other direction is worse and
+# silent: a stale server serving an OLD BUILD answers every check, and the run goes green against
+# code nobody is looking at. Non-negotiable #8 exists because a green suite does not prove the
+# page renders; a green suite against the wrong build does not prove anything at all.
 SERVER_PID=""
-cleanup() { [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null; }
+cleanup() {
+  # Negative PID is the process GROUP. setsid below makes the child a group leader, so its pid
+  # and the group id are the same number, and this reaches ng serve as well as npm.
+  [ -n "$SERVER_PID" ] && kill -- "-$SERVER_PID" 2>/dev/null
+}
 trap cleanup EXIT
 
 if [ "$SERVE" -eq 1 ]; then
   if [ ! -f "$ROOT/frontend/package.json" ]; then
     echo "--serve needs frontend/ to exist. It does not yet." >&2; exit 1
   fi
+  # Asked to start a server, and something is already answering. Do NOT quietly use it: whatever
+  # it is serving was built by somebody else, from some other commit, and a pass or a fail against
+  # it means nothing. Say what it is and refuse.
+  if curl -fsS --max-time 2 "$URL" >/dev/null 2>&1; then
+    echo "--serve was asked for, but something is already serving $URL." >&2
+    echo "That is usually a dev server leaked by an earlier run. This run would test ITS build," >&2
+    echo "not yours, so it is refused. Stop it and try again:" >&2
+    echo >&2
+    echo "  pkill -f 'ng serve'" >&2
+    echo >&2
+    echo "Or point this run at it deliberately: tools/ui-check.sh --url $URL" >&2
+    exit 1
+  fi
   echo "Starting the Angular dev server..."
   # The log lives beside the artifacts directory, which does not exist until the run creates it.
   mkdir -p "$UI_OUT_DIR"
-  (cd "$ROOT/frontend" && npm start >"$UI_OUT_DIR/../dev-server.log" 2>&1) &
+  setsid sh -c "cd '$ROOT/frontend' && npm start" >"$UI_OUT_DIR/../dev-server.log" 2>&1 &
   SERVER_PID=$!
 fi
 
