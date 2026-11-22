@@ -21,6 +21,8 @@ account to seeing your first month's budget.
 | [See who is in your household](features/manage-members.md)                      | What Owner, Member and Viewer mean; change a role, remove someone, leave                                         |
 | [Your signed-in devices](features/your-devices.md)                              | See where you are signed in, and sign a device out                                                               |
 | [Your display currency and language](features/your-display-settings.md)         | Choose the currency and language you see                                                                         |
+| [See who can sign in to your server](features/see-who-can-sign-in.md)           | The Admin screen: what this server is running, who looks after it, and who has an account                        |
+| [Choose how people sign in](features/choose-how-people-sign-in.md)              | Open registration, email and password sign-in, and using your own sign-in provider                               |
 | _Using the mobile app_                                                          | Not written yet                                                                                                  |
 | [Add an account](features/add-an-account.md)                                    | Tell Budget Owl where your money sits, and what an opening balance is                                            |
 | [Archive or delete an account](features/archive-or-delete-an-account.md)        | Put away an account you have closed, bring it back, or remove one for good                                       |

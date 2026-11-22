@@ -76,6 +76,10 @@ Full steps: [Invite someone to your household](features/invite-someone.md). What
 invite goes through: [Join a household](features/join-a-household.md). Changing roles, removing
 people, and leaving: [See who is in your household](features/manage-members.md).
 
+An invitation is the only way in on a new server — nobody can create their own account unless you
+let them. If you run the server, you can change that, and choose how people sign in, from the
+**Admin** screen: [Choose how people sign in](features/choose-how-people-sign-in.md).
+
 ## 2. Add your accounts
 
 Tell Budget Owl where your money sits. Do this once for each account, and everything you record

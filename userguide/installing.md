@@ -15,14 +15,14 @@ be familiar; if you have not, the steps below are meant to be followable anyway.
 
 ## 1. What you need
 
-*Awaiting slice 1.*
+_Awaiting slice 1._
 
 Will cover: Docker and Docker Compose, roughly how much disk and memory, and what to decide
 before starting (where data lives, whether it will be reachable outside your network).
 
 ## 2. Get it running
 
-*Awaiting slice 1.*
+_Awaiting slice 1._
 
 Will cover: the `docker-compose.yml`, the handful of environment variables that matter, setting a
 database password, and starting it for the first time.
@@ -53,14 +53,14 @@ walkthrough is in [Create your account and household](features/create-your-accou
 
 ## 4. Reach it from your phone
 
-*Awaiting slice 15.*
+_Awaiting slice 15._
 
 Will cover: pointing the mobile app at your server, what to do about certificates on a local
 network, and reaching it from outside your house safely.
 
 ## 5. Back it up
 
-*Awaiting slice 1.*
+_Awaiting slice 1._
 
 Will cover: what to back up, how to restore, and testing the restore — because a backup nobody
 has restored is a hope, not a backup. This matters more here than in most apps: nobody else has a
@@ -68,14 +68,32 @@ copy of your data.
 
 ## 5b. Run the instance
 
-*Awaiting slice 9.*
+Budget Owl keeps one screen for the person who runs the server: **Admin**, at the end of the row
+of links across the top. It appears only for the account that completed **Set up Budget Owl**, and
+it covers three things:
 
-Will cover: the admin console — checking the instance is healthy, inviting the rest of your
-household, watching the sync queue, and where the logs are when something looks wrong.
+- **This instance** — the version running, when the server was set up, who looks after it, and how
+  many accounts exist.
+- **Signing in** — whether anyone may create an account, whether people sign in with an email
+  address and a password, and whether they can sign in through a provider you already run.
+- **Accounts** — everybody who can sign in. Read-only: suspending or removing an account is not
+  something this screen does.
+
+Nothing else an operator does lives in the app. Backups, upgrades, logs and the database are all
+done on the machine, because the machine is yours.
+
+Full steps: [See who can sign in to your server](features/see-who-can-sign-in.md) and
+[Choose how people sign in](features/choose-how-people-sign-in.md).
+
+**Two things on that screen surprise people, so they are worth knowing before you meet them.**
+Email and password sign-in cannot be switched off until somebody has actually signed in through
+your own provider — proving the new way in before hiding the old one is what stops you being
+locked out. And replacing the client secret for that provider switches email and password sign-in
+back on, because a credential nobody has used yet is a credential nobody has proved.
 
 ## 6. Keep it up to date
 
-*Awaiting slice 1.*
+_Awaiting slice 1._
 
 Will cover: pulling a new version, what happens to the database, and what to do if an upgrade
 goes wrong.
@@ -103,4 +121,4 @@ says so and changes nothing.
 
 ### Everything else
 
-*To be written from real installs, not imagined.*
+_To be written from real installs, not imagined._
