@@ -568,7 +568,7 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         categoryId: field('categoryId') ?? null,
         categoryName: null,
         categoryParentName: null,
-        amountVaries: body?.['amountVaries'] === true,
+        amountVaries: field('amountVaries') === true,
         tolerance: field('tolerance') ?? null,
         // A write answers with no occurrences: which month the client is looking at is the
         // client's question, and the list endpoint is where it asks.

@@ -198,6 +198,17 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   section "UI validation harness"
   if [ ! -d tools/ui/node_modules ]; then
     skip "UI harness" "dependencies not installed (cd tools/ui && npm ci)"
+  else
+    # The harness has had a tsconfig since it was written and nothing that ran it, so a type
+    # error sat in mock-api.ts across several slices — found by an agent reading the file, not by
+    # the gate. The harness is what checks the app; it is worth checking too. Its own failure is
+    # recorded but does not stop the checks below: a type error in one mock route should not
+    # hide a real regression in the page.
+    run "harness typecheck" bash -c "cd tools/ui && npx tsc -p tsconfig.json --noEmit"
+  fi
+
+  if [ ! -d tools/ui/node_modules ]; then
+    : # already reported above
   elif [ ! -f frontend/package.json ]; then
     # No app yet: at least prove the harness itself still works.
     run "harness self-check (no app yet)" tools/ui-check.sh --selfcheck
