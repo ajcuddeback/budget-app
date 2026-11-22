@@ -43,6 +43,13 @@
              11pm is not a recovery path (admin-console.md). -->
         <div class="alert" role="status">
           <p>{{ 'admin.passwordOffRecovery' | t }}</p>
+          <!-- The path gets a line of its own because it has hyphens in it. Inside the sentence
+               it wrapped as "deploy/restore-" / "password-login.sh" at phone width, and a reader
+               cannot tell a hyphen in the filename from one the line break added. This is the
+               command somebody types at 11pm when they cannot sign in; it is the one string on
+               the screen that has to be unambiguous. -->
+          <p class="command">{{ 'admin.passwordOffRecoveryCommand' | t }}</p>
+          <p>{{ 'admin.passwordOffRecoveryAfter' | t }}</p>
         </div>
       }
     } @else {

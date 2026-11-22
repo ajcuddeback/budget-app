@@ -37,3 +37,16 @@
   font-size: 0.9375rem;
   font-weight: 600;
 }
+
+/* A command to be typed, not prose to be read. No monospace token exists yet (design/README.md
+   records the type-scale gap), so this does not invent a font family — it gives the path its own
+   line and refuses to break it, which is the part that was actually wrong. The scroller is
+   insurance: at 412px the string is about 250px wide, so it is not expected to be used. */
+.alert p.command {
+  white-space: nowrap;
+  overflow-x: auto;
+  /* 600, not a var: there is no weight token. --weight-bold does not exist, and a CSS variable
+     that does not exist fails silently to the inherited value — it lints clean and does nothing.
+     The rest of this file uses the literal for the same reason. */
+  font-weight: 600;
+}
