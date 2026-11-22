@@ -1,7 +1,7 @@
 # Getting started
 
-> **Status: partly written.** Steps 1, 1b, 2, 6 and 7 below are written from the running app. The
-> rest are still outlines, and each gets written, with real screenshots, once somebody has run
+> **Status: partly written.** Steps 1 to 7 below are written from the running app. Steps 8, 9 and
+> 10 are still outlines, and each gets written, with real screenshots, once somebody has run
 > `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
 > order.
 >
@@ -108,26 +108,120 @@ dollars to euros needs a rate and a date, and the answer would be a guess printe
 Full steps: [Add an account](features/add-an-account.md). Closing an account later:
 [Archive or delete an account](features/archive-or-delete-an-account.md).
 
-## 3. Set up your categories
+## 3. Make the categories yours
 
-_Awaiting slice 4._
+A category is how you say what money was **for**. You already have about twenty of them — you
+don't have to design a list before you start, and this step is five minutes of tidying rather than
+homework.
 
-Will cover: the categories you start with, renaming them to match how you actually think about
-your money, and adding your own.
+1. Select **Categories** in the menu across the top.
+
+   They're grouped under **Income** and **Spending**, with sub-categories indented under their
+   parent.
+
+   ![The Categories screen: Income and Spending groups, with sub-categories indented under their parent, and Add a category at the top right.](images/organise-your-categories--tree.png)
+
+2. Select **Edit** on anything whose name isn't how you'd say it, and change it.
+
+3. Select **Archive** on the ones you'd never use.
+
+   They drop out of the list and out of the category box when you record a transaction. Your old
+   transactions still show them, so last year's spending still reads correctly.
+
+4. Select **Add a category** for anything missing, or **Add a sub-category** on the one it belongs
+   under.
+
+**Choose the Kind carefully — it's the one thing you can't change.** **Income** for money
+arriving, **Spending** for money going out. Changing it later would change the meaning of
+everything already filed under it, so Budget Owl asks now rather than arguing with you later.
+
+**Two levels, no more.** **Bills → Utilities** works. **Bills → Utilities → Water** doesn't. If
+you find yourself wanting a third level, that's usually a sign the thing you want is a note on the
+transaction, not another category.
+
+Don't spend long here. You can add a category at the moment you need it, and every transaction can
+sit as **Needs a category** until you decide.
+
+Full steps: [Organise your categories](features/organise-your-categories.md).
 
 ## 4. Record your first transactions
 
-_Awaiting slice 5._
+This is the thing you'll do most. Everything else in Budget Owl is worked out from it, and there's
+nothing to tidy up first.
 
-Will cover: adding an expense, adding income, categorising as you go, and how your account
-balance updates.
+1. Select **Transactions** in the menu across the top — it's also where Budget Owl starts when you
+   sign in.
+
+2. Select **Record a transaction**.
+
+   ![The Transactions screen: what has happened to your money, newest first, with the Record a transaction button circled.](images/record-a-transaction--ledger.png)
+
+3. Check the **Account** and the **Date**.
+
+   The date starts on today, which is right most of the time.
+
+4. Choose **Money out** or **Money in**, then enter the **Amount**.
+
+   Just the number — `18.40`. **You never type a minus sign**; that choice is what makes it count
+   the right way.
+
+5. Fill in **Who it was with**, choose a **Category**, and select **Save**.
+
+   Both are optional. After a couple of letters, Budget Owl suggests names you've used before.
+
+   Your transaction appears at the top of the list, and the balance on the **Accounts** screen has
+   already changed to match.
+
+**Your balances come from what you record.** You give an account its opening balance once, and
+from then on every balance is worked out from your transactions. You never type a balance in to
+correct one — you record the thing you missed.
+
+**It's fine to leave the category blank.** Getting it written down matters more than getting it
+filed. Transactions without one are marked **Needs a category**, and the button of the same name
+turns the list into a to-do list for later.
+
+Full steps: [Record a transaction](features/record-a-transaction.md) and
+[Give a transaction a category](features/give-a-transaction-a-category.md).
 
 ## 5. Give your spending an envelope
 
-_Awaiting slice 6._
+An envelope is money set aside for one kind of spending this month — groceries, eating out, fuel.
+It's for the spending that changes week to week; something owed on a date, like rent, is a bill
+instead (step 6).
 
-Will cover: setting an amount for groceries, logging what you spend against it as you go, and
-reading the one number that matters — what is left. Works whether or not you ever connect a bank.
+1. Select **Envelopes** in the menu across the top, then select **Add an envelope**.
+
+2. Enter a **Name**, check the **Month**, and enter the **Amount** you're setting aside.
+
+   A **Category** is optional — it's there so your envelopes and your transactions use the same
+   words.
+
+3. Select **Save**.
+
+   ![The Envelopes screen for August 2026: Set aside $700.00, Spent $386.50, Left $313.50, and each envelope leading with what is left.](images/set-up-an-envelope--list.png)
+
+4. Select **Log spend** on the envelope as you spend, enter the **Amount**, and select **Log it**.
+
+   The amount is the only thing you have to fill in, and the envelope's **left** figure changes
+   straight away. On a phone the number keypad opens for you.
+
+**The big number is what's left**, not what you've spent. That's the number you can still do
+something about, so it's the one in large type — and an envelope you've gone past shows what
+you're **over**, in a colour you'll notice.
+
+**Keep envelopes narrow.** "Groceries" and "Eating out" are two envelopes, not one. A weekly shop
+and a restaurant are different decisions, and lumping them together hides the thing you set the
+envelope up to see.
+
+**An envelope belongs to one month.** Next month you decide again, which is what lets you compare
+the two.
+
+**Nothing is filed into an envelope automatically.** You can attach a transaction you've already
+recorded, and the log says whether each entry was **Typed** or came **From a transaction** — but
+Budget Owl never guesses the match for you, however obvious it looks.
+
+Full steps: [Set up an envelope](features/set-up-an-envelope.md) and
+[Log spend in an envelope](features/log-spend-in-an-envelope.md).
 
 ## 6. Put in your bills and income
 
