@@ -37,7 +37,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Household management (invites, roles) | Shipped with authentication & households | [authentication-and-households.md](authentication-and-households.md) |
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
-| Admin console (instance operation) | Planned | _not written_ |
+| Admin console (instance operation) | In progress — slice 9 | [admin-console.md](admin-console.md) |
 | Debt plan & debt detail | Planned | _not written_ |
 | Goals | Planned | _not written_ |
 | Reporting & insights | Planned | _not written_ |

@@ -1,0 +1,272 @@
+package com.budgetowl.admin.service;
+
+import com.budgetowl.auth.domain.UserAccount;
+import com.budgetowl.auth.domain.UserSummary;
+import com.budgetowl.auth.persistence.UserAccountRepository;
+import com.budgetowl.common.Change;
+import com.budgetowl.common.ConflictException;
+import com.budgetowl.common.ErrorCode;
+import com.budgetowl.common.ForbiddenException;
+import com.budgetowl.common.InvalidRequestException;
+import com.budgetowl.instance.domain.InstanceSettings;
+import com.budgetowl.instance.persistence.InstanceSettingsRepository;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The instance an operator runs: who may sign in, and how.
+ *
+ * <p><b>Administrator-only, on every method</b> (ADR-0029). That is a different axis from the
+ * household roles that govern money (ADR-0017), so a household {@code OWNER} is refused here
+ * exactly like a {@code VIEWER} — see {@link AdministratorAccess}.
+ *
+ * <p>Three rules are specific to this service:
+ *
+ * <ul>
+ *   <li><b>No financial data leaves it.</b> Not a balance, not a transaction, not a count of them.
+ *       ADR-0026 says the operator can read the database if they choose; this is the reason not to
+ *       build the screen that does it for them.
+ *   <li><b>The OIDC client secret is write-only.</b> It can be set, replaced and cleared, and it is
+ *       never returned, logged or put in a {@code toString} — including to the administrator who
+ *       typed it.
+ *   <li><b>The lockout rule is explained, not merely hit.</b> {@code
+ *       ck_instance_settings_password_login_lockout} refuses to leave an instance with no login
+ *       route; this service answers {@code password-login-locked} so the console can say what has
+ *       to happen first, rather than surfacing a constraint violation as a 500.
+ * </ul>
+ */
+@Service
+public class AdminService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
+    private final AdministratorAccess administrators;
+    private final InstanceSettingsRepository settings;
+    private final UserAccountRepository users;
+    private final String version;
+
+    public AdminService(
+            AdministratorAccess administrators,
+            InstanceSettingsRepository settings,
+            UserAccountRepository users,
+            @Value("${budgetowl.version:unknown}") String version) {
+        this.administrators = administrators;
+        this.settings = settings;
+        this.users = users;
+        this.version = version;
+    }
+
+    /** Version, setup date, who the administrator is, and how many accounts exist. */
+    @Transactional(readOnly = true)
+    public InstanceView instance(UUID actorId) {
+        UserAccount administrator = administrators.requireAdministrator(actorId);
+        InstanceSettings current = require();
+        return new InstanceView(
+                version,
+                current.setupCompletedAt(),
+                administrator.id(),
+                administrator.email(),
+                administrator.displayName(),
+                users.count());
+    }
+
+    @Transactional(readOnly = true)
+    public SettingsView settings(UUID actorId) {
+        administrators.requireAdministrator(actorId);
+        return view(require());
+    }
+
+    /** Accounts that can sign in. <b>No financial data</b>, by construction and on purpose. */
+    @Transactional(readOnly = true)
+    public List<UserSummary> accounts(UUID actorId) {
+        administrators.requireAdministrator(actorId);
+        return users.findAllSummaries();
+    }
+
+    /**
+     * Changes how people sign in.
+     *
+     * @throws ForbiddenException {@code not-instance-admin} for everybody but the administrator
+     * @throws ConflictException {@code stale-version}, or {@code password-login-locked}
+     */
+    @Transactional
+    public SettingsView updateSettings(UUID actorId, SettingsChanges changes) {
+        UserAccount administrator = administrators.requireAdministrator(actorId);
+        InstanceSettings current = require();
+
+        if (current.version() != changes.version()) {
+            throw new ConflictException(
+                    ErrorCode.STALE_VERSION, "the settings changed since they were read");
+        }
+
+        if (changes.registrationOpen() != null) {
+            if (changes.registrationOpen()) {
+                current.openRegistration();
+            } else {
+                current.closeRegistration();
+            }
+        }
+
+        applyOidc(current, changes);
+
+        // LAST, and deliberately: disabling password login is only legal once OIDC is on and an
+        // OWNER has signed in through it, and a single request may be doing both. Applying it
+        // after the OIDC changes means "configure the provider and hide passwords" is judged
+        // against the configuration the request is leaving behind, not the one it arrived with.
+        if (changes.passwordLoginEnabled() != null) {
+            if (changes.passwordLoginEnabled()) {
+                current.enablePasswordLogin();
+            } else {
+                requireAnotherRouteProven(current);
+                current.disablePasswordLogin();
+            }
+        }
+
+        InstanceSettings saved = settings.save(current);
+        // The FIELD NAMES and the actor, never the values — a line carrying an OIDC client secret
+        // would undo the rule this service exists to keep.
+        log.info(
+                "instance settings changed byUserId={} administratorId={} fields={}",
+                actorId,
+                administrator.id(),
+                changedFields(changes));
+        return view(saved);
+    }
+
+    // ------------------------------------------------------------------------------- internals
+
+    /**
+     * Applies the OIDC half.
+     *
+     * <p>{@code configureOidc} takes all three values together because they only mean anything
+     * together, so a change to one of them carries the stored values of the other two through. The
+     * secret is the awkward case: it must be readable <em>here</em> to be re-saved, and nowhere
+     * else, which is what the entity's deliberately unwieldy accessor name is for.
+     */
+    private static void applyOidc(InstanceSettings current, SettingsChanges changes) {
+        boolean turningOff = Boolean.FALSE.equals(changes.oidcEnabled());
+        if (turningOff) {
+            current.disableOidc();
+            return;
+        }
+
+        boolean touchingOidc =
+                changes.oidcIssuerUri() != null
+                        || changes.oidcClientId() != null
+                        || !(changes.oidcClientSecret() instanceof Change.Unchanged<String>)
+                        || Boolean.TRUE.equals(changes.oidcEnabled());
+
+        if (touchingOidc) {
+            String issuer =
+                    changes.oidcIssuerUri() == null
+                            ? current.oidcIssuerUri()
+                            : changes.oidcIssuerUri();
+            String clientId =
+                    changes.oidcClientId() == null
+                            ? current.oidcClientId()
+                            : changes.oidcClientId();
+            String secret =
+                    switch (changes.oidcClientSecret()) {
+                        case Change.Unchanged<String> ignored ->
+                                current.oidcClientSecretForClientConfiguration();
+                        case Change.Cleared<String> ignored -> null;
+                        case Change.SetTo<String> given -> given.value();
+                    };
+            if (issuer == null || clientId == null || secret == null) {
+                // An OIDC configuration that is switched on but incomplete is a broken login
+                // route, and ck_instance_settings_oidc_configured refuses it. Named here so the
+                // administrator is told which field is missing rather than shown a 500.
+                throw new InvalidRequestException(
+                        ErrorCode.VALIDATION_FAILED,
+                        "an OIDC provider needs an issuer, a client id and a client secret",
+                        Map.of("field", missingOidcField(issuer, clientId)));
+            }
+            current.configureOidc(issuer, clientId, secret);
+        }
+
+        if (changes.oidcProvisioningEnabled() != null) {
+            current.allowOidcProvisioning(changes.oidcProvisioningEnabled());
+        }
+    }
+
+    private static String missingOidcField(String issuer, String clientId) {
+        if (issuer == null) {
+            return "oidcIssuerUri";
+        }
+        return clientId == null ? "oidcClientId" : "oidcClientSecret";
+    }
+
+    /**
+     * Refuses to leave the instance with no way in.
+     *
+     * <p>The database says the same thing at {@code COMMIT}. This says it first, and in words: an
+     * administrator who meets the constraint violation learns that something went wrong, and an
+     * administrator who meets this learns that an {@code OWNER} has to sign in through the provider
+     * before the old route can be hidden.
+     */
+    private static void requireAnotherRouteProven(InstanceSettings current) {
+        if (!current.isOidcEnabled() || current.oidcOwnerLoginAt() == null) {
+            throw new ConflictException(
+                    ErrorCode.PASSWORD_LOGIN_LOCKED,
+                    "an owner must complete a sign-in through your provider before password"
+                            + " login can be turned off");
+        }
+    }
+
+    /** Field names only — see the logging note on {@link #updateSettings}. */
+    private static String changedFields(SettingsChanges changes) {
+        List<String> named = new java.util.ArrayList<>();
+        if (changes.registrationOpen() != null) {
+            named.add("registrationOpen");
+        }
+        if (changes.passwordLoginEnabled() != null) {
+            named.add("passwordLoginEnabled");
+        }
+        if (changes.oidcEnabled() != null) {
+            named.add("oidcEnabled");
+        }
+        if (changes.oidcIssuerUri() != null) {
+            named.add("oidcIssuerUri");
+        }
+        if (changes.oidcClientId() != null) {
+            named.add("oidcClientId");
+        }
+        if (!(changes.oidcClientSecret() instanceof Change.Unchanged<String>)) {
+            named.add("oidcClientSecret");
+        }
+        if (changes.oidcProvisioningEnabled() != null) {
+            named.add("oidcProvisioningEnabled");
+        }
+        return String.join(",", named);
+    }
+
+    private static SettingsView view(InstanceSettings current) {
+        return new SettingsView(
+                current.isRegistrationOpen(),
+                current.isPasswordLoginEnabled(),
+                // What the console needs to explain the switch rather than offer one that fails.
+                !current.isOidcEnabled() || current.oidcOwnerLoginAt() == null,
+                current.isOidcEnabled(),
+                current.oidcIssuerUri(),
+                current.oidcClientId(),
+                current.hasOidcClientSecret(),
+                current.isOidcProvisioningEnabled(),
+                current.oidcOwnerLoginAt(),
+                current.updatedAt(),
+                current.version());
+    }
+
+    private InstanceSettings require() {
+        return settings.findCurrent()
+                .orElseThrow(
+                        () ->
+                                new IllegalStateException(
+                                        "instance_settings has no row; V6 inserts it"));
+    }
+}

@@ -30,6 +30,17 @@ public enum ErrorCode {
     CSRF_TOKEN_REQUIRED("csrf-token-required", 403, "CSRF token missing or invalid"),
     CURRENT_PASSWORD_INCORRECT("current-password-incorrect", 403, "Current password incorrect"),
 
+    /**
+     * The caller is not the instance administrator (ADR-0029).
+     *
+     * <p>A {@code 403} rather than a {@code 404}, unlike another household's row: the instance's
+     * existence is not a secret from the people signed in to it, and "you are not the
+     * administrator" is a different fact from "this does not exist". It is also not {@link
+     * #OWNER_ONLY} — administrator governs the instance, {@code OWNER} governs the money, and an
+     * {@code OWNER} is refused here like anyone else.
+     */
+    NOT_INSTANCE_ADMIN("not-instance-admin", 403, "Only the instance administrator may do this"),
+
     NOT_FOUND("not-found", 404, "Not found"),
     /** Expired, revoked, already used, or never existed — one answer for all four. */
     INVITATION_UNUSABLE("invitation-unusable", 404, "This invitation cannot be used"),
@@ -127,6 +138,16 @@ public enum ErrorCode {
      * would notice — a same-currency pair whose two halves no longer agree.
      */
     TRANSFER_LEG_NOT_SEPARATE("transfer-leg-not-separate", 409, "This is one half of a transfer"),
+
+    /**
+     * Password login cannot be turned off yet, because no {@code OWNER} has proved the other route
+     * works (security-model.md, {@code ck_instance_settings_password_login_lockout}).
+     *
+     * <p>"Disable password login, then discover the OIDC config is wrong" locks the operator out of
+     * their own financial records on their own hardware, with no support desk to call. The database
+     * refuses it; this code is how the console explains it instead of showing a 500.
+     */
+    PASSWORD_LOGIN_LOCKED("password-login-locked", 409, "Password login cannot be turned off yet"),
 
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),

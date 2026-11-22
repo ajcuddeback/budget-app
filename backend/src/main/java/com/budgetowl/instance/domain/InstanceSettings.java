@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Objects;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -73,6 +74,17 @@ public class InstanceSettings {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false, insertable = false)
     private Instant updatedAt;
+
+    /**
+     * Optimistic lock for the admin console (V16).
+     *
+     * <p>One row and, by ADR-0029, one administrator — which is the reason to have this rather than
+     * a reason to skip it: the lost update this prevents is the same person in two tabs, and the
+     * field being lost is how they sign in.
+     */
+    @Version
+    @Column(name = "version", nullable = false, insertable = false)
+    private long version;
 
     protected InstanceSettings() {
         // for JPA
@@ -190,6 +202,25 @@ public class InstanceSettings {
     /** An OIDC login may provision a user; it never grants household membership. */
     public void allowOidcProvisioning(boolean allowed) {
         this.oidcProvisioningEnabled = allowed;
+    }
+
+    public Instant updatedAt() {
+        return updatedAt;
+    }
+
+    public long version() {
+        return version;
+    }
+
+    /**
+     * Whether a client secret is configured — <b>not what it is</b>.
+     *
+     * <p>This is the only thing any surface is allowed to know about it. An administrator who
+     * cannot remember the secret replaces it, which is also what they should do if they are unsure
+     * whether it leaked.
+     */
+    public boolean hasOidcClientSecret() {
+        return oidcClientSecret != null && !oidcClientSecret.isBlank();
     }
 
     /**

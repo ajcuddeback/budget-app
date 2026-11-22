@@ -65,6 +65,12 @@ public abstract class ApiTestBase extends PostgresTestBase {
                          spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE
                 """);
+        // instance_settings is a singleton row that V6 inserts, so it survives the TRUNCATE above
+        // and has to be put back by hand. The three oidc_* TEXT columns were missing from this
+        // list: a test that configured a provider left its issuer, client id and CLIENT SECRET in
+        // the database for every test after it. That made "this instance has no OIDC configured"
+        // depend on the order the suite happened to run in, and left a credential sitting in the
+        // database for the rest of the run. Found while writing AdminIT.
         jdbc.update(
                 """
                 UPDATE instance_settings
@@ -72,8 +78,12 @@ public abstract class ApiTestBase extends PostgresTestBase {
                        registration_open = false,
                        password_login_enabled = true,
                        oidc_enabled = false,
+                       oidc_issuer_uri = NULL,
+                       oidc_client_id = NULL,
+                       oidc_client_secret = NULL,
                        oidc_provisioning_enabled = false,
-                       oidc_owner_login_at = NULL
+                       oidc_owner_login_at = NULL,
+                       version = 0
                  WHERE id = 1
                 """);
     }

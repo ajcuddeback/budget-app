@@ -2,6 +2,7 @@ package com.budgetowl.auth.persistence;
 
 import com.budgetowl.auth.domain.UserAccount;
 import com.budgetowl.auth.domain.UserSummary;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Query;
@@ -70,4 +71,25 @@ public interface UserAccountRepository extends Repository<UserAccount, UUID> {
             where u.id = :id
             """)
     Optional<UserSummary> findSummaryById(@Param("id") UUID id);
+
+    /**
+     * Every account that can sign in, for the admin console.
+     *
+     * <p><b>A projection, not the entity.</b> {@code UserSummary} has no field for a password hash,
+     * so one cannot escape through here however the call site is later changed — which is the point
+     * the class makes about reading the class list rather than an annotation.
+     *
+     * <p>Unscoped by household on purpose, and the only query in this codebase that is: who may
+     * sign in to this server is a fact about the instance, not about anybody's money (ADR-0029).
+     * {@code ArchitectureTest} allows it because {@code UserAccount} is deliberately not {@code
+     * HouseholdOwned} — it is part of the membership graph ownership is resolved FROM.
+     */
+    @Query(
+            """
+            select new com.budgetowl.auth.domain.UserSummary(
+                u.id, u.email, u.displayName, u.status, u.instanceAdmin, u.createdAt)
+            from UserAccount u
+            order by u.createdAt asc, u.id asc
+            """)
+    List<UserSummary> findAllSummaries();
 }
