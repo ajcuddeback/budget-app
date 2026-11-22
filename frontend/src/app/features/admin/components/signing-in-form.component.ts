@@ -65,6 +65,16 @@ export class SigningInFormComponent {
    * server's copy, and that must not wipe what somebody has typed.
    */
   readonly resetKey = input(0);
+  /**
+   * Bumped by the page when the administrator cancelled the confirmation for turning the provider
+   * off.
+   *
+   * **Only the provider switch goes back**, not the whole form. Cancel means "do not turn the
+   * provider off"; it does not mean "throw away the client id I just corrected". Reusing {@link
+   * resetKey} here would do the second thing, which is why this is its own input.
+   */
+  readonly restoreOidcKey = input(0);
+
   readonly busy = input(false);
   readonly error = input<ApiError | null>(null);
   /** A conflict is waiting for a decision. Nothing is sent until the page resolves it. */
@@ -130,6 +140,16 @@ export class SigningInFormComponent {
     // and the secret only when there is not one stored already. The server says the same
     // (`AdminService.applyOidc`); this is so the administrator finds out before submitting.
     effect(() => this.applyOidcRules(this.oidcOn(), this.secretSet()));
+
+    // Cancelling the confirmation re-ticks the provider box. Without this the form sat showing
+    // the provider as off while the server still had it on — the issuer and client id fields
+    // vanish with the tick, so an administrator who cancelled appeared to have lost their
+    // configuration, and the next Save re-opened the confirmation they had just declined.
+    effect(() => {
+      this.restoreOidcKey();
+      const settings = untracked(this.settings);
+      untracked(() => this.form.controls.oidcEnabled.setValue(settings.oidcEnabled));
+    });
 
     effect(() => {
       this.resetKey();

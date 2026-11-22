@@ -212,11 +212,11 @@ the screen without changing any of the three leaves everything alone.
    **Saved.** appears. The **Issuer URL**, **Client ID** and client secret are gone, and email and
    password sign-in is on again.
 
-To change your mind, select **Cancel**. Nothing is sent and single sign-on stays on — but the
-screen still shows the box cleared and the warning under it, so tick **Offer sign-in through my
-provider** again before you leave the page.
+To change your mind, select **Cancel**. Nothing is sent, single sign-on stays on, and the box
+ticks itself back — including your **Issuer URL** and **Client ID**, which are hidden while the box
+is clear. Anything else you had typed on this screen is still there.
 
-![The Single sign-on group after cancelling: the box is still cleared and the warning is still showing.](../images/choose-how-people-sign-in--sso-off-cancelled.png)
+![The Single sign-on group after cancelling: the box is ticked again and the provider's details are back.](../images/choose-how-people-sign-in--sso-off-cancelled.png)
 
 ## Things that can go wrong
 

@@ -351,8 +351,9 @@ describe('AdminPage', () => {
     expect(lastPatch()).toEqual({ version: 7, oidcEnabled: false });
   });
 
-  it('sends nothing when the confirmation is cancelled', async () => {
+  it('sends nothing when the confirmation is cancelled, and puts the switch back', async () => {
     const fixture = await render({ settings: OIDC_ON });
+    typeInto(root(fixture), '#admin-oidc-client-id', 'corrected-client-id');
 
     toggle(fixture, '#admin-oidc');
     await settle(fixture);
@@ -362,6 +363,18 @@ describe('AdminPage', () => {
 
     expect(admin.updateSettings).not.toHaveBeenCalled();
     expect(root(fixture).querySelector('dialog')).toBeNull();
+
+    // "Nothing was sent" was all this asserted, and it passed while the screen went on showing
+    // the provider as off. The server still has it on, and the issuer and client id fields are
+    // hidden while the box is clear — so a cancelled confirmation looked like a lost
+    // configuration, and the next Save re-opened the confirmation that had just been declined.
+    const box = root(fixture).querySelector<HTMLInputElement>('#admin-oidc');
+    expect(box?.checked).toBe(true);
+    expect(text(fixture)).not.toContain('switches email and password sign-in back on');
+
+    // And only that control moved: cancelling one thing does not discard the other.
+    const clientId = root(fixture).querySelector<HTMLInputElement>('#admin-oidc-client-id');
+    expect(clientId?.value).toBe('corrected-client-id');
   });
 
   // ----------------------------------------------------------------- 5. opening registration

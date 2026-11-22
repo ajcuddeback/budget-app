@@ -84,6 +84,9 @@ export class AdminPage {
    */
   protected readonly formRevision = signal(0);
 
+  /** Bumped to re-tick the provider switch after a cancelled confirmation. See {@link cancelOidcOff}. */
+  protected readonly oidcRestore = signal(0);
+
   protected readonly saving = signal(false);
   protected readonly savedKey = signal<MessageKey | null>(null);
   protected readonly saveError = signal<ApiError | null>(null);
@@ -149,6 +152,10 @@ export class AdminPage {
 
   protected cancelOidcOff(): void {
     this.pendingOidcOff.set(null);
+    // Put the provider switch back. Nothing was sent, so the server still has the provider on,
+    // and a form that goes on claiming otherwise is a screen describing a state that does not
+    // exist. Only that one control moves — everything else the person typed stays.
+    this.oidcRestore.update((revision) => revision + 1);
   }
 
   /** "Take the latest": discard what was typed and fill the form from the server's copy. */

@@ -61,6 +61,7 @@
           <app-signing-in-form
             [settings]="current"
             [resetKey]="formRevision()"
+            [restoreOidcKey]="oidcRestore()"
             [busy]="saving()"
             [error]="saveError()"
             [blocked]="inConflict()"

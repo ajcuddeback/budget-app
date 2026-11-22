@@ -310,14 +310,18 @@ test('@doc Admin: turn single sign-on off again', async ({ page, doc }) => {
     'The window asking you to confirm turning single sign-on off.',
   );
 
-  // What Cancel actually leaves behind: nothing is sent, but the box stays cleared on screen.
-  // Worth a picture, because "cancel" reads as "put it back" and this screen does not.
+  // What Cancel leaves behind. This spec used to assert the box stayed CLEARED, and captured a
+  // picture of it, because that is what the screen did: nothing was sent, the server still had
+  // the provider on, and the form went on showing it off with the issuer and client id hidden.
+  // The screen has been fixed to put the box back, so the assertion is inverted and the capture
+  // now shows a provider that is still configured.
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByLabel('Offer sign-in through my provider')).not.toBeChecked();
+  await expect(page.getByLabel('Offer sign-in through my provider')).toBeChecked();
+  await expect(page.getByLabel('Issuer URL')).toBeVisible();
   await doc.capture(
     'sso-off-cancelled',
-    'The Single sign-on group after cancelling: the box is still cleared, and the warning is still showing.',
+    "The Single sign-on group after cancelling: the box is ticked again and the provider's details are back.",
     {
       focus: page
         .getByRole('group')

@@ -5,7 +5,7 @@
     "guide": "add-a-bill",
     "caption": "The Phone bill, with Edit, Retire and Delete beside its name and budgeted amount.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -14,7 +14,7 @@
     "guide": "add-a-bill",
     "caption": "The Your bills card, with its totals and the Add a bill button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -23,7 +23,7 @@
     "guide": "add-a-bill",
     "caption": "The Delete Council tax? window, saying your transactions are kept because a bill is a plan, not a payment.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -32,7 +32,7 @@
     "guide": "add-a-bill",
     "caption": "The Add a bill window with a name and an amount filled in, and When it is due beneath them.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -41,7 +41,7 @@
     "guide": "add-a-bill",
     "caption": "When it is due set to Every other week, showing Day of the week and a Counting from date.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -50,7 +50,7 @@
     "guide": "add-a-bill",
     "caption": "When it is due set to Irregular, with a note that it has no set date and you record each payment as it happens.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -59,7 +59,7 @@
     "guide": "add-a-bill",
     "caption": "When it is due set to Every month, with Day of the month set to 5 and a note about shorter months.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -68,7 +68,7 @@
     "guide": "add-a-bill",
     "caption": "The Retire Phone? window, saying it stops being listed in new months and keeps what you have recorded.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -77,7 +77,7 @@
     "guide": "add-a-bill",
     "caption": "The Retired bills list at the foot of the Your bills card, with a Restore button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -86,7 +86,7 @@
     "guide": "add-a-bill",
     "caption": "The amount varies ticked, with a Give or take box underneath it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -95,7 +95,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen: accounts grouped by currency, each group with its own subtotal.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -104,7 +104,7 @@
     "guide": "add-an-account",
     "caption": "The Add an account window filled in for a credit card, with Save account at the bottom.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -113,7 +113,7 @@
     "guide": "add-an-account",
     "caption": "The Add an account window, before anything is filled in.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -122,7 +122,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen after adding the card: \"Account added.\" and the new row in the US Dollar group.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -131,7 +131,7 @@
     "guide": "add-an-account",
     "caption": "The Edit account window with Currency greyed out and the reason printed under it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -140,7 +140,7 @@
     "guide": "add-an-account",
     "caption": "The Edit account window, filled in with what the account says now.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -149,7 +149,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen with no accounts yet, offering Add your first account.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -158,7 +158,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen for a household with one currency: a plain list, no currency headings and no subtotal.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -167,7 +167,7 @@
     "guide": "add-an-account",
     "caption": "The Opening balance field, reached by scrolling down inside the window, with a negative amount in it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -176,7 +176,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen after saving: \"Account saved.\" and the new name in the list.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -185,7 +185,7 @@
     "guide": "add-an-account",
     "caption": "The Accounts screen for someone whose role is Viewer: the balances, and nothing to click.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -194,7 +194,7 @@
     "guide": "add-your-income",
     "caption": "The Weekend work income source, showing how many arrivals the month has and what that comes to.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -203,7 +203,7 @@
     "guide": "add-your-income",
     "caption": "The Add an income source window with a name, an amount each time, when it arrives and the account it lands in.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -212,7 +212,7 @@
     "guide": "add-your-income",
     "caption": "The Income card: what is expected this month, each source, and the Add an income source button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -221,7 +221,7 @@
     "guide": "add-your-income",
     "caption": "The Retired income sources list, with a Restore button beside the one that is retired.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -230,7 +230,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Travel Card row, with its Archive button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -239,7 +239,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to archive Travel Card.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -248,7 +248,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after archiving: the card has left the list and the Archived section now says Show 2 archived.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -257,7 +257,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Archived section opened, listing the archived accounts with a Bring back button each.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -266,7 +266,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after bringing the card back: \"That account is back in your lists.\"",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -275,7 +275,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to delete Berlin Savings, saying it cannot be undone.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -284,7 +284,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Everyday Checking row, which has transactions: Edit and Archive, and no Delete.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -293,7 +293,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The message shown when an account has transactions: it cannot be deleted, and archiving is offered instead.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -302,7 +302,7 @@
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after deleting: \"That account has been deleted.\" and the row gone.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -311,7 +311,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The notice saying somebody else saved first, naming which setting changed, with Take the latest and Save my changes anyway.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -320,7 +320,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The message shown when Save is selected and none of the settings differ from what is stored.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -329,7 +329,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password group with no switch, explaining that an owner has to sign in through the provider first.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -338,7 +338,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password group after unticking the switch, naming the command that switches it back on from the server.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -347,7 +347,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password switch, now offered and ticked, on a server whose provider has been proved.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -356,7 +356,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on group on a server whose owner has signed in through the provider.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -365,7 +365,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Registration box on the Signing in block, unticked, with the consequence of ticking it stated beneath.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -374,7 +374,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Registration group with the box ticked, warning that saving now will open registration.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -383,7 +383,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Signing in block confirming \"Saved.\" above the settings.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -392,7 +392,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Client secret box: empty, with \"A secret is set.\" and the note that a stored secret is never shown back.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -401,7 +401,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "After replacing the client secret: email and password sign-in is on again and cannot be turned off until an owner signs in through the provider.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -410,7 +410,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Signing in block on a server with no provider: Registration, Email and password, Single sign-on.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -419,7 +419,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields: Issuer URL, Client ID, Client secret saying \"No secret set.\", and the account-creation box.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -428,7 +428,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields filled in, with the client secret hidden as dots.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -437,16 +437,16 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on box on the Signing in block, unticked, with no provider fields showing.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
     "name": "choose-how-people-sign-in--sso-off-cancelled",
     "file": "userguide/images/choose-how-people-sign-in--sso-off-cancelled.png",
     "guide": "choose-how-people-sign-in",
-    "caption": "The Single sign-on group after cancelling: the box is still cleared, and the warning is still showing.",
+    "caption": "The Single sign-on group after cancelling: the box is ticked again and the provider's details are back.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -455,7 +455,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The window asking you to confirm turning single sign-on off.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -464,7 +464,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The saved Single sign-on settings: the client secret box empty again, with \"A secret is set.\" beneath it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -473,7 +473,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on group after unticking the box, warning that email and password sign-in comes back on.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -482,7 +482,7 @@
     "guide": "create-your-account",
     "caption": "The Transactions screen you land on after creating your account, with nothing recorded yet.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -491,7 +491,7 @@
     "guide": "create-your-account",
     "caption": "The setup form filled in.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -500,7 +500,7 @@
     "guide": "create-your-account",
     "caption": "The Set up Budget Owl screen with an empty form.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -509,7 +509,7 @@
     "guide": "create-your-account",
     "caption": "The password field asking for at least 12 characters.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -518,7 +518,7 @@
     "guide": "give-a-transaction-a-category",
     "caption": "The Edit transaction window with the Category list open.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -527,7 +527,7 @@
     "guide": "give-a-transaction-a-category",
     "caption": "The list narrowed to just the transactions that still need a category.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -536,7 +536,7 @@
     "guide": "give-a-transaction-a-category",
     "caption": "A transaction in the list marked \"Needs a category\", with the Needs a category filter button circled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -545,7 +545,7 @@
     "guide": "invite-someone",
     "caption": "The Household screen as an owner, with the Invite someone button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -554,7 +554,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window just after selecting Copy link, with \"Link copied.\" beside the button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -563,7 +563,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window with an email address and the Viewer role chosen.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -572,7 +572,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window, before anything is filled in.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -581,7 +581,7 @@
     "guide": "invite-someone",
     "caption": "The invitation link, with the warning to treat it like a password.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -590,7 +590,7 @@
     "guide": "invite-someone",
     "caption": "The Invite someone window after the link has been revoked.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -599,7 +599,7 @@
     "guide": "join-a-household",
     "caption": "The welcome screen after joining.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -608,7 +608,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen as someone who already has an account on this instance.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -617,7 +617,7 @@
     "guide": "join-a-household",
     "caption": "The welcome screen for someone who already had an account.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -626,7 +626,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen, with the notice about who can see what you record.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -635,7 +635,7 @@
     "guide": "join-a-household",
     "caption": "The invitation screen asking for a name and password.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -644,7 +644,7 @@
     "guide": "join-a-household",
     "caption": "The Sign in screen after joining, with a message that you have joined the household.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -653,7 +653,7 @@
     "guide": "join-a-household",
     "caption": "The screen asking you to sign out before you accept an invitation.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -662,7 +662,7 @@
     "guide": "join-a-household",
     "caption": "The message shown when an invitation link has expired, been used, or been cancelled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -671,7 +671,7 @@
     "guide": "log-spend-in-an-envelope",
     "caption": "The Groceries envelope showing $116.70 left, the bar part filled, and the Log spend button circled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -680,7 +680,7 @@
     "guide": "log-spend-in-an-envelope",
     "caption": "The Groceries log: three entries, each marked either Typed or From a transaction.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -689,7 +689,7 @@
     "guide": "log-spend-in-an-envelope",
     "caption": "The Eating Out envelope showing -$11.20 over, with its bar full and marked.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -698,7 +698,7 @@
     "guide": "log-spend-in-an-envelope",
     "caption": "The Log spend window with 18.40 typed into Amount and everything else empty.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -707,7 +707,7 @@
     "guide": "manage-members",
     "caption": "The window asking you to confirm leaving the household.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -716,7 +716,7 @@
     "guide": "manage-members",
     "caption": "The Household screen as a member: settings are read-only and a Leave button is shown.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -725,7 +725,7 @@
     "guide": "manage-members",
     "caption": "The screen shown to someone who is signed in but belongs to no household.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -734,7 +734,7 @@
     "guide": "manage-members",
     "caption": "The note shown to the only owner, explaining why there is no Leave button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -743,7 +743,7 @@
     "guide": "manage-members",
     "caption": "The Household screen as an owner, listing three people and their roles.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -752,7 +752,7 @@
     "guide": "manage-members",
     "caption": "The window asking you to confirm removing Sam Rivera.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -761,7 +761,7 @@
     "guide": "manage-members",
     "caption": "Jordan Rivera now shown with the Member role.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -770,7 +770,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "A banner at the top of the page reading Marked paid.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -779,7 +779,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "Correct this opened, showing Paid a different amount, Skip, Mark as due and Forget.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -788,7 +788,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The first Cleaner row, with Correct this beneath it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -797,7 +797,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Forget what was recorded? window, explaining it is not the same as marking the bill due.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -806,7 +806,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Vet bill, with no dates of its own and a Record a payment button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -815,7 +815,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Record a payment for Vet window, asking for the date it was due, the amount paid and the date paid.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -824,7 +824,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The third week of the Cleaner bill, with its Mark paid button ringed.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -833,7 +833,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Cleaner bill with the third week now tagged Paid and You recorded this, and no Mark paid button left on that row.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -842,7 +842,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The What did you pay for Cleaner? window, with Amount paid and Date paid.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -851,7 +851,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Council tax bill, its row tagged Due and Overdue.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -860,7 +860,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The last row of the Cleaner bill, now tagged Skipped and You recorded this.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -869,7 +869,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Phone bill row showing Budgeted and Paid side by side, tagged Not what was budgeted.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -878,7 +878,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The three totals above the bills list: bills this month, still to pay and overdue.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -887,7 +887,7 @@
     "guide": "mark-a-bill-paid",
     "caption": "The Cleaner bill: one row for each week of the month, each with its own date, status and Mark paid button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -896,7 +896,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Amount that left holding 250.00, with the hint underneath saying it is in USD, the currency of the account it leaves, and that there is no minus sign.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -905,7 +905,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The window with Into set to Berlin Savings (EUR): a second box, Amount that arrived, has appeared below Amount that left, with a hint saying the two accounts are in different currencies and only your statement knows what arrived.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -914,7 +914,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The hint under Amount that arrived, read in full: these two accounts are in different currencies, so what arrived is not the same number as what left, and only your statement knows it — copy it from there, in EUR.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -923,7 +923,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Delete this transfer? window, saying both halves go and both account balances go back to what they were, and that it cannot be undone.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -932,7 +932,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Edit this transfer window: the two accounts named as Everyday Checking to Emergency Fund with no lists to change them, then Amount that left, Date and Note.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -941,7 +941,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Into set to Emergency Fund (USD), with the Into list circled, below Out of set to Everyday Checking (USD).",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -950,7 +950,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with the Move money button, beside Record a transaction, circled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -959,7 +959,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with a Money moved. banner above the list.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -968,7 +968,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The list narrowed to what still needs a category: one shop transaction, and neither half of the transfer.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -977,7 +977,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The lower half of the window, reached by scrolling inside it: Date, then Note with a hint saying it is optional and both halves of the transfer get it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -986,7 +986,7 @@
     "guide": "move-money-between-accounts",
     "caption": "One transfer row close up: Transfer out, -$500.00, Aug 16, 2026, Everyday Checking, Between your accounts, Transfer, with the note Transfer to Emergency Fund and Edit and Delete buttons.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -995,7 +995,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Out of set to Everyday Checking (USD), with the Out of list circled. Every account in the list is followed by its currency.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1004,7 +1004,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Out of and Into both set to Everyday Checking (USD), with a message under Into saying it has to be a different account.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1013,7 +1013,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Move money between your accounts window as it opens: a note saying a transfer has no category and nobody to pay, then Out of, Into, Amount that left, Date and Note.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1022,7 +1022,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The list showing the same transfer twice: Transfer in, $500.00 into Emergency Fund, and Transfer out, -$500.00 from Everyday Checking, both dated Aug 16, 2026 and both labelled Between your accounts with a Transfer badge.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1031,7 +1031,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen as a viewer: the transfer rows are there with their amounts, and there is no Move money button and no buttons on any row.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1040,7 +1040,7 @@
     "guide": "organise-your-categories",
     "caption": "The Add a category window with Childcare typed in the Name box.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1049,7 +1049,7 @@
     "guide": "organise-your-categories",
     "caption": "The confirmation for deleting a category, saying your transactions are kept and will need a category again.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1058,7 +1058,7 @@
     "guide": "organise-your-categories",
     "caption": "The Add a category window opened from Bills, with Sits under already set to Bills and Kind greyed out.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1067,7 +1067,7 @@
     "guide": "organise-your-categories",
     "caption": "The Categories screen: Income and Spending groups, with sub-categories indented under their parent.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1076,7 +1076,7 @@
     "guide": "record-a-transaction",
     "caption": "The filled-in window: 18.40 out of Everyday Checking, Greenfield Market, Groceries.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1085,7 +1085,7 @@
     "guide": "record-a-transaction",
     "caption": "The Record a transaction window as it opens, with today's date already filled in and Money out chosen.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1094,7 +1094,7 @@
     "guide": "record-a-transaction",
     "caption": "The Transactions screen: what has happened to your money, newest first, with the Record a transaction button circled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1103,7 +1103,7 @@
     "guide": "record-a-transaction",
     "caption": "The Who it was with box with \"Green\" typed, showing Greenfield Market suggested underneath.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1112,7 +1112,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Envelopes card at the foot of the page: what is set aside this month, and an Open envelopes button.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1121,7 +1121,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The month picker at the top of the page, with Previous month and Next month either side of the month name.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1130,7 +1130,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Bills & income page: the month picker, what is left this month, income, bills and envelopes.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1139,7 +1139,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The same card showing a negative figure labelled short this month, with a note under it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1148,7 +1148,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The page for someone whose role is Viewer: every figure and every bill, and nothing to click.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1157,7 +1157,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The What’s left this month card: one figure, with income expected, bills this month, set aside in envelopes and still to pay beneath it.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1166,7 +1166,7 @@
     "guide": "see-who-can-sign-in",
     "caption": "The Accounts block listing four people, one tagged Administrator, one tagged Disabled.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1175,7 +1175,7 @@
     "guide": "see-who-can-sign-in",
     "caption": "The Admin link at the end of the navigation bar.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1184,7 +1184,7 @@
     "guide": "see-who-can-sign-in",
     "caption": "The whole Administration screen: This instance, Signing in, and Accounts.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1193,7 +1193,7 @@
     "guide": "see-who-can-sign-in",
     "caption": "The This instance block: version, when the server was set up, who administers it, and how many accounts exist.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1202,7 +1202,7 @@
     "guide": "see-who-can-sign-in",
     "caption": "The navigation bar as somebody who is not the administrator: no Admin link.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1211,7 +1211,7 @@
     "guide": "set-up-an-envelope",
     "caption": "The Add an envelope window with a name, the month and an amount filled in.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1220,7 +1220,7 @@
     "guide": "set-up-an-envelope",
     "caption": "The Envelopes screen for August 2026: each envelope leads with what is left, with the month and the totals above.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1229,7 +1229,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen explaining that your session ended.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1238,7 +1238,7 @@
     "guide": "sign-in",
     "caption": "The sign-in screen.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1247,7 +1247,7 @@
     "guide": "sign-in",
     "caption": "The message asking you to wait before trying to sign in again.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1256,7 +1256,7 @@
     "guide": "sign-in",
     "caption": "The message shown when the email address or password is wrong.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1265,7 +1265,7 @@
     "guide": "your-devices",
     "caption": "The Devices screen listing this browser, another browser, and a phone.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1274,7 +1274,7 @@
     "guide": "your-devices",
     "caption": "The window warning that you are about to sign out of the browser you are using.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1283,7 +1283,7 @@
     "guide": "your-devices",
     "caption": "The Devices screen after signing the other browser out.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1292,7 +1292,7 @@
     "guide": "your-display-settings",
     "caption": "The Your preferences screen.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1301,7 +1301,7 @@
     "guide": "your-display-settings",
     "caption": "Euro and German chosen, before saving.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   },
   {
@@ -1310,7 +1310,7 @@
     "guide": "your-display-settings",
     "caption": "The preferences screen confirming that they were saved.",
     "capturedAt": "2026-11-22",
-    "commit": "48f2fa9",
+    "commit": "5e53960",
     "viewport": "1280x720"
   }
 ]
