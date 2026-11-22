@@ -1,0 +1,28 @@
+@if (accounts().length === 0) {
+  <p class="muted">{{ 'admin.accountsEmpty' | t }}</p>
+} @else {
+  <ul class="rows">
+    @for (account of accounts(); track account.id) {
+      <li class="row">
+        <div class="row-main">
+          <span class="row-title">
+            {{ account.displayName }}
+            @if (account.id === myUserId()) {
+              <span class="tag tag-neutral">{{ 'common.you' | t }}</span>
+            }
+          </span>
+          <span class="row-sub">{{ account.email }}</span>
+          <span class="row-sub">{{
+            'admin.joined' | t: { date: (account.createdAt | dateOnly) }
+          }}</span>
+        </div>
+        <div class="row-actions">
+          @if (account.instanceAdmin) {
+            <span class="tag">{{ 'admin.administratorTag' | t }}</span>
+          }
+          <span class="tag tag-neutral">{{ statusKey(account.status) | t }}</span>
+        </div>
+      </li>
+    }
+  </ul>
+}

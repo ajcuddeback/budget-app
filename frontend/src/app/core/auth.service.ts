@@ -32,6 +32,12 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.current() !== null);
   readonly membership = computed(() => this.current()?.household ?? null);
   readonly isOwner = computed(() => this.membership()?.role === 'OWNER');
+  /**
+   * The one instance administrator (ADR-0029). A different axis from the household roles above:
+   * `OWNER` governs the money, this governs the server's login configuration, and neither implies
+   * the other. It decides whether the operator's screen is *offered* — never whether it is allowed.
+   */
+  readonly isInstanceAdmin = computed(() => this.current()?.instanceAdmin === true);
 
   /** Asks the server who we are, once. Later callers share the answer. */
   ensureLoaded(): Promise<void> {

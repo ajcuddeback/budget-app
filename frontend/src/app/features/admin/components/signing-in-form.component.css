@@ -1,0 +1,31 @@
+/* Three settings that are about three different things, grouped so a screen reader announces
+   which one a checkbox belongs to. The border is the heading's job, not the fieldset's. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.group + .group {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.group-title {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 1.125rem;
+}
+
+/* A fact about the instance, not an editable value: whether a secret exists, whether password
+   sign-in is on. Full contrast, because it is the answer somebody came to the page for. */
+.state {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}

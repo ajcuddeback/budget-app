@@ -906,3 +906,33 @@ public boolean varies() {
 — a flag that is false for the common case. The first test written for the endpoint sends a full
 body and passes; the defect is in the request every real client makes. `BillIT`'s
 `a_bill_needs_nothing_but_a_name_an_amount_and_a_schedule` exists to catch it.
+
+---
+
+## An `effect` that refills a form from its input wipes what the user typed
+
+**Symptom.** A dialog or settings form is filled from an `input()` by an `effect`. A failed save
+re-reads the record to say what somebody else changed — and the person's unsaved edits vanish,
+because the re-read replaced the input the effect was watching.
+
+**Cause.** `effect` tracks every signal it reads. `effect(() => this.form.reset(fromValue(this.record())))`
+re-runs on *any* change to `record`, and "the page re-read the server's copy" is one.
+
+**Fix.** Make the reset depend on a signal that means _refill now_, and read the data untracked:
+
+```ts
+readonly resetKey = input(0); // the page bumps it on load and after a save
+effect(() => {
+  this.resetKey();
+  const settings = untracked(this.settings);
+  this.form.reset(/* from settings */);
+});
+```
+
+The page then has two separate moves: `settings.set(latest)` updates what the screen *says*, and
+bumping `resetKey` is the only thing that discards what the person typed.
+
+**Why it matters.** The two cases that need them apart are exactly the ones a form gets wrong:
+`409 stale-version`, where the UI must show the new truth beside the old input, and an error whose
+explanation is only useful next to the value that caused it. `features/admin` does this; the
+accounts dialog avoids the problem by keeping the conflicting copy in a separate field instead.

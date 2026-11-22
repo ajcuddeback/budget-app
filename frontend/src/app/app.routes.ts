@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth.guards';
+import { authGuard, instanceAdminGuard } from './core/auth.guards';
 
 export const routes: Routes = [
   {
@@ -63,6 +63,12 @@ export const routes: Routes = [
         title: 'title.devices',
         loadChildren: () =>
           import('./features/devices/devices.routes').then((m) => m.DEVICES_ROUTES),
+      },
+      {
+        path: 'admin',
+        title: 'title.admin',
+        canActivate: [instanceAdminGuard],
+        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
       },
       {
         path: 'preferences',

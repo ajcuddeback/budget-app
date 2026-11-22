@@ -40,6 +40,7 @@ export interface FakeAuth {
   isAuthenticated: ReturnType<typeof computed<boolean>>;
   membership: ReturnType<typeof computed<Membership | null>>;
   isOwner: ReturnType<typeof computed<boolean>>;
+  isInstanceAdmin: ReturnType<typeof computed<boolean>>;
   ensureLoaded: ReturnType<typeof vi.fn>;
   refresh: ReturnType<typeof vi.fn>;
   logout: ReturnType<typeof vi.fn>;
@@ -55,6 +56,7 @@ export function fakeAuth(user: CurrentUser | null = OWNER): FakeAuth {
     isAuthenticated: computed(() => current() !== null),
     membership: computed(() => current()?.household ?? null),
     isOwner: computed(() => current()?.household?.role === 'OWNER'),
+    isInstanceAdmin: computed(() => current()?.instanceAdmin === true),
     ensureLoaded: vi.fn().mockResolvedValue(undefined),
     refresh: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),

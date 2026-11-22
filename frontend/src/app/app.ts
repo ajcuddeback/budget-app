@@ -17,6 +17,7 @@ export class App {
   private readonly auth = inject(AuthService);
 
   protected readonly signedIn = this.auth.isAuthenticated;
+  protected readonly instanceAdmin = this.auth.isInstanceAdmin;
   protected readonly themeLabel = computed(() =>
     this.theme.mode() === 'dark' ? 'theme.toLight' : 'theme.toDark',
   );

@@ -57,7 +57,7 @@ somebody's rent, and a `VIEWER` who becomes administrator should gain no new vie
 ### The OIDC client secret is write-only
 
 It can be set and it can be replaced. It is **never** returned, in any response, to anybody —
-including the administrator who typed it. The console reports *whether* a secret is configured
+including the administrator who typed it. The console reports _whether_ a secret is configured
 and when it last changed, never what it is.
 
 A secret that is read back is a secret that lands in a browser cache, a screenshot, an HTTP log
@@ -109,12 +109,12 @@ If this slice needs a column it does not have, that is a migration and an append
 
 ## API
 
-| Method  | Path                     | Notes                                                      |
-| ------- | ------------------------ | ---------------------------------------------------------- |
-| `GET`   | `/api/admin/instance`    | Version, setup date, who the administrator is, counts      |
-| `GET`   | `/api/admin/settings`    | Registration, password login, OIDC — **secret never shown** |
-| `PATCH` | `/api/admin/settings`    | Partial update. Requires `version`                          |
-| `GET`   | `/api/admin/users`       | Accounts that can sign in. No financial data                |
+| Method  | Path                  | Notes                                                       |
+| ------- | --------------------- | ----------------------------------------------------------- |
+| `GET`   | `/api/admin/instance` | Version, setup date, who the administrator is, counts       |
+| `GET`   | `/api/admin/settings` | Registration, password login, OIDC — **secret never shown** |
+| `PATCH` | `/api/admin/settings` | Partial update. Requires `version`                          |
+| `GET`   | `/api/admin/users`    | Accounts that can sign in. No financial data                |
 
 All four require the instance administrator. All four are in `AuthorizationIT`'s enumerated list
 and in the `VIEWER`/`OWNER` refusal matrix, because an authorization rule that is only in prose is
@@ -133,6 +133,47 @@ Three blocks:
 2. **Signing in** — registration open or closed; password login; OIDC configuration. The lockout
    rule is stated here, beside the switch it governs.
 3. **Accounts** — who can sign in, their status and when they joined. Read-only in this slice.
+
+### As built (slice 9, frontend)
+
+`features/admin/` — a lazy route behind `instanceAdminGuard`, a page that fetches and coordinates,
+and three presentational components. There are **no designs** (see the header), so the layout is the
+one the bills and transactions screens already establish: a `.page-title` and lede, then one `.card`
+per block, every colour, space and radius a token.
+
+- **This instance** is a `<dl>` of four facts in an auto-fitting grid — four across on a desktop,
+  stacked on a phone. A date with no value reads "Not recorded" rather than rendering blank.
+- **Signing in** is one typed reactive form with three `<fieldset>`s, so a screen reader says which
+  setting a checkbox belongs to. Each group carries the words it needs:
+  - _Registration_ — the consequence sits in the flow at full size, pointed at by the checkbox's
+    `aria-describedby`, never a tooltip. Ticking it adds a `role="status"` line, so the moment the
+    switch moves is also the moment the consequence is announced.
+  - _Email and password_ — **when `passwordLoginLocked` is true there is no switch at all.** The
+    state is shown as a fact and the rule beside it, because a control that answers
+    `409 password-login-locked` teaches nothing. The switch does appear if password login is
+    somehow already off, so turning it back on is never unreachable from here. The `409` is still
+    handled: the error is shown and the settings re-read, so the screen stops offering what the
+    server now refuses. When the switch _is_ offered and somebody clears it, the form names
+    `deploy/restore-password-login.sh` before the save — the browser is no help once the browser is
+    the thing you cannot get in through.
+  - _Single sign-on_ — issuer, client ID, secret, provisioning, and whether an `OWNER` has proved
+    the route works. Clearing the checkbox warns, before anything is sent, that password login
+    comes back; submitting it opens a confirmation that says the same thing. Only
+    `{oidcEnabled: false}` is sent — the server clears the rest, so describing it would be fiction.
+- **The client secret input is empty on every load and on every save.** There is no value to put in
+  it: the API never returns one. "A secret is set." / "No secret set." is rendered from
+  `oidcClientSecretSet` — never dots, which would claim to be showing something. The field is sent
+  only when somebody typed into it, because the server reads a present-but-blank secret as "clear
+  it" (`AdminRequests`), and whitespace alone counts as nothing typed.
+- **`version` travels on every `PATCH`.** A `409 stale-version` re-reads the server's copy, keeps
+  what the person typed, names the settings that moved — **field names only, because one of them is
+  a secret** — and stops. They choose "Take the latest" or "Save my changes anyway"; the second
+  sends against the version they were shown, and still goes through the single-sign-on confirmation.
+- **Accounts** is a read-only `.rows` list: name, email, when they joined, the `Administrator` tag
+  on the one account that has it, and the status. No action on any row.
+- The masthead link is last in the nav and rendered only for `instanceAdmin`. Every user-visible
+  string is in `src/i18n/en.json` under `admin.*`, plus `error.not-instance-admin` and
+  `error.password-login-locked` for the code renderer.
 
 ## Security considerations
 
@@ -159,7 +200,31 @@ Three blocks:
 
 ## Known gaps
 
-_To be filled in as the slice lands._
+As of the frontend half of slice 9:
+
+- **The recovery command exists but is not in the user guide.** `deploy/restore-password-login.sh`
+  is the path the security model requires, and the console names it by filename at the moment it
+  matters — when somebody is about to hide password sign-in. Nothing in `userguide/` mentions it
+  yet, and "documented" in the security model means documented where an operator will look at
+  11pm, not only in a shell script's own header.
+- **A client secret can be replaced but not removed** from the console. Clearing one is a request
+  the API accepts (a present-and-blank `oidcClientSecret`) and the form has no way to express,
+  because an empty input has to mean "keep it" for the field to be safe to render at all. Clearing
+  it while the provider is on would be refused anyway; the missing case is "turn the provider off
+  and forget its secret", which an operator does by replacing it with a throwaway or at the
+  database.
+- **No administrator transfer**, per ADR-0029 and the out-of-scope list. The console is now the
+  place it would live.
+- **`GET /api/admin/users` is not paginated** — it answers `{content, total}` rather than the page
+  envelope `api-style.md` requires of every collection. It is fine at household scale and the
+  client renders it whole, but it is the one collection in the API that would be a breaking change
+  to page later.
+- **No designs, and no viewport artboards.** Both layouts are CSS judgements made against the
+  shipped screens' language rather than against a design. If the console is ever drawn, expect the
+  three cards to change.
+- **Accounts are read-only**, so a `DISABLED` account is visible and not actionable. Deliberate
+  (see out of scope), and it does mean the status column currently explains a state no screen can
+  reach.
 
 ## Testing notes
 
@@ -170,3 +235,15 @@ _To be filled in as the slice lands._
   leaking one and watching the test fail.
 - A constraint test is **not** needed for the lockout rule: `SchemaConstraintsIT` already covers
   `ck_instance_settings_password_login_lockout`. Check before writing a second one.
+- `admin.page.spec.ts` — the secret input is empty on load and after a save and is sent only once
+  typed; "A secret is set." renders from the flag with no secret-shaped value anywhere in the DOM;
+  no password-login switch exists while the lockout applies; the registration consequence is in the
+  page and wired to the checkbox; turning the provider off is confirmed before anything is sent; a
+  `409 stale-version` keeps the form and names what moved; a `409 password-login-locked` explains
+  itself and re-reads. One assertion is a standing guard rather than a behaviour: the page text
+  matches no currency symbol, so the day somebody adds a figure to the operator's screen, a test
+  says so.
+- `admin-data.spec.ts` — the patch builder, `differingSettings`, the issuer validator, and the
+  service (the secret goes in a `PATCH` body and never into a URL or a query parameter).
+- `app.spec.ts` and `auth.guards.spec.ts` — the masthead link is absent for a household `OWNER` who
+  is not the administrator, and the guard sends them home rather than to sign-in.
