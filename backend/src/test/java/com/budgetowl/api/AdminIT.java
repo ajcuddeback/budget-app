@@ -301,6 +301,99 @@ class AdminIT extends ApiTestBase {
     }
 
     @Test
+    void replacing_the_client_secret_withdraws_the_evidence_too() {
+        Household household = seedHousehold();
+        configureOidc(
+                household, household.owner().get("/api/admin/settings").numberField("version"));
+        jdbc.update("UPDATE instance_settings SET oidc_owner_login_at = now() WHERE id = 1");
+        // The legal, reachable starting state this test is about: OIDC proven, password login
+        // hidden behind it.
+        hidePasswordLogin(household);
+        assertThat(household.owner().get("/api/admin/settings").body())
+                .contains("\"passwordLoginEnabled\":false");
+
+        household
+                .owner()
+                .patch(
+                        "/api/admin/settings",
+                        "{\"oidcClientSecret\":\"a-mistyped-secret\",\"version\":"
+                                + household
+                                        .owner()
+                                        .get("/api/admin/settings")
+                                        .numberField("version")
+                                + "}");
+
+        // The secret is half the client credential, so replacing it is replacing the credential.
+        // Left out of the comparison, this request kept the proof AND kept password login hidden
+        // — and since the new secret is wrong, the token exchange now fails for everybody. That is
+        // a complete lockout reached by one routine-looking PATCH, recoverable only from the host
+        // shell. The constraint cannot catch it: all it can see is that OIDC is on and that
+        // somebody once signed in.
+        assertThat(household.owner().get("/api/admin/settings").body())
+                .contains("\"passwordLoginEnabled\":true")
+                .contains("\"passwordLoginLocked\":true");
+    }
+
+    @Test
+    void the_version_in_a_response_is_the_one_the_next_change_needs() {
+        Household household = seedHousehold();
+        long version = household.owner().get("/api/admin/settings").numberField("version");
+
+        ApiResponse first =
+                household
+                        .owner()
+                        .patch(
+                                "/api/admin/settings",
+                                "{\"registrationOpen\":true,\"version\":" + version + "}");
+        assertThat(first.status()).isEqualTo(200);
+
+        // Straight back in with the version the PATCH returned, with no GET in between — which is
+        // what a console doing read-modify-write actually does. Saved without a flush, @Version is
+        // still incremented at commit, so this response carries the version the caller already
+        // had and this second request is refused as stale: the lock V16 added, useless in the one
+        // loop it was added for.
+        ApiResponse second =
+                household
+                        .owner()
+                        .patch(
+                                "/api/admin/settings",
+                                "{\"registrationOpen\":false,\"version\":"
+                                        + first.numberField("version")
+                                        + "}");
+
+        assertThat(second.status()).isEqualTo(200);
+        assertThat(second.body()).contains("\"registrationOpen\":false");
+    }
+
+    @Test
+    void a_blank_issuer_is_a_named_validation_error_not_a_constraint_violation() {
+        Household household = seedHousehold();
+        configureOidc(
+                household, household.owner().get("/api/admin/settings").numberField("version"));
+
+        ApiResponse blank =
+                household
+                        .owner()
+                        .patch(
+                                "/api/admin/settings",
+                                "{\"oidcIssuerUri\":\"   \",\"version\":"
+                                        + household
+                                                .owner()
+                                                .get("/api/admin/settings")
+                                                .numberField("version")
+                                        + "}");
+
+        // Not null, so the service's null test waves it through; blank, so
+        // ck_instance_settings_oidc_configured refuses it at flush and the handler answers 409
+        // with nothing to act on. The administrator should be told which box to fill in.
+        assertThat(blank.status()).isEqualTo(400);
+        assertThat(blank.body()).contains("\"field\":\"oidcIssuerUri\"");
+
+        // And nothing was written: the provider that was working still is.
+        assertThat(household.owner().get("/api/admin/settings").body()).contains(ISSUER);
+    }
+
+    @Test
     void registration_can_be_opened_and_closed() {
         Household household = seedHousehold();
         long version = household.owner().get("/api/admin/settings").numberField("version");
@@ -399,6 +492,24 @@ class AdminIT extends ApiTestBase {
         @Override
         public String toString() {
             return method + " " + path;
+        }
+    }
+
+    /** Takes the instance to the state the lockout rule guards: OIDC proven, passwords hidden. */
+    private void hidePasswordLogin(Household household) {
+        ApiResponse hidden =
+                household
+                        .owner()
+                        .patch(
+                                "/api/admin/settings",
+                                "{\"passwordLoginEnabled\":false,\"version\":"
+                                        + household
+                                                .owner()
+                                                .get("/api/admin/settings")
+                                                .numberField("version")
+                                        + "}");
+        if (hidden.status() != 200) {
+            throw new AssertionError("could not hide password login: " + hidden.body());
         }
     }
 

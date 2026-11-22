@@ -47,7 +47,7 @@ class LoginRouteIT extends PersistenceTestBase {
                 status -> {
                     InstanceSettings current = settings.findCurrent().orElseThrow();
                     current.disableOidc();
-                    settings.save(current);
+                    settings.saveAndFlush(current);
                 });
 
         assertThat(settings.findCurrent())
@@ -79,7 +79,7 @@ class LoginRouteIT extends PersistenceTestBase {
                     InstanceSettings current = settings.findCurrent().orElseThrow();
                     current.configureOidc(
                             "https://other-idp.example.net", "budget-owl", "not-a-real-secret");
-                    settings.save(current);
+                    settings.saveAndFlush(current);
                 });
 
         assertThat(settings.findCurrent())
@@ -99,7 +99,7 @@ class LoginRouteIT extends PersistenceTestBase {
                             "https://idp.example.com", "budget-owl", "not-a-real-secret");
                     current.recordOwnerOidcLoginAt(Instant.now());
                     current.disablePasswordLogin();
-                    settings.save(current);
+                    settings.saveAndFlush(current);
                 });
 
         assertThat(settings.findCurrent())

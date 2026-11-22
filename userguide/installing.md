@@ -82,4 +82,25 @@ goes wrong.
 
 ## Things that commonly go wrong
 
+### Nobody can sign in
+
+If you switched Budget Owl over to your own login provider and that provider has since stopped
+working, the sign-in page has nothing left to offer you. The way back in doesn't need a browser.
+
+On the machine running Budget Owl, from the folder holding your `docker-compose.yml`:
+
+```bash
+deploy/restore-password-login.sh --dry-run   # see what it would change
+deploy/restore-password-login.sh             # turn email and password sign-in back on
+```
+
+Then sign in with your email address and password as you did before. Your login provider is left
+exactly as it was, so you can fix it and hide password sign-in again afterwards, from **Admin** in
+the app.
+
+It's safe to run when you aren't sure that's the problem: if password sign-in is already on, it
+says so and changes nothing.
+
+### Everything else
+
 *To be written from real installs, not imagined.*

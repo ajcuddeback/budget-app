@@ -128,7 +128,15 @@ public class AdminService {
             }
         }
 
-        InstanceSettings saved = settings.save(current);
+        // Flushed, not merely saved: @Version is incremented at flush, and the console reads the
+        // version out of this response to send with its next PATCH. A response assembled before
+        // the flush hands back the version the caller already had, and their next save is refused
+        // as stale — the control V16 added, broken in the one loop it was added for.
+        //
+        // The flush also moves a database refusal to HERE, ahead of the audit line below. Logged
+        // first, a write that the database then rejects at commit would leave the trail asserting
+        // a change that did not happen, which is the direction an audit trail must never fail in.
+        InstanceSettings saved = settings.saveAndFlush(current);
         // The FIELD NAMES and the actor, never the values — a line carrying an OIDC client secret
         // would undo the rule this service exists to keep.
         log.info(
@@ -163,21 +171,29 @@ public class AdminService {
                         || Boolean.TRUE.equals(changes.oidcEnabled());
 
         if (touchingOidc) {
+            // Blank counts as absent, everywhere here. The database agrees — every branch of
+            // ck_instance_settings_oidc_configured tests btrim(...) <> '' — but a blank string
+            // reaching the entity turns a validation error the administrator can act on into an
+            // opaque 409 from the constraint at flush. The secret's own three-way change already
+            // read a blank as "cleared"; the other two were the inconsistent pair.
             String issuer =
-                    changes.oidcIssuerUri() == null
-                            ? current.oidcIssuerUri()
-                            : changes.oidcIssuerUri();
+                    present(
+                            changes.oidcIssuerUri() == null
+                                    ? current.oidcIssuerUri()
+                                    : changes.oidcIssuerUri());
             String clientId =
-                    changes.oidcClientId() == null
-                            ? current.oidcClientId()
-                            : changes.oidcClientId();
+                    present(
+                            changes.oidcClientId() == null
+                                    ? current.oidcClientId()
+                                    : changes.oidcClientId());
             String secret =
-                    switch (changes.oidcClientSecret()) {
-                        case Change.Unchanged<String> ignored ->
-                                current.oidcClientSecretForClientConfiguration();
-                        case Change.Cleared<String> ignored -> null;
-                        case Change.SetTo<String> given -> given.value();
-                    };
+                    presentCredential(
+                            switch (changes.oidcClientSecret()) {
+                                case Change.Unchanged<String> ignored ->
+                                        current.oidcClientSecretForClientConfiguration();
+                                case Change.Cleared<String> ignored -> null;
+                                case Change.SetTo<String> given -> given.value();
+                            });
             if (issuer == null || clientId == null || secret == null) {
                 // An OIDC configuration that is switched on but incomplete is a broken login
                 // route, and ck_instance_settings_oidc_configured refuses it. Named here so the
@@ -195,11 +211,40 @@ public class AdminService {
         }
     }
 
+    /** Called only when one of the three is missing, so the secret is what is left. */
     private static String missingOidcField(String issuer, String clientId) {
         if (issuer == null) {
             return "oidcIssuerUri";
         }
         return clientId == null ? "oidcClientId" : "oidcClientSecret";
+    }
+
+    /**
+     * {@code null} for absent and for present-but-blank, with surrounding whitespace removed.
+     *
+     * <p>The database draws the line in the same place — every branch of {@code
+     * ck_instance_settings_oidc_configured} tests {@code btrim(...) <> ''} — so a blank that
+     * reaches the entity becomes a constraint violation at flush, reported as an opaque {@code
+     * 409}, instead of the {@code 400} that names the field.
+     */
+    private static String present(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.strip();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * As {@link #present} for the blank test, but hands back the value <b>exactly as given</b>.
+     *
+     * <p>For the client secret only. An issuer with a stray trailing space is a typo worth
+     * absorbing; a secret is an opaque credential the provider chose, and silently editing one
+     * breaks the token exchange in a way that looks like the provider's fault. So: blank still
+     * counts as missing, and anything else is stored byte for byte.
+     */
+    private static String presentCredential(String value) {
+        return present(value) == null ? null : value;
     }
 
     /**

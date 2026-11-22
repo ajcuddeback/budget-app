@@ -68,7 +68,18 @@ fi
 
 # Only this column. Not the OIDC configuration: the operator may well want their provider back
 # once it is fixed, and silently tearing it down would turn a recovery into a second outage.
-psql -c "UPDATE instance_settings SET password_login_enabled = true WHERE id = 1" >/dev/null || {
+#
+# version and updated_at move with it. They are not decoration: instance_settings carries an
+# optimistic lock (V16) so that a change made in one place is visible as a change everywhere else,
+# and this is the one writer that reaches the row from outside the API. Leaving them alone would
+# let an admin console tab opened before the recovery keep passing the version check, and show a
+# last-changed time for a row that has changed. The point of a lock the out-of-band writer opts
+# out of is hard to defend.
+psql -c "UPDATE instance_settings
+            SET password_login_enabled = true,
+                version = version + 1,
+                updated_at = now()
+          WHERE id = 1" >/dev/null || {
   echo "The update failed. The database is unchanged." >&2
   exit 1
 }

@@ -11,7 +11,22 @@ import org.springframework.data.repository.query.Param;
 /** The one row of {@link InstanceSettings}, created by migration {@code V6}. */
 public interface InstanceSettingsRepository extends Repository<InstanceSettings, Short> {
 
-    InstanceSettings save(InstanceSettings settings);
+    /**
+     * Writes the row and flushes, so {@code @Version} and {@code updated_at} are the post-write
+     * values by the time a caller builds a response from the returned instance.
+     *
+     * <p>Not {@code save}, deliberately, and this is the one row where it matters most. A plain
+     * {@code save} on a managed entity defers the version increment to commit, which is after the
+     * response has been assembled — so the admin console would be handed back the version it
+     * already had, and its next {@code PATCH} would be refused as stale. V16 added the version
+     * column for the read-modify-write loop that console performs; returning a stale one makes the
+     * control useless in the only flow it was added for. {@code AccountService} documents the same
+     * trap.
+     *
+     * <p>Flushing early also means a write the database rejects throws <em>here</em>, before the
+     * audit line is logged, rather than at commit afterwards.
+     */
+    InstanceSettings saveAndFlush(InstanceSettings settings);
 
     @Query("select s from InstanceSettings s where s.id = 1")
     Optional<InstanceSettings> findCurrent();

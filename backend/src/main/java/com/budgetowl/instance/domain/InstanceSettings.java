@@ -141,8 +141,9 @@ public class InstanceSettings {
     /**
      * Refused by {@code ck_instance_settings_password_login_lockout} unless OIDC is switched on
      * <em>and</em> an {@code OWNER} has signed in through it. The database says no even if a
-     * service forgets to, and it says no at {@code COMMIT}, so a transaction that turns OIDC off
-     * later in its own life is refused as well.
+     * service forgets to. It is an ordinary {@code CHECK}, so it is evaluated per statement rather
+     * than deferred to {@code COMMIT} — stricter, not laxer, and what makes it hold here is that
+     * Hibernate writes this entity as one {@code UPDATE} carrying the whole final state.
      */
     public void disablePasswordLogin() {
         this.passwordLoginEnabled = false;
@@ -159,21 +160,39 @@ public class InstanceSettings {
     /**
      * Points the instance at an OIDC provider and switches it on.
      *
-     * <p>Changing the issuer or the client discards {@link #oidcOwnerLoginAt}. That timestamp is
-     * the evidence that <em>this</em> provider can sign an {@code OWNER} in; carrying it across to
-     * a different one would let password login stay hidden on the strength of a login that happened
-     * somewhere else.
+     * <p>Changing <em>any part of the client credential</em> — the issuer, the client id or the
+     * client secret — discards {@link #oidcOwnerLoginAt} and brings password login back. That
+     * timestamp is the evidence that <em>this</em> credential can sign an {@code OWNER} in;
+     * carrying it across to a different one would let password login stay hidden on the strength of
+     * a login that happened with something else.
+     *
+     * <p><b>The secret is in that comparison, and was not at first.</b> With only the issuer and
+     * the client id compared, an administrator whose instance was legally in the "password login
+     * hidden, OIDC proven" state could {@code PATCH} a single mistyped secret, keep the proof, keep
+     * password login hidden — and the token exchange would then fail for everybody. {@code
+     * ck_instance_settings_password_login_lockout} is satisfied throughout, because it can only see
+     * that OIDC is on and that somebody once signed in; it cannot see that the credential has
+     * changed underneath. That is a complete lockout, recoverable only from the host shell, reached
+     * by one request that looks entirely routine.
+     *
+     * <p>The cost is accepted deliberately: rotating a working secret now un-hides password login
+     * until an {@code OWNER} proves the route again. That is the same bargain already struck for
+     * the issuer, and it fails in the safe direction — a login route too many, briefly, rather than
+     * none at all.
      */
     public void configureOidc(String issuerUri, String clientId, String clientSecret) {
         String newIssuer = Objects.requireNonNull(issuerUri, "issuerUri");
         String newClientId = Objects.requireNonNull(clientId, "clientId");
-        if (!newIssuer.equals(oidcIssuerUri) || !newClientId.equals(oidcClientId)) {
+        String newSecret = Objects.requireNonNull(clientSecret, "clientSecret");
+        if (!newIssuer.equals(oidcIssuerUri)
+                || !newClientId.equals(oidcClientId)
+                || !newSecret.equals(oidcClientSecret)) {
             this.oidcOwnerLoginAt = null;
             this.passwordLoginEnabled = true;
         }
         this.oidcIssuerUri = newIssuer;
         this.oidcClientId = newClientId;
-        this.oidcClientSecret = Objects.requireNonNull(clientSecret, "clientSecret");
+        this.oidcClientSecret = newSecret;
         this.oidcEnabled = true;
     }
 
@@ -184,8 +203,8 @@ public class InstanceSettings {
      * their own hardware, with psql on the host as the only way back in. So this is not merely "set
      * two booleans": the OIDC login route is disappearing, and password login — the permanent
      * capability (ADR-0018) — is restored in the same change so that one route always remains.
-     * {@code ck_instance_settings_password_login_lockout} refuses the transaction otherwise, which
-     * is the backstop; doing it here is what stops an administrator meeting that error at all.
+     * {@code ck_instance_settings_password_login_lockout} refuses the statement otherwise, which is
+     * the backstop; doing it here is what stops an administrator meeting that error at all.
      *
      * <p>{@link #oidcOwnerLoginAt} is cleared too. It attests that an {@code OWNER} completed an
      * OIDC login against a provider that is switched on, and once it is not, it attests to nothing.
