@@ -411,13 +411,26 @@ Constraints that carry a rule rather than decorating one:
 - `ON DELETE CASCADE` from `debts` to `debt_payments`: deleting a debt takes its own history and
   nothing else, exactly as deleting an envelope takes its log and no transactions.
 
-Two corrections to `../domain/model.md`, which was written from the canvas before this doc existed:
+**V17 also alters a slice-7 table.** `debt_payments.bill_occurrence_id` needs a composite foreign
+key on `(id, household_id)`, and `bill_occurrences` had no `UNIQUE (id, household_id)` for it to
+reference — V14 gave one to `bills` and `income_sources` but not to occurrences. V17 adds it by
+`ALTER`, the way V13 did for `transactions`, because migrations are append-only and V14 is frozen
+(ADR-0007). Without it the migration does not merely skip the scoping: it **fails to apply**, with
+`there is no unique constraint matching given keys for referenced table "bill_occurrences"` — which
+is the declarative-scoping rule refusing to be half-applied.
+
+Three corrections to `../domain/model.md`, which was written from the canvas before this doc
+existed:
 
 1. **`rung` is not a stored field on `Debt`.** It is derived from the strategy for `AVALANCHE` and
    `SNOWBALL`; only `CUSTOM` stores an order. Storing it would give the plan two sources of truth
    for the same ordering.
 2. **The solver constrains four quantities, not seven.** See
    [Where the designs and the docs disagree](#where-the-designs-and-the-docs-disagree).
+3. **`currentBalance` is not a stored field.** What is stored is the anchor — `anchor_balance`,
+   `anchor_date`, `balance_source` — and today's balance is derived from it and the payments
+   since. A stored current balance would be a fourth figure to keep in step with the anchor, the
+   payments and the linked account, and the first of them to drift.
 
 ## API
 

@@ -207,9 +207,15 @@ because a number derived from six months means something different from a number
 ### Debt and DebtPayment
 First-class, and the most arithmetically demanding part of the product.
 
-`Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `currentBalance`,
-`apr`, `minimumPayment`, `accountId` (nullable — a debt need not be linked), plus a
-**`balanceSource`**: `LINKED_STATEMENT` | `CONFIRMED` | `ESTIMATED`.
+`Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `apr`,
+`minimumPayment`, `accountId` (nullable — a debt need not be linked), plus the **balance anchor**:
+`anchorBalance`, `anchorDate` and `balanceSource` (`LINKED_STATEMENT` | `CONFIRMED` |
+`ESTIMATED`).
+
+> **`currentBalance` is not stored either.** This listed it as a field; slice 10 stores an *anchor*
+> — a figure and the date it was true — and derives today's balance from it plus the payments
+> since. A stored current balance would be a fourth thing to keep in step with the anchor, the
+> payments and the account, and the first one to drift.
 
 > **`rung` is not stored.** This paragraph said it was, and slice 10's feature doc corrects it:
 > for `AVALANCHE` and `SNOWBALL` a debt's place in the plan is *derived* from the strategy, and
