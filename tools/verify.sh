@@ -105,7 +105,12 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
     if [ -n "${NVD_API_KEY:-}" ]; then
       run "dependency vulnerabilities (OWASP)" mvn -q -f backend dependency-check:check
     else
-      missing "dependency vulnerabilities (OWASP)" "NVD_API_KEY is not set"
+      # Deliberately not a hard local failure. The key is a repository SECRET (CI reads
+      # secrets.NVD_API_KEY), so it is absent by design on a cloud session and on any machine
+      # whose owner has not set one — making every such run red would train people to ignore a
+      # red gate, which costs more than it buys. CI fails without it; here it is loud.
+      missing "dependency vulnerabilities (OWASP)" \
+        "NVD_API_KEY is not set — export it to run this locally (free key: https://nvd.nist.gov/developers/request-an-api-key). CI reads it from the repository secret"
     fi
   fi
 fi
@@ -213,10 +218,25 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
     # No app yet: at least prove the harness itself still works.
     run "harness self-check (no app yet)" tools/ui-check.sh --selfcheck
   elif curl -fsS --max-time 2 "${UI_BASE_URL:-http://localhost:4200}" >/dev/null 2>&1; then
+    # Something is already serving — a developer with `ng serve` open, or UI_BASE_URL pointing
+    # somewhere deliberate. Use it, and say so, because whose build it is matters.
+    printf '      against the app already serving at %s\n' "${UI_BASE_URL:-http://localhost:4200}"
     run "live UI checks" tools/ui-check.sh
     printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
   else
-    skip "live UI checks" "app not serving — run tools/ui-check.sh --serve to include them"
+    # Nothing serving: START one rather than skipping.
+    #
+    # This used to skip, and that was the hole. Non-negotiable #7 says this script must pass
+    # before the work is done; non-negotiable #8 says frontend changes are checked in a real
+    # browser. With a skip here, #7 passed while #8's check never ran — and on a clean machine,
+    # a fresh clone or CI, skipping was the DEFAULT. The one thing the project calls
+    # non-negotiable was the one most likely to be absent, and the output said PASSED.
+    #
+    # It costs a dev-server start-up on a run that would otherwise have skipped. That is the
+    # price of the check being real, and it is small beside shipping a page nobody looked at.
+    printf '      no app serving — starting one (adds a dev-server start to this run)\n'
+    run "live UI checks (own server)" tools/ui-check.sh --serve
+    printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
   fi
 fi
 
