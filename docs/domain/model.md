@@ -208,8 +208,13 @@ because a number derived from six months means something different from a number
 First-class, and the most arithmetically demanding part of the product.
 
 `Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `currentBalance`,
-`apr`, `minimumPayment`, `accountId` (nullable — a debt need not be linked), `rung` (its place
-in the plan), plus a **`balanceSource`**: `LINKED_STATEMENT` | `CONFIRMED` | `ESTIMATED`.
+`apr`, `minimumPayment`, `accountId` (nullable — a debt need not be linked), plus a
+**`balanceSource`**: `LINKED_STATEMENT` | `CONFIRMED` | `ESTIMATED`.
+
+> **`rung` is not stored.** This paragraph said it was, and slice 10's feature doc corrects it:
+> for `AVALANCHE` and `SNOWBALL` a debt's place in the plan is *derived* from the strategy, and
+> only `CUSTOM` stores an order. Storing it as well would give the plan two sources of truth for
+> the same ordering, and they would disagree the first time an APR changed.
 
 `balanceSource` is not decoration. The designs show a student loan whose balance is Owl's
 *estimate* ("I've assumed three $118 payments since June — if that's right, tap confirm"), and
@@ -225,12 +230,21 @@ wins**; the difference is recorded as a `STATEMENT_CORRECTION` row rather than s
 history. Money arithmetic here is exactly why `NUMERIC(19,4)` and `BigDecimal` are
 non-negotiable (ADR-0006).
 
-**The terms solver.** The designs state it plainly: *"Give me any four and I'll solve the
-rest."* Original balance, APR, current balance, minimum payment, months left, payoff date, and
-payment amount are mutually constrained; entering four derives the others, and each derived field
-is labelled `Solved`. Overriding a solved field makes it entered and re-solves around it. Every
-field therefore needs an `entered` / `solved` flag — this is a real modelling requirement, not UI
-sugar.
+**The terms solver.** The designs say *"Give me any four and I'll solve the rest"*, and this
+paragraph used to repeat it as seven mutually constrained fields. **Both are looser than the
+arithmetic**, and slice 10's feature doc settles it: **four** quantities are constrained by one
+equation — current balance, APR, the payment being made, and the horizon (months-left and
+payoff-date are one unknown with two faces, not two fields) — so there are three degrees of
+freedom and *any three give the fourth*.
+
+The other three fields only look like solver inputs. `minimumPayment` is always entered and is the
+plan's floor; `originalBalance` is an optional progress baseline; `totalInterestLeft` is always
+derived. The current balance is supplied and **never solved**, because inferring what somebody
+owes and printing it in the headline position replaces a fact with a guess.
+
+Each field still carries its state, but there are **three** labels rather than two — entered,
+solved, and *from your plan* — which is what makes the designs' own "4 entered · 3 solved" count
+over eight cells add up. A solved field is stored as `NULL`: nullability *is* the flag.
 
 A debt's **minimum payment appears in Bills & Income as a bill row** and is counted once. The
 designs are explicit: *"Minimums · each counted once in Bills & Income (the car payment is its
