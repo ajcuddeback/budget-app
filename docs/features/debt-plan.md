@@ -424,12 +424,12 @@ Two corrections to `../domain/model.md`, which was written from the canvas befor
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/debts` | List with derived balance, rung, what it is paying, when it clears, progress |
-| `POST` | `/api/debts` | `OWNER` / `MEMBER`. Requires `name`, `kind`, `minimumPayment`, `balance`, `balanceDate`, and `apr` unless a payment and a horizon are both given |
+| `POST` | `/api/debts` | `OWNER` / `MEMBER`. Requires `name`, `kind`, `minimumPayment`, `balance`, `balanceDate`, and `apr` unless a payment and a horizon are both given. `409 debt-limit-reached` past the per-household cap |
 | `GET` | `/api/debts/{id}` | Terms (each field flagged `ENTERED`, `SOLVED` or `FROM_PLAN`), progress, projection, chart series |
 | `PATCH` | `/api/debts/{id}` | The terms editor. Carries the entered set and `version` |
 | `DELETE` | `/api/debts/{id}` | `204`. Takes its payments, no transactions |
 | `POST` | `/api/debts/{id}/archive` · `/unarchive` | Retire without deleting, as accounts do |
-| `GET` | `/api/debts/{id}/payments` | The history |
+| `GET` | `/api/debts/{id}/payments` | The history, **paginated** (page envelope, `api-style.md`) |
 | `POST` | `/api/debts/{id}/payments` | Log one. Accepts an optional `transactionId` |
 | `PATCH` · `DELETE` | `/api/debts/{id}/payments/{paymentId}` | Correct · remove |
 | `POST` | `/api/debts/{id}/balance` | Confirm or correct the balance. Writes the anchor, and a `STATEMENT_CORRECTION` row when it disagrees with the arithmetic |
@@ -456,7 +456,8 @@ subtracts the last of those is an open question below.
 
 Error codes: `terms-over-determined` · `terms-unsolvable` · `never-clears` (a reason on a null
 projection, not an error) · `plan-below-minimums` (a flag on the plan, not an error) ·
-`debt-paid-off` on a write to a cleared debt · `stale-version` as everywhere.
+`debt-paid-off` on a write to a cleared debt · `debt-limit-reached` · `stale-version` as
+everywhere.
 
 ## UI
 
@@ -571,30 +572,126 @@ against `tools/ui/fixtures/demo-data.ts`, which needs debt fixtures adding.
 
 ## Security considerations
 
-Touches `../architecture/security-model.md` on ownership scoping and role enforcement, and adds one
-genuinely new concern.
+Threat-modelled before implementation (`/threat-model`, 2026-11-23). Baseline assumptions are in
+`../architecture/security-model.md`; this section records what is specific to debts, **including
+the attacks ruled out**, so the analysis is not redone from scratch.
 
-- **Household scoping throughout.** Every debt, payment, plan and snapshot is reached only through a
-  verified membership; the composite foreign keys enforce the same thing structurally (ADR-0017).
-  An id from a path or body is a lookup key, and another household's is `404`.
-- **`VIEWER` may read everything and write nothing** — including the strategy. Changing the plan is
-  a write even though it only stores two values, because it changes every projection the household
-  acts on.
-- **The solver is the first endpoint whose cost depends on the numbers in the request.** A bisection
-  over an iterated recurrence must be bounded: a hard cap on months (600) and on bisection steps
-  (64), with `terms-unsolvable` returned when either is hit. No input may cause an unbounded loop,
-  and `POST /api/debt-terms/solve` is rate-limited despite reading no data.
-- **No amounts in logs, and no names either.** A debt is the most disclosing record in the app: the
-  balance is what somebody owes, the APR is a statement about their credit, and the servicer name
-  alone says *this household has student debt*. Request and response DTOs get redacted `toString`s
-  (`transactions.md`), audit lines carry ids only, and the chart series — which is nothing but
-  balances — is covered by the same rule.
-- **Validate at the edge:** amounts as strings with scale within the currency's, `apr` in range,
-  dates sane, `balanceDate` not in the future, note length bounded, and `accountId` / `billId` /
-  `transactionId` resolved against the caller's household *before* anything is read or written.
-- **A debt payment must not become a way to write into an account the caller cannot write to.**
-  `transactionId` is resolved through the same path a plain transaction read uses, never taken on
-  trust because the debt happens to reference the account.
+### Assets
+
+Debts are the most disclosing records this app holds, and more disclosing than transactions.
+
+- **The balance** is what somebody owes. **The APR** is a statement about their credit rating.
+- **The servicer name** is the sharpest of the three: *Nelnet* says this household has student
+  debt, a payday lender says something else again, and a medical financing company says something
+  about somebody's health. One string, no amount attached, and it still discloses.
+- **The payment history** is a behavioural record — who pays late, who pays extra, and when money
+  appeared.
+- **The plan** (`strategy`, `monthlyAmount`) is a statement of disposable income.
+- **The chart series** is nothing but balances over time, so it carries everything above in a form
+  that is easy to forget is sensitive because it renders as a line.
+
+### Entry points
+
+The sixteen endpoints in [API](#api), plus the four new fields on
+`GET /api/periods/{period}/summary`. Every one is authenticated and household-scoped by default;
+public routes remain the explicit, reviewed exception they are everywhere else.
+
+### Attacks considered
+
+Written as sentences, as the threat-model skill requires. An attack that cannot be finished as a
+sentence is not real and is listed under *ruled out*.
+
+**Live, and controlled:**
+
+1. *An attacker sends `POST /api/debts` with an `accountId` belonging to another household and
+   gets* a debt in their own household bound to a foreign account, which then leaks that account's
+   currency and existence through their own debt screen.
+   **Control:** `accountId` is resolved through the membership-scoped query before anything is
+   written, and the composite foreign key `(id, household_id)` makes the row physically
+   unwritable otherwise (ADR-0017). Two layers, and the second cannot be forgotten by a future
+   caller.
+2. *An attacker sends `POST /api/debts/{id}/payments` with a `transactionId` belonging to another
+   household and gets* a payment row that discloses that transaction's amount and date.
+   **Control:** same resolution path a plain transaction read uses — never taken on trust because
+   the debt happens to reference the account. Identical shape for `billId` and
+   `billOccurrenceId`.
+3. *A `VIEWER` sends `PUT /api/debt-plan` and gets* every projection the household acts on
+   changed, having been granted read-only access.
+   **Control:** `requireWriteAccess` on the service, as everywhere. Setting a strategy is a write
+   even though it stores two values.
+4. *An attacker sends `POST /api/debt-terms/solve` repeatedly with values chosen to maximise
+   bisection depth and gets* sustained CPU burn from `BigDecimal` arithmetic.
+   **Control:** hard caps — 600 months of iteration, 64 bisection steps — so one call is bounded
+   at ~38,400 arithmetic steps, `terms-unsolvable` when a cap is hit, plus rate limiting. **This
+   is the first endpoint in the app whose cost depends on the numbers in the request**, which is
+   why it is called out rather than left to the general case.
+
+**Found by this threat model and not previously specified** — the feature doc had the solver
+bounded and these unbounded:
+
+5. *An attacker creates ten thousand debts and then calls `GET /api/debt-plan`, and gets* a
+   projection over both strategies — the plan computes both so it can show the comparison — at
+   O(debts × months) each, from a single cheap request.
+   **Control:** a per-household cap on debts, enforced the way `CategoryService` enforces its 200
+   (`countByHouseholdId` before insert, `409 debt-limit-reached`). The number belongs in the
+   implementation; what matters here is that an unbounded one is a remote amplification of a
+   `POST` into an expensive `GET`.
+6. *A household with years of history calls `GET /api/debts/{id}/payments` and gets* every payment
+   ever recorded in one response.
+   **Control:** the page envelope `api-style.md` requires of every collection. Noted because the
+   admin console already has the one unpaginated collection in the API and it should stay the
+   only one.
+7. *A caller requests `GET /api/debt-plan` (or the what-if, with any `monthlyAmount`) and gets* a
+   response carrying two strategies × every debt × up to 600 months of series data.
+   **Control:** the series returned is bounded independently of the iteration bound — the
+   projection may iterate 600 months internally while the response carries a capped series. A
+   number a human reads off a chart does not need monthly resolution to year 50.
+
+### Ruled out, with reasons
+
+- **Reading another household's debt by id.** `GET /api/debts/{id}` answers `404` for both a
+  missing row and one belonging to somebody else, as everywhere since ADR-0008. There is no
+  oracle to build.
+- **Information disclosure through the solver.** `POST /api/debt-terms/solve` reads no stored
+  data at all — it is arithmetic over the request body. It discloses nothing because it knows
+  nothing. It is still authenticated and rate-limited, for the cost reason above rather than a
+  confidentiality one.
+- **A background job to roll balances forward.** There is none: `ESTIMATED` is computed on read
+  and capped at twelve months. No scheduled task means no scheduled task to attack, and no
+  balance that moves while nobody is looking.
+- **Tampering with the interest/principal split to misstate history.** The split is stored rather
+  than derived precisely so a later APR change cannot rewrite it, and `interest + principal =
+  amount` holds by construction. A household editing their own payment record is not an attack;
+  it is the feature.
+- **Cross-currency confusion as an attack.** `CHECK (currency = account.currency)` cannot be
+  expressed in SQL, so the service enforces it — but a household mis-stating its own currency
+  harms only itself, and `account_currency_immutable` (slice 3) stops the account moving
+  underneath it afterwards.
+
+### Controls, and where each is enforced
+
+| Control | Layer |
+|---|---|
+| Household scoping on every read and write | Service (`requireWriteAccess` / membership query) **and** composite FKs in the schema |
+| `VIEWER` may read everything, write nothing | Service |
+| Degrees-of-freedom rule (at most two of `apr`, `payment`, horizon) | Bean Validation at the edge **and** a `CHECK` constraint |
+| Solver iteration and bisection caps | Service, with `terms-unsolvable` as the refusal |
+| Solver rate limiting | The existing `RateLimitedException` path |
+| Per-household debt cap | Service, `409 debt-limit-reached` |
+| Paginated payment history | Controller, page envelope |
+| Bounded chart series | Service, independent of the iteration bound |
+| No amounts, names or servicers in logs | Redacted `toString` on every DTO and entity; audit lines carry ids only |
+| Amounts as strings, scale within the currency's | Bean Validation, `NUMERIC(19,4)`, ADR-0006 |
+
+### Accepted risks
+
+- **Rate limiting is in-memory and per-instance**, as `AuthRateLimiter` already documents. Adequate
+  for one household on one box; it would not survive a multi-instance deployment, which this
+  product does not have (ADR-0026).
+- **A household can tell itself a comfortable lie.** Nothing stops somebody entering a balance
+  lower than reality, and the app will faithfully project a payoff date from it. `balanceSource`
+  and the confirm/correct flow exist to make the provenance visible, not to police it. The
+  operator owns their data (ADR-0026) and this is their plan, not ours.
 
 ## Edge cases
 
@@ -663,6 +760,10 @@ genuinely new concern.
   nothing automatically adjusts either.
 - **Nothing records who logged a payment or changed the strategy.** The same gap bills, transfers
   and occurrences have.
+- **Three bounds came from the threat model, not the designs**, and are recorded there rather than
+  here because they are controls: a per-household debt cap, a paginated payment history, and a
+  chart series bounded independently of the solver's iteration limit. Without them a cheap `POST`
+  loop amplifies into an expensive `GET`.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
 
@@ -777,6 +878,17 @@ this is about it.
   `debtMinimumsNotInBills = 303`. Then delete the bill and watch the second figure become 645.
 - **`MoneyCrossHouseholdIT`** — another household's debt, payment, account, bill and transaction are
   all `404` on every route, as for transfers.
+- **`DebtLimitsIT`** — the three controls the threat model added, each proved by removing it:
+  - Past the per-household cap, `POST /api/debts` is `409 debt-limit-reached` and writes nothing.
+    Without the cap, the same test creates the debts and the subsequent `GET /api/debt-plan` is
+    the amplification the control exists to stop.
+  - `GET /api/debts/{id}/payments` returns the page envelope and honours its bounds with more
+    payments than one page holds — it does not return everything and call it a page.
+  - `GET /api/debt-plan` on a never-clearing debt returns a **bounded** series. Asserted against
+    the bound, not against "it came back", because an unbounded series also comes back.
+  - `POST /api/debt-terms/solve` with values chosen to drive bisection to its limit answers
+    `terms-unsolvable` within the step cap rather than running on. Timed, so a regression that
+    removes the cap fails rather than merely getting slower.
 - **`debt-data.spec.ts`** — the request builders: the entered set is sent explicitly, a release is
   sent as a release and not as an omission, amounts and `apr` leave as strings, the what-if is a
   `GET` that writes nothing, and a payment's split is displayed from the response rather than
