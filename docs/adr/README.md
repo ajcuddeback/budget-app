@@ -59,3 +59,4 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0032](0032-bill-occurrences-are-projected-not-generated.md)     | Bill occurrences are projected on read, not generated           | Accepted                   | 2026-11-20 |
 | [0033](0033-a-transfer-is-a-linked-pair-and-may-cross-currencies.md) | A transfer is a linked pair; a cross-currency pair does not sum to zero | Accepted      | 2026-11-21 |
 | [0034](0034-rotating-the-oidc-client-secret-withdraws-the-proof.md) | Rotating the OIDC client secret withdraws the proof that the provider works | Accepted      | 2026-11-22 |
+| [0035](0035-a-debt-payment-is-a-plan-record-not-a-transaction.md) | A debt payment is a plan record, not a transaction | Accepted      | 2026-11-23 |

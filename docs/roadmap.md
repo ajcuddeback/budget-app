@@ -24,8 +24,8 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 6 | **[Envelopes](features/envelopes.md)** — set an amount, log against it, fully unsynced | 4, 5 | **Done** |
 | 7 | **[Bills & Income](features/bills-and-income.md)** — the scheduled page | 5 | **Done** (charge mapping deferred to 16) |
 | 8 | [Transfers](features/transfers.md) between accounts | 5 | **Done** |
-| 9 | **Admin console** — the instance the operator runs | 2 | Next |
-| 10 | **Debt plan & debt detail** — terms solver, payments, strategies | 7 | Planned |
+| 9 | **[Admin console](features/admin-console.md)** — the instance the operator runs | 2 | **Done** |
+| 10 | **[Debt plan & debt detail](features/debt-plan.md)** — terms solver, payments, strategies | 7 | Next |
 | 11 | Goals | 5 | Planned |
 | 12 | File import (CSV / OFX / QIF) | 5 | Planned |
 | 13 | Reporting & insights | 5, 7 | Planned |

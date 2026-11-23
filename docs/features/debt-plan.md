@@ -666,49 +666,47 @@ genuinely new concern.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
 
-## Open questions
+## Decisions
 
-**Decide these before implementation.** Each one is a real fork the designs do not settle; none is
-quietly chosen above.
+These were open forks the designs do not settle. The repository owner ruled on all seven on
+2026-11-23, before any code was written, which is the point of writing this doc first. Each one
+below is settled; the reasoning that was weighed is kept so it is not re-argued from scratch.
 
-1. **Does a debt payment write a transaction?** This doc says no — ADR-0025's rule, with an optional
-   link — and departs from `transfers.md`, which does write both legs (ADR-0033).
-   *Recommendation:* keep the no, and **write an ADR** saying so, because it is exactly the decision
-   those two ADRs exist to settle and it will be reopened otherwise. The alternative worth recording
-   as rejected is an opt-in "also record this in my ledger" checkbox on the log-payment sheet, which
-   is defensible and would double-count the moment import or sync arrives.
-2. **Does the Bills & Income "what's left" figure subtract debt minimums?** Slice 7 shipped three
-   terms — income, bills, envelopes — and the glossary's **Left over** says the same. The canvas's
-   bills page shows a *Committed out* figure that includes minimums and an earlier artboard labels
-   the figure *"Left over after debt"*.
-   *Recommendation:* add the **Owed** card as a fourth block (the canvas is explicit that the page
-   *"just carries the total"*) and subtract `debtMinimumsNotInBills` from `left`, with the fourth
-   term shown beside the other three so the subtraction is visible. That changes a shipped figure
-   and `bills-and-income.md` must be updated in the same change.
-3. **Does marking a linked bill's occurrence paid record a debt payment?** Ticking "Car payment"
-   paid in Bills & Income is, in the household's head, paying the car loan.
-   *Recommendation:* prompt once — *"also record this against Car loan?"* — and, if accepted, write a
-   `USER_LOGGED` payment carrying the occurrence's actual amount and `bill_occurrence_id`. Never
-   silently: a balance that moves on its own cannot be audited. Doing nothing at all is the safe
-   alternative and will be reported as a bug.
-4. **Does balance estimation (`ESTIMATED`) ship in slice 10?** It is pure arithmetic and the designs
-   give it a full screen, but it is the one place where the app puts a number it invented in the
-   headline position.
-   *Recommendation:* ship it, with the twelve-month cap and the confirm/correct actions. If it is
-   cut, cut the whole source — a debt with no linked account and no logged payments then simply
-   shows its last confirmed balance and its date.
-5. **Is the mobile plan screen the ladder or a condensed table?** The canvas gives the ladder only
-   as an exploration, and settles the comparison structure but not this.
-   *Recommendation:* the ladder. It carries the allocation rule in words, which the table conveys
-   only through two numbers in a cell.
-6. **What does `originalBalance` mean for a credit card?** An installment loan has one; a revolving
-   card does not, and the canvas shows $10,650 for a Visa anyway.
-   *Recommendation:* optional and labelled as a progress baseline, defaulting to the balance at
-   creation, with progress hidden when it is absent. Do not call it "original balance" on a card.
-7. **Is one plan per household enough?** `PayoffPlan` is modelled as one row per household
-   (ADR-0026). *Recommendation:* yes — but note that a household with debts in two currencies then
-   has one strategy and two ungrouped projections, which is the mixed-currency gap above seen from a
-   different angle.
+1. **A debt payment does not write a transaction.** It is a plan record with a nullable
+   `transactionId`, so a household can attach the ledger row they already recorded. Deleting that
+   transaction leaves the payment standing and **does not move the debt balance** — the link is
+   evidence, not the source of truth. Recorded as **ADR-0035**, because this sits precisely between
+   ADR-0025 (envelopes never auto-file a transaction) and ADR-0033 (a transfer *is* two linked
+   rows), and without an ADR it will be reopened. The rejected alternative is an opt-in "also record
+   this in my ledger" checkbox, which is defensible today and double-counts the moment file import
+   (12) or bank connections (16) arrive.
+2. **Bills & Income's "what's left" subtracts debt minimums.** The page gains an **Owed** card as a
+   fourth block, and `left` loses `debtMinimumsNotInBills` — only the minimums not already carried
+   by a bill row, so nothing is counted twice. The fourth term is shown beside the other three so
+   the subtraction is visible rather than mysterious.
+   **This changes a figure that has already shipped**, so it is not a quiet edit:
+   `docs/features/bills-and-income.md`, the glossary's **Left over** entry, and the user guide's
+   "See what's left this month" all move in the same change, and the user guide says what changed
+   and why.
+3. **Marking a linked bill's occurrence paid prompts once.** *"Also record this against Car loan?"*
+   — and on acceptance writes a `USER_LOGGED` payment carrying the occurrence's actual amount and
+   its `bill_occurrence_id`. Never silently: a balance that moves on its own cannot be audited, and
+   this app's whole claim is that every number traces to something a person recorded.
+4. **Balance estimation ships, capped at twelve months.** `ESTIMATED` is the one place the app puts
+   a number it invented in the headline position, so it is marked as an estimate on screen wherever
+   it appears, and the confirm/correct actions ship with it. The cap is a refusal to extrapolate
+   indefinitely: past twelve months with no confirmation the debt shows its last confirmed balance
+   and that date instead.
+5. **The mobile plan is the ladder**, not a condensed table — stacked cards in payoff order, each
+   carrying its amount and projected payoff month. It states the allocation rule in words, which a
+   table conveys only through two numbers in a cell, and it is how envelopes and bills already
+   reflow.
+6. **`originalBalance` is an optional progress baseline**, defaulting to the balance at creation,
+   with progress simply absent when it is absent. It is **not** labelled "original balance" on a
+   revolving card, where the phrase means nothing.
+7. **One `PayoffPlan` per household** (ADR-0026). The consequence is recorded rather than hidden: a
+   household with debts in two currencies gets one strategy and two ungrouped projections, which is
+   the mixed-currency gap in *Known gaps* seen from another angle.
 
 ## Where the designs and the docs disagree
 
