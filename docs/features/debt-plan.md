@@ -1,0 +1,795 @@
+# Feature: Debt plan and debt detail
+
+- **Slice:** 10
+- **Status:** Planned
+- **Owner:** Repository owner
+- **Last updated:** 2026-11-23
+- **Depends on:** accounts (3), transactions (5), bills & income (7)
+- **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0025 (a plan
+  record is not a transaction), ADR-0031 (one transaction, one entry), ADR-0032 (projected, not
+  generated), ADR-0033 (a linked pair), `bills-and-income.md`, `transfers.md`,
+  `../domain/model.md`
+- **Designs:** `design/canvas/` section `v1` — six artboards: *Debt plan, two structures* ·
+  *Debt plan absorbs the debt table* · *Debt detail — terms in, payments out* · *Debt detail on
+  mobile* · *The three ways a balance moves* · *The same two actions on desktop*. Onboarding step
+  2 (*What the steps are*) and the Bills & Income **Owed** card are the two places outside those
+  artboards that this slice touches.
+
+## Purpose
+
+A debt is **a balance you are reducing, with terms**. Bills say what leaves on a date and
+envelopes say what you chose to spend; a debt is the only one of the three where the number you
+care about is going *down*, and where arithmetic — not a schedule — decides when it reaches zero.
+
+Two screens, one question each:
+
+> **Debt plan:** in what order do I attack these, and when am I free?
+> **Debt detail:** what are this one's terms, and what has actually been paid against it?
+
+The plan answers the first by ranking the household's debts and projecting both strategies side by
+side. The designs refuse to pick for them — *"Avalanche costs $780 less. Snowball clears the Visa
+three months sooner, which some people need to keep going. Either is a good answer."* That
+sentence is the feature's posture: compute both, show both, let the household choose.
+
+The detail page answers the second with a **terms solver** — the household supplies the numbers it
+can read off a statement and Budget Owl derives the rest, labelling every derived field `Solved` so
+a figure the app worked out is never mistaken for one the household asserted. It is the same
+discipline `statusSource` gives a bill occurrence and `balanceSource` gives a balance, applied to
+arithmetic.
+
+## User stories
+
+- As a member, I want my debts in one place with their balances and rates, so I can see what I owe
+  without opening three lender portals.
+- As a member, I want to be told which order to pay them in, and why that order and not the other
+  one.
+- As a member, I want to know what paying £50 more a month would buy me, before I commit to it.
+- As a member, I want to type the four numbers my statement gives me and have the app work out when
+  this is gone — not be asked for the one number I do not have.
+- As a member, I want to log a payment I made and see the balance move, with the interest and
+  principal split shown, so the balance has an audit trail rather than being a figure I typed.
+- As a member, I want my card's minimum counted **once** — it is already a line on Bills & Income
+  and I do not want to be told I owe it twice.
+- As a `VIEWER`, I want to see the plan and every balance, and change nothing.
+
+## Prerequisites
+
+Accounts (3) for the optional link to a credit-card account, transactions (5) for the optional link
+from a payment to the real movement, and bills & income (7) for the minimum-counted-once rule and
+the **Owed** card. Not connections, not import, not the check-in: a debt plan must be fully usable
+on an instance that has never spoken to a bank. The designs say so in as many words — the student
+loan in every artboard is *"Nelnet · manual entry"*.
+
+## Rules and behaviour
+
+### The terms solver
+
+This is the hardest part of the slice and the reason this doc exists before any code.
+
+**Four quantities are mutually constrained by one equation:**
+
+| Quantity | In the API | Notes |
+|---|---|---|
+| Current balance | `balance` | **Always supplied. Never solved** — see below |
+| Annual rate | `apr` | A percentage, e.g. `"22.900"`. Nullable: null means solved |
+| The payment being made | `payment` | Not the minimum. Normally **supplied by the plan** |
+| The horizon | `monthsLeft` / `payoffMonth` | **One unknown with two faces**, not two fields |
+
+One equation and four quantities means **three degrees of freedom**: give any three and the fourth
+follows.
+
+**The solve target is whichever one slot of `apr`, `payment` and the horizon is not supplied.**
+"Supplied" means entered by the household — or, for `payment` only, assigned by the payoff plan.
+
+- With a plan in place, `payment` is the plan's allocation for that debt (its minimum, plus the
+  surplus if it is rung 1), so **the horizon is the default solve target**. With no plan yet — a
+  debt one minute old, created from onboarding's balance, APR and minimum — `payment` falls back to
+  `minimumPayment`, which is what makes *"enough to rank them"* true.
+- Entering a horizon (*"I want this gone by Dec 2027"*) makes **`payment`** the solve target. The
+  plan then shows that debt's required payment instead of its allocation, and says so when its
+  monthly amount cannot cover it.
+- Entering both a horizon and a payment makes **`apr`** the solve target — the installment-loan case
+  where the statement gives a balance, a payment and a term but never names the rate.
+- An entered `payment` overrides the plan's allocation and becomes that debt's floor in the plan.
+- Entering all three is `422 terms-over-determined`.
+
+Three fields in the designs' *Loan terms* panel look like solver inputs and are not:
+
+- **`minimumPayment`** is always entered. It never participates in this debt's own projection; it
+  is the floor the plan allocates to every debt below rung 1, and the second input to the *"if
+  you'd paid the minimum"* comparison line on the chart.
+- **`originalBalance`** is a progress baseline — *"$4,470 paid off · 42% of $10,650"* — and
+  nothing else. It is optional, and progress is simply absent when it is absent.
+- **`totalInterestLeft`** is always derived. It is a sum over the projection.
+
+**Every cell therefore carries one of three labels, not two:** entered, `Solved`, or *from your
+plan*. That is what makes the artboard's own count — *"4 entered · 3 solved"* over eight cells —
+add up: entered are original balance, APR, current balance and minimum; solved are months left,
+payoff date and total interest left; and *"Payment I'm making $445.00 / mo"* is the eighth, which
+comes from the plan and is neither.
+
+**Why the balance is never solved.** It is the one number a household can read off a statement, and
+it is the number `balanceSource` exists to qualify. An app that *derives* what you owe from a rate
+and a payment schedule has replaced a fact with an inference and then shown it in the headline
+position. Everything else on the page can be an inference as long as it says so; this one may not
+be.
+
+### How a projection is computed
+
+Monthly compounding on the balance, interest first, payment at the end of the period:
+
+> `interest(m) = round(balance(m-1) × apr ÷ 100 ÷ 12, 4, HALF_EVEN)`
+> `balance(m)  = balance(m-1) + interest(m) − payment`
+
+The debt clears in the first month `m` where `balance(m) ≤ 0`.
+
+Three things follow, and all three are deliberate:
+
+1. **The projection is computed by iterating that recurrence, not by the closed-form annuity
+   formula.** The closed form disagrees with a row-by-row ledger by a few cents, and a few cents
+   compounded eventually disagrees by a whole month — so the payment table on screen and the payoff
+   date above it would contradict each other. The iteration is the definition.
+2. **Solving for a non-horizon field is a bounded search, not algebra.** `payment` and `apr` are
+   each monotonic in the number of months to clear, so each is found by bisection over the
+   iteration, seeded from the closed form, to a stated tolerance: `payment` to the currency's scale
+   and `apr` to `0.001` percentage points. A solved `apr` is an approximation of a real rate and the
+   UI says `Solved`, which is exactly what that label is for.
+3. **Projections are approximate, and the product says so out loud.** Real lenders accrue daily,
+   bill on statement cycles, and change rates. Monthly-on-the-balance is a simplification chosen
+   because it is the one a household can check with a calculator, and because the designs already
+   state it as the rule — *"Interest is balance × APR ÷ 12 until a statement says otherwise — then
+   the statement wins and the gap is logged as a correction."* It must never be presented as what
+   the lender will charge.
+
+`apr ÷ 100 ÷ 12` is the **nominal** monthly rate, not the effective `(1 + apr)^(1/12) − 1`. That
+is what
+card issuers quote, and it is what the sentence above promises.
+
+### Payoff dates are months, not days
+
+A payoff date derived from monthly arithmetic cannot be day-accurate. `payoffMonth` is a
+`YearMonth` (`"2027-04"`) everywhere in the API, and every screen renders it as *Apr 2027*, which
+is what the designs show. Day-precision deltas are false precision — see the note on the check-in
+copy under [Where the designs and the docs disagree](#where-the-designs-and-the-docs-disagree).
+
+The projection's first period starts at the debt's **next payment date**: the linked bill's next
+occurrence if the debt is linked to one, otherwise the day-of-month of the most recent recorded
+payment, otherwise today. Month-end clamps the same way a bill schedule does — the 31st becomes the
+28th in February (`bills-and-income.md`).
+
+### When the numbers do not work
+
+Three failure shapes, all of them real and none of them an error page.
+
+**A payment that never clears the balance.** When `payment ≤ interest(1)` the balance grows every
+month and there is no horizon to solve for. This is not a user mistake — a card's real minimum is a
+percentage of the balance, and a household entering a flat minimum from last month's statement will
+hit it legitimately. So:
+
+- The terms are **accepted and stored**. Refusing to record a debt because its minimum is too small
+  tells somebody in trouble that their situation is invalid input.
+- `monthsLeft`, `payoffMonth` and `totalInterestLeft` come back `null` with a reason code of
+  `never-clears`, and the screen says it in the arithmetic's own terms: *"At 22.9%, $118 a month is
+  less than the $118.44 of interest this balance accrues — the balance grows."*
+- The plan still ranks the debt and still produces dates for the debts that do clear. A plan that
+  refuses to render because one debt is underwater is a plan nobody can use to fix it.
+
+**An over-determined set.** If the request marks all three of `apr`, `payment` and the horizon as
+entered, the server answers `422 terms-over-determined` naming the fields. It does **not** silently
+drop one: a number the household typed must never be quietly replaced by a computed one. The
+*client* is what releases a field — the designs make this the interaction (*"Change a solved field
+and it becomes yours — I'll re-solve around it"*) — and the sheet says which field it released and
+that it is now solved.
+
+**A set with no solution at all** (a horizon the balance cannot reach at any non-negative rate, a
+negative payment, a payoff month in the past): `422 terms-unsolvable`, with the field at fault
+named. The bisection is **iteration-bounded**, never run to convergence-or-forever — see
+[Security considerations](#security-considerations).
+
+### What is stored and what is recomputed
+
+| | Stored | Derived on read |
+|---|---|---|
+| Terms | Only the **entered** values. A solved field is `NULL` in the row | Every solved field, every time. `payment` when the plan supplies it |
+| Balance | An **anchor**: `anchorBalance` + `anchorDate` + `balanceSource` | `balance` = anchor rolled forward by the payments recorded after `anchorDate` |
+| A payment's split | `interest`, `principal`, `balanceAfter` as at the time | — |
+| Rung | Only for `CUSTOM` (`customOrder`) | Derived from the strategy for `AVALANCHE` and `SNOWBALL` |
+| Plan | `strategy`, `monthlyAmount` | Order, per-debt allocation, per-debt payoff month, total interest, debt-free month, both strategies' comparison |
+| The previous plan's projection | A **snapshot** per plan change | — |
+
+**A solved field is not stored, and nullability is the `entered` / `solved` flag.**
+`../domain/model.md` asks for such a flag on every field; this is it, without a parallel set of
+boolean columns that could disagree with the values they describe. A stored solved value is a
+second copy of a derivable fact — which is what "overdue is derived, never stored" and "remaining
+is computed, never stored" already refuse elsewhere.
+
+**A payment's interest and principal *are* stored**, which looks like the opposite call and is not:
+they are what was true under the rate in force on the day, and a statement may have corrected them.
+Recomputing a payment from 2024 against today's APR would rewrite history to make it agree with
+the present, which is the one thing an audit trail must not do.
+
+**The plan's projection is snapshotted when the plan changes** (strategy, monthly amount, or custom
+order), carrying the strategy, the monthly amount, the debt-free month and the total interest.
+Without it the home screen's *"4 months earlier than last month's plan"* has nothing to compare
+against, and a snapshot cannot be backfilled. Slice 10 writes the snapshot; the screen that renders
+the delta is not in this slice.
+
+### Strategies
+
+Three: `AVALANCHE` (highest APR first), `SNOWBALL` (smallest balance first), `CUSTOM` (the
+household's own order). **Both named strategies are always computed, whichever one is selected** —
+the comparison card is a product requirement, not a view of the selection.
+
+**Ordering must be deterministic**, including on ties, or the ladder reshuffles between two reads of
+the same data:
+
+- `AVALANCHE`: APR descending, then balance ascending, then name, then id.
+- `SNOWBALL`: balance ascending, then APR descending, then name, then id.
+- `CUSTOM`: `customOrder` ascending, then the `AVALANCHE` ordering for anything unordered.
+
+**Allocation is the ladder.** Every active debt gets its minimum. The surplus
+(`monthlyAmount − Σ minimums`) goes entirely to rung 1. When rung 1 clears, its minimum **and** the
+surplus roll down to rung 2, and so on — *"Pay the top one hard. Everything below gets its minimum
+until the rung above clears."* Both strategies use the same roll-down; the only difference between
+them is the order.
+
+**What the plan outputs**, per read:
+
+- an **order** — the rung of each active debt;
+- a **monthly amount per debt**, split as minimum plus extra (*"$185 minimum + $260 extra"*);
+- a **projected payoff month per debt** (*"Clears Apr 2027"*);
+- a **debt-free month** for the plan: the latest of the per-debt payoff months;
+- a **total interest** figure for the plan;
+- the **first win** — when rung 1 clears, because that is snowball's whole argument;
+- the same five figures for **the other strategy**, so the comparison card can be rendered without
+  a second request;
+- a **balance-to-zero series** for the chart, one point per month per strategy.
+
+**The what-if is computed, never stored.** *"Adding $50/mo to rung 1 moves the whole ladder up by 3
+months and saves $780 in interest"* is the plan re-run with `monthlyAmount + 50`. It is a `GET`
+with query parameters and it writes nothing.
+
+**A monthly amount below the sum of the minimums is accepted and produces no projection.** It is
+refused neither at the edge nor in the database, because a household that genuinely cannot meet its
+minimums exists and `422` is the wrong thing to say to them. The plan says plainly that the amount
+is less than the minimums and that it cannot build an order from it. Every projection computed from
+such an amount would be a fiction.
+
+### Payments
+
+**A `DebtPayment` is a plan record, not a transaction.** ADR-0025's reasoning carries over
+unchanged: only a real `Transaction` is ever income or expense, and the app must not become the
+authority on whether money moved. So logging a payment **writes no transaction and moves no account
+balance**, and it carries a nullable `transactionId` naming the real movement when one is known —
+the same shape, and the same optionality, as `bill_occurrences.transaction_id`.
+
+This is a deliberate departure from `transfers.md`, where creating a transfer *does* write two
+transactions (ADR-0033). The difference is what the household asked for: a transfer is an
+instruction to record a movement between two accounts it owns, and both legs are rows in its own
+ledger. A debt payment is a statement about a balance held by a third party, of which the money
+leaving the account is only one half — and that half is very often already in the ledger, or about
+to arrive by import or sync. Writing it would duplicate it. This is the kind of call that deserves
+its own ADR; see [Open questions](#open-questions).
+
+Consequences, stated so nobody rediscovers them:
+
+- **The debt's balance derives from its payments; the account's balance does not.** A household that
+  logs a debt payment and records no transaction has a correct debt balance and an account balance
+  that is too high. The same gap bills have, for the same reason.
+- **A transaction settles at most one debt payment, ever**, enforced by a unique index — ADR-0031's
+  argument about one transaction and one envelope entry, and the same rule bills apply across
+  occurrences. Counting one charge against two debts would understate both balances plausibly.
+- **Deleting the linked transaction does not delete the payment and does not move the balance.** The
+  foreign key is `ON DELETE SET NULL (transaction_id)` — the column-list form, because a bare `SET
+  NULL` would try to null `household_id` too and the delete would fail (`transactions.md` learned
+  this on `category_id`). The payment stands with its link cleared, its provenance unchanged, and a
+  row that says the charge it came from is gone. The alternative — removing the payment with the
+  transaction — would mean tidying up a mistyped ledger row silently changed what the household
+  owes.
+- **`provenance` says how the row got here**, exactly as `statusSource` does for a bill:
+  `USER_LOGGED`, `AUTO_MATCHED`, `STATEMENT_CORRECTION`. Slice 10 writes `USER_LOGGED` and
+  `STATEMENT_CORRECTION` only. `AUTO_MATCHED` needs a connected account (slice 16); the column
+  exists now so that a figure somebody asserted never becomes indistinguishable from one the app
+  inferred.
+
+**The split.** A logged payment's `interest` is `round(balance × apr ÷ 100 ÷ 12, 4, HALF_EVEN)` at
+the time, `principal` is `amount − interest`, and `balanceAfter` is the previous balance minus
+`principal`. `interest + principal = amount` exactly, by construction — the interest is rounded and
+the principal takes the remainder, so no payment ever loses or invents a cent.
+
+**A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
+difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
+and the anchor moves. History is never silently adjusted to agree with the present.
+
+**Overpaying is not clamped.** A payment whose principal exceeds the balance takes it below zero and
+the screen says the debt is overpaid by that amount. Clamping would hide a real error in somebody's
+favour, and bills already set the precedent that a figure is rendered negative when it is negative.
+
+### Balance sources
+
+`CONFIRMED` · `ESTIMATED` · `LINKED_STATEMENT`, and **the UI never renders two of them
+identically**.
+
+- `CONFIRMED` — an anchor the household entered or confirmed, with the date it was true.
+- `ESTIMATED` — the anchor rolled forward over months with no logged payment, assuming the minimum
+  was paid. The designs give it its own screen and its own words: *"This one's an estimate. I've
+  assumed three $118 payments since June — if that's right, tap confirm and it becomes the real
+  balance."* Confirming it writes a `CONFIRMED` anchor at today's date.
+- `LINKED_STATEMENT` — from a connected account. **Not reachable in slice 10** (slice 16), like
+  `AUTO_MATCHED` and like a bill's `ChargeRule`.
+
+Estimation rules: never estimate past today; never estimate a month in which a payment is logged;
+estimate whole months only, from the anchor date; and apply the same interest formula as everything
+else, which means an estimate is *not* the anchor minus the payments (see the design-arithmetic note
+below). After **twelve** estimated months the balance is reported as stale rather than estimated,
+and the screen asks for a statement figure instead of extrapolating a year of guesses.
+
+### The minimum is counted once
+
+A debt's minimum payment is frequently *also* a bill — *"the car payment is its bill row"*. Counting
+it in both places is the obvious bug in this slice, and the designs' own figures show the rule
+working: three debts with minimums of $185, $342 and $118 total $645, and the Bills & Income
+committed figure adds only **$303** of them — $185 + $118 — because the car loan's $342 is already
+one of the seven bill rows.
+
+**The link is explicit, never inferred.** `debts.bill_id` names the bill whose occurrence is this
+debt's minimum, set by the household when it creates or edits the debt. Matching a debt to a bill by
+name, amount or category would be guessing, which is precisely why `bills-and-income.md` refuses to
+match bills to envelopes that way.
+
+So: `debtMinimumsNotInBills = Σ minimumPayment over active debts where bill_id is null`, and that is
+the only debt figure the Bills & Income period summary adds to anything.
+
+### Currencies
+
+A debt is denominated in one currency, and **the plan's totals are per currency**. A household with
+debts in two currencies gets no single debt-free date and no combined total interest — those would
+need a rate the instance may not have, and a converted figure is never the input to stored
+arithmetic (ADR-0022). The plan groups by currency and says so, the same way the ledger returns a
+`null` page total when a page mixes currencies rather than inventing one (`transactions.md`).
+
+A debt carries its own `currency`, defaulting to the household's. Where a debt is linked to an
+account, its currency **is** that account's and is not independently settable — the account owns
+that fact, exactly as it does for a transaction (`transactions.md`).
+
+### Money rules
+
+`BigDecimal` in Java, `NUMERIC(19,4)` in Postgres, **strings over the wire** — amounts and `apr`
+both (ADR-0006). A JSON number is refused with `400`: `22.9` is not exactly representable as a
+double either, and it multiplies a balance. Rounding is `HALF_EVEN` at scale 4, applied at each
+monthly step and nowhere else, so the figure on screen and the figure in the chain of
+`balanceAfter` values are the same figure. `apr` is a **percentage**, because that is what a
+statement prints; the monthly rate is `apr ÷ 100 ÷ 12` and no stored column holds it.
+
+## Data model
+
+New tables, `V<n>__debts_and_payments.sql` — next free number after slice 9's migrations. Extends
+`Debt`, `DebtPayment` and `PayoffPlan` in `../domain/model.md`; read that first, and note the two
+corrections to it below.
+
+`debts`
+: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `servicer` (nullable text — *Chase*, *Alpine Auto
+Finance*, *Nelnet*), `currency`, `apr` `NUMERIC(6,3)` (**nullable** — null means solved),
+`minimum_payment`, `original_balance` (nullable), `anchor_balance`, `anchor_date`,
+`balance_source`, `payment` (nullable — entered only), `months_left` (nullable — entered only),
+`payoff_month` (nullable — entered only), `custom_order` (nullable), `account_id` (nullable),
+`bill_id` (nullable, unique where not null), `paid_off_at` (nullable), `archived`, `version`.
+
+`debt_payments`
+: `debt_id`, `paid_date`, `amount`, `interest`, `principal`, `balance_after`, `provenance`,
+`transaction_id` (nullable, unique where not null), `bill_occurrence_id` (nullable, unique where
+not null), `note`, `version`.
+
+`payoff_plans`
+: one row per household (`household_id` unique — ADR-0026). `strategy`, `monthly_amount`,
+`version`.
+
+`payoff_plan_snapshots`
+: `taken_at`, `strategy`, `monthly_amount`, `currency`, `debt_free_month`, `total_interest`.
+Plan-level only: that is what *"4 months earlier"* compares. Per-debt snapshot rows can be added
+later without rewriting these.
+
+Constraints that carry a rule rather than decorating one:
+
+- **Scoping is declarative**, as in slices 5–8: every foreign key is composite on
+  `(id, household_id)`, so a debt physically cannot reference another household's account, bill,
+  transaction or occurrence (ADR-0017).
+- `CHECK` that **at most two** of `apr`, `payment`, and the horizon are non-null — the
+  degrees-of-freedom rule, in the database as well as at the edge. `months_left` and `payoff_month`
+  are two faces of one unknown, so both being set is also refused.
+- `CHECK (apr IS NULL OR (apr >= 0 AND apr < 1000))`. Zero is a real promotional rate and must not
+  be refused; so is a payday rate above 100%, and a household that cannot record its worst debt is
+  worse off than one looking at an alarming number.
+- `CHECK (minimum_payment >= 0)`. There is deliberately **no** check against a zero or negative
+  `anchor_balance`: a confirmed zero is how a debt is paid off, and a negative one is an
+  overpayment the screen must be able to show. A debt *created* at zero is a `422` at the edge,
+  which is a different claim.
+- `CHECK (currency = account.currency)` cannot be expressed in SQL, so the service enforces it and
+  `account_currency_immutable` (slice 3) is what keeps it true afterwards.
+- `fk_debt_payments_transaction … ON DELETE SET NULL (transaction_id)` and
+  `fk_debts_bill … ON DELETE SET NULL (bill_id)`, both in the column-list form.
+- `ON DELETE CASCADE` from `debts` to `debt_payments`: deleting a debt takes its own history and
+  nothing else, exactly as deleting an envelope takes its log and no transactions.
+
+Two corrections to `../domain/model.md`, which was written from the canvas before this doc existed:
+
+1. **`rung` is not a stored field on `Debt`.** It is derived from the strategy for `AVALANCHE` and
+   `SNOWBALL`; only `CUSTOM` stores an order. Storing it would give the plan two sources of truth
+   for the same ordering.
+2. **The solver constrains four quantities, not seven.** See
+   [Where the designs and the docs disagree](#where-the-designs-and-the-docs-disagree).
+
+## API
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/debts` | List with derived balance, rung, what it is paying, when it clears, progress |
+| `POST` | `/api/debts` | `OWNER` / `MEMBER`. Requires `name`, `kind`, `minimumPayment`, `balance`, `balanceDate`, and `apr` unless a payment and a horizon are both given |
+| `GET` | `/api/debts/{id}` | Terms (each field flagged `ENTERED`, `SOLVED` or `FROM_PLAN`), progress, projection, chart series |
+| `PATCH` | `/api/debts/{id}` | The terms editor. Carries the entered set and `version` |
+| `DELETE` | `/api/debts/{id}` | `204`. Takes its payments, no transactions |
+| `POST` | `/api/debts/{id}/archive` · `/unarchive` | Retire without deleting, as accounts do |
+| `GET` | `/api/debts/{id}/payments` | The history |
+| `POST` | `/api/debts/{id}/payments` | Log one. Accepts an optional `transactionId` |
+| `PATCH` · `DELETE` | `/api/debts/{id}/payments/{paymentId}` | Correct · remove |
+| `POST` | `/api/debts/{id}/balance` | Confirm or correct the balance. Writes the anchor, and a `STATEMENT_CORRECTION` row when it disagrees with the arithmetic |
+| `GET` | `/api/debt-plan` | Strategy, amount, order, **both** projections and the comparison |
+| `PUT` | `/api/debt-plan` | Set strategy, `monthlyAmount`, custom order. Requires `version` |
+| `GET` | `/api/debt-plan/projection?strategy=&monthlyAmount=` | The what-if. Writes nothing |
+| `POST` | `/api/debt-terms/solve` | Solve a term set without saving it, for the editor and the add form |
+
+`/api/debt-plan` is **singular** because there is exactly one per household (ADR-0026), like
+`/api/periods/{period}/summary`.
+
+`POST /api/debt-terms/solve` is a **pure calculation** — it reads no household data. It is still
+authenticated, still rate-limited, and still iteration-bounded; see security.
+
+**The entered set is explicit in the request.** `PATCH /api/debts/{id}` carries, for each solver
+field, either a value marked entered or an instruction to release it to solved. It never infers
+"absent means release" — `transactions.md`'s three-way `PATCH` lesson applies with more force here,
+because a field dropped by accident would silently change what the household believes about its own
+payoff date.
+
+**Bills & Income gains debt figures.** `GET /api/periods/{period}/summary` adds `owed` (the total
+balance), `debtCount`, `debtMinimums` and `debtMinimumsNotInBills`. Whether the `left` figure
+subtracts the last of those is an open question below.
+
+Error codes: `terms-over-determined` · `terms-unsolvable` · `never-clears` (a reason on a null
+projection, not an error) · `plan-below-minimums` (a flag on the plan, not an error) ·
+`debt-paid-off` on a write to a cleared debt · `stale-version` as everywhere.
+
+## UI
+
+Two routes, both in the main nav under **Debt plan**, both at 390 and desktop width, both light and
+dark (non-negotiable #10, `design/README.md`'s two rules). Dark mode steps the accents to their 400
+tints over the warm near-black grounds, like every other screen; no debt artboard invents a colour.
+
+### `/debt-plan` — the plan
+
+Desktop (*Debt plan absorbs the debt table*), top to bottom:
+
+1. A header strip: **the monthly commitment and how much of it is strategic** — *"$645/mo committed
+   · $560 of it strategic"*.
+2. **Debt plan**, with the subtitle that says where the money comes from: *"Three balances, one
+   order of attack. Minimums come from your bills; the extra comes from what's left after goals."*
+3. **Strategy tabs** — Avalanche · Snowball · Custom.
+4. **Balance to zero** — a chart with one line per strategy, labelled with the assumption (*"Both
+   lines assume $560/mo"*), and the headline underneath: *"$26,480 → $0 · 31 months on the current
+   plan"*.
+5. **Two comparison cards**, side by side, each with its one-line rationale, its debt-free month and
+   its total interest; then the sentence that compares them and the what-if (*"adding $50/mo to
+   whichever you pick moves the date up 3 months"*). Neither card is pre-blessed beyond showing
+   which one is selected.
+6. **Your debts** — the table that used to live on the bills page: rung, name, `kind · servicer`,
+   balance, APR, progress, clears, paying (with the `min + extra` breakdown), and **Open →**.
+   Headed by the order it is in (*"Avalanche order"*) and by *"Open any debt for its terms and
+   payments"*, with **Add a debt** beside it.
+7. A footer line carrying the counted-once rule in the household's own language: *"Minimums · each
+   counted once in Bills & Income (the car payment is its bill row) — $645"*.
+
+Mobile (*Debt plan, two structures*) renders the same data as **the ladder**: one card per rung
+carrying its APR, its clear date, its balance and what it is paying — rung 1 showing *"$185 minimum
++ $260 extra"* and the rungs below it *"Minimum $342/mo until rung 1 clears"*, which is the
+allocation rule said in words rather than left to be inferred from numbers. Under it, the
+**what-if** sentence; under that, the same two-strategy comparison with **Use avalanche** as its
+action.
+
+The two artboards are **alternative structures for the same plan**, and the canvas resolves half of
+it: *"Strategy comparison follows the side-by-side structure."* So the comparison is side-by-side
+everywhere; the ranked ladder is how the phone shows the order and the table is how the desktop
+shows it. The remaining ambiguity is an open question.
+
+**Empty state:** no debts means the page explains what it is for and offers **Add a debt**. It does
+not render a $0 balance, a chart of nothing, or a debt-free date of today — a household with no debt
+being told it is debt-free *this month* reads as a bug, not a congratulation.
+
+**Add a debt / Edit terms** is not drawn as its own artboard. Its fields are the table's columns
+plus onboarding step 2's three: name, kind, servicer, balance (and the date it was true), APR,
+minimum, optionally the account it is held at, optionally the bill that pays its minimum. Amounts
+are `type="text"` with `inputmode="decimal"`, never `type="number"` (ADR-0006).
+
+### `/debt-plan/{id}` — the detail
+
+The canvas shows a slug (`/debt-plan/visa-8823`); the route takes the debt's **id**, like every
+other detail route in the app. A slug would need a second unique key per household and would leak
+the debt's name into browser history and server logs.
+
+Desktop (*Debt detail — terms in, payments out*): a back link to the plan, the debt's name, the
+`kind · servicer · link` line, a **rung switcher** across the household's debts (`1 Visa · 2 Car ·
+3 Student`), and **Edit terms** / **Log a payment**. Then four regions:
+
+1. **Loan terms** — the solver panel, headed with its own count (*"4 entered · 3 solved"*) and its
+   promise. Every derived cell carries a `Solved` tag, entered cells carry none, and the payment
+   the plan assigned says *from your plan* — three labels, as above. Beneath it, the
+   statement line and the balance source, named: *"Statement balance from Chase on Sep 1 was
+   $6,180.00 — matches my math to the cent. Balance source: linked statement."*
+2. **Balance now**, with when it was confirmed and from what, and the progress figure
+   (*"$4,470 paid off · 42% of $10,650"*) — absent when there is no original balance rather than
+   rendered as 0%.
+3. **Balance over time** — actual pace against the schedule at minimum, with the two lines labelled
+   and the payoff marker; and the sentence that makes the chart mean something: *"Paying $260 extra
+   is buying you 27 months and $2,890."*
+4. **Payment history** — date, paid, interest, principal, balance after, and **how it got here**
+   (*Auto · Chase*, *You logged it*, *Statement corrected +$4.10*, *Waiting on you*) on every row,
+   so an inferred split is never shown as a confirmed one. Headed with its provenance counts
+   (*"6 auto-labeled · 1 manual"*) and **Add a past payment**. Under it, the compounding rule in
+   plain words — the sentence quoted at the top of this doc.
+
+Mobile (*Debt detail on mobile*) is **the same four regions as one scroll**: balance → terms →
+chart → history, with the debt stepper (`‹ ›`) in the header instead of the rung switcher, a
+condensed terms grid (Original · APR · Minimum · You pay · Months left · solved · Payoff · solved),
+interest and principal as a subtitle under each payment rather than as columns, **Show all 7
+payments** instead of the full list, and **Edit terms** / **Log payment** as the sticky actions.
+Same fields, same order, same numbers as desktop — `design/README.md` rule 1.
+
+### Payment actions
+
+*The three ways a balance moves* (mobile) and *The same two actions on desktop* give three sheets,
+which become dialogs on desktop with identical fields in identical order:
+
+1. **Confirm a matched charge** — a found charge, its interest/principal split, the balance after,
+   and three answers: *Yes — and always* · *Just this once* · *This isn't a Visa payment*. **Needs a
+   connected account; not in slice 10** (slice 16). The *"and always"* answer is a standing rule,
+   which is a `ChargeRule`-shaped idea and lands with the same slice.
+2. **Log it by hand** — prefilled with what is scheduled (*"Change the amount if you paid something
+   else"*), with `+$50` and `Other` as one-tap alternatives, a date, the account it was paid from,
+   the live split (*"$33.38 interest · $84.62 principal"*) and the resulting balance **shown before
+   it is recorded**. This is the slice-10 path.
+3. **Confirm the estimate** — the estimate, what it assumed, what it was last confirmed at, and
+   **Confirm $8,900** / **Correct it**, with *Stop estimating* and *Log a payment instead* beneath.
+
+**"Paid from" is not a transaction.** It records which account the household paid from, which is
+where a matching charge will be looked for later. Logging a payment writes no ledger row — see the
+payments rule above, and the open question.
+
+A `VIEWER` sees the plan, both strategies, the table, every balance, every term, the chart and the
+full payment history, and **no write control anywhere** — no strategy tab that saves, no
+*Use avalanche*, no *Log a payment*, no *Confirm*.
+
+A **user guide page ships with the slice** (non-negotiable #11), captured from the running UI
+against `tools/ui/fixtures/demo-data.ts`, which needs debt fixtures adding.
+
+## Security considerations
+
+Touches `../architecture/security-model.md` on ownership scoping and role enforcement, and adds one
+genuinely new concern.
+
+- **Household scoping throughout.** Every debt, payment, plan and snapshot is reached only through a
+  verified membership; the composite foreign keys enforce the same thing structurally (ADR-0017).
+  An id from a path or body is a lookup key, and another household's is `404`.
+- **`VIEWER` may read everything and write nothing** — including the strategy. Changing the plan is
+  a write even though it only stores two values, because it changes every projection the household
+  acts on.
+- **The solver is the first endpoint whose cost depends on the numbers in the request.** A bisection
+  over an iterated recurrence must be bounded: a hard cap on months (600) and on bisection steps
+  (64), with `terms-unsolvable` returned when either is hit. No input may cause an unbounded loop,
+  and `POST /api/debt-terms/solve` is rate-limited despite reading no data.
+- **No amounts in logs, and no names either.** A debt is the most disclosing record in the app: the
+  balance is what somebody owes, the APR is a statement about their credit, and the servicer name
+  alone says *this household has student debt*. Request and response DTOs get redacted `toString`s
+  (`transactions.md`), audit lines carry ids only, and the chart series — which is nothing but
+  balances — is covered by the same rule.
+- **Validate at the edge:** amounts as strings with scale within the currency's, `apr` in range,
+  dates sane, `balanceDate` not in the future, note length bounded, and `accountId` / `billId` /
+  `transactionId` resolved against the caller's household *before* anything is read or written.
+- **A debt payment must not become a way to write into an account the caller cannot write to.**
+  `transactionId` is resolved through the same path a plain transaction read uses, never taken on
+  trust because the debt happens to reference the account.
+
+## Edge cases
+
+- **A minimum that never clears the balance** — accepted, projection `null` with `never-clears`, the
+  plan still renders. The common real case, not an exotic one.
+- **0% APR** — a real promotional and car-loan rate. Interest is zero, the recurrence still
+  terminates, and nothing divides by a rate.
+- **A payment larger than the balance** — clears the debt and shows the overpayment. Not clamped.
+- **A debt reaching zero** — `paid_off_at` is set, it leaves the ladder, the debt-free month becomes
+  the latest of the *remaining* debts, and it is listed under paid-off with its full history intact.
+  Writes to it are `409 debt-paid-off` until it is reopened by a correction.
+- **Deleting the bill that a debt is linked to** — the link is nulled, so that minimum starts
+  counting into the Bills & Income committed figure. **The committed total therefore rises when a
+  bill is deleted**, which is correct and surprising; the page says why.
+- **A debt with no payments at all** — projects from its anchor. Nothing about the chart or the
+  history requires a payment to exist, only to render differently.
+- **Month-end** — a payment anchored on the 31st clamps in February, the same way a bill schedule
+  does.
+- **Two members editing terms at once** — `409 stale-version`. The plan has its own version, so two
+  members changing strategy collide too.
+- **Mixed currencies** — grouped per currency with no combined total. Never a converted sum.
+- **An estimate that has run for a year** — reported as stale rather than estimated; the screen asks
+  for a figure instead of extrapolating further.
+- **A linked account that is archived** — the debt is untouched. An archived account is a retired
+  container, not a settled debt.
+
+## Out of scope
+
+- **Auto-matched payments and the "and always" standing rule** — needs a connected account
+  (slice 16). The `AUTO_MATCHED` provenance and the `transaction_id` column exist from day one so
+  that nothing has to be backfilled; the matching, the confirm sheet and the rule do not.
+- **`LINKED_STATEMENT` balances** — same slice, same reason.
+- **The by-hand transaction picker.** `transactionId` is accepted by the API and uniqueness is
+  enforced; the UI for choosing a transaction from the ledger arrives with import or matching,
+  exactly as it does for bill occurrences.
+- **Promotional and variable APR windows.** The canvas's own instance-console changelog lists
+  *"Debt payoff projections account for promotional APR windows"* as a **future** item, which is as
+  clear a scope signal as it gets. A debt has one rate in slice 10.
+- **Percentage-based minimums.** A card's real minimum is a percentage of the balance; slice 10
+  stores the flat figure the statement printed. The consequence is stated under Known gaps.
+- **Onboarding step 2 (*What you owe*).** Onboarding is not a roadmap slice; the three fields it
+  captures — balance, APR and minimum — are exactly the required fields of `POST /api/debts`, so
+  building it later needs no new API.
+- **The weekly check-in's surplus allocation** (*"You came in $63 under → Visa payoff · Pulls Apr
+  2027 in by 4 days"*) — slice 14. Slice 10 provides the projection it will call; it does not build
+  the step.
+- **The home screen's debt-free widget and its *"4 months earlier than last month's plan"* delta.**
+  Slice 10 writes the snapshot that makes the comparison possible and renders no delta beyond the
+  plan page's own live what-if.
+- **Owl's *"snowball vs avalanche"* suggestion chip** — slice 17, and optional (ADR-0027).
+- **Refinancing, consolidation, extra one-off lump sums as a plan input, and "what if I stopped
+  paying".** None are designed.
+
+## Known gaps
+
+- **A flat minimum makes the "at minimum" line optimistic.** A real card minimum falls as the
+  balance falls, which stretches the payoff far beyond what a flat figure projects. The comparison
+  line is therefore kinder to the minimum than reality is, in the one direction that matters.
+- **The debt balance and the account balance can disagree.** Logging a debt payment without
+  recording the transaction leaves the account too high. Bills have the same gap for the same
+  reason; both are visible rather than hidden.
+- **A `CREDIT_CARD` debt linked to a `CREDIT_CARD` account has two balances** — the account's,
+  derived from transactions, and the debt's, derived from the anchor and its payments. They are
+  deliberately not reconciled: the debt's is what the lender says and the account's is what the
+  household recorded. The detail page shows the comparison (*"matches my math to the cent"*) and
+  nothing automatically adjusts either.
+- **Nothing records who logged a payment or changed the strategy.** The same gap bills, transfers
+  and occurrences have.
+- **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
+  typically by a few pounds a month and occasionally by a whole month of payoff date.
+
+## Open questions
+
+**Decide these before implementation.** Each one is a real fork the designs do not settle; none is
+quietly chosen above.
+
+1. **Does a debt payment write a transaction?** This doc says no — ADR-0025's rule, with an optional
+   link — and departs from `transfers.md`, which does write both legs (ADR-0033).
+   *Recommendation:* keep the no, and **write an ADR** saying so, because it is exactly the decision
+   those two ADRs exist to settle and it will be reopened otherwise. The alternative worth recording
+   as rejected is an opt-in "also record this in my ledger" checkbox on the log-payment sheet, which
+   is defensible and would double-count the moment import or sync arrives.
+2. **Does the Bills & Income "what's left" figure subtract debt minimums?** Slice 7 shipped three
+   terms — income, bills, envelopes — and the glossary's **Left over** says the same. The canvas's
+   bills page shows a *Committed out* figure that includes minimums and an earlier artboard labels
+   the figure *"Left over after debt"*.
+   *Recommendation:* add the **Owed** card as a fourth block (the canvas is explicit that the page
+   *"just carries the total"*) and subtract `debtMinimumsNotInBills` from `left`, with the fourth
+   term shown beside the other three so the subtraction is visible. That changes a shipped figure
+   and `bills-and-income.md` must be updated in the same change.
+3. **Does marking a linked bill's occurrence paid record a debt payment?** Ticking "Car payment"
+   paid in Bills & Income is, in the household's head, paying the car loan.
+   *Recommendation:* prompt once — *"also record this against Car loan?"* — and, if accepted, write a
+   `USER_LOGGED` payment carrying the occurrence's actual amount and `bill_occurrence_id`. Never
+   silently: a balance that moves on its own cannot be audited. Doing nothing at all is the safe
+   alternative and will be reported as a bug.
+4. **Does balance estimation (`ESTIMATED`) ship in slice 10?** It is pure arithmetic and the designs
+   give it a full screen, but it is the one place where the app puts a number it invented in the
+   headline position.
+   *Recommendation:* ship it, with the twelve-month cap and the confirm/correct actions. If it is
+   cut, cut the whole source — a debt with no linked account and no logged payments then simply
+   shows its last confirmed balance and its date.
+5. **Is the mobile plan screen the ladder or a condensed table?** The canvas gives the ladder only
+   as an exploration, and settles the comparison structure but not this.
+   *Recommendation:* the ladder. It carries the allocation rule in words, which the table conveys
+   only through two numbers in a cell.
+6. **What does `originalBalance` mean for a credit card?** An installment loan has one; a revolving
+   card does not, and the canvas shows $10,650 for a Visa anyway.
+   *Recommendation:* optional and labelled as a progress baseline, defaulting to the balance at
+   creation, with progress hidden when it is absent. Do not call it "original balance" on a card.
+7. **Is one plan per household enough?** `PayoffPlan` is modelled as one row per household
+   (ADR-0026). *Recommendation:* yes — but note that a household with debts in two currencies then
+   has one strategy and two ungrouped projections, which is the mixed-currency gap above seen from a
+   different angle.
+
+## Where the designs and the docs disagree
+
+Recorded rather than smoothed over, as the designs are the source of visual intent and these are
+places where it cannot be taken literally.
+
+- **"Give me any four and I'll solve the rest" overstates the arithmetic.** The canvas's panel
+  shows eight cells and `../domain/model.md` reads it as *seven mutually constrained fields*. There
+  is one equation among **four** quantities, and `originalBalance`, `minimumPayment` and
+  `totalInterestLeft` are not in it. The panel's own *"4 entered · 3 solved"* count does close —
+  but only under the reading above, where the eighth cell comes from the plan rather than from the
+  solver. The honest copy is *"any three of these four"*; worth a change in the design project
+  rather than a local fudge.
+- **The canvas's figures do not reconcile, and are not test fixtures.** At 22.9% on $6,180 the
+  monthly interest is $117.94, not the $118.35 the payment table shows — and the page claims it
+  *"matches my math to the cent"*. The estimate screen is clearer still: $9,254 less three $118
+  payments is exactly $8,900, which is the figure shown, so the estimate ignored three months of
+  interest (the correct figure is about $9,003). The numbers are an invented persona
+  (`design/README.md`); take fixtures from `tools/ui/fixtures/demo-data.ts` and compute them.
+  **Implementation follows the arithmetic, and the estimate's copy should say it assumes the
+  payments *and the interest in between*.**
+- **The plan header's totals do not add up either.** *"$645/mo committed · $560 of it strategic"*
+  sits above a ladder paying $445 + $342 + $118 = $905/mo, and $645 is the sum of the three
+  minimums. Define the two terms in the API — `monthlyAmount` and `Σ minimums` — and do not copy the
+  figures.
+- **The check-in implies day-precision payoff dates** — *"Pulls Apr 2027 in by 4 days"*, *"Apr 2027
+  comes in 4 days"*. Monthly compounding cannot produce that. Express what-if deltas in **months**
+  (*"moves the date up 3 months"*, which the debt plan artboards themselves use) and flag the
+  check-in copy for slice 14.
+- **The canvas's Bills & Income page is not the page slice 7 shipped.** The canvas shows three
+  summary cards — *Income · monthly*, *Committed out · monthly*, *Owed · lives on the debt plan* —
+  where the shipped page leads with **What's left** and its three terms. Slice 10 should add the
+  **Owed** card without rebuilding the headline; open question 2 is the part that needs deciding.
+- **`servicer` is a field the domain model does not have.** The designs show *Credit card · Chase*,
+  *Installment · Alpine Auto Finance* and *Installment · Nelnet · manual entry*; neither `Debt` nor
+  `Account` carries an institution name today. Added above as nullable text.
+
+## Testing notes
+
+Beyond `../guides/testing-style.md`. The solver is the part that will be wrong silently, so most of
+this is about it.
+
+- **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
+  - **Round-trip identity:** solve `monthsLeft` from a payment, then solve the payment from that
+    `monthsLeft`, and get the same payment back to the currency's scale. Likewise for `apr`. A
+    solver that is not self-consistent will produce a plan that changes every time it is read.
+  - **The iteration and the ledger agree:** the months the recurrence takes equals the number of
+    rows a simulated payment history produces, for a spread of balances, rates and payments.
+  - `payment ≤ interest(1)` yields `never-clears`, never a loop and never a huge number.
+  - Solving for `apr` recovers a known rate from a balance, a payment and a term, to 0.001pp.
+  - 0% APR terminates, with `monthsLeft = ceil(balance ÷ payment)` and zero total interest.
+  - Bisection **terminates** at the bounds: 600 months and 64 steps, asserted, not assumed.
+  - Rounding: `interest + principal = amount` for every row, and the chain of `balanceAfter` equals
+    the anchor minus the sum of principals, exactly, over a hundred-month simulation.
+- **`PayoffPlanTest`** — the ladder: the surplus goes to rung 1 only; a cleared debt's minimum *and*
+  the surplus roll down; `AVALANCHE` and `SNOWBALL` differ **only** in order; ties break
+  deterministically (two debts with the same APR, then the same balance, then the same name);
+  avalanche's total interest is never greater than snowball's for the same monthly amount; a
+  `monthlyAmount` below the minimums produces no projection rather than a nonsense one.
+- **`DebtIT`** — over-determined terms are `422` and store nothing; a released field becomes `NULL`
+  and comes back `SOLVED`; the `CHECK` refuses a third entered solver field at the database level
+  too; amounts and `apr` keep every digit across the wire and a JSON number is a `400`; a payment
+  moves the derived balance and a `STATEMENT_CORRECTION` reconciles it; **deleting the linked
+  transaction leaves the payment and does not move the balance**; a transaction cannot settle two
+  debt payments; deleting a debt takes its payments and no transactions.
+- **`DebtPeriodSummaryIT`** — the counted-once arithmetic, with the designs' own shape: three
+  minimums of 185, 342 and 118 where the 342 is a linked bill, giving `debtMinimums = 645` and
+  `debtMinimumsNotInBills = 303`. Then delete the bill and watch the second figure become 645.
+- **`MoneyCrossHouseholdIT`** — another household's debt, payment, account, bill and transaction are
+  all `404` on every route, as for transfers.
+- **`debt-data.spec.ts`** — the request builders: the entered set is sent explicitly, a release is
+  sent as a release and not as an omission, amounts and `apr` leave as strings, the what-if is a
+  `GET` that writes nothing, and a payment's split is displayed from the response rather than
+  recomputed in the client.
+- **`debt-plan.page.spec.ts`, `debt-detail.page.spec.ts`** — what a person sees: both strategies
+  rendered whichever is selected; the never-clears debt showing a reason and not a blank; `Solved`
+  on every derived cell and on no entered one; the plan-assigned payment labelled as coming from
+  the plan; the released field named in the sheet; progress
+  absent when there is no original balance; the empty state offering **Add a debt** and no $0
+  debt-free date; a paid-off debt out of the ladder and in the history; and a `VIEWER` with every
+  figure and not one control.
+- **`tools/ui-check.sh`** — both screens, both viewports, light and dark, with axe, read as
+  screenshots and not merely as a green run (non-negotiable #8). The chart needs an accessible
+  text equivalent: a line a screen reader can use carrying the same two dates and two totals.
