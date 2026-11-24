@@ -471,8 +471,26 @@ CREATE TABLE payoff_plan_snapshots (
 
     -- A YearMonth, like debts.payoff_month, and the same reason for pinning the day.
     CONSTRAINT ck_payoff_plan_snapshots_debt_free_month_is_first_of_month
-        CHECK (debt_free_month IS NULL OR date_part('day', debt_free_month) = 1)
+        CHECK (debt_free_month IS NULL OR date_part('day', debt_free_month) = 1),
+
+    -- The two projection columns are BOTH NULL or BOTH SET. The comment on debt_free_month above
+    -- already said so and nothing enforced it, which is the gap worth closing before anything
+    -- writes here: half a projection renders as half a comparison. A debt-free month with no
+    -- total interest would show a date the household cannot check, and a total with no date would
+    -- show a cost with no end.
+    CONSTRAINT ck_payoff_plan_snapshots_projection_is_whole
+        CHECK ((debt_free_month IS NULL) = (total_interest IS NULL))
 );
+
+-- One snapshot per currency per plan change.
+--
+-- taken_at defaults to now(), which in PostgreSQL is TRANSACTION START time and therefore
+-- identical for every row a single transaction writes. A household with debts in two currencies
+-- correctly gets two rows here; a retry, a double-call or a loop that ran twice would get two
+-- rows for the SAME currency at the same instant, and "what did the plan say last time" would
+-- have two answers with nothing to choose between them.
+CREATE UNIQUE INDEX ux_payoff_plan_snapshots_household_taken_at_currency
+    ON payoff_plan_snapshots (household_id, taken_at, currency);
 
 -- "What did the plan say last time", newest first — the only query this table has. Also the
 -- household foreign key's own index.

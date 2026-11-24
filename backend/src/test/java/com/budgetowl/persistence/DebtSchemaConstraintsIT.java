@@ -620,6 +620,66 @@ class DebtSchemaConstraintsIT extends PersistenceTestBase {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    void refusesHalfAProjectionInASnapshot() {
+        // The column comment claimed these two were both-null-or-both-set and nothing enforced it.
+        // A debt-free month with no total interest shows a date the household cannot check; a
+        // total with no date shows a cost with no end. Both directions are refused.
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        """
+                                        INSERT INTO payoff_plan_snapshots (id, household_id,
+                                            strategy, monthly_amount, currency, debt_free_month)
+                                        VALUES (?, ?, 'AVALANCHE', 560.0000, 'GBP',
+                                                DATE '2029-04-01')
+                                        """,
+                                        UUID.randomUUID(),
+                                        household))
+                .hasMessageContaining("ck_payoff_plan_snapshots_projection_is_whole");
+
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        """
+                                        INSERT INTO payoff_plan_snapshots (id, household_id,
+                                            strategy, monthly_amount, currency, total_interest)
+                                        VALUES (?, ?, 'AVALANCHE', 560.0000, 'GBP', 4210.0000)
+                                        """,
+                                        UUID.randomUUID(),
+                                        household))
+                .hasMessageContaining("ck_payoff_plan_snapshots_projection_is_whole");
+    }
+
+    @Test
+    void refusesTwoSnapshotsForOneCurrencyAtTheSameInstant() {
+        // now() is TRANSACTION start time in PostgreSQL, so every row one transaction writes here
+        // carries the same taken_at. Two currencies is the legitimate case and is allowed below;
+        // the same currency twice is a retry or a double-call, and it would leave "what did the
+        // plan say last time" with two answers and nothing to choose between them.
+        java.time.Instant when = java.time.Instant.parse("2026-11-24T09:00:00Z");
+        insertSnapshot(household, when, "GBP");
+
+        assertThatThrownBy(() -> insertSnapshot(household, when, "GBP"))
+                .hasMessageContaining("ux_payoff_plan_snapshots_household_taken_at_currency");
+
+        // A second currency at the same instant is exactly what this table is for.
+        assertThatCode(() -> insertSnapshot(household, when, "EUR")).doesNotThrowAnyException();
+    }
+
+    private void insertSnapshot(UUID householdId, java.time.Instant takenAt, String currency) {
+        jdbc.update(
+                """
+                INSERT INTO payoff_plan_snapshots (id, household_id, taken_at, strategy,
+                    monthly_amount, currency, debt_free_month, total_interest)
+                VALUES (?, ?, ?, 'AVALANCHE', 560.0000, ?, DATE '2029-04-01', 4210.0000)
+                """,
+                UUID.randomUUID(),
+                householdId,
+                java.sql.Timestamp.from(takenAt),
+                currency);
+    }
+
     // ----------------------------------------------------- what deleting things does, and does not
 
     @Test
