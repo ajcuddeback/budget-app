@@ -3,7 +3,7 @@
 - **Slice:** 10
 - **Status:** Planned
 - **Owner:** Repository owner
-- **Last updated:** 2026-11-23
+- **Last updated:** 2026-11-24
 - **Depends on:** accounts (3), transactions (5), bills & income (7)
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0025 (a plan
   record is not a transaction), ADR-0031 (one transaction, one entry), ADR-0032 (projected, not
@@ -232,6 +232,16 @@ the same data:
 surplus roll down to rung 2, and so on — *"Pay the top one hard. Everything below gets its minimum
 until the rung above clears."* Both strategies use the same roll-down; the only difference between
 them is the order.
+
+**A plan never projects an overpayment.** No rung is allocated more than it owes that month; what a
+rung does not need flows down to the next one **in the same month**, so `monthlyAmount` is spent
+exactly until the month the last debt clears, and the roll-down starts in the month a rung clears
+rather than the month after. This is deliberately *not* the single-debt recurrence, where the last
+payment overshoots and is not clamped: a single debt's projection says what the household will
+actually pay a lender, while a plan allocates one monthly figure across several debts, and
+projecting that somebody hands a lender £175 more than the payoff figure while the next debt
+accrues interest is a fiction. It is also what makes avalanche's headline property true — see
+Testing notes.
 
 **What the plan outputs**, per read:
 
@@ -864,22 +874,44 @@ Beyond `../guides/testing-style.md`. The solver is the part that will be wrong s
 this is about it.
 
 - **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
-  - **Round-trip identity:** solve `monthsLeft` from a payment, then solve the payment from that
-    `monthsLeft`, and get the same payment back to the currency's scale. Likewise for `apr`. A
-    solver that is not self-consistent will produce a plan that changes every time it is read.
+  - **Round-trip identity, stated exactly:** a *solved* field is a **fixed point** of the round
+    trip. Solve the payment for a horizon, read the horizon its projection reaches, solve the
+    payment again, and get the same payment to the currency's scale; likewise for `apr` to
+    `0.001`pp. A solver that is not self-consistent will produce a plan that changes every time it
+    is read.
+    The stronger-sounding version — solve `monthsLeft` from an *entered* payment, solve the payment
+    back, get the entered payment — **is not achievable and is not required**: many payments clear
+    a balance in the same number of months, and the solver returns the smallest of them (the
+    required payment). What is asserted for an entered payment is that the round trip lands on the
+    same horizon and never asks for more than the household already pays.
   - **The iteration and the ledger agree:** the months the recurrence takes equals the number of
     rows a simulated payment history produces, for a spread of balances, rates and payments.
   - `payment ≤ interest(1)` yields `never-clears`, never a loop and never a huge number.
-  - Solving for `apr` recovers a known rate from a balance, a payment and a term, to 0.001pp.
+  - Solving for `apr` recovers a known rate from a balance, a payment and a term: exactly, to
+    `0.001`pp, for a well-posed installment loan (20,000 over 60 months at 404.58 recovers 7.900).
+    `0.001`pp is the **tolerance of the search**, not a guaranteed accuracy — a solved `apr` is the
+    highest rate that still reaches the horizon, so it is an upper bound on the household's real
+    rate and can sit a step or two above it when the payment was rounded up. What is exact, and
+    asserted, is the boundary: one `0.001`pp step higher misses the horizon.
   - 0% APR terminates, with `monthsLeft = ceil(balance ÷ payment)` and zero total interest.
-  - Bisection **terminates** at the bounds: 600 months and 64 steps, asserted, not assumed.
+  - Bisection **terminates** at the bounds: 600 months and 64 steps, asserted, not assumed, with a
+    timing assertion so that removing a cap fails rather than merely getting slower. The month cap
+    is the one that fires on plausible input; the step cap is a backstop, and reaching it needs a
+    balance far larger than `NUMERIC(19,4)` can hold — which is still worth a test, because the
+    solve endpoint is arithmetic over a request body and reads nothing.
   - Rounding: `interest + principal = amount` for every row, and the chain of `balanceAfter` equals
     the anchor minus the sum of principals, exactly, over a hundred-month simulation.
-- **`PayoffPlanTest`** — the ladder: the surplus goes to rung 1 only; a cleared debt's minimum *and*
-  the surplus roll down; `AVALANCHE` and `SNOWBALL` differ **only** in order; ties break
-  deterministically (two debts with the same APR, then the same balance, then the same name);
-  avalanche's total interest is never greater than snowball's for the same monthly amount; a
-  `monthlyAmount` below the minimums produces no projection rather than a nonsense one.
+- **`PayoffLadderTest`** — the ladder: the surplus goes to rung 1 only; a cleared debt's minimum
+  *and* the surplus roll down; `monthlyAmount` is spent exactly in every month but the last and no
+  rung is ever paid more than it owes; `AVALANCHE` and `SNOWBALL` differ **only** in order (proved
+  by replaying the snowball order as a `CUSTOM` one); ties break deterministically (two debts with
+  the same APR, then the same balance, then the same name, then the id); avalanche's total interest
+  is never greater than snowball's for the same monthly amount; a `monthlyAmount` below the
+  minimums produces no projection rather than a nonsense one.
+  **Avalanche-never-worse holds because a plan never projects an overpayment** (see Strategies).
+  Under a literal reading of the recurrence — where a clearing rung is paid its whole allocation
+  and the excess is lost — it is false, and counterexamples are easy to find: a snowball that
+  clears a small debt in one month stops that debt's interest a month earlier and comes out ahead.
 - **`DebtIT`** — over-determined terms are `422` and store nothing; a released field becomes `NULL`
   and comes back `SOLVED`; the `CHECK` refuses a third entered solver field at the database level
   too; amounts and `apr` keep every digit across the wire and a JSON number is a `400`; a payment
