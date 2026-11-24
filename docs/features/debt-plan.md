@@ -1013,6 +1013,32 @@ below is settled; the reasoning that was weighed is kept so it is not re-argued 
 Recorded rather than smoothed over, as the designs are the source of visual intent and these are
 places where it cannot be taken literally.
 
+- **The canvas's plan figures do not agree with each other, and the demo fixtures follow the ones
+  that do.** The artboard carries four numbers for one plan: *"$645/mo committed · $560 of it
+  strategic"*, *"Both lines assume $560/mo"*, *"$185 minimum + $260 extra"* on rung 1, and
+  *"31 months"*. A surplus of $560 and a rung-1 extra of $260 cannot both be true with one debt
+  taking the whole surplus. Running the real solver over the designs' own three balances settles
+  which set is coherent:
+
+  | Monthly amount | Surplus | Rung 1 pays | Debt-free |
+  | -------------- | ------- | ----------- | --------- |
+  | $1,205 (645 + 560) | $560 | $745 | 24 months |
+  | **$905 (645 + 260)** | **$260** | **$445** | **33 months** |
+
+  The second row makes *"$185 minimum + $260 extra"* exactly right, and $445 is the figure this
+  document's own worked example uses. Neither row gives 31 months. So the fixtures use **$905**,
+  and *"$560 of it strategic"* and *"31 months"* are the canvas's errors — the second one in the
+  same family as the $118.35-versus-$117.94 discrepancy already recorded below.
+
+- **Avalanche and snowball barely differ for the designs' own debts**, which the comparison
+  artboard does not prepare you for. Over $6,180 at 22.9%, $10,650 at 6.4% and $9,650 at 4.5%, the
+  two orders clear in the **same month** and differ by **$48.62** of interest in total. The screen
+  is honest about it — *"Avalanche costs less in interest, and both clear your first debt in the
+  same month. Either is a good answer."* — but it means the strategy picker's own demo data makes
+  the weakest possible case for it, and the balance-to-zero chart draws two lines that coincide.
+  That is a true fact about three debts of these sizes rather than a defect, and the page says so
+  rather than choosing flattering numbers.
+
 - **"Give me any four and I'll solve the rest" overstates the arithmetic.** The canvas's panel
   shows eight cells and `../domain/model.md` reads it as *seven mutually constrained fields*. There
   is one equation among **four** quantities, and `originalBalance`, `minimumPayment` and

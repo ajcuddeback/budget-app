@@ -996,3 +996,40 @@ between, not only for the two obvious ones.
 **Where.** `PeriodSummaryService.billsThisTermCarries`, `DebtService.figures`, and the three tests
 `DebtPeriodSummaryIT.retiring_the_bill_…`, `…a_minimum_whose_bill_is_not_due_this_month_…`,
 `…skipping_the_bill_…`.
+
+---
+
+## Angular's coverage thresholds were configured in a shape the builder ignores
+
+**Symptom.** None. That is the whole problem. `tools/verify.sh frontend` printed
+`✓ unit tests + coverage threshold` and the threshold was not being checked.
+
+**What was wrong.** `angular.json` had the `@angular/build:unit-test` builder's coverage options
+nested:
+
+```json
+"coverage": { "thresholds": { "statements": 80, ... }, "exclude": [...], "reporters": [...] }
+```
+
+The builder wants them flat — `coverageThresholds`, `coverageExclude`, `coverageReporters` — and an
+option it does not recognise is **dropped without a word**. Not a schema error, not a warning.
+
+**How it was proved.** Set `statements` to 99.9 against a real 88.28% and run
+`npm --prefix frontend run test:coverage`:
+
+- nested form → **exit 0**, no mention of a threshold anywhere in the output;
+- flat form → **exit 1**, `ERROR: Coverage for statements (88.28%) does not meet global threshold
+  (99.9%)`.
+
+That is the test to repeat if anyone touches these keys again. Reading the config proves nothing;
+only raising a threshold past the actual figure does.
+
+**What it cost.** Nothing yet — the real figures are above all four thresholds. But the frontend
+could have drifted under 80% at any point in slices 1–10 and the gate would have passed.
+
+**The general lesson, which this repository keeps relearning.** A tool that silently discards
+unknown configuration turns every config file into a claim nothing enforces. For anything whose job
+is to *fail*, the only evidence it works is watching it fail: break it on purpose, see the error,
+put it back. A green check beside a threshold is not evidence the threshold exists.
+
+**Where.** `frontend/angular.json`, `@angular/build` 22.2.7.

@@ -18,6 +18,8 @@
  * Edit this to change what appears in the guide. Do not add data anywhere else.
  */
 
+import { DEBT_API } from './debt-api.generated';
+
 export const DEMO_USER = {
   id: '11111111-1111-4111-8111-111111111111',
   displayName: 'Alex Rivera',
@@ -89,7 +91,13 @@ export const DEMO_ME_MEMBER = {
   displayName: DEMO_MEMBERS[1].displayName,
   email: DEMO_MEMBERS[1].email,
   instanceAdmin: false,
-  household: { ...DEMO_ME.household, role: 'MEMBER', membershipId: DEMO_MEMBERS[1].id, displayCurrency: 'EUR', locale: 'de-DE' },
+  household: {
+    ...DEMO_ME.household,
+    role: 'MEMBER',
+    membershipId: DEMO_MEMBERS[1].id,
+    displayCurrency: 'EUR',
+    locale: 'de-DE',
+  },
 } as const;
 
 /**
@@ -125,7 +133,8 @@ export const DEMO_DEVICES = [
   {
     id: 's-9f2c1d7a4b8e3f6051a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718',
     kind: 'SESSION',
-    label: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+    label:
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
     createdAt: '2026-10-02T08:15:00Z',
     lastUsedAt: '2026-10-02T09:40:00Z',
     expiresAt: '2026-10-02T20:15:00Z',
@@ -134,7 +143,8 @@ export const DEMO_DEVICES = [
   {
     id: 's-1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809',
     kind: 'SESSION',
-    label: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+    label:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
     createdAt: '2026-09-30T19:02:00Z',
     lastUsedAt: '2026-10-01T07:11:00Z',
     expiresAt: '2026-10-01T19:02:00Z',
@@ -177,18 +187,99 @@ export const DEMO_TOKENS = {
 
 /** The RFC 7807 bodies the API sends, by stable code. The client renders the sentence. */
 export const DEMO_PROBLEMS = {
-  authenticationFailed: { type: 'https://budgetowl.app/errors/authentication-failed', title: 'Authentication failed', status: 401, code: 'authentication-failed', correlationId: 'demo0000000000000000000000000001' },
-  notAuthenticated: { type: 'https://budgetowl.app/errors/not-authenticated', title: 'Not authenticated', status: 401, code: 'not-authenticated', correlationId: 'demo0000000000000000000000000002' },
-  notAMember: { type: 'https://budgetowl.app/errors/not-a-member', title: 'Not a member of this household', status: 403, code: 'not-a-member', correlationId: 'demo0000000000000000000000000003' },
-  invitationUnusable: { type: 'https://budgetowl.app/errors/invitation-unusable', title: 'This invitation cannot be used', status: 404, code: 'invitation-unusable', correlationId: 'demo0000000000000000000000000004' },
-  lastOwner: { type: 'https://budgetowl.app/errors/last-owner', title: 'A household must keep at least one owner', status: 409, code: 'last-owner', correlationId: 'demo0000000000000000000000000005' },
-  rateLimited: { type: 'https://budgetowl.app/errors/rate-limited', title: 'Too many attempts', status: 429, code: 'rate-limited', params: { retryAfterSeconds: 120 }, correlationId: 'demo0000000000000000000000000006' },
-  internal: { type: 'https://budgetowl.app/errors/internal-error', title: 'Internal error', status: 500, code: 'internal-error', correlationId: 'demo0000000000000000000000000007' },
-  staleVersion: { type: 'https://budgetowl.app/errors/stale-version', title: 'Somebody else changed this first', status: 409, code: 'stale-version', correlationId: 'demo0000000000000000000000000009' },
-  accountNotEmpty: { type: 'https://budgetowl.app/errors/account-not-empty', title: 'This account has transactions', status: 409, code: 'account-not-empty', correlationId: 'demo0000000000000000000000000010' },
-  notInstanceAdmin: { type: 'https://budgetowl.app/errors/not-instance-admin', title: 'Not the instance administrator', status: 403, code: 'not-instance-admin', correlationId: 'demo0000000000000000000000000011' },
-  passwordLoginLocked: { type: 'https://budgetowl.app/errors/password-login-locked', title: 'Password sign-in cannot be turned off yet', status: 409, code: 'password-login-locked', correlationId: 'demo0000000000000000000000000012' },
-  invalidIssuerUri: { type: 'https://budgetowl.app/errors/validation-failed', title: 'Validation failed', status: 400, code: 'validation-failed', params: { field: 'oidcIssuerUri' }, correlationId: 'demo0000000000000000000000000013' },
+  authenticationFailed: {
+    type: 'https://budgetowl.app/errors/authentication-failed',
+    title: 'Authentication failed',
+    status: 401,
+    code: 'authentication-failed',
+    correlationId: 'demo0000000000000000000000000001',
+  },
+  notAuthenticated: {
+    type: 'https://budgetowl.app/errors/not-authenticated',
+    title: 'Not authenticated',
+    status: 401,
+    code: 'not-authenticated',
+    correlationId: 'demo0000000000000000000000000002',
+  },
+  notAMember: {
+    type: 'https://budgetowl.app/errors/not-a-member',
+    title: 'Not a member of this household',
+    status: 403,
+    code: 'not-a-member',
+    correlationId: 'demo0000000000000000000000000003',
+  },
+  invitationUnusable: {
+    type: 'https://budgetowl.app/errors/invitation-unusable',
+    title: 'This invitation cannot be used',
+    status: 404,
+    code: 'invitation-unusable',
+    correlationId: 'demo0000000000000000000000000004',
+  },
+  lastOwner: {
+    type: 'https://budgetowl.app/errors/last-owner',
+    title: 'A household must keep at least one owner',
+    status: 409,
+    code: 'last-owner',
+    correlationId: 'demo0000000000000000000000000005',
+  },
+  rateLimited: {
+    type: 'https://budgetowl.app/errors/rate-limited',
+    title: 'Too many attempts',
+    status: 429,
+    code: 'rate-limited',
+    params: { retryAfterSeconds: 120 },
+    correlationId: 'demo0000000000000000000000000006',
+  },
+  internal: {
+    type: 'https://budgetowl.app/errors/internal-error',
+    title: 'Internal error',
+    status: 500,
+    code: 'internal-error',
+    correlationId: 'demo0000000000000000000000000007',
+  },
+  staleVersion: {
+    type: 'https://budgetowl.app/errors/stale-version',
+    title: 'Somebody else changed this first',
+    status: 409,
+    code: 'stale-version',
+    correlationId: 'demo0000000000000000000000000009',
+  },
+  accountNotEmpty: {
+    type: 'https://budgetowl.app/errors/account-not-empty',
+    title: 'This account has transactions',
+    status: 409,
+    code: 'account-not-empty',
+    correlationId: 'demo0000000000000000000000000010',
+  },
+  notInstanceAdmin: {
+    type: 'https://budgetowl.app/errors/not-instance-admin',
+    title: 'Not the instance administrator',
+    status: 403,
+    code: 'not-instance-admin',
+    correlationId: 'demo0000000000000000000000000011',
+  },
+  passwordLoginLocked: {
+    type: 'https://budgetowl.app/errors/password-login-locked',
+    title: 'Password sign-in cannot be turned off yet',
+    status: 409,
+    code: 'password-login-locked',
+    correlationId: 'demo0000000000000000000000000012',
+  },
+  notFound: {
+    type: 'https://budgetowl.app/errors/not-found',
+    title: 'Not found',
+    status: 404,
+    code: 'not-found',
+    correlationId: 'demo0000000000000000000000000014',
+  },
+  invalidIssuerUri: {
+    type: 'https://budgetowl.app/errors/validation-failed',
+    title: 'Validation failed',
+    status: 400,
+    code: 'validation-failed',
+    params: { field: 'oidcIssuerUri' },
+    correlationId: 'demo0000000000000000000000000013',
+  },
 } as const;
 
 /**
@@ -258,10 +349,38 @@ export const DEMO_INSTANCE_SETTINGS_OIDC = {
  * long enough to find out what a row does at phone width.
  */
 export const DEMO_ADMIN_ACCOUNTS = [
-  { id: DEMO_USER.id, email: DEMO_USER.email, displayName: DEMO_USER.displayName, status: 'ACTIVE', instanceAdmin: true, createdAt: '2026-06-01T08:55:00Z' },
-  { id: DEMO_MEMBERS[1].userId, email: DEMO_MEMBERS[1].email, displayName: DEMO_MEMBERS[1].displayName, status: 'ACTIVE', instanceAdmin: false, createdAt: '2026-06-03T18:28:00Z' },
-  { id: DEMO_MEMBERS[2].userId, email: DEMO_MEMBERS[2].email, displayName: DEMO_MEMBERS[2].displayName, status: 'ACTIVE', instanceAdmin: false, createdAt: '2026-07-12T11:58:00Z' },
-  { id: '99999999-9999-4999-8999-999999999999', email: 'riley.fitzgerald-okonkwo@example.test', displayName: 'Riley Fitzgerald-Okonkwo', status: 'DISABLED', instanceAdmin: false, createdAt: '2026-09-28T07:40:00Z' },
+  {
+    id: DEMO_USER.id,
+    email: DEMO_USER.email,
+    displayName: DEMO_USER.displayName,
+    status: 'ACTIVE',
+    instanceAdmin: true,
+    createdAt: '2026-06-01T08:55:00Z',
+  },
+  {
+    id: DEMO_MEMBERS[1].userId,
+    email: DEMO_MEMBERS[1].email,
+    displayName: DEMO_MEMBERS[1].displayName,
+    status: 'ACTIVE',
+    instanceAdmin: false,
+    createdAt: '2026-06-03T18:28:00Z',
+  },
+  {
+    id: DEMO_MEMBERS[2].userId,
+    email: DEMO_MEMBERS[2].email,
+    displayName: DEMO_MEMBERS[2].displayName,
+    status: 'ACTIVE',
+    instanceAdmin: false,
+    createdAt: '2026-07-12T11:58:00Z',
+  },
+  {
+    id: '99999999-9999-4999-8999-999999999999',
+    email: 'riley.fitzgerald-okonkwo@example.test',
+    displayName: 'Riley Fitzgerald-Okonkwo',
+    status: 'DISABLED',
+    instanceAdmin: false,
+    createdAt: '2026-09-28T07:40:00Z',
+  },
 ] as const;
 
 /**
@@ -285,11 +404,76 @@ export const DEMO_ADMIN_ACCOUNTS = [
  * client composes `name •1234` so a right-to-left locale can reorder it (ADR-0023).
  */
 export const DEMO_ACCOUNTS = [
-  { id: 'acc-0001', name: 'Everyday Checking', lastFour: '4417', type: 'CHECKING', currency: 'USD', openingBalance: '1641.75', balance: '2480.15', empty: false, archived: false, createdAt: '2026-06-01T09:05:00Z', updatedAt: '2026-08-20T11:20:00Z', version: 2 },
-  { id: 'acc-0002', name: 'Emergency Fund', lastFour: null, type: 'SAVINGS', currency: 'USD', openingBalance: '5620.00', balance: '6120.00', empty: false, archived: false, createdAt: '2026-06-01T09:07:00Z', updatedAt: '2026-08-16T10:02:00Z', version: 1 },
-  { id: 'acc-0003', name: 'Travel Card', lastFour: '8820', type: 'CREDIT_CARD', currency: 'USD', openingBalance: '-215.24', balance: '-318.44', empty: false, archived: false, createdAt: '2026-06-02T18:40:00Z', updatedAt: '2026-08-09T08:15:00Z', version: 3 },
-  { id: 'acc-0004', name: 'Berlin Savings', lastFour: null, type: 'SAVINGS', currency: 'EUR', openingBalance: '1200.00', balance: '1200.00', empty: true, archived: false, createdAt: '2026-06-04T07:30:00Z', updatedAt: '2026-06-04T07:30:00Z', version: 0 },
-  { id: 'acc-0005', name: 'Old Joint Account', lastFour: '0041', type: 'CHECKING', currency: 'USD', openingBalance: '84.60', balance: '84.60', empty: true, archived: true, createdAt: '2026-06-01T09:12:00Z', updatedAt: '2026-07-18T16:45:00Z', version: 4 },
+  {
+    id: 'acc-0001',
+    name: 'Everyday Checking',
+    lastFour: '4417',
+    type: 'CHECKING',
+    currency: 'USD',
+    openingBalance: '1641.75',
+    balance: '2480.15',
+    empty: false,
+    archived: false,
+    createdAt: '2026-06-01T09:05:00Z',
+    updatedAt: '2026-08-20T11:20:00Z',
+    version: 2,
+  },
+  {
+    id: 'acc-0002',
+    name: 'Emergency Fund',
+    lastFour: null,
+    type: 'SAVINGS',
+    currency: 'USD',
+    openingBalance: '5620.00',
+    balance: '6120.00',
+    empty: false,
+    archived: false,
+    createdAt: '2026-06-01T09:07:00Z',
+    updatedAt: '2026-08-16T10:02:00Z',
+    version: 1,
+  },
+  {
+    id: 'acc-0003',
+    name: 'Travel Card',
+    lastFour: '8820',
+    type: 'CREDIT_CARD',
+    currency: 'USD',
+    openingBalance: '-215.24',
+    balance: '-318.44',
+    empty: false,
+    archived: false,
+    createdAt: '2026-06-02T18:40:00Z',
+    updatedAt: '2026-08-09T08:15:00Z',
+    version: 3,
+  },
+  {
+    id: 'acc-0004',
+    name: 'Berlin Savings',
+    lastFour: null,
+    type: 'SAVINGS',
+    currency: 'EUR',
+    openingBalance: '1200.00',
+    balance: '1200.00',
+    empty: true,
+    archived: false,
+    createdAt: '2026-06-04T07:30:00Z',
+    updatedAt: '2026-06-04T07:30:00Z',
+    version: 0,
+  },
+  {
+    id: 'acc-0005',
+    name: 'Old Joint Account',
+    lastFour: '0041',
+    type: 'CHECKING',
+    currency: 'USD',
+    openingBalance: '84.60',
+    balance: '84.60',
+    empty: true,
+    archived: true,
+    createdAt: '2026-06-01T09:12:00Z',
+    updatedAt: '2026-07-18T16:45:00Z',
+    version: 4,
+  },
 ] as const;
 
 /**
@@ -314,16 +498,106 @@ export const DEMO_ACCOUNTS_ACTIVE = DEMO_ACCOUNTS.filter((account) => !account.a
  * `Bills → Utilities` through a translated template so a right-to-left locale can reorder it.
  */
 export const DEMO_CATEGORIES = [
-  { id: 'cat-0001', name: 'Income', kind: 'INCOME', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0002', name: 'Salary', kind: 'INCOME', parentId: 'cat-0001', parentName: 'Income', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0003', name: 'Bills', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0004', name: 'Rent', kind: 'EXPENSE', parentId: 'cat-0003', parentName: 'Bills', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0005', name: 'Utilities', kind: 'EXPENSE', parentId: 'cat-0003', parentName: 'Bills', archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0006', name: 'Groceries', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0007', name: 'Transport', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
-  { id: 'cat-0008', name: 'Eating Out', kind: 'EXPENSE', parentId: null, parentName: null, archived: false, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z', version: 0 },
+  {
+    id: 'cat-0001',
+    name: 'Income',
+    kind: 'INCOME',
+    parentId: null,
+    parentName: null,
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0002',
+    name: 'Salary',
+    kind: 'INCOME',
+    parentId: 'cat-0001',
+    parentName: 'Income',
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0003',
+    name: 'Bills',
+    kind: 'EXPENSE',
+    parentId: null,
+    parentName: null,
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0004',
+    name: 'Rent',
+    kind: 'EXPENSE',
+    parentId: 'cat-0003',
+    parentName: 'Bills',
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0005',
+    name: 'Utilities',
+    kind: 'EXPENSE',
+    parentId: 'cat-0003',
+    parentName: 'Bills',
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0006',
+    name: 'Groceries',
+    kind: 'EXPENSE',
+    parentId: null,
+    parentName: null,
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0007',
+    name: 'Transport',
+    kind: 'EXPENSE',
+    parentId: null,
+    parentName: null,
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'cat-0008',
+    name: 'Eating Out',
+    kind: 'EXPENSE',
+    parentId: null,
+    parentName: null,
+    archived: false,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-06-01T09:00:00Z',
+    version: 0,
+  },
   // Archived: kept so past transactions still read correctly, absent from every picker.
-  { id: 'cat-0009', name: 'Wedding', kind: 'EXPENSE', parentId: null, parentName: null, archived: true, createdAt: '2026-06-01T09:00:00Z', updatedAt: '2026-07-20T09:00:00Z', version: 1 },
+  {
+    id: 'cat-0009',
+    name: 'Wedding',
+    kind: 'EXPENSE',
+    parentId: null,
+    parentName: null,
+    archived: true,
+    createdAt: '2026-06-01T09:00:00Z',
+    updatedAt: '2026-07-20T09:00:00Z',
+    version: 1,
+  },
 ] as const;
 
 export const DEMO_CATEGORIES_ACTIVE = DEMO_CATEGORIES.filter((category) => !category.archived);
@@ -345,16 +619,206 @@ export const DEMO_CATEGORIES_ACTIVE = DEMO_CATEGORIES.filter((category) => !cate
  *   be written to as (ADR-0033).
  */
 export const DEMO_TRANSACTIONS = [
-  { id: 'txn-0010', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-20', amount: '-92.15', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: null, categoryName: null, categoryParentName: null, note: null, status: 'PENDING', transfer: false, transferGroupId: null, createdAt: '2026-08-20T18:30:00Z', updatedAt: '2026-08-20T18:30:00Z', version: 0 },
-  { id: 'txn-0009', accountId: 'acc-0002', accountName: 'Emergency Fund', date: '2026-08-16', amount: '500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer from Everyday Checking', status: 'CLEARED', transfer: true, transferGroupId: 'tgr-0001', createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
-  { id: 'txn-0008', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-16', amount: '-500.00', currency: 'USD', payeeId: null, payeeName: null, categoryId: null, categoryName: null, categoryParentName: null, note: 'Transfer to Emergency Fund', status: 'CLEARED', transfer: true, transferGroupId: 'tgr-0001', createdAt: '2026-08-16T08:00:00Z', updatedAt: '2026-08-16T08:00:00Z', version: 0 },
-  { id: 'txn-0007', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-15', amount: '-128.30', currency: 'USD', payeeId: 'pay-0006', payeeName: 'Metro Power', categoryId: 'cat-0005', categoryName: 'Utilities', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-15T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0 },
-  { id: 'txn-0006', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-12', amount: '-104.75', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: 'big shop', status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
-  { id: 'txn-0005', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-09', amount: '-41.20', currency: 'USD', payeeId: 'pay-0005', payeeName: 'Corner Kitchen', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-09T20:05:00Z', updatedAt: '2026-08-09T20:05:00Z', version: 0 },
-  { id: 'txn-0004', accountId: 'acc-0003', accountName: 'Travel Card', date: '2026-08-05', amount: '-62.00', currency: 'USD', payeeId: 'pay-0004', payeeName: 'City Transit', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-05T08:40:00Z', updatedAt: '2026-08-05T08:40:00Z', version: 0 },
-  { id: 'txn-0003', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-03', amount: '-86.40', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
-  { id: 'txn-0002', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '-1450.00', currency: 'USD', payeeId: 'pay-0002', payeeName: 'Fairview Lettings', categoryId: 'cat-0004', categoryName: 'Rent', categoryParentName: 'Bills', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-01T07:00:00Z', updatedAt: '2026-08-01T07:00:00Z', version: 0 },
-  { id: 'txn-0001', accountId: 'acc-0001', accountName: 'Everyday Checking', date: '2026-08-01', amount: '3200.00', currency: 'USD', payeeId: 'pay-0001', payeeName: 'Northwind Systems', categoryId: 'cat-0002', categoryName: 'Salary', categoryParentName: 'Income', note: null, status: 'CLEARED', transfer: false, transferGroupId: null, createdAt: '2026-08-01T06:00:00Z', updatedAt: '2026-08-01T06:00:00Z', version: 0 },
+  {
+    id: 'txn-0010',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-20',
+    amount: '-92.15',
+    currency: 'USD',
+    payeeId: 'pay-0003',
+    payeeName: 'Greenfield Market',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    note: null,
+    status: 'PENDING',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-20T18:30:00Z',
+    updatedAt: '2026-08-20T18:30:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0009',
+    accountId: 'acc-0002',
+    accountName: 'Emergency Fund',
+    date: '2026-08-16',
+    amount: '500.00',
+    currency: 'USD',
+    payeeId: null,
+    payeeName: null,
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    note: 'Transfer from Everyday Checking',
+    status: 'CLEARED',
+    transfer: true,
+    transferGroupId: 'tgr-0001',
+    createdAt: '2026-08-16T08:00:00Z',
+    updatedAt: '2026-08-16T08:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0008',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-16',
+    amount: '-500.00',
+    currency: 'USD',
+    payeeId: null,
+    payeeName: null,
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    note: 'Transfer to Emergency Fund',
+    status: 'CLEARED',
+    transfer: true,
+    transferGroupId: 'tgr-0001',
+    createdAt: '2026-08-16T08:00:00Z',
+    updatedAt: '2026-08-16T08:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0007',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-15',
+    amount: '-128.30',
+    currency: 'USD',
+    payeeId: 'pay-0006',
+    payeeName: 'Metro Power',
+    categoryId: 'cat-0005',
+    categoryName: 'Utilities',
+    categoryParentName: 'Bills',
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-15T09:00:00Z',
+    updatedAt: '2026-08-15T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0006',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-12',
+    amount: '-104.75',
+    currency: 'USD',
+    payeeId: 'pay-0003',
+    payeeName: 'Greenfield Market',
+    categoryId: 'cat-0006',
+    categoryName: 'Groceries',
+    categoryParentName: null,
+    note: 'big shop',
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-12T17:10:00Z',
+    updatedAt: '2026-08-12T17:10:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0005',
+    accountId: 'acc-0003',
+    accountName: 'Travel Card',
+    date: '2026-08-09',
+    amount: '-41.20',
+    currency: 'USD',
+    payeeId: 'pay-0005',
+    payeeName: 'Corner Kitchen',
+    categoryId: 'cat-0008',
+    categoryName: 'Eating Out',
+    categoryParentName: null,
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-09T20:05:00Z',
+    updatedAt: '2026-08-09T20:05:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0004',
+    accountId: 'acc-0003',
+    accountName: 'Travel Card',
+    date: '2026-08-05',
+    amount: '-62.00',
+    currency: 'USD',
+    payeeId: 'pay-0004',
+    payeeName: 'City Transit',
+    categoryId: 'cat-0007',
+    categoryName: 'Transport',
+    categoryParentName: null,
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-05T08:40:00Z',
+    updatedAt: '2026-08-05T08:40:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0003',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-03',
+    amount: '-86.40',
+    currency: 'USD',
+    payeeId: 'pay-0003',
+    payeeName: 'Greenfield Market',
+    categoryId: 'cat-0006',
+    categoryName: 'Groceries',
+    categoryParentName: null,
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-03T16:20:00Z',
+    updatedAt: '2026-08-03T16:20:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0002',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-01',
+    amount: '-1450.00',
+    currency: 'USD',
+    payeeId: 'pay-0002',
+    payeeName: 'Fairview Lettings',
+    categoryId: 'cat-0004',
+    categoryName: 'Rent',
+    categoryParentName: 'Bills',
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-01T07:00:00Z',
+    updatedAt: '2026-08-01T07:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'txn-0001',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-01',
+    amount: '3200.00',
+    currency: 'USD',
+    payeeId: 'pay-0001',
+    payeeName: 'Northwind Systems',
+    categoryId: 'cat-0002',
+    categoryName: 'Salary',
+    categoryParentName: 'Income',
+    note: null,
+    status: 'CLEARED',
+    transfer: false,
+    transferGroupId: null,
+    createdAt: '2026-08-01T06:00:00Z',
+    updatedAt: '2026-08-01T06:00:00Z',
+    version: 0,
+  },
 ] as const;
 
 /**
@@ -414,12 +878,97 @@ export const DEMO_PAYEE_SUGGESTIONS = [
  * `period` is a LABEL (ADR-0031) — "the envelope for August 2026" — not a date range.
  */
 export const DEMO_ENVELOPES = [
-  { id: 'env-0001', name: 'Groceries', period: '2026-08', categoryId: 'cat-0006', categoryName: 'Groceries', categoryParentName: null, amount: '400.0000', spent: '283.3000', remaining: '116.7000', currency: 'USD', entryCount: 3, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
-  { id: 'env-0002', name: 'Adhoc', period: '2026-08', categoryId: null, categoryName: null, categoryParentName: null, amount: '150.0000', spent: '0.0000', remaining: '150.0000', currency: 'USD', entryCount: 0, empty: true, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
-  { id: 'env-0003', name: 'Fuel', period: '2026-08', categoryId: 'cat-0007', categoryName: 'Transport', categoryParentName: null, amount: '120.0000', spent: '62.0000', remaining: '58.0000', currency: 'USD', entryCount: 1, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
+  {
+    id: 'env-0001',
+    name: 'Groceries',
+    period: '2026-08',
+    categoryId: 'cat-0006',
+    categoryName: 'Groceries',
+    categoryParentName: null,
+    amount: '400.0000',
+    spent: '283.3000',
+    remaining: '116.7000',
+    currency: 'USD',
+    entryCount: 3,
+    empty: false,
+    archived: false,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'env-0002',
+    name: 'Adhoc',
+    period: '2026-08',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    amount: '150.0000',
+    spent: '0.0000',
+    remaining: '150.0000',
+    currency: 'USD',
+    entryCount: 0,
+    empty: true,
+    archived: false,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'env-0003',
+    name: 'Fuel',
+    period: '2026-08',
+    categoryId: 'cat-0007',
+    categoryName: 'Transport',
+    categoryParentName: null,
+    amount: '120.0000',
+    spent: '62.0000',
+    remaining: '58.0000',
+    currency: 'USD',
+    entryCount: 1,
+    empty: false,
+    archived: false,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
+    version: 0,
+  },
   // Overspent on purpose: the case the design most needs to handle honestly.
-  { id: 'env-0004', name: 'Eating Out', period: '2026-08', categoryId: 'cat-0008', categoryName: 'Eating Out', categoryParentName: null, amount: '30.0000', spent: '41.2000', remaining: '-11.2000', currency: 'USD', entryCount: 1, empty: false, archived: false, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0 },
-  { id: 'env-0005', name: 'Summer trip', period: '2026-08', categoryId: null, categoryName: null, categoryParentName: null, amount: '250.0000', spent: '0.0000', remaining: '250.0000', currency: 'USD', entryCount: 0, empty: true, archived: true, createdAt: '2026-08-01T09:00:00Z', updatedAt: '2026-08-10T09:00:00Z', version: 1 },
+  {
+    id: 'env-0004',
+    name: 'Eating Out',
+    period: '2026-08',
+    categoryId: 'cat-0008',
+    categoryName: 'Eating Out',
+    categoryParentName: null,
+    amount: '30.0000',
+    spent: '41.2000',
+    remaining: '-11.2000',
+    currency: 'USD',
+    entryCount: 1,
+    empty: false,
+    archived: false,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'env-0005',
+    name: 'Summer trip',
+    period: '2026-08',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    amount: '250.0000',
+    spent: '0.0000',
+    remaining: '250.0000',
+    currency: 'USD',
+    entryCount: 0,
+    empty: true,
+    archived: true,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-10T09:00:00Z',
+    version: 1,
+  },
 ] as const;
 
 export const DEMO_ENVELOPES_ACTIVE = DEMO_ENVELOPES.filter((envelope) => !envelope.archived);
@@ -431,9 +980,51 @@ export const DEMO_ENVELOPES_ACTIVE = DEMO_ENVELOPES.filter((envelope) => !envelo
  * the app never files a transaction on its own — and the log says which on every row.
  */
 export const DEMO_ENVELOPE_ENTRIES = [
-  { id: 'ent-0003', envelopeId: 'env-0001', date: '2026-08-12', amount: '104.7500', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', note: 'big shop', source: 'SYNCED', transactionId: 'txn-0006', createdAt: '2026-08-12T17:10:00Z', updatedAt: '2026-08-12T17:10:00Z', version: 0 },
-  { id: 'ent-0002', envelopeId: 'env-0001', date: '2026-08-06', amount: '92.1500', currency: 'USD', payeeId: null, payeeName: null, note: null, source: 'MANUAL', transactionId: null, createdAt: '2026-08-06T18:02:00Z', updatedAt: '2026-08-06T18:02:00Z', version: 0 },
-  { id: 'ent-0001', envelopeId: 'env-0001', date: '2026-08-03', amount: '86.4000', currency: 'USD', payeeId: 'pay-0003', payeeName: 'Greenfield Market', note: null, source: 'SYNCED', transactionId: 'txn-0003', createdAt: '2026-08-03T16:20:00Z', updatedAt: '2026-08-03T16:20:00Z', version: 0 },
+  {
+    id: 'ent-0003',
+    envelopeId: 'env-0001',
+    date: '2026-08-12',
+    amount: '104.7500',
+    currency: 'USD',
+    payeeId: 'pay-0003',
+    payeeName: 'Greenfield Market',
+    note: 'big shop',
+    source: 'SYNCED',
+    transactionId: 'txn-0006',
+    createdAt: '2026-08-12T17:10:00Z',
+    updatedAt: '2026-08-12T17:10:00Z',
+    version: 0,
+  },
+  {
+    id: 'ent-0002',
+    envelopeId: 'env-0001',
+    date: '2026-08-06',
+    amount: '92.1500',
+    currency: 'USD',
+    payeeId: null,
+    payeeName: null,
+    note: null,
+    source: 'MANUAL',
+    transactionId: null,
+    createdAt: '2026-08-06T18:02:00Z',
+    updatedAt: '2026-08-06T18:02:00Z',
+    version: 0,
+  },
+  {
+    id: 'ent-0001',
+    envelopeId: 'env-0001',
+    date: '2026-08-03',
+    amount: '86.4000',
+    currency: 'USD',
+    payeeId: 'pay-0003',
+    payeeName: 'Greenfield Market',
+    note: null,
+    source: 'SYNCED',
+    transactionId: 'txn-0003',
+    createdAt: '2026-08-03T16:20:00Z',
+    updatedAt: '2026-08-03T16:20:00Z',
+    version: 0,
+  },
 ] as const;
 
 /** The months this household has envelopes for, newest first. */
@@ -482,75 +1073,183 @@ const PAID = { status: 'PAID', statusSource: 'MANUAL', recorded: true, version: 
 
 export const DEMO_BILLS = [
   {
-    id: 'bil-0001', name: 'Rent', categoryId: 'cat-0004', categoryName: 'Rent',
-    categoryParentName: null, expectedAmount: '1450.0000', currency: 'USD',
+    id: 'bil-0001',
+    name: 'Rent',
+    categoryId: 'cat-0004',
+    categoryName: 'Rent',
+    categoryParentName: null,
+    expectedAmount: '1450.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 1, month: null, dayOfWeek: null, anchorDate: null },
-    amountVaries: false, tolerance: null, active: true,
+    amountVaries: false,
+    tolerance: null,
+    active: true,
     occurrences: [
       occurrence('bil-0001', '2026-08-01', '1450.0000', {
-        ...PAID, actualAmount: '1450.0000', paidDate: '2026-08-01',
+        ...PAID,
+        actualAmount: '1450.0000',
+        paidDate: '2026-08-01',
       }),
     ],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-01T09:00:00Z', version: 0,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'bil-0002', name: 'Cleaner', categoryId: null, categoryName: null,
-    categoryParentName: null, expectedAmount: '40.0000', currency: 'USD',
-    schedule: { kind: 'WEEKLY', dayOfMonth: null, month: null, dayOfWeek: 'FRIDAY', anchorDate: null },
-    amountVaries: false, tolerance: null, active: true,
+    id: 'bil-0002',
+    name: 'Cleaner',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    expectedAmount: '40.0000',
+    currency: 'USD',
+    schedule: {
+      kind: 'WEEKLY',
+      dayOfMonth: null,
+      month: null,
+      dayOfWeek: 'FRIDAY',
+      anchorDate: null,
+    },
+    amountVaries: false,
+    tolerance: null,
+    active: true,
     occurrences: [
-      occurrence('bil-0002', '2026-08-07', '40.0000', { ...PAID, actualAmount: '40.0000', paidDate: '2026-08-07' }),
-      occurrence('bil-0002', '2026-08-14', '40.0000', { ...PAID, actualAmount: '40.0000', paidDate: '2026-08-14' }),
+      occurrence('bil-0002', '2026-08-07', '40.0000', {
+        ...PAID,
+        actualAmount: '40.0000',
+        paidDate: '2026-08-07',
+      }),
+      occurrence('bil-0002', '2026-08-14', '40.0000', {
+        ...PAID,
+        actualAmount: '40.0000',
+        paidDate: '2026-08-14',
+      }),
       occurrence('bil-0002', '2026-08-21', '40.0000'),
       occurrence('bil-0002', '2026-08-28', '40.0000'),
     ],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-14T09:00:00Z', version: 0,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-08-14T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'bil-0003', name: 'Phone', categoryId: 'cat-0005', categoryName: 'Utilities',
-    categoryParentName: null, expectedAmount: '120.0000', currency: 'USD',
+    id: 'bil-0003',
+    name: 'Phone',
+    categoryId: 'cat-0005',
+    categoryName: 'Utilities',
+    categoryParentName: null,
+    expectedAmount: '120.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 14, month: null, dayOfWeek: null, anchorDate: null },
-    amountVaries: true, tolerance: '22.0000', active: true,
+    amountVaries: true,
+    tolerance: '22.0000',
+    active: true,
     occurrences: [
       // £43.10 over a £120 plan that allows £22 of variation, so the app says so rather than
       // letting it pass as ordinary.
       occurrence('bil-0003', '2026-08-14', '120.0000', {
-        ...PAID, actualAmount: '163.1000', paidDate: '2026-08-15', surprising: true,
+        ...PAID,
+        actualAmount: '163.1000',
+        paidDate: '2026-08-15',
+        surprising: true,
       }),
     ],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-08-15T09:00:00Z', version: 0,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-08-15T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'bil-0004', name: 'Council tax', categoryId: null, categoryName: null,
-    categoryParentName: null, expectedAmount: '186.0000', currency: 'USD',
+    id: 'bil-0004',
+    name: 'Council tax',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    expectedAmount: '186.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 10, month: null, dayOfWeek: null, anchorDate: null },
-    amountVaries: false, tolerance: null, active: true,
+    amountVaries: false,
+    tolerance: null,
+    active: true,
     occurrences: [occurrence('bil-0004', '2026-08-10', '186.0000', { overdue: true })],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'bil-0005', name: 'Vet', categoryId: null, categoryName: null,
-    categoryParentName: null, expectedAmount: '0.0000', currency: 'USD',
-    schedule: { kind: 'IRREGULAR', dayOfMonth: null, month: null, dayOfWeek: null, anchorDate: null },
-    amountVaries: false, tolerance: null, active: true,
+    id: 'bil-0005',
+    name: 'Vet',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    expectedAmount: '0.0000',
+    currency: 'USD',
+    schedule: {
+      kind: 'IRREGULAR',
+      dayOfMonth: null,
+      month: null,
+      dayOfWeek: null,
+      anchorDate: null,
+    },
+    amountVaries: false,
+    tolerance: null,
+    active: true,
     occurrences: [],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'bil-0007', name: 'Car insurance', categoryId: null, categoryName: null,
-    categoryParentName: null, expectedAmount: '480.0000', currency: 'USD',
-    schedule: { kind: 'YEARLY', dayOfMonth: 30, month: 4, dayOfWeek: null, anchorDate: null },
-    amountVaries: false, tolerance: null, active: true,
-    occurrences: [],
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
-  },
-  {
-    id: 'bil-0006', name: 'Old gym', categoryId: null, categoryName: null,
-    categoryParentName: null, expectedAmount: '35.0000', currency: 'USD',
+    // The car loan's minimum IS this bill row. It exists so the counted-once rule is visible on
+    // the page rather than merely true in the code: 185 + 342 + 118 = 645 committed to debt, of
+    // which only 185 + 118 = 303 is new to "what's left", because this 342 is already a bill.
+    id: 'bil-0008',
+    name: 'Car payment',
+    categoryId: 'cat-0007',
+    categoryName: 'Transport',
+    categoryParentName: null,
+    expectedAmount: '342.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 5, month: null, dayOfWeek: null, anchorDate: null },
-    amountVaries: false, tolerance: null, active: false,
+    amountVaries: false,
+    tolerance: null,
+    active: true,
+    occurrences: [occurrence('bil-0008', '2026-08-05', '342.0000')],
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'bil-0007',
+    name: 'Car insurance',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    expectedAmount: '480.0000',
+    currency: 'USD',
+    schedule: { kind: 'YEARLY', dayOfMonth: 30, month: 4, dayOfWeek: null, anchorDate: null },
+    amountVaries: false,
+    tolerance: null,
+    active: true,
     occurrences: [],
-    createdAt: '2026-05-01T09:00:00Z', updatedAt: '2026-07-20T09:00:00Z', version: 1,
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
+  },
+  {
+    id: 'bil-0006',
+    name: 'Old gym',
+    categoryId: null,
+    categoryName: null,
+    categoryParentName: null,
+    expectedAmount: '35.0000',
+    currency: 'USD',
+    schedule: { kind: 'MONTHLY', dayOfMonth: 5, month: null, dayOfWeek: null, anchorDate: null },
+    amountVaries: false,
+    tolerance: null,
+    active: false,
+    occurrences: [],
+    createdAt: '2026-05-01T09:00:00Z',
+    updatedAt: '2026-07-20T09:00:00Z',
+    version: 1,
   },
 ] as const;
 
@@ -565,25 +1264,58 @@ export const DEMO_BILLS_ACTIVE = DEMO_BILLS.filter((bill) => bill.active);
  */
 export const DEMO_INCOME = [
   {
-    id: 'inc-0001', name: 'Salary', amount: '3200.0000', currency: 'USD',
+    id: 'inc-0001',
+    name: 'Salary',
+    amount: '3200.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 28, month: null, dayOfWeek: null, anchorDate: null },
-    accountId: 'acc-0001', accountName: 'Everyday Checking', sourceOfTruth: 'MANUAL_ESTIMATE',
-    active: true, dates: ['2026-08-28'], expectedForPeriod: '3200.0000',
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: true,
+    dates: ['2026-08-28'],
+    expectedForPeriod: '3200.0000',
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'inc-0002', name: 'Weekend work', amount: '220.0000', currency: 'USD',
-    schedule: { kind: 'FORTNIGHTLY', dayOfMonth: null, month: null, dayOfWeek: 'FRIDAY', anchorDate: '2026-08-07' },
-    accountId: null, accountName: null, sourceOfTruth: 'MANUAL_ESTIMATE',
-    active: true, dates: ['2026-08-07', '2026-08-21'], expectedForPeriod: '440.0000',
-    createdAt: '2026-07-01T09:00:00Z', updatedAt: '2026-07-01T09:00:00Z', version: 0,
+    id: 'inc-0002',
+    name: 'Weekend work',
+    amount: '220.0000',
+    currency: 'USD',
+    schedule: {
+      kind: 'FORTNIGHTLY',
+      dayOfMonth: null,
+      month: null,
+      dayOfWeek: 'FRIDAY',
+      anchorDate: '2026-08-07',
+    },
+    accountId: null,
+    accountName: null,
+    sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: true,
+    dates: ['2026-08-07', '2026-08-21'],
+    expectedForPeriod: '440.0000',
+    createdAt: '2026-07-01T09:00:00Z',
+    updatedAt: '2026-07-01T09:00:00Z',
+    version: 0,
   },
   {
-    id: 'inc-0003', name: 'Old retainer', amount: '500.0000', currency: 'USD',
+    id: 'inc-0003',
+    name: 'Old retainer',
+    amount: '500.0000',
+    currency: 'USD',
     schedule: { kind: 'MONTHLY', dayOfMonth: 15, month: null, dayOfWeek: null, anchorDate: null },
-    accountId: null, accountName: null, sourceOfTruth: 'MANUAL_ESTIMATE',
-    active: false, dates: [], expectedForPeriod: '0.0000',
-    createdAt: '2026-04-01T09:00:00Z', updatedAt: '2026-06-30T09:00:00Z', version: 1,
+    accountId: null,
+    accountName: null,
+    sourceOfTruth: 'MANUAL_ESTIMATE',
+    active: false,
+    dates: [],
+    expectedForPeriod: '0.0000',
+    createdAt: '2026-04-01T09:00:00Z',
+    updatedAt: '2026-06-30T09:00:00Z',
+    version: 1,
   },
 ] as const;
 
@@ -612,11 +1344,71 @@ const BILL_FIGURES = DEMO_BILLS_ACTIVE.flatMap((bill) =>
 );
 
 const BILLS_TOTAL = sum(BILL_FIGURES.map((one) => one.amount));
-const BILLS_OUTSTANDING = sum(BILL_FIGURES.filter((one) => one.outstanding).map((one) => one.amount));
+const BILLS_OUTSTANDING = sum(
+  BILL_FIGURES.filter((one) => one.outstanding).map((one) => one.amount),
+);
 const BILLS_OVERDUE = sum(BILL_FIGURES.filter((one) => one.overdue).map((one) => one.amount));
 const INCOME_TOTAL = sum(DEMO_INCOME_ACTIVE.map((source) => source.expectedForPeriod));
 const ENVELOPES_ALLOCATED = sum(
   DEMO_ENVELOPES_ACTIVE.filter((envelope) => envelope.period === '2026-08').map((e) => e.amount),
+);
+
+/**
+ * The debt responses, **generated from the real application** and not written by hand.
+ *
+ * `DemoFixtureIT` seeds these three debts and this plan through the real endpoints, reads the real
+ * responses back, canonicalises the ids and writes `debt-api.json`. It then fails the backend gate
+ * if the committed file stops matching what the application returns.
+ *
+ * It exists because a payoff plan is not data a reviewer can check by eye. A balance is; two
+ * projections, a debt-free month, a total interest figure and a balance series per strategy are
+ * solver output. Hand-written, they would be plausible numbers the application does not produce —
+ * and since the user guide is captured from these fixtures (ADR-0012, ADR-0013), the guide would
+ * teach arithmetic that does not exist.
+ *
+ * Regenerate with `mvn -f backend/pom.xml test -Dtest=DemoFixtureIT -Dfixtures.write=true`, read
+ * the diff, and recapture the guide screenshots that show these figures.
+ *
+ * **The clock is frozen at 2026-08-20** inside the month the rest of this household lives in, so
+ * nothing is estimated and no balance is stale. Unlike bills, the debt plan has no month selector,
+ * so the figures are not re-projected for the month a capture happens to run in.
+ */
+export const DEMO_DEBTS = DEBT_API['GET /api/debts'];
+export const DEMO_DEBT_PLAN = DEBT_API['GET /api/debt-plan'];
+export const DEMO_DEBT_WHAT_IF = DEBT_API['GET /api/debt-plan/projection?strategy=SNOWBALL'];
+/** The plan's amount plus fifty — the question the page actually asks. */
+export const DEMO_DEBT_WHAT_IF_PLUS_FIFTY =
+  DEBT_API['GET /api/debt-plan/projection?monthlyAmount=955.00'];
+export const DEMO_DEBT_DETAIL = {
+  'deb-0001': DEBT_API['GET /api/debts/deb-0001'],
+  'deb-0002': DEBT_API['GET /api/debts/deb-0002'],
+  'deb-0003': DEBT_API['GET /api/debts/deb-0003'],
+} as const;
+export const DEMO_DEBT_PAYMENTS = {
+  'deb-0001': DEBT_API['GET /api/debts/deb-0001/payments'],
+  'deb-0002': DEBT_API['GET /api/debts/deb-0002/payments'],
+  'deb-0003': DEBT_API['GET /api/debts/deb-0003/payments'],
+} as const;
+
+/**
+ * The debt terms of the subtraction, derived from the generated figures above and from the bills
+ * fixtures — never typed independently, for the same reason the other three are not.
+ *
+ * `debtMinimumsNotInBills` is the only one `left` loses. A minimum counts unless **this month's
+ * bills figure already carries that bill**: `bil-0008` has an unskipped August occurrence, so the
+ * car loan's 342 is a bill row and only 185 + 118 = 303 is new.
+ */
+const DEBT_MINIMUMS = Number(DEMO_DEBTS.debtMinimums);
+const BILL_IDS_THIS_MONTH: Set<string> = new Set<string>(
+  DEMO_BILLS_ACTIVE.filter((bill) => bill.occurrences.some((one) => one.status !== 'SKIPPED')).map(
+    (bill) => bill.id,
+  ),
+);
+const DEBT_MINIMUMS_NOT_IN_BILLS = sum(
+  DEMO_DEBTS.debts
+    .filter((debt) => !debt.archived && debt.paidOffAt === null)
+    .filter((debt) => debt.billId === null || !BILL_IDS_THIS_MONTH.has(debt.billId))
+    .map((debt) => debt.minimumPayment),
 );
 
 export const DEMO_PERIOD_SUMMARY = {
@@ -626,7 +1418,11 @@ export const DEMO_PERIOD_SUMMARY = {
   billsOutstanding: BILLS_OUTSTANDING.toFixed(4),
   billsOverdue: BILLS_OVERDUE.toFixed(4),
   envelopesAllocated: ENVELOPES_ALLOCATED.toFixed(4),
-  left: (INCOME_TOTAL - BILLS_TOTAL - ENVELOPES_ALLOCATED).toFixed(4),
+  owed: DEMO_DEBTS.owed,
+  debtCount: DEMO_DEBTS.debtCount,
+  debtMinimums: DEBT_MINIMUMS.toFixed(4),
+  debtMinimumsNotInBills: DEBT_MINIMUMS_NOT_IN_BILLS.toFixed(4),
+  left: (INCOME_TOTAL - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS).toFixed(4),
   currency: 'USD',
 } as const;
 
@@ -639,7 +1435,7 @@ export const DEMO_PERIOD_SUMMARY = {
 export const DEMO_PERIOD_SUMMARY_SHORT = {
   ...DEMO_PERIOD_SUMMARY,
   income: '1800.0000',
-  left: (1800 - BILLS_TOTAL - ENVELOPES_ALLOCATED).toFixed(4),
+  left: (1800 - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS).toFixed(4),
 } as const;
 
 export const DEMO_BUDGET = {
@@ -648,23 +1444,60 @@ export const DEMO_BUDGET = {
     // Ids match DEMO_CATEGORIES above. Spent figures match DEMO_TRANSACTIONS, so a budget screen
     // built on these fixtures agrees with the ledger rather than quietly contradicting it.
     { categoryId: 'cat-0004', planned: '1450.00', spent: '1450.00' }, // Rent — exactly on plan
-    { categoryId: 'cat-0006', planned: '350.00', spent: '283.30' },   // Groceries — under
-    { categoryId: 'cat-0007', planned: '80.00', spent: '62.00' },     // Transport — under
-    { categoryId: 'cat-0008', planned: '30.00', spent: '41.20' },     // Eating Out — over
-    { categoryId: 'cat-0005', planned: '140.00', spent: '128.30' },   // Utilities — under
+    { categoryId: 'cat-0006', planned: '350.00', spent: '283.30' }, // Groceries — under
+    { categoryId: 'cat-0007', planned: '80.00', spent: '62.00' }, // Transport — under
+    { categoryId: 'cat-0008', planned: '30.00', spent: '41.20' }, // Eating Out — over
+    { categoryId: 'cat-0005', planned: '140.00', spent: '128.30' }, // Utilities — under
   ],
 } as const;
 
 /** Everything the mock serves, keyed by the API path it answers. */
 export const DEMO_API: Record<string, unknown> = {
-  '/api/setup/status': { setupComplete: true, registrationOpen: false, passwordLoginEnabled: true, oidcEnabled: false },
+  '/api/setup/status': {
+    setupComplete: true,
+    registrationOpen: false,
+    passwordLoginEnabled: true,
+    oidcEnabled: false,
+  },
   '/api/auth/me': DEMO_ME,
-  '/api/auth/devices': { content: DEMO_DEVICES, page: 0, size: 50, totalElements: DEMO_DEVICES.length, totalPages: 1 },
+  '/api/auth/devices': {
+    content: DEMO_DEVICES,
+    page: 0,
+    size: 50,
+    totalElements: DEMO_DEVICES.length,
+    totalPages: 1,
+  },
   '/api/households/current': { ...DEMO_HOUSEHOLD, role: 'OWNER' },
-  '/api/households/current/members': { content: DEMO_MEMBERS, page: 0, size: 50, totalElements: DEMO_MEMBERS.length, totalPages: 1 },
-  '/api/accounts': { content: DEMO_ACCOUNTS_ACTIVE, page: 0, size: 50, totalElements: DEMO_ACCOUNTS_ACTIVE.length, totalPages: 1 },
-  '/api/categories': { content: DEMO_CATEGORIES, page: 0, size: 200, totalElements: DEMO_CATEGORIES.length, totalPages: 1 },
-  '/api/transactions': { content: DEMO_TRANSACTIONS, pageTotal: DEMO_LEDGER_PAGE_TOTAL, pageTotalCurrency: 'USD', page: 0, size: 50, totalElements: DEMO_TRANSACTIONS.length, totalPages: 1 },
+  '/api/households/current/members': {
+    content: DEMO_MEMBERS,
+    page: 0,
+    size: 50,
+    totalElements: DEMO_MEMBERS.length,
+    totalPages: 1,
+  },
+  '/api/accounts': {
+    content: DEMO_ACCOUNTS_ACTIVE,
+    page: 0,
+    size: 50,
+    totalElements: DEMO_ACCOUNTS_ACTIVE.length,
+    totalPages: 1,
+  },
+  '/api/categories': {
+    content: DEMO_CATEGORIES,
+    page: 0,
+    size: 200,
+    totalElements: DEMO_CATEGORIES.length,
+    totalPages: 1,
+  },
+  '/api/transactions': {
+    content: DEMO_TRANSACTIONS,
+    pageTotal: DEMO_LEDGER_PAGE_TOTAL,
+    pageTotalCurrency: 'USD',
+    page: 0,
+    size: 50,
+    totalElements: DEMO_TRANSACTIONS.length,
+    totalPages: 1,
+  },
   '/api/transactions/payee-suggestions': DEMO_PAYEE_SUGGESTIONS,
   '/api/envelopes/periods': DEMO_ENVELOPE_PERIODS,
   '/api/budgets/2026-08': DEMO_BUDGET,

@@ -21,6 +21,12 @@ import {
   DEMO_ME_NO_HOUSEHOLD,
   DEMO_ME_VIEWER,
   DEMO_MEMBERS,
+  DEMO_DEBTS,
+  DEMO_DEBT_PLAN,
+  DEMO_DEBT_WHAT_IF,
+  DEMO_DEBT_WHAT_IF_PLUS_FIFTY,
+  DEMO_DEBT_DETAIL,
+  DEMO_DEBT_PAYMENTS,
   DEMO_PERIOD_SUMMARY,
   DEMO_PROBLEMS,
   DEMO_TOKENS,
@@ -55,7 +61,13 @@ import {
  * and would be worse in the user guide, where the capture is the documentation (ADR-0012).
  */
 function datesIn(
-  schedule: { kind: string; dayOfMonth: number | null; month: number | null; dayOfWeek: string | null; anchorDate: string | null },
+  schedule: {
+    kind: string;
+    dayOfMonth: number | null;
+    month: number | null;
+    dayOfWeek: string | null;
+    anchorDate: string | null;
+  },
   period: string,
 ): string[] {
   const [year, month] = period.split('-').map(Number);
@@ -120,9 +132,18 @@ function occurrencesIn(
     const fixture = bill.occurrences[index];
     if (!fixture) {
       return {
-        billId: bill.id, dueDate, expectedAmount: bill.expectedAmount, status: 'DUE',
-        actualAmount: null, paidDate: null, transactionId: null, statusSource: 'MANUAL',
-        recorded: false, overdue: false, surprising: false, version: null,
+        billId: bill.id,
+        dueDate,
+        expectedAmount: bill.expectedAmount,
+        status: 'DUE',
+        actualAmount: null,
+        paidDate: null,
+        transactionId: null,
+        statusSource: 'MANUAL',
+        recorded: false,
+        overdue: false,
+        surprising: false,
+        version: null,
       };
     }
     return {
@@ -195,7 +216,12 @@ export type MockOptions = {
 /** When a saved setting says it changed. A constant, because a capture has to be the same twice. */
 const SETTINGS_SAVED_AT = '2026-11-20T09:15:00Z';
 
-function json(route: Route, status: number, body: unknown, contentType = 'application/json'): Promise<void> {
+function json(
+  route: Route,
+  status: number,
+  body: unknown,
+  contentType = 'application/json',
+): Promise<void> {
   return route.fulfill({ status, contentType, body: JSON.stringify(body) });
 }
 
@@ -220,7 +246,10 @@ function readBody(route: Route): unknown {
  * user-guide screenshot would then teach as real. So the transaction part is kept and only the
  * correction is applied. Arithmetic is on `bigint` minor units, never a float (ADR-0006).
  */
-function rebalanced(before: { openingBalance: string; balance: string }, openingBalance: unknown): string {
+function rebalanced(
+  before: { openingBalance: string; balance: string },
+  openingBalance: unknown,
+): string {
   if (typeof openingBalance !== 'string' || openingBalance === before.openingBalance) {
     return before.balance;
   }
@@ -277,7 +306,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
           : session === 'no-household'
             ? DEMO_ME_NO_HOUSEHOLD
             : DEMO_ME;
-    return ownPreferences && base.household ? { ...base, household: { ...base.household, ...ownPreferences } } : base;
+    return ownPreferences && base.household
+      ? { ...base, household: { ...base.household, ...ownPreferences } }
+      : base;
   };
 
   /**
@@ -307,7 +338,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const parsed = new URL(value.trim());
       return (
         parsed.protocol === 'https:' ||
-        (parsed.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname))
+        (parsed.protocol === 'http:' &&
+          ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname))
       );
     } catch {
       return false;
@@ -315,7 +347,12 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
   };
 
   const applySettingsPatch = (sent: Record<string, unknown>): void => {
-    for (const flag of ['registrationOpen', 'passwordLoginEnabled', 'oidcEnabled', 'oidcProvisioningEnabled'] as const) {
+    for (const flag of [
+      'registrationOpen',
+      'passwordLoginEnabled',
+      'oidcEnabled',
+      'oidcProvisioningEnabled',
+    ] as const) {
       if (typeof sent[flag] === 'boolean') adminSettings[flag] = sent[flag];
     }
     for (const text of ['oidcIssuerUri', 'oidcClientId'] as const) {
@@ -363,7 +400,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
 
     const at = `${method} ${url.pathname}`;
     const field = (name: string): unknown =>
-      typeof body === 'object' && body !== null ? (body as Record<string, unknown>)[name] : undefined;
+      typeof body === 'object' && body !== null
+        ? (body as Record<string, unknown>)[name]
+        : undefined;
 
     // ---- setup and sign-in ----------------------------------------------------------------
     if (at === 'GET /api/setup/status') {
@@ -381,7 +420,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       });
     }
     if (at === 'GET /api/auth/me') {
-      return session === 'anonymous' ? problem(route, DEMO_PROBLEMS.notAuthenticated) : json(route, 200, me());
+      return session === 'anonymous'
+        ? problem(route, DEMO_PROBLEMS.notAuthenticated)
+        : json(route, 200, me());
     }
     if (at === 'POST /api/auth/login') {
       // The fixture password for "wrong" — anything else signs in. Never a real credential.
@@ -394,7 +435,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     if (at === 'POST /api/auth/logout') {
       const was = session;
       session = 'anonymous';
-      return was === 'anonymous' ? problem(route, DEMO_PROBLEMS.notAuthenticated) : route.fulfill({ status: 204 });
+      return was === 'anonymous'
+        ? problem(route, DEMO_PROBLEMS.notAuthenticated)
+        : route.fulfill({ status: 204 });
     }
 
     // ---- the instance an operator runs ----------------------------------------------------
@@ -412,7 +455,10 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return json(route, 200, DEMO_INSTANCE);
       }
       if (at === 'GET /api/admin/users') {
-        return json(route, 200, { content: DEMO_ADMIN_ACCOUNTS, total: DEMO_ADMIN_ACCOUNTS.length });
+        return json(route, 200, {
+          content: DEMO_ADMIN_ACCOUNTS,
+          total: DEMO_ADMIN_ACCOUNTS.length,
+        });
       }
       if (at === 'GET /api/admin/settings') {
         return json(route, 200, settingsResponse());
@@ -438,10 +484,15 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         if (field('passwordLoginEnabled') === false && passwordLoginLocked()) {
           return problem(route, DEMO_PROBLEMS.passwordLoginLocked);
         }
-        if (typeof field('oidcIssuerUri') === 'string' && !usableIssuer(field('oidcIssuerUri') as string)) {
+        if (
+          typeof field('oidcIssuerUri') === 'string' &&
+          !usableIssuer(field('oidcIssuerUri') as string)
+        ) {
           return problem(route, DEMO_PROBLEMS.invalidIssuerUri);
         }
-        applySettingsPatch(typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {});
+        applySettingsPatch(
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {},
+        );
         return json(route, 200, settingsResponse());
       }
     }
@@ -452,12 +503,34 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       const token = decodeURIComponent(accept[1]);
       if (token === DEMO_TOKENS.unusable) return problem(route, DEMO_PROBLEMS.invitationUnusable);
       if (token === DEMO_TOKENS.newAccount && !field('password')) {
-        return json(route, 400, { type: 'https://budgetowl.app/errors/validation-failed', title: 'Validation failed', status: 400, code: 'validation-failed', params: { fields: ['displayName', 'password'] }, correlationId: 'demo0000000000000000000000000008' }, 'application/problem+json');
+        return json(
+          route,
+          400,
+          {
+            type: 'https://budgetowl.app/errors/validation-failed',
+            title: 'Validation failed',
+            status: 400,
+            code: 'validation-failed',
+            params: { fields: ['displayName', 'password'] },
+            correlationId: 'demo0000000000000000000000000008',
+          },
+          'application/problem+json',
+        );
       }
-      return json(route, 200, { householdId: DEMO_HOUSEHOLD.id, householdName: DEMO_HOUSEHOLD.name, role: 'MEMBER', userCreated: Boolean(field('password')), email: DEMO_INVITATION.email });
+      return json(route, 200, {
+        householdId: DEMO_HOUSEHOLD.id,
+        householdName: DEMO_HOUSEHOLD.name,
+        role: 'MEMBER',
+        userCreated: Boolean(field('password')),
+        email: DEMO_INVITATION.email,
+      });
     }
     if (at === 'POST /api/households/current/invitations') {
-      return json(route, 201, { ...DEMO_INVITATION, email: field('email') ?? DEMO_INVITATION.email, role: field('role') ?? DEMO_INVITATION.role });
+      return json(route, 201, {
+        ...DEMO_INVITATION,
+        email: field('email') ?? DEMO_INVITATION.email,
+        role: field('role') ?? DEMO_INVITATION.role,
+      });
     }
 
     // ---- accounts -------------------------------------------------------------------------
@@ -467,7 +540,13 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     if (at === 'GET /api/accounts') {
       const all = url.searchParams.get('includeArchived') === 'true';
       const rows = all ? DEMO_ACCOUNTS : DEMO_ACCOUNTS_ACTIVE;
-      return json(route, 200, { content: rows, page: 0, size: 50, totalElements: rows.length, totalPages: 1 });
+      return json(route, 200, {
+        content: rows,
+        page: 0,
+        size: 50,
+        totalElements: rows.length,
+        totalPages: 1,
+      });
     }
     if (at === 'POST /api/accounts') {
       return json(route, 201, {
@@ -490,12 +569,17 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return route.fulfill({ status: 204 });
       }
       if (account[2]) {
-        return json(route, 200, { ...found, archived: account[2] === 'archive', version: found.version + 1 });
+        return json(route, 200, {
+          ...found,
+          archived: account[2] === 'archive',
+          version: found.version + 1,
+        });
       }
       if (method === 'PATCH') {
         // Only the properties the client actually sent, which is what PATCH means — and the one
         // place the three-way `lastFour` is visible: absent leaves it, null clears it (ADR-0028).
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         const patched = { ...found, ...changes, version: found.version + 1 };
@@ -511,7 +595,13 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     if (at === 'GET /api/categories') {
       const all = url.searchParams.get('includeArchived') === 'true';
       const rows = all ? DEMO_CATEGORIES : DEMO_CATEGORIES_ACTIVE;
-      return json(route, 200, { content: rows, page: 0, size: 200, totalElements: rows.length, totalPages: 1 });
+      return json(route, 200, {
+        content: rows,
+        page: 0,
+        size: 200,
+        totalElements: rows.length,
+        totalPages: 1,
+      });
     }
     if (at === 'POST /api/categories') {
       const parentId = field('parentId') ?? null;
@@ -537,15 +627,21 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return route.fulfill({ status: 204 });
       }
       if (category[2]) {
-        return json(route, 200, { ...found, archived: category[2] === 'archive', version: found.version + 1 });
+        return json(route, 200, {
+          ...found,
+          archived: category[2] === 'archive',
+          version: found.version + 1,
+        });
       }
       if (method === 'PATCH') {
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         // The three-way `parentId` is visible here: absent leaves the parent, null promotes it to
         // the top level, an id moves it.
-        const parentId = 'parentId' in changes ? (changes['parentId'] as string | null) : found.parentId;
+        const parentId =
+          'parentId' in changes ? (changes['parentId'] as string | null) : found.parentId;
         const parent = DEMO_CATEGORIES.find((one) => one.id === parentId);
         return json(route, 200, {
           ...found,
@@ -587,9 +683,10 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       // One currency across every fixture row, so there is always a total. A page that mixed them
       // would carry null here and the screen says so rather than converting (ADR-0022).
       const currencies = new Set(rows.map((one) => one.currency));
-      const total = currencies.size === 1
-        ? rows.reduce((sum, one) => sum + Number(one.amount), 0).toFixed(2)
-        : null;
+      const total =
+        currencies.size === 1
+          ? rows.reduce((sum, one) => sum + Number(one.amount), 0).toFixed(2)
+          : null;
 
       return json(route, 200, {
         content: rows,
@@ -636,12 +733,14 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     }
     const transaction = /^\/api\/transactions\/([^/]+)$/.exec(url.pathname);
     if (transaction) {
-      const found = DEMO_TRANSACTIONS.find((one) => one.id === transaction[1]) ?? DEMO_TRANSACTIONS[0];
+      const found =
+        DEMO_TRANSACTIONS.find((one) => one.id === transaction[1]) ?? DEMO_TRANSACTIONS[0];
       if (method === 'DELETE') {
         return route.fulfill({ status: 204 });
       }
       if (method === 'PATCH') {
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         return json(route, 200, { ...found, ...changes, version: found.version + 1 });
@@ -759,8 +858,7 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         recorded: true,
         overdue: false,
         surprising:
-          paid &&
-          Math.abs(Number(actualAmount) - Number(bill.expectedAmount)) > tolerance,
+          paid && Math.abs(Number(actualAmount) - Number(bill.expectedAmount)) > tolerance,
         version: 0,
       };
       recordedOccurrences.set(`${billId}|${dueDate}`, written);
@@ -773,7 +871,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return route.fulfill({ status: 204 });
       }
       if (method === 'PATCH') {
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         delete changes['schedule'];
@@ -823,7 +922,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         return route.fulfill({ status: 204 });
       }
       if (method === 'PATCH') {
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         delete changes['schedule'];
@@ -915,7 +1015,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         const found =
           DEMO_ENVELOPE_ENTRIES.find((entry) => entry.id === entryRoute[2]) ??
           DEMO_ENVELOPE_ENTRIES[0];
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         return json(route, 200, { ...found, ...changes, version: found.version + 1 });
@@ -935,7 +1036,8 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         });
       }
       if (method === 'PATCH') {
-        const sent = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+        const sent =
+          typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
         const changes = { ...sent };
         delete changes['version'];
         return json(route, 200, { ...found, ...changes, version: found.version + 1 });
@@ -954,20 +1056,82 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       });
     }
     if (at === 'PUT /api/households/current') {
-      return json(route, 200, { ...DEMO_HOUSEHOLD, name: field('name'), baseCurrency: field('baseCurrency'), role: 'OWNER' });
+      return json(route, 200, {
+        ...DEMO_HOUSEHOLD,
+        name: field('name'),
+        baseCurrency: field('baseCurrency'),
+        role: 'OWNER',
+      });
     }
     const memberId = /^\/api\/households\/current\/members\/([^/]+)$/.exec(url.pathname);
     if (method === 'PATCH' && memberId) {
       const target = memberId[1] === 'me' ? DEMO_ME.household.membershipId : memberId[1];
       const found = DEMO_MEMBERS.find((m) => m.id === target) ?? DEMO_MEMBERS[0];
       if (memberId[1] === 'me') {
-        ownPreferences = { displayCurrency: field('displayCurrency') ?? null, locale: field('locale') ?? null };
+        ownPreferences = {
+          displayCurrency: field('displayCurrency') ?? null,
+          locale: field('locale') ?? null,
+        };
         return json(route, 200, { ...found, ...ownPreferences });
       }
       return json(route, 200, { ...found, role: field('role') });
     }
     if (method === 'DELETE') {
       return route.fulfill({ status: 204 });
+    }
+
+    // ---- debts and the payoff plan ----------------------------------------------------------
+    // Served from debt-api.json, which `DemoFixtureIT` GENERATES from the real application and
+    // then guards against drift. Nothing here computes a projection: a mock that did its own
+    // solver arithmetic would be a second implementation, and the guide would document whichever
+    // of the two happened to be wrong.
+    if (at === 'GET /api/debts') {
+      return json(route, 200, DEMO_DEBTS);
+    }
+    if (at === 'GET /api/debt-plan') {
+      return json(route, 200, DEMO_DEBT_PLAN);
+    }
+    if (at === 'GET /api/debt-plan/projection') {
+      // Keyed on what was ASKED. Returning the stored plan for an unrecognised question is how
+      // the page came to say "adding $50.00 a month would not move the date" — it was comparing
+      // the plan against itself. It moves it two months. A mock that answers a question it was
+      // not asked produces a screenshot that is a lie in the user guide, so an unknown amount is
+      // a loud 501 instead.
+      const strategy = url.searchParams.get('strategy');
+      const monthlyAmount = url.searchParams.get('monthlyAmount');
+      if (monthlyAmount === '955.00' || monthlyAmount === '955.0000') {
+        return json(route, 200, DEMO_DEBT_WHAT_IF_PLUS_FIFTY);
+      }
+      if (strategy === 'SNOWBALL') {
+        return json(route, 200, DEMO_DEBT_WHAT_IF);
+      }
+      if (monthlyAmount === null || monthlyAmount === DEMO_DEBT_PLAN.monthlyAmount) {
+        return json(route, 200, DEMO_DEBT_PLAN);
+      }
+      return json(
+        route,
+        501,
+        {
+          title: 'Not mocked',
+          status: 501,
+          detail: `No generated projection for monthlyAmount=${monthlyAmount}. Add it to DemoFixtureIT and regenerate.`,
+        },
+        'application/problem+json',
+      );
+    }
+    const debtPayments = url.pathname.match(/^\/api\/debts\/([^/]+)\/payments$/);
+    if (method === 'GET' && debtPayments) {
+      const page = DEMO_DEBT_PAYMENTS[debtPayments[1] as keyof typeof DEMO_DEBT_PAYMENTS];
+      return page === undefined
+        ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
+        : json(route, 200, page);
+    }
+    const debtId = url.pathname.match(/^\/api\/debts\/([^/]+)$/);
+    if (method === 'GET' && debtId) {
+      const detail = DEMO_DEBT_DETAIL[debtId[1] as keyof typeof DEMO_DEBT_DETAIL];
+      return detail === undefined
+        ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
+        : json(route, 200, detail);
     }
 
     // ---- everything else ------------------------------------------------------------------
@@ -984,7 +1148,11 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return json(
         route,
         501,
-        { title: 'Not mocked', status: 501, detail: `No fixture for ${url.pathname}. Add it to tools/ui/fixtures/demo-data.ts.` },
+        {
+          title: 'Not mocked',
+          status: 501,
+          detail: `No fixture for ${url.pathname}. Add it to tools/ui/fixtures/demo-data.ts.`,
+        },
         'application/problem+json',
       );
     }

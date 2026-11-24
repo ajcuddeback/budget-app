@@ -74,16 +74,20 @@ test.describe('bills and income, as an owner', () => {
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    // 3,640 income − 1,959.10 bills − 700 set aside = 980.90. Every figure derives from the same
-    // fixtures the blocks below render, so a headline disagreeing with them is a real defect.
+    // 3,640 income − 2,301.10 bills − 700 set aside − 303 of debt minimums = 335.90. The fourth
+    // term is new (debt-plan.md, decision 2) and it changed a figure that had already shipped:
+    // only the minimums NOT already carried by a bill row come off, so the car loan's 342 is in
+    // the bills term and not here, and nothing is counted twice. Every figure derives from the
+    // same fixtures the blocks below render, so a headline disagreeing with them is a real defect.
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('$980.90');
+    await expect(whatsLeft).toContainText('$335.90');
 
     await expect(whatsLeft).toContainText('$3,640.00');
-    await expect(whatsLeft).toContainText('$1,959.10');
+    await expect(whatsLeft).toContainText('$2,301.10');
     await expect(whatsLeft).toContainText('$700.00');
+    await expect(whatsLeft).toContainText('$303.00');
     // The secondary line, not the headline.
-    await expect(whatsLeft).toContainText('$266.00');
+    await expect(whatsLeft).toContainText('$608.00');
 
     await ui.shot('bills-overview');
     expect(await ui.a11y('bills and income, populated')).toBe(0);
@@ -97,7 +101,7 @@ test.describe('bills and income, as an owner', () => {
     await page.goto('/bills');
 
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('-$859.10');
+    await expect(whatsLeft).toContainText('-$1,504.10');
     await expect(whatsLeft).toContainText(/short/i);
 
     await ui.shot('bills-short-month');
@@ -246,9 +250,11 @@ test.describe('bills and income, as a viewer', () => {
     await page.goto('/bills');
 
     // A VIEWER reads a household's whole financial plan. It must not be able to alter one figure.
-    await expect(page.locator('body')).toContainText('$980.90');
+    await expect(page.locator('body')).toContainText('$335.90');
     await expect(page.getByRole('button', { name: /Mark paid/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add a bill/ })).toHaveCount(0);
+    // Owed is a balance and reads the same for everybody; it is not part of the subtraction.
+    await expect(page.getByRole('region', { name: 'Owed' })).toContainText('$26,480.00');
 
     await ui.shot('bills-viewer');
     expect(await ui.a11y('bills and income, as a viewer')).toBe(0);
@@ -288,7 +294,7 @@ test.describe('bills and income, in the dark theme', () => {
     await page.goto('/bills');
 
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('-$859.10');
+    await expect(whatsLeft).toContainText('-$1,504.10');
 
     await ui.shot('bills-short-month-dark');
     expect(await ui.a11y('bills and income, a short month in dark')).toBe(0);
