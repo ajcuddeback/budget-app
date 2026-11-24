@@ -46,13 +46,30 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
             @Param("debtId") UUID debtId,
             @Param("paymentId") UUID paymentId);
 
-    /** One debt's history, newest first, one page at a time. */
+    /**
+     * One debt's history, newest first, one page at a time.
+     *
+     * <p><b>The second sort key is load-bearing.</b> Several rows routinely share a {@code
+     * paidDate} — logging a payment and then confirming the statement that followed it writes two
+     * rows dated the same day — and the id is a random {@code UUID}, so ordering by it put them in
+     * an arbitrary order. The history's {@code balanceAfter} column is a running figure, so an
+     * arbitrary order makes it stop reconciling: the screenshot that found this showed a payment
+     * leaving $6,162.62 printed <em>above</em> the correction that had since brought it to the
+     * $6,180.00 the headline was reporting.
+     *
+     * <p>It also made the generated demo fixtures non-deterministic, since every regeneration mints
+     * new ids and could flip the two rows.
+     *
+     * <p>{@code createdAt} is the row's own insertion time, which separates two requests. Rows
+     * written inside <b>one</b> transaction still tie, because PostgreSQL's {@code now()} is the
+     * transaction's start time — the id then breaks the tie, so the order is at least stable.
+     */
     @Query(
             """
             select p from DebtPayment p
             where p.householdId = :householdId
               and p.debtId = :debtId
-            order by p.paidDate desc, p.id desc
+            order by p.paidDate desc, p.createdAt desc, p.id desc
             """)
     Page<DebtPayment> findForDebt(
             @Param("householdId") UUID householdId,

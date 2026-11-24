@@ -89,6 +89,11 @@ class DemoFixtureIT extends ApiTestBase {
     /** Where a mismatching run writes what it would have committed. */
     private static final Path REGENERATED = Path.of("target", "debt-api.generated.ts");
 
+    private static final Path COMMITTED_STATES =
+            Path.of("..", "tools", "ui", "fixtures", "debt-states.generated.ts");
+
+    private static final Path REGENERATED_STATES = Path.of("target", "debt-states.generated.ts");
+
     /**
      * A clock the test moves, rather than one fixed before the application starts.
      *
@@ -181,40 +186,120 @@ class DemoFixtureIT extends ApiTestBase {
                     household.owner().get("/api/debts/" + debt.getValue() + "/payments").body());
         }
 
-        String document = canonicalise(render(generated), seeded);
+        String document = canonicalise(render(generated, "DEBT_API"), seeded);
 
+        compareOrWrite(document, COMMITTED, REGENERATED);
+    }
+
+    /**
+     * The two balance states the demo household does not have, and could not be given.
+     *
+     * <p>All three demo debts are {@code CONFIRMED}, because they are anchored to the statement the
+     * guide's figures come from. That leaves the screens that say <em>"this number is a guess"</em>
+     * — the estimated wording, the stale wording, and the whole confirm-the-estimate sheet —
+     * rendered by nothing. They are the screens where being wrong matters most, so they get their
+     * own scenario rather than a hand-written fixture: an estimated balance is the anchor rolled
+     * forward <b>with interest</b>, and inventing one is inventing arithmetic.
+     *
+     * <p>Separate household, separate file, separate test, so the demo figures the guide captures
+     * cannot be perturbed by it — adding a fourth debt would move {@code owed}, {@code debtCount}
+     * and every date in the plan.
+     */
+    @Test
+    void the_committed_balance_state_fixtures_are_what_the_application_returns()
+            throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+
+        // Three months since the statement and nothing logged since: ESTIMATED, and the figure on
+        // screen is larger than the anchor because three months of interest are in it.
+        UUID estimated =
+                createDemoDebt(
+                        household,
+                        "Store card",
+                        "CREDIT_CARD",
+                        "Argos",
+                        "1240.00",
+                        "29.900",
+                        "45.00",
+                        null,
+                        DEMO_STATEMENT_DATE.minusMonths(3).toString(),
+                        null);
+        // Past MAXIMUM_ESTIMATED_MONTHS: the screen stops extrapolating and asks for a statement
+        // rather than showing a year and a half of compounding as if it knew.
+        UUID stale =
+                createDemoDebt(
+                        household,
+                        "Old overdraft",
+                        "CREDIT_CARD",
+                        "Monzo",
+                        "860.00",
+                        "39.900",
+                        "25.00",
+                        null,
+                        DEMO_STATEMENT_DATE.minusMonths(14).toString(),
+                        null);
+
+        clock.moveTo(DEMO_TODAY);
+
+        Map<UUID, String> names = new LinkedHashMap<>();
+        names.put(estimated, "deb-9001");
+        names.put(stale, "deb-9002");
+        Fixture seeded = new Fixture(Map.of(), null, names);
+
+        Map<String, String> generated = new LinkedHashMap<>();
+        generated.put("GET /api/debts", household.owner().get("/api/debts").body());
+        generated.put(
+                "GET /api/debts/deb-9001", household.owner().get("/api/debts/" + estimated).body());
+        generated.put(
+                "GET /api/debts/deb-9002", household.owner().get("/api/debts/" + stale).body());
+
+        compareOrWrite(
+                canonicalise(render(generated, "DEBT_STATES"), seeded),
+                COMMITTED_STATES,
+                REGENERATED_STATES);
+    }
+
+    /**
+     * Writes the fixture, or fails because the committed one no longer matches.
+     *
+     * <p>Shared by both scenarios: the demo household the guide is captured from, and the balance
+     * states that household deliberately does not have.
+     */
+    private static void compareOrWrite(String document, Path committed, Path regenerated)
+            throws IOException {
         if (Boolean.getBoolean("fixtures.write")) {
-            Files.createDirectories(COMMITTED.getParent());
-            Files.writeString(COMMITTED, document);
+            Files.createDirectories(committed.getParent());
+            Files.writeString(committed, document);
             return;
         }
 
-        if (!Files.exists(COMMITTED)) {
-            Files.createDirectories(REGENERATED.getParent());
-            Files.writeString(REGENERATED, document);
+        if (!Files.exists(committed)) {
+            Files.createDirectories(regenerated.getParent());
+            Files.writeString(regenerated, document);
             throw new AssertionError(
-                    "The debt fixtures have never been generated. What this run would have"
-                            + " committed is in backend/"
-                            + REGENERATED
+                    "These fixtures have never been generated. What this run would have committed"
+                            + " is in backend/"
+                            + regenerated
                             + " — copy it to "
-                            + COMMITTED.normalize()
+                            + committed.normalize()
                             + ", or re-run with -Dfixtures.write=true.");
         }
 
-        String committed = Files.readString(COMMITTED);
-        if (!committed.equals(document)) {
-            Files.createDirectories(REGENERATED.getParent());
-            Files.writeString(REGENERATED, document);
+        String stored = Files.readString(committed);
+        if (!stored.equals(document)) {
+            Files.createDirectories(regenerated.getParent());
+            Files.writeString(regenerated, document);
         }
         assertThat(document)
                 .as(
-                        "The debt fixtures the UI harness serves no longer match what the"
-                                + " application returns, so the user guide is documenting arithmetic"
-                                + " this code does not do. What this run produced is in backend/"
-                                + REGENERATED
-                                + ". Read the diff, re-run with -Dfixtures.write=true, and recapture"
-                                + " the guide screenshots that show these figures.")
-                .isEqualTo(committed);
+                        "The fixtures the UI harness serves no longer match what the application"
+                                + " returns, so the user guide is documenting arithmetic this code"
+                                + " does not do. What this run produced is in backend/"
+                                + regenerated
+                                + ". Read the diff, re-run with -Dfixtures.write=true, and"
+                                + " recapture the guide screenshots that show these figures.")
+                .isEqualTo(stored);
     }
 
     /**
@@ -396,7 +481,7 @@ class DemoFixtureIT extends ApiTestBase {
                                 """
                                 {"name":"%s","kind":"%s","servicer":"%s","balance":"%s",
                                  "balanceDate":"%s","apr":"%s","minimumPayment":"%s",
-                                 "originalBalance":"%s","billId":%s}
+                                 "originalBalance":%s,"billId":%s}
                                 """
                                         .formatted(
                                                 name,
@@ -406,7 +491,9 @@ class DemoFixtureIT extends ApiTestBase {
                                                 balanceDate,
                                                 apr,
                                                 minimum,
-                                                originalBalance,
+                                                originalBalance == null
+                                                        ? "null"
+                                                        : "\"" + originalBalance + "\"",
                                                 billId == null ? "null" : "\"" + billId + "\""));
         if (created.status() != 201) {
             throw new AssertionError("could not seed a demo debt: " + created.body());
@@ -426,7 +513,7 @@ class DemoFixtureIT extends ApiTestBase {
      * <p>Prettier checks this file, so it is written in Prettier's own shape: two-space indent,
      * double quotes left as the JSON has them, and one key per line.
      */
-    private static String render(Map<String, String> responses) {
+    private static String render(Map<String, String> responses, String exportName) {
         StringBuilder out =
                 new StringBuilder(
                         """
@@ -442,8 +529,9 @@ class DemoFixtureIT extends ApiTestBase {
                         //   mvn -f backend/pom.xml test -Dtest=DemoFixtureIT -Dfixtures.write=true
                         // then read the diff and recapture the guide screenshots it changes.
 
-                        export const DEBT_API = {
-                        """);
+                        export const %s = {
+                        """
+                                .formatted(exportName));
         int remaining = responses.size();
         for (Map.Entry<String, String> entry : responses.entrySet()) {
             out.append("  \"").append(entry.getKey()).append("\": ");

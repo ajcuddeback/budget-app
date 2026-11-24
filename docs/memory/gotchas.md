@@ -1033,3 +1033,41 @@ is to *fail*, the only evidence it works is watching it fail: break it on purpos
 put it back. A green check beside a threshold is not evidence the threshold exists.
 
 **Where.** `frontend/angular.json`, `@angular/build` 22.2.7.
+
+---
+
+## A random UUID is not a tiebreak, and a test that depends on one passes two runs in three
+
+**Symptom.** The payment history showed a payment leaving `$6,162.62` printed *above* the
+statement correction that had since brought the balance to the `$6,180.00` the page's own
+headline was reporting. The "Balance after" column is a running figure, so it stopped reconciling
+with everything around it.
+
+**What was wrong.** `order by p.paidDate desc, p.id desc`. Several rows routinely share a
+`paidDate` — logging a payment and then confirming the statement that followed it writes two rows
+dated the same day — and `id` is a **random** UUID, so the tiebreak was a coin flip.
+
+**The part worth remembering.** Running the same test three times against the broken ordering:
+
+```
+run 1  Tests run: 1, Failures: 1   <-- failed
+run 2  Tests run: 1, Failures: 0
+run 3  Tests run: 1, Failures: 0
+```
+
+Identical code, identical data, two passes and a failure. A green run proved nothing, and this
+would have read as "flaky test, re-run it" for as long as anybody tolerated it. It was found by
+*looking at the screenshot*, not by the suite.
+
+**The rule.** If a sort is not total, it is not a sort. Order by something monotonic — here
+`createdAt`, the row's own insertion time, which separates two requests — and keep the id as the
+final tiebreak so the result is at least stable. Rows written inside one transaction still tie,
+because PostgreSQL's `now()` is the transaction's start time, so the id is doing real work as the
+last key.
+
+**The second cost.** Non-deterministic ordering also made the generated demo fixtures
+non-deterministic: every regeneration mints new ids and could flip the two rows, so the drift
+check would fail on a difference that was not a difference.
+
+**Where.** `DebtPaymentRepository.findForDebt`,
+`DebtIT.two_rows_on_the_same_day_come_back_in_the_order_they_were_written`.

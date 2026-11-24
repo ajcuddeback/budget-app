@@ -26,6 +26,7 @@ import {
   DEMO_DEBT_WHAT_IF,
   DEMO_DEBT_WHAT_IF_PLUS_FIFTY,
   DEMO_DEBT_DETAIL,
+  DEMO_DEBT_STATE_DETAIL,
   DEMO_DEBT_PAYMENTS,
   DEMO_PERIOD_SUMMARY,
   DEMO_PROBLEMS,
@@ -1128,7 +1129,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     }
     const debtId = url.pathname.match(/^\/api\/debts\/([^/]+)$/);
     if (method === 'GET' && debtId) {
-      const detail = DEMO_DEBT_DETAIL[debtId[1] as keyof typeof DEMO_DEBT_DETAIL];
+      const detail =
+        DEMO_DEBT_DETAIL[debtId[1] as keyof typeof DEMO_DEBT_DETAIL] ??
+        DEMO_DEBT_STATE_DETAIL[debtId[1] as keyof typeof DEMO_DEBT_STATE_DETAIL];
       return detail === undefined
         ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
         : json(route, 200, detail);

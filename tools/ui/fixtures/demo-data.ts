@@ -19,6 +19,7 @@
  */
 
 import { DEBT_API } from './debt-api.generated';
+import { DEBT_STATES } from './debt-states.generated';
 
 export const DEMO_USER = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -1384,6 +1385,27 @@ export const DEMO_DEBT_DETAIL = {
   'deb-0002': DEBT_API['GET /api/debts/deb-0002'],
   'deb-0003': DEBT_API['GET /api/debts/deb-0003'],
 } as const;
+/**
+ * The two balance states the demo household does not have, generated the same way.
+ *
+ * <p>All three demo debts are confirmed against the statement the guide's figures come from, so
+ * the screens that say <em>this number is a guess</em> — the estimated wording, the stale wording
+ * and the confirm-the-estimate sheet — would otherwise be rendered by nothing. They are separate
+ * because adding a fourth debt to the household would move `owed`, `debtCount` and every date in
+ * the plan.
+ *
+ * `deb-9001` is three months past its statement: ESTIMATED, and the figure on screen is the
+ * anchor rolled forward with interest and the minimum taken off, which is why it is LOWER than
+ * the anchor rather than higher. `deb-9002` is fourteen months past: the app stops extrapolating
+ * and reports the last confirmed figure with `balanceStale` set, rather than showing a year and a
+ * half of compounding as if it knew.
+ */
+export const DEMO_DEBT_STATES = DEBT_STATES['GET /api/debts'];
+export const DEMO_DEBT_STATE_DETAIL = {
+  'deb-9001': DEBT_STATES['GET /api/debts/deb-9001'],
+  'deb-9002': DEBT_STATES['GET /api/debts/deb-9002'],
+} as const;
+
 export const DEMO_DEBT_PAYMENTS = {
   'deb-0001': DEBT_API['GET /api/debts/deb-0001/payments'],
   'deb-0002': DEBT_API['GET /api/debts/deb-0002/payments'],

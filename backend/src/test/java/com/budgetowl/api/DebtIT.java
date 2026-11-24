@@ -694,6 +694,52 @@ class DebtIT extends ApiTestBase {
     }
 
     @Test
+    void two_rows_on_the_same_day_come_back_in_the_order_they_were_written() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        // A payment, and then the statement that followed it — both dated today, which is the
+        // ordinary case rather than a contrived one.
+        household
+                .owner()
+                .post(
+                        "/api/debts/" + debt + "/payments",
+                        """
+                        {"paidDate":"%s","amount":"445.0000"}
+                        """
+                                .formatted(TODAY));
+        assertThat(
+                        household
+                                .owner()
+                                .post(
+                                        "/api/debts/" + debt + "/balance",
+                                        """
+                                        {"balance":"5800.0000","balanceDate":"%s"}
+                                        """
+                                                .formatted(TODAY))
+                                .status())
+                .isEqualTo(200);
+
+        ApiResponse history = household.owner().get("/api/debts/" + debt + "/payments");
+
+        // Newest first means the CORRECTION first: it was written second. Ordering by the id
+        // instead put them in an arbitrary order, because the id is a random UUID — and the
+        // balanceAfter column is a running figure, so an arbitrary order makes the history stop
+        // reconciling with the balance printed above it.
+        assertThat(history.numberField("totalElements")).isEqualTo(2L);
+        int correction = history.body().indexOf("STATEMENT_CORRECTION");
+        int logged = history.body().indexOf("USER_LOGGED");
+        assertThat(correction)
+                .as("the statement correction was written second, so it is listed first")
+                .isLessThan(logged);
+
+        // And the first row's closing balance is the one the debt now reports.
+        assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
+                .isEqualTo("5800.0000");
+        assertThat(history.body()).contains("\"balanceAfter\":\"5800.0000\"");
+    }
+
+    @Test
     void a_transaction_cannot_settle_two_debt_payments() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);
