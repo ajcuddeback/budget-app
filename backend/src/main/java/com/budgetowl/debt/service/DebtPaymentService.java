@@ -128,11 +128,7 @@ public class DebtPaymentService {
         Debt debt = require(debtId, household.id());
         requireNotSettled(debt);
 
-        if (payments.countByHouseholdIdAndDebtId(household.id(), debt.id())
-                >= DebtService.MAXIMUM_PAYMENTS_PER_DEBT) {
-            throw new ConflictException(
-                    ErrorCode.CONFLICT, "this debt already has the most payments we allow");
-        }
+        requireRoomForAPayment(payments, household.id(), debt.id());
 
         Currency currency = debt.currency();
         Money amount =
@@ -156,6 +152,13 @@ public class DebtPaymentService {
         if (requested.billOccurrenceId() != null) {
             payment.recordedFrom(
                     links.requireOccurrence(requested.billOccurrenceId(), household.id()).id());
+        }
+        if (requested.paidFromAccountId() != null) {
+            // Resolved through the household like every other id in the body, so another
+            // household's account is a 404 rather than a constraint violation. Nothing is written
+            // to the account itself (ADR-0035).
+            payment.paidFrom(
+                    links.requireAccount(requested.paidFromAccountId(), household.id()).id());
         }
 
         DebtPayment saved = save(payment);
@@ -203,6 +206,14 @@ public class DebtPaymentService {
             case Change.Cleared<UUID> ignored -> payment.settledBy(null);
             case Change.SetTo<UUID> settled ->
                     payment.settledBy(link(settled.value(), household.id(), payment.id()));
+        }
+        switch (changes.paidFromAccountId()) {
+            case Change.Unchanged<UUID> ignored -> {
+                // Not mentioned.
+            }
+            case Change.Cleared<UUID> ignored -> payment.paidFrom(null);
+            case Change.SetTo<UUID> from ->
+                    payment.paidFrom(links.requireAccount(from.value(), household.id()).id());
         }
         switch (changes.note()) {
             case Change.Unchanged<String> ignored -> {
@@ -296,6 +307,32 @@ public class DebtPaymentService {
         return resolved;
     }
 
+    /**
+     * Refuses a write that would take a debt past {@link DebtService#MAXIMUM_PAYMENTS_PER_DEBT}.
+     *
+     * <p><b>Static, and shared, because there is more than one writer.</b> The cap lived inside
+     * {@link #log} alone while {@code DebtService.confirmBalance} also inserts a {@code
+     * DebtPayment} — a {@code STATEMENT_CORRECTION} — so a caller with write access could walk
+     * figures through {@code POST /api/debts/&#123;id&#125;/balance} and add a row per request
+     * forever, past the cap and past the point logging a payment is refused. The constant's own
+     * javadoc asserted that could not happen.
+     *
+     * <p>It is worse than disk: {@code DebtBalanceService.factsFor} aggregates over every payment
+     * in the household on <em>every</em> debt read, so an unbounded history is an unbounded read
+     * cost on every screen.
+     *
+     * <p>Here rather than in each writer so the next code path that inserts a payment cannot
+     * quietly omit it.
+     */
+    static void requireRoomForAPayment(
+            DebtPaymentRepository payments, UUID householdId, UUID debtId) {
+        if (payments.countByHouseholdIdAndDebtId(householdId, debtId)
+                >= DebtService.MAXIMUM_PAYMENTS_PER_DEBT) {
+            throw new ConflictException(
+                    ErrorCode.CONFLICT, "this debt already has the most payments we allow");
+        }
+    }
+
     private static DebtPaymentView view(DebtPayment payment, Currency currency) {
         return new DebtPaymentView(
                 payment.id(),
@@ -308,6 +345,7 @@ public class DebtPaymentService {
                 payment.provenance().name(),
                 payment.transactionId().orElse(null),
                 payment.billOccurrenceId().orElse(null),
+                payment.paidFromAccountId().orElse(null),
                 payment.note().orElse(null),
                 payment.version());
     }

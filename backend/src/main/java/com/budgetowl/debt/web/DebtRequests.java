@@ -3,6 +3,7 @@ package com.budgetowl.debt.web;
 import com.budgetowl.common.Change;
 import com.budgetowl.debt.domain.Debt;
 import com.budgetowl.debt.domain.DebtPayment;
+import com.budgetowl.debt.service.DebtService;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -36,6 +37,22 @@ public final class DebtRequests {
     private static final String AMOUNT = "^\\d{1,15}(\\.\\d{1,4})?$";
 
     private static final String AMOUNT_MESSAGE = "must be a decimal with at most 4 decimal places";
+
+    /**
+     * At least one non-whitespace character, Unicode-aware.
+     *
+     * <p>Copied from {@code AccountRequests}, where the comment explains why it has to exist: on a
+     * {@code PATCH}, {@code @NotBlank} cannot be used because it refuses {@code null}, and {@code
+     * null} is the ordinary "not mentioned" case. {@code @Size(max = …)} alone passes {@code " "},
+     * which then reaches the entity, strips to empty and throws {@code IllegalArgumentException} —
+     * a {@code 500} with a stack trace at {@code ERROR}, from any authenticated caller, in a loop,
+     * on a machine in somebody's house. Slice 3's audit found exactly this on {@code /api/accounts}
+     * and slice 10 reintroduced it on a new DTO.
+     *
+     * <p>{@code (?U)} so a full-width ideographic space counts as whitespace; {@code DOTALL} so a
+     * name containing a newline is still matched.
+     */
+    private static final String NOT_BLANK = "(?U).*\\S.*";
 
     /** A percentage as a statement prints it, to three places: {@code 22.900}. */
     private static final String RATE = "^\\d{1,3}(\\.\\d{1,3})?$";
@@ -92,6 +109,7 @@ public final class DebtRequests {
     public static final class UpdateDebtRequest {
 
         @Size(max = Debt.NAME_MAX_LENGTH)
+        @Pattern(regexp = NOT_BLANK, flags = Pattern.Flag.DOTALL, message = "must not be blank")
         private String name;
 
         private String kind;
@@ -277,6 +295,7 @@ public final class DebtRequests {
             @NotNull @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String amount,
             UUID transactionId,
             UUID billOccurrenceId,
+            UUID paidFromAccountId,
             @Size(max = DebtPayment.NOTE_MAX_LENGTH) String note) {
 
         /** Redacted — the amount is a payment somebody made. */
@@ -303,6 +322,10 @@ public final class DebtRequests {
 
         private boolean transactionIdMentioned;
 
+        private UUID paidFromAccountId;
+
+        private boolean paidFromAccountIdMentioned;
+
         @Size(max = DebtPayment.NOTE_MAX_LENGTH)
         private String note;
 
@@ -321,6 +344,11 @@ public final class DebtRequests {
         public void setTransactionId(UUID transactionId) {
             this.transactionId = transactionId;
             this.transactionIdMentioned = true;
+        }
+
+        public void setPaidFromAccountId(UUID paidFromAccountId) {
+            this.paidFromAccountId = paidFromAccountId;
+            this.paidFromAccountIdMentioned = true;
         }
 
         public void setNote(String note) {
@@ -346,6 +374,10 @@ public final class DebtRequests {
 
         public Change<UUID> transactionIdChange() {
             return Change.of(transactionId, transactionIdMentioned);
+        }
+
+        public Change<UUID> paidFromAccountIdChange() {
+            return Change.of(paidFromAccountId, paidFromAccountIdMentioned);
         }
 
         public Change<String> noteChange() {
@@ -379,12 +411,19 @@ public final class DebtRequests {
      * The plan's two figures, and the household's own order.
      *
      * @param customOrder debt ids from rung 1 down, or absent to leave every position alone. A debt
-     *     the list omits has its position cleared: the list is the whole order
+     *     the list omits has its position cleared: the list is the whole order. <b>Bounded at the
+     *     edge</b> by the household's own debt cap: an order longer than that names debts that
+     *     cannot exist, and without the bound it is the one unbounded collection in the API — a
+     *     seventy-megabyte body of UUIDs that Jackson materialises and the service then builds a
+     *     map of, before discovering the ids belong to nothing
      */
     public record UpdatePlanRequest(
             String strategy,
             @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String monthlyAmount,
-            List<UUID> customOrder,
+            @Size(
+                            max = DebtService.MAXIMUM_PER_HOUSEHOLD,
+                            message = "cannot name more debts than a household may have")
+                    List<UUID> customOrder,
             @NotNull Long version) {
 
         /** Redacted — the monthly amount is a statement of disposable income. */

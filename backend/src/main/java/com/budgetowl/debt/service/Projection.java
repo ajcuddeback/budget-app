@@ -88,6 +88,20 @@ public sealed interface Projection {
         public boolean clears() {
             return true;
         }
+
+        /**
+         * Redacted: {@code totalInterest} is an amount and every {@code ProjectionMonth} carries a
+         * balance. {@code ProjectionMonth} redacts its own; a record holding a list of them does
+         * not inherit that, because the generated {@code toString} prints the list.
+         */
+        @Override
+        public String toString() {
+            return "Projection.Cleared[months="
+                    + months.size()
+                    + ", payoffMonth="
+                    + payoffMonth
+                    + "]";
+        }
     }
 
     /**

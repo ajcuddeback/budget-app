@@ -146,8 +146,16 @@ public class DebtBalanceService {
     /**
      * One debt, for the response to a write.
      *
-     * <p>Queries this debt's own figures rather than the household's, because a write answers about
-     * one row and the batched queries above exist for the screens that list them all.
+     * <p><b>It runs the household-wide aggregates and picks this debt out in Java.</b> The comment
+     * here used to claim the opposite — that it queries one row — and it was worth correcting
+     * rather than deleting, because the claim is the one a reader would trust when the payment
+     * table is large: the cost of this call grows with the household's whole history, not with this
+     * debt's, and it is on the path of every write response and every detail read.
+     *
+     * <p>Acceptable because {@code DebtService.MAXIMUM_PAYMENTS_PER_DEBT} bounds that history and
+     * both aggregates are grouped in SQL — but it is reusing the batched queries for one row, not a
+     * narrower query, and a per-debt variant is the thing to add if this ever shows up in a
+     * profile.
      */
     @Transactional(readOnly = true)
     public DebtFacts factsFor(Debt debt) {
@@ -256,8 +264,11 @@ public class DebtBalanceService {
             int months = debt.monthsLeft().orElseThrow();
             return months > DebtTermsSolver.MAX_MONTHS ? null : Horizon.ofMonths(months);
         }
+        // isSolvableSpan, not merely !isBefore: a payoff month far in the future is as unanswerable
+        // as one in the past, and asking the shared predicate is what keeps Horizon.endingIn from
+        // being reached with a span it has to throw about.
         return debt.payoffMonth()
-                .filter(month -> !month.isBefore(firstPaymentMonth))
+                .filter(month -> Horizon.isSolvableSpan(month, firstPaymentMonth))
                 .map(month -> Horizon.endingIn(month, firstPaymentMonth))
                 .orElse(null);
     }

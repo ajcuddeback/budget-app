@@ -144,7 +144,6 @@ public final class DebtResponses {
             String currency,
             BigDecimal owed,
             BigDecimal debtMinimums,
-            BigDecimal debtMinimumsNotInBills,
             int debtCount) {
 
         static DebtsResponse of(DebtsView view) {
@@ -158,7 +157,6 @@ public final class DebtResponses {
                     view.currency(),
                     plainAmount(view.owed()),
                     plainAmount(view.debtMinimums()),
-                    plainAmount(view.debtMinimumsNotInBills()),
                     view.debtCount());
         }
 
@@ -215,6 +213,7 @@ public final class DebtResponses {
             String provenance,
             UUID transactionId,
             UUID billOccurrenceId,
+            UUID paidFromAccountId,
             String note,
             long version) {
 
@@ -231,6 +230,7 @@ public final class DebtResponses {
                     payment.provenance(),
                     payment.transactionId(),
                     payment.billOccurrenceId(),
+                    payment.paidFromAccountId(),
                     payment.note(),
                     payment.version());
         }

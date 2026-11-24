@@ -299,6 +299,17 @@ CREATE TABLE debt_payments (
     -- never silently, because a balance that moves on its own cannot be audited.
     bill_occurrence_id uuid,
 
+    -- WHERE THE MONEY CAME FROM, and not a ledger row (ADR-0035). The household says which of its
+    -- accounts it paid from; nothing is written to that account and no transaction is created. It
+    -- exists so that slice 16, matching real charges, has somewhere to look — which is only
+    -- useful if it is collected from the first payment onwards, so it is collected now even
+    -- though nothing reads it yet.
+    --
+    -- Distinct from `debts.account_id`, which is where the debt is HELD. A card is at Chase and
+    -- paid from checking; those are two accounts and conflating them would make the eventual
+    -- match look in the wrong place.
+    paid_from_account_id uuid,
+
     note               text,
     created_at         timestamptz    NOT NULL DEFAULT now(),
     updated_at         timestamptz    NOT NULL DEFAULT now(),
@@ -331,6 +342,12 @@ CREATE TABLE debt_payments (
         FOREIGN KEY (bill_occurrence_id, household_id)
         REFERENCES bill_occurrences (id, household_id)
         ON DELETE SET NULL (bill_occurrence_id),
+
+    -- Same SET NULL in the column-list form as the other three: an empty account can be deleted,
+    -- and that must not retract what was paid or require unpicking a payment history first.
+    CONSTRAINT fk_debt_payments_paid_from_account
+        FOREIGN KEY (paid_from_account_id, household_id) REFERENCES accounts (id, household_id)
+        ON DELETE SET NULL (paid_from_account_id),
 
     CONSTRAINT ck_debt_payments_provenance
         CHECK (provenance IN ('USER_LOGGED', 'AUTO_MATCHED', 'STATEMENT_CORRECTION')),
@@ -380,6 +397,16 @@ CREATE UNIQUE INDEX ux_debt_payments_transaction_id
 CREATE UNIQUE INDEX ux_debt_payments_bill_occurrence_id
     ON debt_payments (bill_occurrence_id)
     WHERE bill_occurrence_id IS NOT NULL;
+
+-- NOT unique, and that is the point: one account pays many debts. This is the SET NULL scan's
+-- own index, so deleting an empty account does not sequentially scan the history.
+CREATE INDEX ix_debt_payments_paid_from_account_id
+    ON debt_payments (paid_from_account_id);
+
+COMMENT ON COLUMN debt_payments.paid_from_account_id IS
+    'Which account the household says it paid from. NOT a ledger row and NOT the account the debt '
+    'is held at: a card at Chase is paid from checking. Nothing is written to the account '
+    '(ADR-0035); it exists so matching a real charge (slice 16) knows where to look.';
 
 COMMENT ON TABLE debt_payments IS
     'A payment recorded against a debt. A PLAN record, not a transaction (ADR-0035): it moves no '

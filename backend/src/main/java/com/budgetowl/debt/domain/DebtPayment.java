@@ -79,6 +79,17 @@ public class DebtPayment implements HouseholdOwned {
     @Column(name = "bill_occurrence_id")
     private UUID billOccurrenceId;
 
+    /**
+     * Which account the household says the money came from.
+     *
+     * <p><b>Not the account the debt is held at</b> ({@code Debt.accountId}): a card at Chase is
+     * paid from checking, and conflating the two would send slice 16's matching to the wrong
+     * ledger. Nothing is written to this account and no transaction is created (ADR-0035) — it
+     * records where a real charge will eventually be looked for.
+     */
+    @Column(name = "paid_from_account_id")
+    private UUID paidFromAccountId;
+
     @Column(name = "note")
     private String note;
 
@@ -175,6 +186,10 @@ public class DebtPayment implements HouseholdOwned {
         return Optional.ofNullable(billOccurrenceId);
     }
 
+    public Optional<UUID> paidFromAccountId() {
+        return Optional.ofNullable(paidFromAccountId);
+    }
+
     public Optional<String> note() {
         return Optional.ofNullable(note);
     }
@@ -222,6 +237,17 @@ public class DebtPayment implements HouseholdOwned {
     /** Links the payment to the bill occurrence that wrote it, or clears the link. */
     public void recordedFrom(UUID newBillOccurrenceId) {
         this.billOccurrenceId = newBillOccurrenceId;
+    }
+
+    /**
+     * Records which account the money came from, or clears it.
+     *
+     * <p>The id must already have been resolved through this household — the column's composite
+     * foreign key refuses another household's account, but a {@code 404} read better than a
+     * constraint violation.
+     */
+    public void paidFrom(UUID newPaidFromAccountId) {
+        this.paidFromAccountId = newPaidFromAccountId;
     }
 
     /** A blank note is cleared rather than stored: {@code ck_debt_payments_note} refuses one. */

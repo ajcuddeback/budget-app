@@ -132,15 +132,15 @@ public class DebtService {
         for (DebtFacts debt : facts) {
             views.add(view(debt, allocations.get(debt.id())));
         }
-        DebtFigures figures =
-                figures(facts, household.baseCurrency(), links.activeBillIds(household.id()));
+        // Three figures, not four: the split of the minimums depends on which bills a given
+        // month's bills term carries, and this request names no month. See DebtsView.
+        DebtFigures figures = figures(facts, household.baseCurrency(), Set.of());
         return new DebtsView(
                 List.copyOf(views),
                 plans.selectedStrategyFor(household.id()),
                 household.baseCurrency().getCurrencyCode(),
                 figures.owed(),
                 figures.minimums(),
-                figures.minimumsNotInBills(),
                 figures.count());
     }
 
@@ -160,17 +160,23 @@ public class DebtService {
      * definition of "what the household owes" and the page's headline cannot drift from the Owed
      * card printed beside it.
      *
+     * @param billsAlreadyCounted the ids of the bills whose amounts the <b>same month's</b> bills
+     *     term already carries — taken from the very {@code BillsForPeriod} that term is summed
+     *     from, never re-derived here. That is what makes the counted-once rule true by
+     *     construction instead of by two services agreeing: a retired bill, a yearly one outside
+     *     its month and a skipped occurrence are all absent from this set, and the minimum
+     *     therefore counts, which is right in all three cases
      * @throws com.budgetowl.common.ForbiddenException if the caller is not a member. A {@code
      *     VIEWER} may read this, as it may read everything
      */
     @Transactional(readOnly = true)
-    public DebtFigures figuresFor(UUID actorId) {
+    public DebtFigures figuresFor(UUID actorId, Set<UUID> billsAlreadyCounted) {
         HouseholdMember membership = memberships.requireMembership(actorId);
         Household household = membership.household();
         return figures(
                 balances.factsFor(household.id(), false),
                 household.baseCurrency(),
-                links.activeBillIds(household.id()));
+                billsAlreadyCounted);
     }
 
     /**
@@ -419,6 +425,12 @@ public class DebtService {
         Money derived = balances.factsFor(debt).balance();
         Money difference = confirmed.minus(derived);
         if (!difference.isZero()) {
+            // This writes a payment row, so it is bound by the same cap as logging one. Checked
+            // only inside the `if`: a confirmation that agrees with the derived figure writes
+            // nothing, and refusing it at the cap would make a debt at 2,000 payments impossible
+            // to confirm the balance of.
+            DebtPaymentService.requireRoomForAPayment(payments, household.id(), debt.id());
+
             // The row runs the other way to a payment: a statement that says the balance is
             // HIGHER is a negative amount against a rising balance, which is why no sign
             // constraint exists on these columns.
@@ -718,7 +730,7 @@ public class DebtService {
     }
 
     private static DebtFigures figures(
-            List<DebtFacts> facts, Currency base, Set<UUID> activeBillIds) {
+            List<DebtFacts> facts, Currency base, Set<UUID> billsAlreadyCounted) {
         Money owed = Money.zero(base);
         Money minimums = Money.zero(base);
         Money notInBills = Money.zero(base);
@@ -735,11 +747,11 @@ public class DebtService {
             }
             owed = owed.plus(debt.balance());
             minimums = minimums.plus(debt.debt().minimumPayment());
-            // "In bills" means a bill that is actually on the page, not merely a bill that
-            // exists. A retired bill produces no occurrences, so it contributes nothing to the
-            // month's total — and treating its debt as covered would leave that minimum counted
-            // in neither place, raising `left` by it the moment somebody retires the bill.
-            if (debt.debt().billId().filter(activeBillIds::contains).isEmpty()) {
+            // "In bills" means THIS MONTH'S BILLS TERM ACTUALLY CARRIED IT — not that the debt
+            // names a bill. Retired, yearly-and-not-due, and skipped all leave the link in place
+            // while contributing nothing to the total, and treating the debt as covered would
+            // leave that minimum counted in neither term, raising `left` by it silently.
+            if (debt.debt().billId().filter(billsAlreadyCounted::contains).isEmpty()) {
                 notInBills = notInBills.plus(debt.debt().minimumPayment());
             }
         }
@@ -889,8 +901,15 @@ public class DebtService {
         DebtFacts facts = balances.factsFor(debt);
         YearMonth firstPaymentMonth = facts.firstPaymentMonth();
         if (debt.payoffMonth().isPresent()
-                && debt.payoffMonth().orElseThrow().isBefore(firstPaymentMonth)) {
-            throw unsolvable("payoffMonth", "a payoff month in the past");
+                && !Horizon.isSolvableSpan(debt.payoffMonth().orElseThrow(), firstPaymentMonth)) {
+            // Both directions, from one predicate. A payoff month in the past and one eleven
+            // billion months out are the same answer — a well-formed request the solver cannot
+            // answer — and bounding only the near side left the far side to overflow into a 500.
+            throw unsolvable(
+                    "payoffMonth",
+                    "a payoff month outside the "
+                            + DebtTermsSolver.MAX_MONTHS
+                            + " months a projection covers");
         }
         if (!facts.aprDerivable() && debt.apr().isEmpty()) {
             throw unsolvable(

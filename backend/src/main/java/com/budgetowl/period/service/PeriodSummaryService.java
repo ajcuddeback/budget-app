@@ -1,7 +1,10 @@
 package com.budgetowl.period.service;
 
+import com.budgetowl.bill.domain.OccurrenceStatus;
 import com.budgetowl.bill.service.BillService;
+import com.budgetowl.bill.service.BillView;
 import com.budgetowl.bill.service.BillsForPeriod;
+import com.budgetowl.bill.service.OccurrenceView;
 import com.budgetowl.common.Money;
 import com.budgetowl.debt.service.DebtFigures;
 import com.budgetowl.debt.service.DebtService;
@@ -9,6 +12,8 @@ import com.budgetowl.envelope.service.EnvelopeService;
 import com.budgetowl.income.service.IncomeForPeriod;
 import com.budgetowl.income.service.IncomeService;
 import java.time.YearMonth;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +51,38 @@ public class PeriodSummaryService {
     }
 
     /**
+     * The bills whose amounts {@code due.total()} actually carries, this month.
+     *
+     * <p><b>Read off the same object the bills term is summed from</b>, which is the whole point:
+     * the counted-once rule and the bills term then cannot disagree, because there is one list and
+     * one reading of it. Deriving it separately — "the debt has a {@code bill_id}", or "the bill is
+     * active" — is how a minimum comes to be counted in neither term:
+     *
+     * <ul>
+     *   <li>a <b>retired</b> bill projects no occurrences, so it adds nothing to the total;
+     *   <li>a <b>yearly</b> bill projects none in eleven months out of twelve;
+     *   <li>a <b>skipped</b> occurrence is explicitly excluded from the total.
+     * </ul>
+     *
+     * <p>In all three the debt's link survives, so the debt looks covered while the bills term does
+     * not carry it, and {@code left} rises by a minimum the household still owes. A bill with
+     * nothing but skipped occurrences is correctly absent: the household said it is not paying it
+     * this month, so that money is free and the minimum counts.
+     */
+    private static Set<UUID> billsThisTermCarries(BillsForPeriod due) {
+        Set<UUID> carried = new HashSet<>();
+        for (BillView bill : due.bills()) {
+            for (OccurrenceView occurrence : bill.occurrences()) {
+                if (occurrence.status() != OccurrenceStatus.SKIPPED) {
+                    carried.add(bill.id());
+                    break;
+                }
+            }
+        }
+        return carried;
+    }
+
+    /**
      * @throws com.budgetowl.common.ForbiddenException if the caller is not a member. A {@code
      *     VIEWER} may read this, as it may read everything
      */
@@ -54,7 +91,7 @@ public class PeriodSummaryService {
         IncomeForPeriod expected = income.list(actorId, period, false);
         BillsForPeriod due = bills.list(actorId, period, false);
         Money allocated = envelopes.allocatedFor(actorId, period);
-        DebtFigures owed = debts.figuresFor(actorId);
+        DebtFigures owed = debts.figuresFor(actorId, billsThisTermCarries(due));
 
         return new PeriodSummary(
                 period,

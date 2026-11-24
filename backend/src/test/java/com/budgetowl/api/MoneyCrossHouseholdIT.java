@@ -75,7 +75,8 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
             UUID envelope,
             UUID transferGroup,
             UUID debt,
-            UUID debtPayment) {}
+            UUID debtPayment,
+            UUID billOccurrence) {}
 
     @AfterEach
     void restoreTheSingletonIndex() {
@@ -631,7 +632,69 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                                 """
                                         .formatted(today, theirs.transaction()));
 
+        ApiResponse foreignOccurrence =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + ours + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"10.0000","billOccurrenceId":"%s"}
+                                """
+                                        .formatted(today, theirs.billOccurrence()));
+        ApiResponse foreignPaidFrom =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + ours + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"10.0000","paidFromAccountId":"%s"}
+                                """
+                                        .formatted(today, theirs.account()));
+
+        // The same shape for all four ids a payment or a debt may name. The feature doc claimed
+        // the occurrence was covered and no test proved it; the paid-from account is new.
         assertThat(foreignTransaction.status()).isEqualTo(404);
+        assertThat(foreignOccurrence.status()).isEqualTo(404);
+        assertThat(foreignPaidFrom.status()).isEqualTo(404);
+
+        // And through PATCH, which is a different branch of the same control: Change.SetTo.
+        long version = household.owner().get("/api/debts/" + ours).numberField("version");
+        assertThat(
+                        household
+                                .owner()
+                                .patch(
+                                        "/api/debts/" + ours,
+                                        "{\"accountId\":\""
+                                                + theirs.account()
+                                                + "\",\"version\":"
+                                                + version
+                                                + "}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(
+                        household
+                                .owner()
+                                .patch(
+                                        "/api/debts/" + ours,
+                                        "{\"billId\":\""
+                                                + theirs.bill()
+                                                + "\",\"version\":"
+                                                + version
+                                                + "}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(
+                        jdbc.queryForObject(
+                                """
+                                SELECT count(*) FROM debts
+                                WHERE household_id <> ?
+                                  AND (account_id IS NOT NULL OR bill_id IS NOT NULL)
+                                """,
+                                Long.class,
+                                theirs.household()))
+                .as("no debt of ours ended up bound to anything of theirs")
+                .isZero();
+
         assertThat(jdbc.queryForObject("SELECT count(*) FROM debt_payments", Long.class))
                 .as("only their own seeded payment exists")
                 .isEqualTo(1L);
@@ -689,6 +752,7 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         UUID secondAccount = UUID.randomUUID();
         UUID debt = UUID.randomUUID();
         UUID debtPayment = UUID.randomUUID();
+        UUID billOccurrence = UUID.randomUUID();
 
         // A household and its first OWNER have to be committed together: the at-least-one-owner
         // constraint is DEFERRABLE INITIALLY DEFERRED and re-reads the counter at COMMIT.
@@ -762,7 +826,7 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                                     VALUES (?, ?, ?, DATE '2099-03-01', DATE '2099-03-09',
                                             777.0000, 'DUE')
                                     """,
-                                    UUID.randomUUID(),
+                                    billOccurrence,
                                     household,
                                     bill);
                             jdbc.update(
@@ -863,6 +927,7 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                 envelope,
                 transferGroup,
                 debt,
-                debtPayment);
+                debtPayment,
+                billOccurrence);
     }
 }

@@ -201,8 +201,69 @@ class DebtPeriodSummaryIT extends ApiTestBase {
         assertThat(summary.stringField("owed")).isEqualTo(debts.stringField("owed"));
         assertThat(summary.stringField("debtMinimums"))
                 .isEqualTo(debts.stringField("debtMinimums"));
-        assertThat(summary.stringField("debtMinimumsNotInBills"))
-                .isEqualTo(debts.stringField("debtMinimumsNotInBills"));
+        assertThat(summary.numberField("debtCount")).isEqualTo(debts.numberField("debtCount"));
+        // The SPLIT of the minimums is deliberately not on /api/debts: it depends on which bills
+        // a given month's bills term carries, and that request names no month. One producer, so
+        // there is nothing to disagree with.
+        assertThat(debts.body()).doesNotContain("debtMinimumsNotInBills");
+    }
+
+    @Test
+    void a_minimum_whose_bill_is_not_due_this_month_counts_into_what_is_left() {
+        Household household = seedHousehold();
+        createIncome(household.owner(), "Salary", "2400.00");
+        // A YEARLY bill due in June. In March its occurrence list is empty, so it adds nothing to
+        // the bills term — and the debt's link to it survives, which is the trap.
+        UUID yearly = createYearlyBill(household.owner(), "Car payment", "342.00", 6);
+        createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        createDebt(household.owner(), "Car loan", "10650.00", "6.400", "342.00", yearly);
+        createDebt(household.owner(), "Nelnet", "9650.00", "4.500", "118.00", null);
+
+        ApiResponse march = household.owner().get("/api/periods/" + MARCH + "/summary");
+
+        // Eleven months in twelve, the bills term does not carry it. Treating the debt as covered
+        // because it names a bill would drop 342 from both terms and read `left` as 2097.
+        assertThat(march.stringField("bills")).isEqualTo("0.0000");
+        assertThat(march.stringField("debtMinimumsNotInBills")).isEqualTo("645.0000");
+        assertThat(march.stringField("left")).isEqualTo("1755.0000");
+        assertThat(march.stringField("left")).isNotEqualTo("2097.0000");
+
+        // In June the bill IS due, so the same 342 moves from the debt term to the bills term and
+        // the headline does not move. That is the counted-once rule doing its job in both
+        // directions, which is what makes it a rule rather than a subtraction that happens to
+        // work this month.
+        ApiResponse june = household.owner().get("/api/periods/2099-06/summary");
+        assertThat(june.stringField("bills")).isEqualTo("342.0000");
+        assertThat(june.stringField("debtMinimumsNotInBills")).isEqualTo("303.0000");
+        assertThat(june.stringField("left")).isEqualTo("1755.0000");
+    }
+
+    @Test
+    void skipping_the_bill_moves_that_minimum_back_into_what_is_left() {
+        Household household = seedHousehold();
+        createIncome(household.owner(), "Salary", "2400.00");
+        UUID carPayment = createBill(household.owner(), "Car payment", "342.00");
+        createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        createDebt(household.owner(), "Car loan", "10650.00", "6.400", "342.00", carPayment);
+        createDebt(household.owner(), "Nelnet", "9650.00", "4.500", "118.00", null);
+
+        ApiResponse skipped =
+                household
+                        .owner()
+                        .put(
+                                "/api/bills/" + carPayment + "/occurrences/" + MARCH + "-15",
+                                "{\"status\":\"SKIPPED\"}");
+        assertThat(skipped.status()).isEqualTo(200);
+
+        ApiResponse summary = household.owner().get("/api/periods/" + MARCH + "/summary");
+
+        // A skipped occurrence is excluded from the bills total by name, so the debt's minimum has
+        // to count or it is counted nowhere. The household said it is not paying that bill this
+        // month, so the money is free — and `left` does not move, because the same 342 simply
+        // changed which term carries it.
+        assertThat(summary.stringField("bills")).isEqualTo("0.0000");
+        assertThat(summary.stringField("debtMinimumsNotInBills")).isEqualTo("645.0000");
+        assertThat(summary.stringField("left")).isEqualTo("1755.0000");
     }
 
     @Test
@@ -242,6 +303,22 @@ class DebtPeriodSummaryIT extends ApiTestBase {
                                 .formatted(name, amount));
         if (response.status() != 201) {
             throw new AssertionError("could not create a bill: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /** A bill due once a year, in {@code month}. Eleven months in twelve it projects nothing. */
+    private UUID createYearlyBill(ApiClient client, String name, String amount, int month) {
+        ApiResponse response =
+                client.post(
+                        "/api/bills",
+                        """
+                        {"name":"%s","expectedAmount":"%s",
+                         "schedule":{"kind":"YEARLY","dayOfMonth":15,"month":%d}}
+                        """
+                                .formatted(name, amount, month));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a yearly bill: " + response.body());
         }
         return UUID.fromString(response.stringField("id"));
     }

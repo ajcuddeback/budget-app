@@ -69,7 +69,22 @@ public record PlanView(
             boolean belowMinimums,
             StrategyProjection selected,
             StrategyProjection avalanche,
-            StrategyProjection snowball) {}
+            StrategyProjection snowball) {
+
+        /**
+         * Redacted, like its two siblings in this file.
+         *
+         * <p>The generated {@code toString} prints every component, and {@code Money.toString}
+         * prints the figure — so the default here is five amounts, one of which ({@code owed}) is
+         * everything the household owes in this currency. Nothing logs it today; the control is
+         * that the next {@code log.debug("plan={}", group)} or interpolated exception message
+         * cannot leak one by accident (docs/features/debt-plan.md, controls).
+         */
+        @Override
+        public String toString() {
+            return "CurrencyGroup[currency=" + currency + ", planCurrency=" + planCurrency + "]";
+        }
+    }
 
     /**
      * One strategy's answer.
@@ -103,6 +118,22 @@ public record PlanView(
         public StrategyProjection {
             rungs = List.copyOf(rungs);
             series = List.copyOf(series);
+        }
+
+        /** Redacted: {@code totalInterest} is an amount, and the series is a balance per month. */
+        @Override
+        public String toString() {
+            return "StrategyProjection[strategy="
+                    + strategy
+                    + ", debtFreeMonth="
+                    + debtFreeMonth
+                    + ", reason="
+                    + reason
+                    + ", rungs="
+                    + rungs.size()
+                    + ", series="
+                    + series.size()
+                    + "]";
         }
     }
 

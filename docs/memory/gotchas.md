@@ -971,21 +971,28 @@ retired the bill its car loan pointed at. Every test was green, including one fo
 
 **What happened.** The counted-once rule says a debt's minimum is not subtracted when a bill
 already carries it, and the obvious implementation asks the debt: *does it have a `bill_id`?* The
-other half of the subtraction asks the bills service, which gives an **inactive** bill no
-occurrences at all. Retiring a bill satisfies both exclusions at once: the link survives, so the
-debt code thinks a bill covers it, and the bill is gone from the month, so the bills total does
-not. The minimum was counted in neither term.
+other half of the subtraction asks the bills service, which has its own idea of which bills are in
+a month. Three states satisfy both exclusions at once — the link survives, so the debt code thinks
+a bill covers it, and the bill contributes nothing to the month, so the bills total does not:
+
+- the bill was **retired**: an inactive bill projects no occurrences at all;
+- the bill is **yearly** and this is not its month: it projects none in eleven months of twelve;
+- the occurrence was **skipped**: `SKIPPED` is excluded from the bills total by name.
 
 **Why the tests did not catch it.** There *was* a test for deleting the bill, and it passed —
 deleting nulls the link (`ON DELETE SET NULL (bill_id)`), so the minimum starts counting. Retiring
 looks like the same operation from the debt's side and is the opposite from the bill's. A test for
-one is not a test for the other.
+one is not a test for the other. The first fix only handled the retired case and was still wrong
+for the other two; a security review found them.
 
 **The shape to look for.** Whenever one figure is composed from two services, each with its own
-idea of which rows are "in", the gap is a row one of them counts and the other has excluded. Ask
-the question of the service that owns the answer — here, *is this bill live?* goes to the bills
-table, not to the presence of a foreign key — and write the test for the state in between, not
-only for the two obvious ones.
+idea of which rows are "in", the gap is a row one of them counts and the other has excluded.
+Enumerating the gaps and patching each one does not close the class — the third one is always
+waiting. **Make the two halves read the same object.** Here, the caller now passes in the set of
+bills whose amounts the month's own bills term was summed from, so the rule is true by
+construction and there is no second derivation to go stale. Then write the test for the state in
+between, not only for the two obvious ones.
 
-**Where.** `DebtService.figures`, `BillRepository.findActiveIdsForHousehold`,
-`DebtPeriodSummaryIT.retiring_the_bill_makes_that_minimum_count_into_what_is_left`.
+**Where.** `PeriodSummaryService.billsThisTermCarries`, `DebtService.figures`, and the three tests
+`DebtPeriodSummaryIT.retiring_the_bill_…`, `…a_minimum_whose_bill_is_not_due_this_month_…`,
+`…skipping_the_bill_…`.

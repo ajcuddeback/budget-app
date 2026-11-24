@@ -58,12 +58,17 @@ The link is **explicit, never inferred**: `debts.bill_id` names the bill, set by
 Matching a debt to a bill by name, amount or category would be guessing — the same refusal this
 page already makes about matching bills to envelopes.
 
-The term asks whether the bill is **live**, not merely whether the link exists. A retired bill
-produces no occurrences, so it contributes nothing to `bills`; if its debt were still treated as
-covered, that minimum would be counted in neither term and this page's headline would rise by it
-the moment somebody retired the bill. So retiring the car payment moves its 342 out of `bills` and
-into `debtMinimumsNotInBills`, and `left` does not move. Deleting the bill does the same thing by a
-different route — the link is nulled.
+The term asks whether **this month's `bills` figure already carries that bill**, not merely whether
+the link exists. The set is read off the same `BillsForPeriod` the `bills` term is summed from, so
+the two cannot disagree. Three ways they used to: a **retired** bill projects no occurrences; a
+**yearly** bill projects none in eleven months out of twelve; a **skipped** occurrence is excluded
+from the total by name. In each case the debt's link survives, so treating it as covered would
+count that minimum in neither term and this page's headline would rise by it.
+
+So retiring, skipping, or simply not being due this month all move the car payment's 342 out of
+`bills` and into `debtMinimumsNotInBills`, and `left` does not move. Deleting the bill does the
+same thing by a different route — the link is nulled. And in June, when the yearly bill *is* due,
+the 342 moves back the other way, and `left` still does not move.
 
 Three consequences, all of them visible rather than hidden:
 

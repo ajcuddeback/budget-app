@@ -213,6 +213,7 @@ public class DebtController {
                                         body.amount(),
                                         body.transactionId(),
                                         body.billOccurrenceId(),
+                                        body.paidFromAccountId(),
                                         body.note())));
         return ResponseEntity.created(URI.create("/api/debts/" + id + "/payments/" + logged.id()))
                 .body(logged);
@@ -237,6 +238,7 @@ public class DebtController {
                                 body.paidDate(),
                                 body.amount(),
                                 body.transactionIdChange(),
+                                body.paidFromAccountIdChange(),
                                 body.noteChange(),
                                 body.version())));
     }

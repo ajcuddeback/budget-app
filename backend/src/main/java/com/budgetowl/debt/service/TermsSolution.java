@@ -45,6 +45,20 @@ public sealed interface TermsSolution {
                                 + bisectionSteps);
             }
         }
+
+        /**
+         * Redacted: {@code terms} carries the balance, the rate and the payment, and {@code
+         * projection} carries a balance per month. Both redact their own {@code toString}; a record
+         * holding them does not inherit that.
+         */
+        @Override
+        public String toString() {
+            return "TermsSolution.Solved[solvedField="
+                    + solvedField
+                    + ", bisectionSteps="
+                    + bisectionSteps
+                    + "]";
+        }
     }
 
     /**

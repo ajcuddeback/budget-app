@@ -7,7 +7,6 @@ import com.budgetowl.bill.persistence.BillOccurrenceRepository;
 import com.budgetowl.bill.persistence.BillRepository;
 import com.budgetowl.common.NotFoundException;
 import com.budgetowl.transaction.persistence.TransactionRepository;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -88,18 +87,6 @@ public class DebtLinks {
                 .findByIdAndHouseholdId(transactionId, householdId)
                 .orElseThrow(() -> new NotFoundException("no such transaction"))
                 .id();
-    }
-
-    /**
-     * Which of this household's bills are live.
-     *
-     * <p>Not a resolution like the four above, but the same question asked of the same table: the
-     * period summary leaves a debt's minimum out of its subtraction when a bill already carries it,
-     * and a <b>retired</b> bill carries nothing. Asking here keeps that answer coming from the
-     * bills table rather than from an assumption held in the debt code.
-     */
-    public Set<UUID> activeBillIds(UUID householdId) {
-        return bills.findActiveIdsForHousehold(householdId);
     }
 
     /** The bill occurrence a payment was recorded from. Same resolution, same reason. */

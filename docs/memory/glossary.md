@@ -28,7 +28,7 @@ tiebreaker. Add with `/remember`.
 | **Payee** | Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" are one payee. |
 | **Period** | A `YearMonth`. Serialized `"2026-08"`. Replaces the legacy month/year string pair. |
 | **Reconciled** | A transaction confirmed against a bank statement. Stronger than `CLEARED`. |
-| **Debt** | A balance being reduced, with terms. Where the household links it to a **live** bill (`debts.bill_id`), that minimum is the bill's row and is counted once; where it does not — no link, or a link to a retired bill, which produces no occurrences — the minimum is what Bills & Income subtracts. The balance is an **anchor** plus the payments after it, never a stored total. |
+| **Debt** | A balance being reduced, with terms. Where the month's bills figure already carries that minimum (`debts.bill_id` names a bill with an unskipped occurrence in the period), it is the bill's row and is counted once; where it does not — no link, or a link to a bill that is retired, not due this month, or skipped — the minimum is what Bills & Income subtracts. The balance is an **anchor** plus the payments after it, never a stored total. |
 | **Balance source** | Where a debt's balance came from: a linked statement, a figure the user confirmed, or Owl's estimate. Never presented identically — an inferred number and a confirmed one are different claims. |
 | **Check-in** | The weekly four-step pass: what's new, categorize, bills, next week. Steps with nothing to answer are skipped. Persisted as a draft; nothing takes effect until it is finished. |
 | **Owl** | The optional assistant. Runs in a self-hosted sidecar or does not exist on that instance (ADR-0027). |

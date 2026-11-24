@@ -22,10 +22,12 @@ import java.util.Comparator;
 import java.util.Currency;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -486,19 +488,31 @@ public class PayoffPlanService {
                         Map.of("field", "customOrder"));
             }
         }
+        // Every id is checked against this household's debts BEFORE the first write. It used to
+        // 404 after the loop, which was correct only because NotFoundException rolls the
+        // transaction back — the comment claimed an ordering the code did not have, and a
+        // refactor that caught the exception, or a writer outside a transaction, would have left
+        // a half-applied order. The whole order is one instruction; now it is one by
+        // construction.
+        List<Debt> ours = debts.findAllForHousehold(householdId, true);
+        Set<UUID> known = new HashSet<>();
+        for (Debt debt : ours) {
+            known.add(debt.id());
+        }
+        if (!known.containsAll(positions.keySet())) {
+            // An id that is not this household's. A 404, as everywhere — never a 403, which would
+            // confirm the row exists somewhere.
+            throw new NotFoundException("no such debt");
+        }
+
         boolean moved = false;
-        for (Debt debt : debts.findAllForHousehold(householdId, true)) {
-            Integer position = positions.remove(debt.id());
+        for (Debt debt : ours) {
+            Integer position = positions.get(debt.id());
             if (!java.util.Objects.equals(debt.customOrder().orElse(null), position)) {
                 debt.placeAt(position);
                 debts.saveAndFlush(debt);
                 moved = true;
             }
-        }
-        if (!positions.isEmpty()) {
-            // An id that is not this household's. A 404, as everywhere, and before anything is
-            // committed — the whole order is one instruction.
-            throw new NotFoundException("no such debt");
         }
         return moved;
     }

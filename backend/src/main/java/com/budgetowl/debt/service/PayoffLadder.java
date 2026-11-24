@@ -86,7 +86,14 @@ public final class PayoffLadder {
         for (LadderDebt debt : order) {
             minimums = minimums.plus(debt.minimumPayment());
         }
-        if (monthlyAmount.compareTo(minimums) < 0) {
+        if (monthlyAmount.compareTo(minimums) < 0 || !monthlyAmount.isPositive()) {
+            // Below the minimums is the documented case. The second clause is the one that is
+            // easy to miss: a household whose minimums are all ZERO has minimums == 0, so a
+            // monthly amount of zero is NOT "below" them — and every rung is then paid nothing,
+            // every balance grows, nothing ever clears, and all 600 months are iterated and
+            // RETAINED for every rung. Fifty debts at the cap, three strategies per plan read,
+            // from an unmetered GET: a plan that allocates nothing is no plan, and the figures
+            // computed from one would all be fiction anyway.
             return new PayoffProjection.None(Projection.Reason.BELOW_MINIMUMS);
         }
 

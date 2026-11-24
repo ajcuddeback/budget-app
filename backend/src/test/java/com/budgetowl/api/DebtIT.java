@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Debts, their terms and their payments, over real HTTP against real PostgreSQL.
@@ -446,6 +447,250 @@ class DebtIT extends ApiTestBase {
         assertThat(payments.body()).contains("\"transactionId\":null");
         assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
                 .isEqualTo("5852.9350");
+    }
+
+    @Test
+    void a_payment_records_which_account_it_came_from_without_touching_that_account() {
+        Household household = seedHousehold();
+        UUID checking = createAccount(household.owner(), "Current", null);
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        ApiResponse logged =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"445.0000","paidFromAccountId":"%s"}
+                                """
+                                        .formatted(TODAY, checking));
+
+        assertThat(logged.status()).isEqualTo(201);
+        assertThat(logged.stringField("paidFromAccountId")).isEqualTo(checking.toString());
+        // "Paid from" is not a transaction (ADR-0035): the account has no rows and its balance is
+        // its opening balance still. A debt screen that wrote to an account would be editing data
+        // that belongs to a different part of the app.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class)).isZero();
+        assertThat(household.owner().get("/api/accounts/" + checking).stringField("balance"))
+                .isEqualTo(
+                        household
+                                .owner()
+                                .get("/api/accounts/" + checking)
+                                .stringField("openingBalance"));
+    }
+
+    @Test
+    void another_households_account_cannot_be_named_as_where_a_payment_came_from() {
+        Household ours = seedHousehold();
+        UUID debt = createDebt(ours.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        UUID theirs = createAccount(ours.member(), "Current", null);
+        // The member is in OUR household, so take an account that is genuinely elsewhere: an id
+        // that resolves for nobody here. A foreign id in a body is a lookup key, never evidence.
+        UUID foreign = UUID.randomUUID();
+
+        ApiResponse refused =
+                ours.owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"445.0000","paidFromAccountId":"%s"}
+                                """
+                                        .formatted(TODAY, foreign));
+
+        // 404, not 403: a 403 would confirm the row exists somewhere.
+        assertThat(refused.status()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debt_payments", Long.class)).isZero();
+        assertThat(theirs).isNotNull();
+    }
+
+    @Test
+    void deleting_the_account_a_payment_came_from_leaves_the_payment_standing() {
+        Household household = seedHousehold();
+        UUID checking = createAccount(household.owner(), "Current", null);
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        household
+                .owner()
+                .post(
+                        "/api/debts/" + debt + "/payments",
+                        """
+                        {"paidDate":"%s","amount":"445.0000","paidFromAccountId":"%s"}
+                        """
+                                .formatted(TODAY, checking));
+
+        // The account is empty — no ledger rows were written — so it can be deleted. The FK is
+        // ON DELETE SET NULL in the COLUMN-LIST form; the bare form would try to null
+        // household_id and refuse this delete instead, which is the trap transactions.md hit on
+        // category_id.
+        assertThat(household.owner().delete("/api/accounts/" + checking).status()).isEqualTo(204);
+
+        ApiResponse payments = household.owner().get("/api/debts/" + debt + "/payments");
+        assertThat(payments.numberField("totalElements")).isEqualTo(1L);
+        assertThat(payments.body()).contains("\"paidFromAccountId\":null");
+        assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
+                .as("the balance is derived from the payment, not from the account")
+                .isEqualTo("5852.9350");
+    }
+
+    @Test
+    void correcting_where_a_payment_came_from_is_three_way() {
+        Household household = seedHousehold();
+        UUID checking = createAccount(household.owner(), "Current", null);
+        UUID savings = createAccount(household.owner(), "Savings", null);
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        ApiResponse logged =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"445.0000","paidFromAccountId":"%s"}
+                                """
+                                        .formatted(TODAY, checking));
+        UUID payment = UUID.fromString(logged.stringField("id"));
+        String path = "/api/debts/" + debt + "/payments/" + payment;
+
+        // Not mentioned: left alone. A PATCH that omits a field must never be read as "clear it".
+        ApiResponse untouched =
+                household
+                        .owner()
+                        .patch(
+                                path,
+                                "{\"amount\":\"450.0000\",\"version\":"
+                                        + logged.numberField("version")
+                                        + "}");
+        assertThat(untouched.status()).isEqualTo(200);
+        assertThat(untouched.stringField("paidFromAccountId")).isEqualTo(checking.toString());
+
+        // Named: moved.
+        ApiResponse moved =
+                household
+                        .owner()
+                        .patch(
+                                path,
+                                "{\"paidFromAccountId\":\""
+                                        + savings
+                                        + "\",\"version\":"
+                                        + untouched.numberField("version")
+                                        + "}");
+        assertThat(moved.status()).isEqualTo(200);
+        assertThat(moved.stringField("paidFromAccountId")).isEqualTo(savings.toString());
+
+        // Explicitly null: cleared.
+        ApiResponse cleared =
+                household
+                        .owner()
+                        .patch(
+                                path,
+                                "{\"paidFromAccountId\":null,\"version\":"
+                                        + moved.numberField("version")
+                                        + "}");
+        assertThat(cleared.status()).isEqualTo(200);
+        assertThat(cleared.body()).contains("\"paidFromAccountId\":null");
+    }
+
+    @ParameterizedTest
+    // A literal tab cannot appear unescaped inside a JSON string, so it is sent as an escape.
+    // U+3000 is in the list because an ASCII-only blank check passes it.
+    @ValueSource(strings = {" ", "   ", "\\t", "\u3000"})
+    void a_blank_name_on_a_patch_is_refused_rather_than_failing(String blank) {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        long version = household.owner().get("/api/debts/" + debt).numberField("version");
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .patch(
+                                "/api/debts/" + debt,
+                                "{\"name\":\"" + blank + "\",\"version\":" + version + "}");
+
+        // @Size(max) alone passes whitespace, which then reaches Debt.rename, strips to empty and
+        // throws IllegalArgumentException — a 500 with a stack trace at ERROR, from any
+        // authenticated caller, in a loop, on a machine in somebody's house. Slice 3's audit
+        // found exactly this on /api/accounts and this DTO reintroduced it. U+3000 is in the list
+        // because an ASCII-only check passes it.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+        assertThat(household.owner().get("/api/debts/" + debt).stringField("name"))
+                .isEqualTo("Visa");
+    }
+
+    @Test
+    void a_payoff_month_beyond_what_a_projection_covers_is_refused_not_a_crash() {
+        Household household = seedHousehold();
+
+        // Far beyond the 600-month cap but an ordinary date: 422, naming the field.
+        ApiResponse farOut =
+                household
+                        .owner()
+                        .post(
+                                "/api/debt-terms/solve",
+                                """
+                                {"balance":"1000.0000","currency":"GBP","apr":"10.000",
+                                 "payoffMonth":"2200-01"}
+                                """);
+
+        assertThat(farOut.status()).isEqualTo(422);
+        assertThat(farOut.stringField("code")).isEqualTo("terms-unsolvable");
+
+        // A year wide enough to overflow the month arithmetic. YearMonth.parse accepts
+        // "+999999999-12", so this reached Math.toIntExact inside Horizon.endingIn — an
+        // ArithmeticException, which is not a DomainException, so it left as a 500 with a stack
+        // trace. The deserializer turns out to refuse it first, which is why this asserts a
+        // REFUSAL rather than a specific code: what matters is that it is answered, not thrown.
+        // The guarantee itself now lives in Horizon.isSolvableSpan — see HorizonTest, which
+        // exercises the overflow directly rather than through a parser that may or may not reach
+        // it.
+        ApiResponse absurd =
+                household
+                        .owner()
+                        .post(
+                                "/api/debt-terms/solve",
+                                """
+                                {"balance":"1000.0000","currency":"GBP","apr":"10.000",
+                                 "payoffMonth":"+999999999-12"}
+                                """);
+
+        assertThat(absurd.status()).isIn(400, 422);
+        assertThat(absurd.body()).doesNotContain("internal-error");
+
+        // And the stored route, which must not land on a PostgreSQL date-range error and surface
+        // as a 409 — also wrong, and unexplainable to a client.
+        ApiResponse created =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts",
+                                """
+                                {"name":"Visa","kind":"CREDIT_CARD","balance":"6180.00",
+                                 "balanceDate":"%s","apr":"22.900","minimumPayment":"118.00",
+                                 "payoffMonth":"2200-01"}
+                                """
+                                        .formatted(TODAY));
+
+        assertThat(created.status()).isEqualTo(422);
+        assertThat(created.stringField("code")).isEqualTo("terms-unsolvable");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debts", Long.class)).isZero();
+    }
+
+    @Test
+    void a_first_payment_month_outside_a_sane_window_is_refused_not_a_crash() {
+        Household household = seedHousehold();
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/debt-terms/solve",
+                                """
+                                {"balance":"1000.0000","currency":"GBP","apr":"10.000",
+                                 "payment":"100.0000","firstPaymentMonth":"4000-01"}
+                                """);
+
+        // The solver calls plusMonths on this, so an absurd value threw DateTimeException. A
+        // century either side of now is more than any debt could mean.
+        assertThat(refused.status()).isEqualTo(422);
+        assertThat(refused.stringField("code")).isEqualTo("terms-unsolvable");
     }
 
     @Test

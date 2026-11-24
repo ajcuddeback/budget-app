@@ -35,6 +35,16 @@ public class DebtTermsService {
     private final MembershipService memberships;
     private final DebtTermsSolver solver;
     private final TermsSolveRateLimiter rateLimiter;
+
+    /**
+     * How far from now a first payment month may be, in years.
+     *
+     * <p>Not a business rule — a bound, so an absurd magnitude is refused explicitly rather than
+     * reaching {@code YearMonth.plusMonths} and leaving as a {@code 500}. A century either side
+     * covers every debt anybody could mean.
+     */
+    private static final int FIRST_PAYMENT_MONTH_WINDOW_YEARS = 100;
+
     private final Clock clock;
 
     public DebtTermsService(
@@ -67,10 +77,7 @@ public class DebtTermsService {
         Money balance =
                 AmountText.parse(
                         requested.balance(), currency, AmountText.Sign.NOT_NEGATIVE, "balance");
-        YearMonth firstPaymentMonth =
-                requested.firstPaymentMonth() == null
-                        ? YearMonth.from(LocalDate.now(clock))
-                        : requested.firstPaymentMonth();
+        YearMonth firstPaymentMonth = firstPaymentMonth(requested);
 
         BigDecimal apr = requested.apr() == null ? null : rate(requested.apr());
         Money payment =
@@ -148,6 +155,33 @@ public class DebtTermsService {
     }
 
     /**
+     * When the projection starts, bounded.
+     *
+     * <p>{@code YearMonth.parse} accepts {@code +999999999-12} under the ISO formatter, and the
+     * solver then calls {@code plusMonths} on it — {@code DateTimeException}, which is not a {@code
+     * DomainException}, so it left as a {@code 500} with a stack trace. A first payment month is a
+     * date somebody could plausibly mean; a window of a century either side of now is more than
+     * generous and anything outside it is a request with no answer in it.
+     */
+    private YearMonth firstPaymentMonth(TermsToSolve requested) {
+        YearMonth now = YearMonth.from(LocalDate.now(clock));
+        if (requested.firstPaymentMonth() == null) {
+            return now;
+        }
+        YearMonth asked = requested.firstPaymentMonth();
+        if (asked.isBefore(now.minusYears(FIRST_PAYMENT_MONTH_WINDOW_YEARS))
+                || asked.isAfter(now.plusYears(FIRST_PAYMENT_MONTH_WINDOW_YEARS))) {
+            throw new InvalidRequestException(
+                    ErrorCode.TERMS_UNSOLVABLE,
+                    "a first payment month more than "
+                            + FIRST_PAYMENT_MONTH_WINDOW_YEARS
+                            + " years from now",
+                    Map.of("field", "firstPaymentMonth"));
+        }
+        return asked;
+    }
+
+    /**
      * The horizon, in whichever of its two faces arrived.
      *
      * <p>Both is a validation failure — they are one unknown, and two answers to it can disagree —
@@ -179,10 +213,12 @@ public class DebtTermsService {
         if (requested.payoffMonth() == null) {
             return null;
         }
-        if (requested.payoffMonth().isBefore(firstPaymentMonth)) {
+        if (!Horizon.isSolvableSpan(requested.payoffMonth(), firstPaymentMonth)) {
             throw new InvalidRequestException(
                     ErrorCode.TERMS_UNSOLVABLE,
-                    "a payoff month in the past",
+                    "a payoff month outside the "
+                            + DebtTermsSolver.MAX_MONTHS
+                            + " months a projection covers",
                     Map.of("field", "payoffMonth"));
         }
         return Horizon.endingIn(requested.payoffMonth(), firstPaymentMonth);

@@ -17,11 +17,14 @@ import java.util.UUID;
  *
  * @param transactionId three-way: unchanged, cleared, or linked to a transaction this household
  *     owns. Clearing it is how somebody undoes a wrong link without deleting the payment
+ * @param paidFromAccountId three-way, the same way. Correcting which account the money came from is
+ *     a correction to the record and moves no balance anywhere
  */
 public record PaymentChanges(
         LocalDate paidDate,
         String amount,
         Change<UUID> transactionId,
+        Change<UUID> paidFromAccountId,
         Change<String> note,
         long version) {
 

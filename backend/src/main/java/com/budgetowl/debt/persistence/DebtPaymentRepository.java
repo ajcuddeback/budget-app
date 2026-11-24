@@ -59,23 +59,6 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
             @Param("debtId") UUID debtId,
             Pageable pageable);
 
-    /**
-     * Every payment of one debt, newest first — <b>bounded by {@code
-     * DebtService.MAXIMUM_PAYMENTS_PER_DEBT}</b>, which is what makes this safe to call without a
-     * page.
-     *
-     * <p>Used by the detail page's chart and by the payment that has to know what came before it.
-     */
-    @Query(
-            """
-            select p from DebtPayment p
-            where p.householdId = :householdId
-              and p.debtId = :debtId
-            order by p.paidDate desc, p.id desc
-            """)
-    List<DebtPayment> findAllForDebt(
-            @Param("householdId") UUID householdId, @Param("debtId") UUID debtId);
-
     long countByHouseholdIdAndDebtId(UUID householdId, UUID debtId);
 
     /**

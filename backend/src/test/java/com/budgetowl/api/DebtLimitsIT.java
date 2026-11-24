@@ -263,6 +263,91 @@ class DebtLimitsIT extends ApiTestBase {
     // ------------------------------------------------------------------------------- internals
 
     /** Counts occurrences of a literal in the body — enough to count rows without a parser. */
+    @Test
+    void confirming_a_balance_cannot_walk_past_the_payment_cap() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        // One short of the cap, so the very next payment row of ANY kind must be refused.
+        seedPayments(debt, DebtService.MAXIMUM_PAYMENTS_PER_DEBT - 1);
+
+        // POST /balance writes a STATEMENT_CORRECTION payment row whenever the confirmed figure
+        // disagrees with the derived one. The cap used to be checked only inside log(), so a
+        // caller with write access could walk figures through this route and add a row per
+        // request forever — past the cap and past the point logging a payment is refused. The
+        // constant's own javadoc asserted that could not happen.
+        ApiResponse first =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/balance",
+                                "{\"balance\":\"5000.0000\",\"balanceDate\":\"" + TODAY + "\"}");
+        assertThat(first.status()).isEqualTo(200);
+
+        ApiResponse pastTheCap =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/balance",
+                                "{\"balance\":\"4900.0000\",\"balanceDate\":\"" + TODAY + "\"}");
+
+        assertThat(pastTheCap.status()).isEqualTo(409);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM debt_payments WHERE debt_id = ?",
+                                Long.class,
+                                debt))
+                .isEqualTo((long) DebtService.MAXIMUM_PAYMENTS_PER_DEBT);
+    }
+
+    @Test
+    void confirming_a_balance_that_already_agrees_is_accepted_at_the_cap() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        seedPayments(debt, DebtService.MAXIMUM_PAYMENTS_PER_DEBT);
+        String derived = household.owner().get("/api/debts/" + debt).stringField("balance");
+
+        ApiResponse agreeing =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/balance",
+                                "{\"balance\":\""
+                                        + derived
+                                        + "\",\"balanceDate\":\""
+                                        + TODAY
+                                        + "\"}");
+
+        // It writes no row, so the cap must not refuse it: a debt at the cap would otherwise be
+        // one whose balance can never be confirmed again, which is the wrong way to be safe.
+        assertThat(agreeing.status()).isEqualTo(200);
+    }
+
+    @Test
+    void a_custom_order_longer_than_a_household_can_have_is_refused_at_the_edge() {
+        Household household = seedHousehold();
+        createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+        long version = household.owner().get("/api/debt-plan").numberField("version");
+
+        StringBuilder order = new StringBuilder();
+        for (int index = 0; index <= DebtService.MAXIMUM_PER_HOUSEHOLD; index++) {
+            order.append(index == 0 ? "" : ",").append('"').append(UUID.randomUUID()).append('"');
+        }
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .put(
+                                "/api/debt-plan",
+                                "{\"customOrder\":[" + order + "],\"version\":" + version + "}");
+
+        // The only collection-valued field in the API, and there is no server-wide body limit, so
+        // without a bound it is a 75 MB body of UUIDs that Jackson materialises and the service
+        // then builds a map of before discovering the ids belong to nothing. 400 at the edge,
+        // not a 404 after the work.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+    }
+
     private static int countOf(ApiResponse response, String literal) {
         int count = 0;
         int index = response.body().indexOf(literal);

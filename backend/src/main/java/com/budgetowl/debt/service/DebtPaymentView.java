@@ -17,6 +17,8 @@ import java.util.UUID;
  * @param transactionId the real movement, when the household has named one. Null is the ordinary
  *     case, and a null that <em>appeared</em> means the ledger row was deleted — the payment stands
  *     and the balance has not moved
+ * @param paidFromAccountId which account the household says paid this, or null. A figure the screen
+ *     shows as a name; nothing was written to that account
  */
 public record DebtPaymentView(
         UUID id,
@@ -29,6 +31,7 @@ public record DebtPaymentView(
         String provenance,
         UUID transactionId,
         UUID billOccurrenceId,
+        UUID paidFromAccountId,
         String note,
         long version) {
 

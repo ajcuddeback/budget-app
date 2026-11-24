@@ -43,6 +43,18 @@ public sealed interface PayoffProjection {
         public boolean clearsEveryDebt() {
             return debtFreeMonth != null;
         }
+
+        /** Redacted: {@code totalInterest} is an amount, and each rung carries five more. */
+        @Override
+        public String toString() {
+            return "PayoffProjection.Ranked[rungs="
+                    + rungs.size()
+                    + ", debtFreeMonth="
+                    + debtFreeMonth
+                    + ", firstWinMonth="
+                    + firstWinMonth
+                    + "]";
+        }
     }
 
     /**
@@ -104,6 +116,25 @@ public sealed interface PayoffProjection {
 
         public boolean clears() {
             return payoffMonth != null;
+        }
+
+        /**
+         * Redacted, and this is the sharpest of the five: the default would print a balance, a
+         * rate, a minimum, an extra, a total interest <b>and the debt's name</b>, which is the
+         * field this slice guards hardest — <em>Nelnet</em> alone says this household has student
+         * debt.
+         */
+        @Override
+        public String toString() {
+            return "PayoffProjection.Rung[rung="
+                    + rung
+                    + ", debtId="
+                    + debt.id()
+                    + ", payoffMonth="
+                    + payoffMonth
+                    + ", months="
+                    + months.size()
+                    + "]";
         }
     }
 }
