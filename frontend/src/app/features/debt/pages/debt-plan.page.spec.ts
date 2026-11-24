@@ -14,6 +14,7 @@ import {
   buttonNamed,
   fakeAuth,
   settle,
+  type,
 } from '../../../testing/helpers';
 import { AccountsService } from '../../accounts/data/accounts.service';
 import { BillsService } from '../../bills/data/bills.service';
@@ -696,6 +697,45 @@ describe('DebtPlanPage', () => {
 
     expect(debtsService.update).toHaveBeenCalledWith('d1', { version: 3, apr: null });
     expect(text(fixture)).toContain('now worked out from your other figures');
+  });
+
+  it('lets a member set the figure every date on the page derives from', async () => {
+    const fixture = await render({ role: 'MEMBER' });
+    const root = fixture.nativeElement as HTMLElement;
+    plans.update.mockReturnValue(of(planOf({ monthlyAmount: '1005.0000', version: 5 })));
+
+    buttonNamed(root, 'Change the monthly amount').click();
+    await settle(fixture);
+
+    // Filled with what the plan currently says, as a string.
+    expect(root.querySelector<HTMLInputElement>('#monthly-amount')?.value).toBe('905');
+
+    type(root, '#monthly-amount', '1005.00');
+    buttonNamed(root, 'Save').click();
+    await settle(fixture);
+
+    expect(plans.update).toHaveBeenCalledWith({ version: 4, monthlyAmount: '1005.00' });
+  });
+
+  it('asks the server for nothing when the amount did not actually change', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Change the monthly amount').click();
+    await settle(fixture);
+    // 905 and 905.0000 are the same money; patching for no reason would bump the version.
+    type(root, '#monthly-amount', '905');
+    buttonNamed(root, 'Save').click();
+    await settle(fixture);
+
+    expect(plans.update).not.toHaveBeenCalled();
+  });
+
+  it('offers a VIEWER no way to change the monthly amount', async () => {
+    const fixture = await render({ role: 'VIEWER' });
+
+    expect(text(fixture)).toContain('a month committed');
+    expect(text(fixture)).not.toContain('Change the monthly amount');
   });
 
   it('shows the same debts in both structures, so a phone and a desktop agree', async () => {

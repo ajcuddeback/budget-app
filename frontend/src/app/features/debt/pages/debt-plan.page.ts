@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiError, asApiError } from '../../../core/api-error';
@@ -7,8 +8,9 @@ import { MoneyPipe } from '../../../core/i18n/format.pipes';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { MessageKey, MessageParams } from '../../../core/i18n/messages';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
-import { addAmounts, compareAmounts } from '../../../core/money';
+import { addAmounts, compareAmounts, sameAmount, trimAmount } from '../../../core/money';
 import { ErrorAlertComponent } from '../../../shared/components/error-alert.component';
+import { FieldErrorComponent } from '../../../shared/components/field-error.component';
 import {
   ChartMarker,
   ChartSeries,
@@ -86,6 +88,7 @@ interface GroupView {
   readonly headline: Said;
   readonly assumption: string;
   readonly series: readonly ChartSeries[];
+  readonly unavailable: string;
   readonly coincidentLabel: string;
   readonly marker: ChartMarker | null;
   readonly cards: readonly StrategyCardView[];
@@ -132,9 +135,11 @@ const WHAT_IF_STEP = '50';
   selector: 'app-debt-plan-page',
   imports: [
     RouterLink,
+    ReactiveFormsModule,
     TranslatePipe,
     MoneyPipe,
     ErrorAlertComponent,
+    FieldErrorComponent,
     NoHouseholdComponent,
     LineChartComponent,
     DebtDialogComponent,
@@ -144,6 +149,7 @@ const WHAT_IF_STEP = '50';
   styleUrl: './debt-plan.page.css',
 })
 export class DebtPlanPage {
+  private readonly fb = inject(NonNullableFormBuilder);
   private readonly debtsService = inject(DebtsService);
   private readonly plans = inject(DebtPlanService);
   private readonly accountsService = inject(AccountsService);
@@ -167,6 +173,22 @@ export class DebtPlanPage {
   protected readonly actionError = signal<ApiError | null>(null);
   protected readonly notice = signal<MessageKey | null>(null);
   protected readonly savingStrategy = signal(false);
+  protected readonly savingAmount = signal(false);
+  protected readonly editingAmount = signal(false);
+
+  /**
+   * The monthly amount the plan spends — **the one figure every date on this page derives from**.
+   *
+   * It had nowhere to be entered: the header strip reported it and nothing set it, so a household
+   * could read a debt-free date computed from a number they had never been asked for. It is a
+   * plain amount beside the figure it changes, and a `PUT` with the plan's version, so two members
+   * editing it collide rather than one silently winning.
+   *
+   * Unsigned `type="text"` with `inputmode="decimal"`, never `type="number"` (ADR-0006).
+   */
+  readonly amountForm = this.fb.group({
+    monthlyAmount: ['', [Validators.required, Validators.pattern(/^\d{1,15}(\.\d{1,4})?$/)]],
+  });
 
   protected readonly canWrite = computed(() => {
     const role = this.auth.membership()?.role;
@@ -403,6 +425,57 @@ export class DebtPlanPage {
 
   // --------------------------------------------------------------------------------- the debts
 
+  /** Opens the amount for editing, filled with what the plan currently says. */
+  protected editAmount(): void {
+    const plan = this.plan();
+    if (!plan) {
+      return;
+    }
+    this.amountForm.reset({ monthlyAmount: trimAmount(plan.monthlyAmount) }, { emitEvent: false });
+    this.actionError.set(null);
+    this.notice.set(null);
+    this.editingAmount.set(true);
+  }
+
+  protected cancelAmount(): void {
+    this.editingAmount.set(false);
+  }
+
+  /**
+   * Saves the monthly amount.
+   *
+   * The figure is a string from the first keystroke to the request body (ADR-0006) — nothing here
+   * parses it, and every date that comes back is the server's.
+   */
+  protected async saveAmount(): Promise<void> {
+    const plan = this.plan();
+    if (!plan || this.savingAmount()) {
+      return;
+    }
+    if (this.amountForm.invalid) {
+      this.amountForm.markAllAsTouched();
+      return;
+    }
+    const monthlyAmount = this.amountForm.getRawValue().monthlyAmount.trim();
+    if (sameAmount(monthlyAmount, plan.monthlyAmount)) {
+      this.editingAmount.set(false);
+      return;
+    }
+    this.savingAmount.set(true);
+    this.actionError.set(null);
+    this.notice.set(null);
+    try {
+      await firstValueFrom(this.plans.update({ version: plan.version, monthlyAmount }));
+      this.editingAmount.set(false);
+      this.notice.set('debt.amountSaved');
+      await this.reload();
+    } catch (thrown) {
+      this.actionError.set(asApiError(thrown));
+    } finally {
+      this.savingAmount.set(false);
+    }
+  }
+
   protected openAdd(): void {
     this.dialogError.set(null);
     this.notice.set(null);
@@ -486,6 +559,12 @@ export class DebtPlanPage {
       headline: this.headlineOf(group),
       assumption: this.assumptionOf(group),
       series,
+      // A ladder with no projection has no series. Saying why beats an axis around an empty box.
+      unavailable: series.some((line) => line.points.length >= 2)
+        ? ''
+        : this.i18n.t('debt.chart.noLine', {
+            reason: this.i18n.t(projectionReasonKey(group.selected.reason ?? '')),
+          }),
       coincidentLabel:
         series.length === 2
           ? this.i18n.t('debt.chart.coincide', {

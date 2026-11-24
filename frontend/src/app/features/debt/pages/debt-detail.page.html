@@ -1,0 +1,292 @@
+<div class="stack">
+  <a class="link back" routerLink="/debt-plan">{{ 'debt.detail.back' | t }}</a>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else if (debt(); as one) {
+    <div>
+      <h1 class="page-title">{{ one.name }}</h1>
+      @if (naming(); as said) {
+        <p class="page-lede">{{ said.key | t: said.params }}</p>
+      }
+    </div>
+
+    <!-- The rung switcher on desktop, the stepper on a phone. Only one is in the accessibility
+         tree at a time: the other is display:none, which screen readers skip. -->
+    <nav class="cluster switcher only-wide" [attr.aria-label]="'debt.detail.switcher' | t">
+      @for (sibling of ladder(); track sibling.id) {
+        <a
+          class="link"
+          [routerLink]="['/debt-plan', sibling.id]"
+          [attr.aria-current]="sibling.id === one.id ? 'page' : null"
+          >{{ 'debt.rungNamed' | t: { rung: sibling.rung, name: sibling.name } }}</a
+        >
+      }
+    </nav>
+
+    <nav class="cluster stepper only-narrow" [attr.aria-label]="'debt.detail.switcher' | t">
+      @if (previous(); as before) {
+        <a class="btn btn-secondary btn-small" [routerLink]="['/debt-plan', before.id]">
+          {{ 'debt.detail.previous' | t: { name: before.name } }}
+        </a>
+      }
+      @if (next(); as after) {
+        <a class="btn btn-secondary btn-small" [routerLink]="['/debt-plan', after.id]">
+          {{ 'debt.detail.next' | t: { name: after.name } }}
+        </a>
+      }
+    </nav>
+
+    @if (canWrite()) {
+      <div class="cluster">
+        <button type="button" class="btn btn-primary" (click)="openLog()">
+          {{ 'debt.detail.logPayment' | t }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="openEdit()">
+          {{ 'debt.editTerms' | t }}
+        </button>
+        @if (estimated()) {
+          <button type="button" class="btn btn-secondary" (click)="openConfirm()">
+            {{ 'debt.detail.confirmBalance' | t }}
+          </button>
+        }
+      </div>
+    }
+
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said.key | t: said.params }}</p>
+      </div>
+    }
+
+    <!-- 1. Loan terms — the solver panel. Three labels, not two. -->
+    <section class="card" aria-labelledby="terms-heading">
+      <h2 class="card-title" id="terms-heading">{{ 'debt.terms.heading' | t }}</h2>
+      <p class="card-note">
+        {{ termCount().key | t: termCount().params }} {{ 'debt.terms.promise' | t }}
+      </p>
+
+      <dl class="terms-grid">
+        @for (cell of terms(); track cell.id) {
+          <div class="term">
+            <dt>{{ cell.label | t }}</dt>
+            <dd>
+              @if (cell.missing; as absent) {
+                <span class="term-missing">{{ absent | t }}</span>
+              } @else {
+                <span class="term-value">{{ cell.value }}</span>
+              }
+              <!-- An unmarked cell is the household's own word. `Solved` means the app worked it
+                   out; *from your plan* means the ladder allocated it. A cell with no figure
+                   carries no tag at all — there is nothing to have been worked out. -->
+              @if (cell.source === 'SOLVED') {
+                <span class="tag">{{ 'debt.source.SOLVED' | t }}</span>
+              } @else if (cell.source === 'FROM_PLAN') {
+                <span class="tag tag-neutral">{{ 'debt.source.FROM_PLAN' | t }}</span>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+
+      @if (balanceLine(); as said) {
+        <p class="card-note">{{ said.key | t: said.params }}</p>
+      }
+      <p class="card-note">{{ 'debt.terms.balanceNeverSolved' | t }}</p>
+    </section>
+
+    <!-- 2. Balance now. -->
+    <section class="card" aria-labelledby="balance-heading">
+      <h2 class="card-title" id="balance-heading">{{ 'debt.detail.balanceHeading' | t }}</h2>
+      <p class="headline" [class.is-estimated]="estimated()">
+        <span class="headline-amount">{{ one.balance | money: one.currency }}</span>
+        <span class="headline-label">{{ balanceSourceLabel() | t }}</span>
+      </p>
+      @if (progress(); as said) {
+        <p class="progress">{{ said.key | t: said.params }}</p>
+      } @else {
+        <p class="card-note">{{ 'debt.noProgress' | t }}</p>
+      }
+      @if (estimated() && canWrite()) {
+        <div>
+          <button type="button" class="btn btn-secondary" (click)="openConfirm()">
+            {{ 'debt.detail.confirmBalance' | t }}
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- 3. Balance over time. The second line is the COMPARISON, and says so. -->
+    <section class="card" aria-labelledby="over-time-heading">
+      <h2 class="card-title" id="over-time-heading">{{ 'debt.detail.overTime' | t }}</h2>
+      <app-line-chart
+        [series]="chart()"
+        [marker]="chartMarker()"
+        [assumption]="chartAssumption()"
+        [label]="'debt.detail.overTime' | t"
+        [unavailable]="chartUnavailable()"
+        chartId="debt-detail-chart"
+      />
+      @if (chartSaid(); as said) {
+        <p class="headline">{{ said.key | t: said.params }}</p>
+      }
+      <!-- The at-minimum line is kinder than reality: a real card minimum falls as the balance
+           falls, which stretches the payoff well beyond what a flat figure projects. Said only
+           where that line was actually drawn. -->
+      @if (comparisonDrawn()) {
+        <p class="card-note">{{ 'debt.chart.atMinimumNote' | t }}</p>
+      }
+    </section>
+
+    <!-- 4. Payment history — how every row got here. -->
+    <section class="card" aria-labelledby="history-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="history-heading">{{ 'debt.history.heading' | t }}</h2>
+        @if (canWrite()) {
+          <button type="button" class="btn btn-primary btn-small" (click)="openLog()">
+            {{ 'debt.history.add' | t }}
+          </button>
+        }
+      </div>
+
+      @if (rows().length === 0) {
+        <p class="card-note">{{ 'debt.history.empty' | t }}</p>
+      } @else {
+        <p class="card-note">{{ provenanceCount().key | t: provenanceCount().params }}</p>
+
+        <div class="table-scroll only-wide">
+          <table class="history-table">
+            <caption class="visually-hidden">
+              {{
+                'debt.history.caption' | t: { name: one.name }
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">{{ 'debt.history.date' | t }}</th>
+                <th scope="col" class="numeric">{{ 'debt.history.paid' | t }}</th>
+                <th scope="col" class="numeric">{{ 'debt.history.interest' | t }}</th>
+                <th scope="col" class="numeric">{{ 'debt.history.principal' | t }}</th>
+                <th scope="col" class="numeric">{{ 'debt.history.balanceAfter' | t }}</th>
+                <th scope="col">{{ 'debt.history.howItGotHere' | t }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr>
+                  <th scope="row">{{ row.payment.paidDate | dateOnly }}</th>
+                  <td class="numeric">{{ row.payment.amount | money: row.payment.currency }}</td>
+                  <td class="numeric">{{ row.payment.interest | money: row.payment.currency }}</td>
+                  <td class="numeric">
+                    {{ row.payment.principal | money: row.payment.currency }}
+                  </td>
+                  <td class="numeric">
+                    {{ row.payment.balanceAfter | money: row.payment.currency }}
+                  </td>
+                  <td>
+                    {{ row.provenance | t }}
+                    @if (row.paidFrom; as account) {
+                      <span class="row-sub">{{
+                        'debt.history.paidFrom' | t: { account: account }
+                      }}</span>
+                    }
+                    @if (row.payment.note; as note) {
+                      <span class="row-sub">{{ note }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- On a phone the split is a subtitle under each payment rather than four columns. -->
+        <ul class="rows only-narrow">
+          @for (row of rows(); track row.id) {
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title">{{ row.payment.paidDate | dateOnly }}</span>
+                <span class="row-sub">{{ row.provenance | t }}</span>
+                <span class="row-sub">{{
+                  'debt.history.split'
+                    | t
+                      : {
+                          interest: row.payment.interest | money: row.payment.currency,
+                          principal: row.payment.principal | money: row.payment.currency,
+                        }
+                }}</span>
+                <span class="row-sub">{{
+                  'debt.history.after'
+                    | t: { amount: row.payment.balanceAfter | money: row.payment.currency }
+                }}</span>
+                @if (row.paidFrom; as account) {
+                  <span class="row-sub">{{
+                    'debt.history.paidFrom' | t: { account: account }
+                  }}</span>
+                }
+              </span>
+              <span class="figures">
+                <span class="figure-main">{{
+                  row.payment.amount | money: row.payment.currency
+                }}</span>
+              </span>
+            </li>
+          }
+        </ul>
+
+        @if (morePages()) {
+          <p class="card-note">{{ paymentCountSaid().key | t: paymentCountSaid().params }}</p>
+        }
+      }
+
+      <!-- The compounding rule in plain words, where somebody reading the splits will meet it. -->
+      <p class="card-note">{{ 'debt.history.compounding' | t }}</p>
+    </section>
+  }
+</div>
+
+@if (editing() && debt(); as one) {
+  <app-debt-dialog
+    [debt]="one"
+    [accounts]="accounts()"
+    [bills]="bills()"
+    [currency]="one.currency"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitTerms($event)"
+    (closed)="closeDialogs()"
+  />
+}
+
+@if (logging() && debt(); as one) {
+  <app-log-payment
+    [debt]="one"
+    [accounts]="accounts()"
+    [today]="today()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitPayment($event)"
+    (closed)="closeDialogs()"
+  />
+}
+
+@if (confirming() && debt(); as one) {
+  <app-confirm-estimate
+    [debt]="one"
+    [today]="today()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitBalance($event)"
+    (logInstead)="logInstead()"
+    (closed)="closeDialogs()"
+  />
+}

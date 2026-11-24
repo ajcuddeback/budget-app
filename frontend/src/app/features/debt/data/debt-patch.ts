@@ -1,5 +1,6 @@
-import { sameAmount } from '../../../core/money';
+import { sameAmount, trimAmount } from '../../../core/money';
 import {
+  ConfirmBalanceRequest,
   CreateDebtRequest,
   Debt,
   DebtKind,
@@ -153,14 +154,14 @@ export function debtFormFrom(debt: Debt): DebtFormValue {
     kind: debt.kind,
     servicer: debt.servicer ?? '',
     currency: debt.currency,
-    balance: debt.balance,
+    balance: trimAmount(debt.balance),
     balanceDate: debt.balanceAsOf,
     // A solved rate is shown as empty with the box ticked, so the field never presents a figure
     // the household did not assert as though they had.
-    apr: debt.aprSource === 'ENTERED' ? (debt.apr ?? '') : '',
+    apr: debt.aprSource === 'ENTERED' ? trimAmount(debt.apr ?? '') : '',
     aprSolved: debt.aprSource !== 'ENTERED',
-    minimumPayment: debt.minimumPayment,
-    originalBalance: debt.originalBalance ?? '',
+    minimumPayment: trimAmount(debt.minimumPayment),
+    originalBalance: debt.originalBalance === null ? '' : trimAmount(debt.originalBalance),
     accountId: debt.accountId ?? '',
     billId: debt.billId ?? '',
   };
@@ -292,12 +293,7 @@ function aprChange(original: Debt, form: DebtFormValue): TermChange<string> {
  * principal under the rate in force and reports them back; a client that calculated them would be
  * sending its own arithmetic to be stored as history (ADR-0006).
  */
-export function buildLogPayment(form: {
-  paidDate: string;
-  amount: string;
-  transactionId: string;
-  note: string;
-}): LogPaymentRequest {
+export function buildLogPayment(form: PaymentFormValue): LogPaymentRequest {
   const request: LogPaymentRequest = {
     paidDate: form.paidDate,
     amount: form.amount.trim(),
@@ -305,6 +301,51 @@ export function buildLogPayment(form: {
   if (form.transactionId !== '') {
     request.transactionId = form.transactionId;
   }
+  // "Paid from" is **not** a transaction and is not the account the debt is held at: it records
+  // where the money left, which is where a matching charge will be looked for later (slice 16).
+  // Nothing is written to that account.
+  if (form.paidFromAccountId !== '') {
+    request.paidFromAccountId = form.paidFromAccountId;
+  }
+  const note = form.note.trim();
+  if (note !== '') {
+    request.note = note;
+  }
+  return request;
+}
+
+/** What the "log a payment" sheet holds. */
+export interface PaymentFormValue {
+  /** `YYYY-MM-DD`. */
+  paidDate: string;
+  amount: string;
+  /** `''` means no account named — a payment from somewhere Budget Owl does not track. */
+  paidFromAccountId: string;
+  /** Reserved for the ledger picker, which arrives with import or matching. */
+  transactionId: string;
+  note: string;
+}
+
+/** What the confirm-or-correct sheet holds. */
+export interface BalanceFormValue {
+  balance: string;
+  /** `YYYY-MM-DD` — the date the statement says that figure was true. */
+  balanceDate: string;
+  note: string;
+}
+
+/**
+ * Confirming or correcting the balance from a statement.
+ *
+ * A separate endpoint from the terms `PATCH`, and deliberately: it writes the anchor **and** a
+ * `STATEMENT_CORRECTION` row when the figure disagrees with the arithmetic. A balance edited as
+ * though it were an ordinary field would lose both its date and its provenance.
+ */
+export function buildConfirmBalance(form: BalanceFormValue): ConfirmBalanceRequest {
+  const request: ConfirmBalanceRequest = {
+    balance: form.balance.trim(),
+    balanceDate: form.balanceDate,
+  };
   const note = form.note.trim();
   if (note !== '') {
     request.note = note;
@@ -331,6 +372,25 @@ export function monthsBetween(from: string | null, to: string | null): number | 
   const start = monthIndex(from);
   const end = monthIndex(to);
   return start === null || end === null ? null : end - start;
+}
+
+/**
+ * The month before `YYYY-MM`, or `null` for anything that is not a month.
+ *
+ * A chart point is **what is still owed at the start of that month**, so the first point at zero
+ * is the month *after* the debt cleared. The month before it is the month it actually cleared —
+ * and for a debt's own pace that reproduces `payoffMonth` exactly, which is what makes this a
+ * reading of the series rather than an assumption about it.
+ */
+export function monthBefore(month: string | null): string | null {
+  const index = monthIndex(month);
+  if (index === null) {
+    return null;
+  }
+  const previous = index - 1;
+  const year = Math.floor(previous / 12);
+  const inYear = (previous % 12) + 1;
+  return `${String(year).padStart(4, '0')}-${String(inYear).padStart(2, '0')}`;
 }
 
 function monthIndex(month: string | null): number | null {

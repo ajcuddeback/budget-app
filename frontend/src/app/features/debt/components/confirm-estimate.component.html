@@ -1,0 +1,140 @@
+<dialog
+  appModal
+  class="dialog"
+  aria-labelledby="confirm-estimate-title"
+  (dismissed)="closed.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="confirm-estimate-title">
+      {{ (stale() ? 'debt.estimate.staleTitle' : 'debt.estimate.title') | t }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    <!-- The estimate, and what it assumed. The copy names the interest as well as the payments:
+         an estimate that was the anchor minus the payments would be wrong, and the designs' own
+         figure made exactly that mistake. -->
+    <!-- Labelled: a figure on its own at the top of a sheet is a number nobody can place. -->
+    <p class="headline">
+      <span class="headline-amount">{{ debt().balance | money: debt().currency }}</span>
+      <span class="headline-label">{{
+        (stale() ? 'debt.estimate.figureStale' : 'debt.estimate.figureEstimate') | t
+      }}</span>
+    </p>
+    @if (stale()) {
+      <p class="card-note">
+        {{
+          'debt.estimate.staleBody'
+            | t
+              : {
+                  amount: debt().anchorBalance | money: debt().currency,
+                  months: debt().estimatedMonths,
+                }
+        }}
+      </p>
+    } @else {
+      <p class="card-note">
+        {{
+          'debt.estimate.assumed'
+            | t
+              : {
+                  months: debt().estimatedMonths,
+                  minimum: debt().minimumPayment | money: debt().currency,
+                }
+        }}
+      </p>
+    }
+    <p class="card-note">
+      {{
+        'debt.estimate.lastConfirmed'
+          | t
+            : {
+                amount: debt().anchorBalance | money: debt().currency,
+                date: debt().anchorDate | dateOnly,
+              }
+      }}
+    </p>
+
+    @if (editing()) {
+      <div class="field">
+        <label for="estimate-balance">{{ 'debt.estimate.balance' | t }}</label>
+        <input
+          id="estimate-balance"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="balance"
+          aria-describedby="estimate-balance-hint estimate-balance-error"
+          [attr.aria-invalid]="
+            form.controls.balance.invalid && form.controls.balance.touched ? 'true' : null
+          "
+        />
+        <p class="field-hint" id="estimate-balance-hint">{{ 'debt.estimate.balanceHint' | t }}</p>
+        <app-field-error [control]="form.controls.balance" errorId="estimate-balance-error" />
+      </div>
+
+      <div class="field">
+        <label for="estimate-date">{{ 'debt.estimate.balanceDate' | t }}</label>
+        <input
+          id="estimate-date"
+          class="input"
+          type="date"
+          formControlName="balanceDate"
+          aria-describedby="estimate-date-error"
+          [attr.aria-invalid]="
+            form.controls.balanceDate.invalid && form.controls.balanceDate.touched ? 'true' : null
+          "
+        />
+        <app-field-error [control]="form.controls.balanceDate" errorId="estimate-date-error" />
+      </div>
+    }
+
+    <!-- A statement that disagrees with the arithmetic is recorded as a correction row rather
+         than adjusting history silently. -->
+    <p class="card-note">{{ 'debt.estimate.correctionNote' | t }}</p>
+
+    <div class="cluster dialog-actions">
+      @if (editing()) {
+        <button type="submit" class="btn btn-primary" [disabled]="busy()">
+          {{ (busy() ? 'common.saving' : 'debt.estimate.save') | t }}
+        </button>
+      } @else {
+        <button type="submit" class="btn btn-primary" [disabled]="busy()">
+          {{
+            busy()
+              ? ('common.saving' | t)
+              : ('debt.estimate.confirmAmount'
+                | t: { amount: debt().balance | money: debt().currency })
+          }}
+        </button>
+        <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="correct()">
+          {{ 'debt.estimate.correct' | t }}
+        </button>
+      }
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+
+    <!-- The two quieter answers the designs put beneath the main pair. -->
+    <p class="cluster secondary-actions">
+      <button
+        type="button"
+        class="btn btn-ghost btn-small"
+        [disabled]="busy()"
+        (click)="useLastConfirmed()"
+      >
+        {{ 'debt.estimate.stopEstimating' | t }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-small"
+        [disabled]="busy()"
+        (click)="logInstead.emit()"
+      >
+        {{ 'debt.estimate.logInstead' | t }}
+      </button>
+    </p>
+  </form>
+</dialog>

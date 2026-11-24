@@ -9,14 +9,35 @@
 /* ---- the header strip -------------------------------------------------------------------- */
 
 .header-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin: 0;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+.header-figure {
+  margin: 0;
   font-variant-numeric: tabular-nums;
   /* 600, not a var: there is no weight token. See the note at the top. */
   font-weight: 600;
+}
+
+/* The amount sits where it is reported, so the figure and the control that changes it are one
+   thing rather than two places to look. */
+.amount-form {
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.amount-form .field {
+  margin: 0;
+  min-inline-size: 10rem;
 }
 
 /* ---- the strategy ------------------------------------------------------------------------ */

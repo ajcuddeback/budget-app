@@ -2,9 +2,9 @@
 
 - **Slice:** 10
 - **Status:** In progress — **API, services and schema shipped**, and so are the Angular data
-  layer, the shared chart, **`/debt-plan`** and the Bills &amp; Income **Owed** card; the
-  `/debt-plan/{id}` detail page, the log-payment and confirm-estimate dialogs, the user-guide page
-  and the demo fixtures are not built yet (see
+  layer, the shared chart, **`/debt-plan`**, **`/debt-plan/{id}`**, the **log a payment** and
+  **confirm the estimate** sheets, the Bills &amp; Income **Owed** card and the demo fixtures. The
+  user-guide page is the piece left (see
   [What slice 10 has built](#what-slice-10-has-built))
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-24
@@ -633,6 +633,43 @@ interest and principal as a subtitle under each payment rather than as columns, 
 payments** instead of the full list, and **Edit terms** / **Log payment** as the sticky actions.
 Same fields, same order, same numbers as desktop — `design/README.md` rule 1.
 
+**What the built detail page does with the parts the designs leave open**, recorded so the next
+session does not re-derive them:
+
+- **One region order at both viewports: terms → balance → chart → history.** The desktop artboard
+  leads with the terms and the mobile one with the balance; `design/README.md`'s rule 1 asks for
+  the same order in both, and reordering visually with CSS while leaving the DOM alone makes
+  reading order disagree with visual order. The desktop order is the one kept.
+- **The chart plots every line on a shared axis of months**, not on each line's own count of
+  points. A debt's pace over 18 months and the same debt at its minimum over 55 drawn "index out
+  of count" each fill the width, so the short line appears to reach zero at the far right — the
+  chart saying 2031 beside a panel saying 2027. Found in a screenshot, not in the suite.
+- **A series point is what is owed at the *start* of a month**, so the first point at zero is the
+  month *after* the debt cleared. Both ends of the *"buying you 37 months"* sentence read the
+  month before that first zero, which reproduces `payoffMonth` exactly for the line the household
+  is paying — that agreement is what makes it a reading of the series rather than a guess about it.
+- **The at-minimum line is named as the comparison** and carries the note that a real card minimum
+  falls as the balance falls, so the comparison is kinder to the minimum than reality is.
+- **A form field shows an amount without the wire's trailing zeros** (`core/money.ts#trimAmount`):
+  the same figure, as somebody about to edit it would write it. `445.0000` in a text box reads as
+  a glitch. It is string surgery, never a parse, and assumes nothing about a currency's scale.
+- **The monthly amount is editable beside the figure it changes**, on `/debt-plan`.
+- **A stale balance is read from the flag, never from the source.** Past twelve months the server
+  stops extrapolating: the figure reverts to the anchor and comes back `CONFIRMED` with
+  `balanceStale: true`. A screen that read `balanceSource` alone would present a fourteen-month-old
+  figure as a fresh confirmation, so every stale branch is checked before the source is looked at.
+- **An estimate is not described as something that only grows.** It is the anchor rolled forward
+  with the interest *and* the minimum taken off, so it is frequently **lower** than the figure it
+  started from — $1,196.63 from an anchor of $1,240.00 in the balance-state fixtures.
+- **A debt with no projection gets a sentence where the picture would be.** A payment that never
+  covers its interest has an empty series; the card says why, and the legend goes with the lines
+  it was describing rather than keying lines nobody drew.
+- **The payment history is rendered in the order the server sent it.** Two rows can share a date —
+  a payment and the statement correction that followed it — and only the server knows which came
+  first; re-sorting by date in the client would put a same-day pair back into whatever order the
+  response happened to arrive in, and "Balance after" would stop reconciling down from the
+  headline.
+
 ### Payment actions
 
 *The three ways a balance moves* (mobile) and *The same two actions on desktop* give three sheets,
@@ -648,6 +685,23 @@ which become dialogs on desktop with identical fields in identical order:
    it is recorded**. This is the slice-10 path.
 3. **Confirm the estimate** — the estimate, what it assumed, what it was last confirmed at, and
    **Confirm $8,900** / **Correct it**, with *Stop estimating* and *Log a payment instead* beneath.
+
+**Two deviations from the sheets as drawn**, both with the same cause and both worth fixing in the
+API rather than in the client:
+
+1. **The split is not predicted before the payment is recorded.** The designs show *"$33.38
+   interest · $84.62 principal"* and the resulting balance in the sheet. Producing those needs
+   `round(balance × apr ÷ 1200, 4, HALF_EVEN)` in the browser — a second implementation of the one
+   formula this feature turns on, in the one place it could drift from the server's. This doc says
+   a few cents compounded eventually disagree by a whole month, which is the argument against
+   having two of them. The sheet says what will happen instead, and the page reports the server's
+   own split and resulting balance the moment it is recorded. **The fix is a preview that writes
+   nothing** — `POST /api/debts/{id}/payments?dryRun=true`, or its own sub-resource — returning
+   the split the server would store.
+2. **"Stop estimating" re-anchors on the last confirmed figure.** There is no endpoint that turns
+   estimation off, and inventing one in the client would mean storing a figure the app extrapolated
+   as though the household had asserted it. So the action confirms `anchorBalance` at today's date:
+   it stops the extrapolation using the number they themselves last gave, and says so.
 
 **"Paid from" is not a transaction.** It records which account the household paid from, which is
 where a matching charge will be looked for later. Logging a payment writes no ledger row — see the
@@ -912,12 +966,13 @@ bounded and these unbounded:
   reports balances around 10^173 in the meantime. This matches every other slice's pattern, so it
   is a house-wide note rather than a slice-10 regression — but this is the first slice that
   multiplies a balance by a rate six hundred times, so it is the first where it shows.
-- **The plan page has no way to set `monthlyAmount`.** The UI section lists a header strip that
-  *reports* the monthly commitment and no control that changes it, so `/debt-plan` as built can
-  read the plan's two figures and write only the strategy. Every date on the page is derived from
-  an amount the household currently cannot enter anywhere. Deliberately not invented during the
-  build — it needs a decision about where it lives (this page, the check-in, or onboarding) and
-  what it defaults to.
+- **`POST /api/debt-terms/solve` has a typed service and a test and no caller.** The solver panel
+  renders what `GET /api/debts/{id}` already solved; a terms editor that re-solves as you type is
+  what the endpoint is for, and that is the field-level editor the detail page does not yet have.
+- **The *"buying you"* sentence names months and no money.** The designs also claim a saving
+  (*"27 months and $2,890"*), which is the difference between two interest totals; the API carries
+  the total for the payment being made and not for the minimum, and subtracting two figures in the
+  browser is arithmetic on money whichever two they are.
 - **The what-if adds its £50 in the browser.** `GET /api/debt-plan/projection` takes an absolute
   `monthlyAmount`, so *"what would £50 more do"* can only be asked by computing `monthlyAmount +
   50` client-side. It is done through `core/money.ts`'s exact `bigint` path and sent to a read-only

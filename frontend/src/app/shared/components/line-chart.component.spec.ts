@@ -21,6 +21,7 @@ function points(amounts: readonly string[], from = 1): ChartSeries['points'] {
       chartId="test-chart"
       [assumption]="assumption"
       [coincidentLabel]="coincidentLabel"
+      [unavailable]="unavailable"
     />
   `,
 })
@@ -29,6 +30,7 @@ class Host {
   marker: ChartMarker | null = null;
   assumption = '';
   coincidentLabel = '';
+  unavailable = '';
 }
 
 describe('LineChartComponent', () => {
@@ -114,7 +116,7 @@ describe('LineChartComponent', () => {
     expect(described?.textContent).toContain('Debt-free Month 3');
   });
 
-  it('labels both ends of the axis from the longest line', () => {
+  it('labels both ends of the axis from the whole range, not from one line', () => {
     const root = render([
       { ...avalanche, points: points(['1000.0000', '0.0000']) },
       { ...snowball, points: points(['1000.0000', '600.0000', '300.0000', '0.0000']) },
@@ -123,6 +125,44 @@ describe('LineChartComponent', () => {
     const axis = root.querySelector('.chart-axis')?.textContent ?? '';
     expect(axis).toContain('Month 1');
     expect(axis).toContain('Month 4');
+  });
+
+  it('places every line on one axis of months, not on its own count of points', () => {
+    // A short line and a long one are the same debt at two payments. Drawn "index out of count"
+    // each would fill the width, and the short one would appear to reach zero at the far right —
+    // the chart saying 2031 beside a page that says 2027.
+    const root = render([
+      { ...avalanche, points: points(['1000.0000', '0.0000']) },
+      { ...snowball, points: points(['1000.0000', '600.0000', '300.0000', '0.0000']) },
+    ]);
+
+    const drawn = Array.from(root.querySelectorAll('polyline')).map((line) =>
+      line.getAttribute('points'),
+    );
+    // Two months out of four: the short line stops a third of the way across.
+    expect(drawn[0]).toBe('0,0 33.33,100');
+    expect(drawn[1]).toBe('0,0 33.33,40 66.67,70 100,100');
+  });
+
+  it('puts the marker on the month it names, whichever line is longest', () => {
+    host.marker = { month: '2027-03', label: 'Gone by Month 3' };
+    const root = render([
+      { ...avalanche, points: points(['1000.0000', '0.0000']) },
+      { ...snowball, points: points(['1000.0000', '600.0000', '300.0000', '0.0000']) },
+    ]);
+
+    // Month 3 of a Month 1 – Month 4 axis is two thirds across, not "index 2 of the long line".
+    expect(root.querySelector('.chart-mark')?.getAttribute('x1')).toBe('66.67');
+  });
+
+  it('is not fooled into collapsing two lines that agree on balances at different dates', () => {
+    const shifted = {
+      ...snowball,
+      points: points(['1000.0000', '500.0000', '0.0000'], 4),
+    };
+    const root = render([avalanche, shifted]);
+
+    expect(root.querySelectorAll('polyline')).toHaveLength(2);
   });
 
   it('places the marker on the month it names', () => {
@@ -157,6 +197,20 @@ describe('LineChartComponent', () => {
 
     const single = render([{ ...avalanche, points: points(['1000.0000']) }]);
     expect(single.querySelector('svg')).toBeNull();
+  });
+
+  it('says why there is nothing to draw, and keys no lines it did not draw', () => {
+    host.coincidentLabel = 'one line';
+    host.assumption = 'Every line assumes £560.00 a month.';
+    host.unavailable = 'There is no line to draw, because the payment never covers the interest.';
+    const root = render([{ ...avalanche, points: [] }]);
+
+    expect(root.querySelector('svg')).toBeNull();
+    expect(root.querySelector('.chart-legend')).toBeNull();
+    expect(root.querySelector('.chart-axis')).toBeNull();
+    // The assumption described lines that are not there.
+    expect(root.querySelector('figcaption')).toBeNull();
+    expect(root.querySelector('.chart-unavailable')?.textContent).toContain('no line to draw');
   });
 
   it('still says in words what it could not draw', () => {

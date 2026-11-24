@@ -1,4 +1,11 @@
-import { addAmounts, amountFraction, compareAmounts, isAmount, sameAmount } from './money';
+import {
+  addAmounts,
+  amountFraction,
+  compareAmounts,
+  isAmount,
+  sameAmount,
+  trimAmount,
+} from './money';
 
 /**
  * The point of every test in here is the same: **no amount is ever a `number`**.
@@ -78,6 +85,23 @@ describe('money', () => {
 
   it('keeps a third exact to a millionth rather than to a float’s whim', () => {
     expect(amountFraction('1.0000', '3.0000')).toBeCloseTo(1 / 3, 6);
+  });
+
+  it('takes trailing zeros off a figure without changing it', () => {
+    // The API reports at the server's scale; a text box somebody is about to edit should not.
+    expect(trimAmount('445.0000')).toBe('445');
+    expect(trimAmount('6180.5000')).toBe('6180.5');
+    expect(trimAmount('0.1000')).toBe('0.1');
+    expect(sameAmount(trimAmount('445.0000'), '445.0000')).toBe(true);
+  });
+
+  it('leaves alone anything with nothing to trim, and anything it cannot read', () => {
+    expect(trimAmount('445')).toBe('445');
+    expect(trimAmount('445.05')).toBe('445.05');
+    expect(trimAmount('0.0000')).toBe('0');
+    // Cosmetic only: it must never be the thing that loses a figure.
+    expect(trimAmount('nonsense')).toBe('nonsense');
+    expect(trimAmount('')).toBe('');
   });
 
   it('refuses to scale by nothing, so an unplottable point is a gap and not a zero', () => {

@@ -97,6 +97,26 @@ export function amountFraction(value: string, largest: string): number | null {
   return Number((numerator * precision) / denominator) / Number(precision);
 }
 
+/**
+ * `'445.0000'` → `'445'` — the same figure with its trailing zeros off, for a form field.
+ *
+ * **String surgery, never a parse.** The API reports every amount at the server's scale, which is
+ * right on the wire and reads like a glitch in a text box somebody is about to edit. Dropping
+ * trailing zeros changes no value: `sameAmount('445', '445.0000')` is true, and what is submitted
+ * is a figure the household can see is theirs.
+ *
+ * It assumes nothing about how many decimals a currency has — it removes zeros and stops. Anything
+ * that is not an amount is returned untouched, because this is cosmetic and must never be the
+ * thing that loses a figure.
+ */
+export function trimAmount(amount: string): string {
+  if (!isAmount(amount) || !amount.includes('.')) {
+    return amount;
+  }
+  const trimmed = amount.replace(/0+$/, '').replace(/\.$/, '');
+  return trimmed === '' || trimmed === '-' ? amount : trimmed;
+}
+
 /** `'-400.0000'` → `-4000000n`. `null` for anything that is not an amount. */
 function toMinorUnits(amount: string): bigint | null {
   if (!isAmount(amount)) {

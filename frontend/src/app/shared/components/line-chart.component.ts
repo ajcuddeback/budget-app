@@ -49,6 +49,14 @@ interface PlottedLine {
   readonly compared: boolean;
 }
 
+/** The month range the chart is drawn against, shared by every line and the marker. */
+interface Axis {
+  readonly from: number;
+  readonly months: number;
+  readonly firstLabel: string;
+  readonly lastLabel: string;
+}
+
 interface Plot {
   readonly lines: readonly PlottedLine[];
   readonly firstLabel: string;
@@ -148,6 +156,8 @@ const COINCIDENT_TOLERANCE = 0.005;
           <span>{{ drawn.firstLabel }}</span>
           <span>{{ drawn.lastLabel }}</span>
         </p>
+      } @else if (unavailable(); as why) {
+        <p class="chart-unavailable">{{ why }}</p>
       }
 
       <!-- The text alternative. Hidden visually because the lines, the legend and the page's own
@@ -164,38 +174,41 @@ const COINCIDENT_TOLERANCE = 0.005;
         }
       </p>
 
-      <ul class="chart-legend">
-        @if (coincident() && coincidentLabel()) {
-          <!-- One key for one stroke, naming both series. Two keys over a single visible line is
+      <!-- The legend belongs to the lines. With nothing drawn there is nothing to key. -->
+      @if (plot()) {
+        <ul class="chart-legend">
+          @if (coincident() && coincidentLabel()) {
+            <!-- One key for one stroke, naming both series. Two keys over a single visible line is
                the bug this avoids; dropping one of the names would be the same bug inverted. -->
-          <li>
-            <span class="chart-swatch" aria-hidden="true"></span>
-            <span>{{ series()[0].name }} · {{ series()[1].name }}</span>
-          </li>
-        } @else {
-          @for (line of series(); track line.id) {
             <li>
-              <span
-                class="chart-swatch"
-                [class.is-compared]="line.role === 'compared'"
-                aria-hidden="true"
-              ></span>
-              <span>{{ line.name }}</span>
+              <span class="chart-swatch" aria-hidden="true"></span>
+              <span>{{ series()[0].name }} · {{ series()[1].name }}</span>
             </li>
+          } @else {
+            @for (line of series(); track line.id) {
+              <li>
+                <span
+                  class="chart-swatch"
+                  [class.is-compared]="line.role === 'compared'"
+                  aria-hidden="true"
+                ></span>
+                <span>{{ line.name }}</span>
+              </li>
+            }
           }
-        }
-      </ul>
+        </ul>
+      }
 
-      @if (coincident() && coincidentLabel()) {
+      @if (plot() && coincident() && coincidentLabel()) {
         <!-- Prose, not a legend key: a sentence beside a 1.25rem swatch read as a caption that
              had lost its label. -->
         <p class="chart-mark-label" aria-hidden="true">{{ coincidentLabel() }}</p>
       }
-      @if (marker(); as mark) {
+      @if (plot() && marker(); as mark) {
         <p class="chart-mark-label" aria-hidden="true">{{ mark.label }}</p>
       }
-      @if (assumption(); as said) {
-        <figcaption class="chart-assumption">{{ said }}</figcaption>
+      @if (plot() && assumption()) {
+        <figcaption class="chart-assumption">{{ assumption() }}</figcaption>
       }
     </figure>
   `,
@@ -278,6 +291,13 @@ const COINCIDENT_TOLERANCE = 0.005;
       border-color: var(--color-muted);
     }
 
+    /* Prose where the picture would have been, not an empty box with an axis around it. */
+    .chart-unavailable {
+      margin: 0;
+      color: var(--color-muted);
+      max-inline-size: 60ch;
+    }
+
     .chart-mark-label,
     .chart-assumption {
       margin: var(--space-2) 0 0;
@@ -300,6 +320,16 @@ export class LineChartComponent {
 
   /** The assumption the lines were drawn under — *"Both lines assume $560/mo"*. */
   readonly assumption = input<string>('');
+
+  /**
+   * What to say when there is nothing to draw at all, already translated.
+   *
+   * A chart with no line is a real state — a debt whose payment never covers its interest has no
+   * projection and therefore no series. Rendering the axis, the legend and the assumption around
+   * an empty box reads as a chart that failed to load; this says why instead, and the legend goes
+   * with the lines it was describing.
+   */
+  readonly unavailable = input<string>('');
 
   /**
    * What to say when the two lines turn out to coincide, already translated.
@@ -331,9 +361,20 @@ export class LineChartComponent {
     // are indistinguishable from one line that is missing, which is the worse of the two readings.
     const coincident = lines.length === 2 && this.coincide(lines[0], lines[1], largest);
 
+    // One axis for every line, in MONTHS rather than in point indices.
+    //
+    // This is not a nicety. Two series of different lengths — a debt's own pace over 18 months
+    // against the same debt at its minimum over 55 — drawn as "index out of count" each occupy
+    // the full width, so the shorter one appears to reach zero at the far right. The chart then
+    // says the debt clears in 2031 while the page beside it says 2027. Position is time.
+    const span = this.axis(lines);
+    if (span === null) {
+      return null;
+    }
+
     const plotted: PlottedLine[] = [];
     for (const line of coincident ? [lines[0]] : lines) {
-      const points = this.polyline(line.points, largest);
+      const points = this.polyline(line.points, largest, span);
       if (points !== null) {
         plotted.push({
           id: line.id,
@@ -347,20 +388,48 @@ export class LineChartComponent {
       return null;
     }
 
-    // The longest line owns the axis: the two strategies cover different spans of months, and
-    // labelling from the shorter one would say a plan ends before its own line does.
-    const longest = lines.reduce(
-      (widest, line) => (line.points.length > widest.points.length ? line : widest),
-      lines[0],
-    );
     return {
       lines: plotted,
-      firstLabel: longest.points[0]?.label ?? '',
-      lastLabel: longest.points[longest.points.length - 1]?.label ?? '',
-      markerX: this.markerPosition(longest.points),
+      firstLabel: span.firstLabel,
+      lastLabel: span.lastLabel,
+      markerX: this.markerPosition(span),
       coincident,
     };
   });
+
+  /**
+   * The month range every line is drawn against, and the labels for its two ends.
+   *
+   * `null` when no point carries a month this can place, which is the same answer as "nothing to
+   * draw" — a line without a time axis has no shape.
+   */
+  private axis(lines: readonly ChartSeries[]): Axis | null {
+    let first: { ordinal: number; label: string } | null = null;
+    let last: { ordinal: number; label: string } | null = null;
+    for (const line of lines) {
+      for (const point of line.points) {
+        const ordinal = monthOrdinal(point.month);
+        if (ordinal === null) {
+          continue;
+        }
+        if (first === null || ordinal < first.ordinal) {
+          first = { ordinal, label: point.label };
+        }
+        if (last === null || ordinal > last.ordinal) {
+          last = { ordinal, label: point.label };
+        }
+      }
+    }
+    if (first === null || last === null || first.ordinal === last.ordinal) {
+      return null;
+    }
+    return {
+      from: first.ordinal,
+      months: last.ordinal - first.ordinal,
+      firstLabel: first.label,
+      lastLabel: last.label,
+    };
+  }
 
   /**
    * Whether two lines are the same line at this chart's scale.
@@ -375,6 +444,11 @@ export class LineChartComponent {
       return false;
     }
     for (let index = 0; index < left.points.length; index += 1) {
+      // Same month as well as same height: two lines that agree on balances at different dates
+      // are not one line, they are two lines that happen to share a shape.
+      if (left.points[index].month !== right.points[index].month) {
+        return false;
+      }
       const here = amountFraction(left.points[index].amount, largest);
       const there = amountFraction(right.points[index].amount, largest);
       if (here === null || there === null || Math.abs(here - there) > COINCIDENT_TOLERANCE) {
@@ -402,17 +476,18 @@ export class LineChartComponent {
   }
 
   /** `"0,12 3.4,18 …"` — the `points` attribute, or `null` for a line that cannot be drawn. */
-  private polyline(points: readonly ChartPoint[], largest: string): string | null {
+  private polyline(points: readonly ChartPoint[], largest: string, span: Axis): string | null {
     if (points.length < 2) {
       return null;
     }
     const drawn: string[] = [];
-    points.forEach((point, index) => {
+    points.forEach((point) => {
       const fraction = amountFraction(point.amount, largest);
-      if (fraction === null) {
+      const ordinal = monthOrdinal(point.month);
+      if (fraction === null || ordinal === null) {
         return;
       }
-      const x = (index / (points.length - 1)) * 100;
+      const x = ((ordinal - span.from) / span.months) * 100;
       // Clamped at the baseline: an overpaid debt goes below zero, and the chart shows it reaching
       // zero rather than drawing outside its own box. The figure itself is reported in words.
       const y = 100 - Math.max(0, Math.min(1, fraction)) * 100;
@@ -421,15 +496,34 @@ export class LineChartComponent {
     return drawn.length < 2 ? null : drawn.join(' ');
   }
 
-  /** Where the marker's month falls along the axis, or `null` when it is not on this chart. */
-  private markerPosition(points: readonly ChartPoint[]): number | null {
+  /**
+   * Where the marker's month falls along the axis, or `null` when it is off the chart.
+   *
+   * The same month scale the lines use, so a payoff marker lands on the month it names rather
+   * than on whichever point happened to sit at that index.
+   */
+  private markerPosition(span: Axis): number | null {
     const mark = this.marker();
-    if (mark === null || points.length < 2) {
+    const ordinal = mark === null ? null : monthOrdinal(mark.month);
+    if (ordinal === null || ordinal < span.from || ordinal > span.from + span.months) {
       return null;
     }
-    const index = points.findIndex((point) => point.month === mark.month);
-    return index === -1 ? null : round((index / (points.length - 1)) * 100);
+    return round(((ordinal - span.from) / span.months) * 100);
   }
+}
+
+/**
+ * `"2027-04"` as a count of months, for placing a point along the axis.
+ *
+ * Date arithmetic, not money arithmetic: it decides where a line is drawn, never what it says.
+ * `null` for anything that is not a month, which leaves that point out rather than guessing one.
+ */
+function monthOrdinal(month: string): number | null {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return null;
+  }
+  const [year, inYear] = month.split('-');
+  return Number(year) * 12 + Number(inYear) - 1;
 }
 
 /** Two decimal places is a hundredth of the plot's width — well under a pixel. */

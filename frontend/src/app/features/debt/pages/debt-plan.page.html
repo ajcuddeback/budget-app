@@ -41,10 +41,61 @@
         }
       </section>
     } @else {
-      <!-- 1. The header strip: the monthly commitment, and how much of it is strategic. -->
-      @if (header(); as said) {
-        <p class="header-strip">{{ said.key | t: said.params }}</p>
-      }
+      <!-- 1. The header strip: the monthly commitment, and how much of it is strategic. The
+              amount is editable here, because every date on this page derives from it and it had
+              nowhere else to be entered. -->
+      <div class="header-strip">
+        @if (header(); as said) {
+          <p class="header-figure">{{ said.key | t: said.params }}</p>
+        }
+        @if (canWrite()) {
+          @if (editingAmount()) {
+            <form class="cluster amount-form" [formGroup]="amountForm" (ngSubmit)="saveAmount()">
+              <div class="field">
+                <label for="monthly-amount">{{ 'debt.monthlyAmount' | t }}</label>
+                <!-- type="text" with inputmode="decimal", never type="number" (ADR-0006). -->
+                <input
+                  id="monthly-amount"
+                  class="input"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  formControlName="monthlyAmount"
+                  aria-describedby="monthly-amount-hint monthly-amount-error"
+                  [attr.aria-invalid]="
+                    amountForm.controls.monthlyAmount.invalid &&
+                    amountForm.controls.monthlyAmount.touched
+                      ? 'true'
+                      : null
+                  "
+                />
+                <p class="field-hint" id="monthly-amount-hint">
+                  {{ 'debt.monthlyAmountHint' | t }}
+                </p>
+                <app-field-error
+                  [control]="amountForm.controls.monthlyAmount"
+                  errorId="monthly-amount-error"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary btn-small" [disabled]="savingAmount()">
+                {{ (savingAmount() ? 'common.saving' : 'common.save') | t }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="savingAmount()"
+                (click)="cancelAmount()"
+              >
+                {{ 'common.cancel' | t }}
+              </button>
+            </form>
+          } @else {
+            <button type="button" class="btn btn-secondary btn-small" (click)="editAmount()">
+              {{ 'debt.changeMonthlyAmount' | t }}
+            </button>
+          }
+        }
+      </div>
 
       <!-- 3. The strategy. Choosing one is a WRITE, so a VIEWER is told what the plan is and
               offered nothing — absent, not disabled-looking. -->
@@ -103,6 +154,7 @@
               [marker]="group.marker"
               [assumption]="group.assumption"
               [coincidentLabel]="group.coincidentLabel"
+              [unavailable]="group.unavailable"
               [label]="'debt.chartHeading' | t"
               [chartId]="'debt-chart-' + group.currency"
             />

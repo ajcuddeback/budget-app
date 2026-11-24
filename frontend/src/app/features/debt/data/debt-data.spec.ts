@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import {
   DebtFormValue,
+  buildConfirmBalance,
   buildDebtCreate,
   buildDebtPatch,
   buildLogPayment,
@@ -236,7 +237,7 @@ describe('debtFormFrom', () => {
   it('shows an entered rate in the field with the box unticked', () => {
     const form = debtFormFrom(VISA);
 
-    expect(form.apr).toBe('22.900');
+    expect(form.apr).toBe('22.9');
     expect(form.aprSolved).toBe(false);
   });
 
@@ -253,6 +254,7 @@ describe('buildLogPayment', () => {
     const request = buildLogPayment({
       paidDate: '2026-09-15',
       amount: ' 118.00 ',
+      paidFromAccountId: '',
       transactionId: '',
       note: '  ',
     });
@@ -266,8 +268,50 @@ describe('buildLogPayment', () => {
 
   it('carries the ledger row when one was named, as evidence rather than authority', () => {
     expect(
-      buildLogPayment({ paidDate: '2026-09-15', amount: '118.00', transactionId: 't7', note: 'x' }),
+      buildLogPayment({
+        paidDate: '2026-09-15',
+        amount: '118.00',
+        paidFromAccountId: '',
+        transactionId: 't7',
+        note: 'x',
+      }),
     ).toEqual({ paidDate: '2026-09-15', amount: '118.00', transactionId: 't7', note: 'x' });
+  });
+
+  it('names the account the money left, which is not the account the debt is held at', () => {
+    const request = buildLogPayment({
+      paidDate: '2026-09-15',
+      amount: '118.00',
+      paidFromAccountId: 'acc-9',
+      transactionId: '',
+      note: '',
+    });
+
+    // `paidFromAccountId` is where the charge will be looked for in slice 16. `Debt.accountId` is
+    // where the card is held. Conflating them would send the matching to the wrong ledger.
+    expect(request.paidFromAccountId).toBe('acc-9');
+    expect('accountId' in request).toBe(false);
+  });
+
+  it('omits the account when the money came from somewhere Budget Owl does not track', () => {
+    const request = buildLogPayment({
+      paidDate: '2026-09-15',
+      amount: '118.00',
+      paidFromAccountId: '',
+      transactionId: '',
+      note: '',
+    });
+
+    expect('paidFromAccountId' in request).toBe(false);
+  });
+
+  it('confirms a balance with the date it was true, and drops an empty note', () => {
+    expect(
+      buildConfirmBalance({ balance: ' 8900.00 ', balanceDate: '2026-09-01', note: '  ' }),
+    ).toEqual({ balance: '8900.00', balanceDate: '2026-09-01' });
+    expect(
+      buildConfirmBalance({ balance: '8900.00', balanceDate: '2026-09-01', note: 'Chase' }),
+    ).toEqual({ balance: '8900.00', balanceDate: '2026-09-01', note: 'Chase' });
   });
 });
 

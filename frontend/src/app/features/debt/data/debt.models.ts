@@ -250,6 +250,14 @@ export interface DebtPayment {
   /** Evidence of a real movement, never the authority for it (ADR-0035). */
   transactionId: string | null;
   billOccurrenceId: string | null;
+  /**
+   * Which account the money left — **not** the account the debt is held at.
+   *
+   * A card is *at* Chase (`Debt.accountId`) and *paid from* checking (this). Conflating the two
+   * would send slice 16's matching to the wrong ledger. Nothing is written to the named account:
+   * logging a payment moves no balance and writes no transaction (ADR-0035).
+   */
+  paidFromAccountId: string | null;
   note: string | null;
   version: number;
 }
@@ -421,6 +429,8 @@ export interface LogPaymentRequest {
   amount: string;
   transactionId?: string;
   billOccurrenceId?: string;
+  /** Where a matching charge will be looked for later. Writes nothing to that account. */
+  paidFromAccountId?: string;
   note?: string;
 }
 
@@ -429,7 +439,11 @@ export interface CorrectPaymentRequest {
   version: number;
   paidDate?: string;
   amount?: string;
+  /** Three-way. */
   transactionId?: string | null;
+  /** Three-way. */
+  paidFromAccountId?: string | null;
+  /** Three-way. */
   note?: string | null;
 }
 
