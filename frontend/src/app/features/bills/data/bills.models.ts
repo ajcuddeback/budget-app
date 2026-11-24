@@ -219,11 +219,18 @@ export interface UpdateIncomeRequest {
 }
 
 /**
- * The three terms and the subtraction — the figure the page exists for.
+ * The **four** terms and the subtraction — the figure the page exists for.
  *
  * **`left` goes negative** and this client renders that rather than clamping it: "you are £180
- * short this month" is the information. The three terms are shown beneath it so that a plan
- * counted twice — rent as a bill *and* as an envelope — is visible rather than hidden.
+ * short this month" is the information. The terms are shown beneath it so that a plan counted
+ * twice — rent as a bill *and* as an envelope — is visible rather than hidden.
+ *
+ * **The fourth term is `debtMinimumsNotInBills`** (`debt-plan.md`, decision 2), which changed a
+ * figure that had already shipped. Only the minimums *not* already carried by a bill row come off,
+ * so a card's minimum is counted once; the rest is already inside `bills`.
+ *
+ * **`owed` is never part of the subtraction.** It is a balance, not a monthly commitment, and
+ * taking it off would tell a household owing £26,000 that it has nothing to spend this month.
  */
 export interface PeriodSummary {
   /** `YYYY-MM`. */
@@ -234,6 +241,20 @@ export interface PeriodSummary {
   billsOutstanding: string;
   billsOverdue: string;
   envelopesAllocated: string;
+  /** The total debt balance — the **Owed** card. Not subtracted; see the type's own notes. */
+  owed: string;
+  /**
+   * How many debts there are, **in every currency**.
+   *
+   * `owed`, `debtMinimums` and `debtMinimumsNotInBills` are the household's base currency only
+   * (ADR-0022), so a household with a foreign-currency debt gets a count and a total that do not
+   * describe the same set. The card says so rather than implying they match.
+   */
+  debtCount: number;
+  /** Every active debt's minimum, in the base currency. Reported so the fourth term adds up. */
+  debtMinimums: string;
+  /** The only debt figure `left` loses: the minimums no bill row already carries this month. */
+  debtMinimumsNotInBills: string;
   /** Negative when the month does not add up. Never clamp it. */
   left: string;
   currency: string;

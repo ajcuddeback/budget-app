@@ -35,6 +35,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/bills/bills.routes').then((m) => m.BILLS_ROUTES),
       },
       {
+        path: 'debt-plan',
+        title: 'title.debtPlan',
+        loadChildren: () => import('./features/debt/debt.routes').then((m) => m.DEBT_ROUTES),
+      },
+      {
         path: 'envelopes',
         title: 'title.envelopes',
         loadChildren: () =>

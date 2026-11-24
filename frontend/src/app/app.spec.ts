@@ -108,6 +108,7 @@ describe('App', () => {
       'Transactions',
       'Accounts',
       'Bills',
+      'Debt plan',
       'Envelopes',
       'Categories',
       'Household',

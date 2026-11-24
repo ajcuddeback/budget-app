@@ -1,4 +1,4 @@
-import { addAmounts, isAmount, sameAmount } from './money';
+import { addAmounts, amountFraction, compareAmounts, isAmount, sameAmount } from './money';
 
 /**
  * The point of every test in here is the same: **no amount is ever a `number`**.
@@ -56,5 +56,33 @@ describe('money', () => {
     expect(sameAmount('1.5', '1.51')).toBe(false);
     // Unreadable input is never "the same as" anything; the caller must notice.
     expect(sameAmount('1.5', 'nope')).toBe(false);
+  });
+
+  it('orders amounts exactly, including the pairs a double gets wrong', () => {
+    expect(compareAmounts('3120.0000', '3900.0000')).toBe(-1);
+    expect(compareAmounts('3900.0000', '3120.0000')).toBe(1);
+    expect(compareAmounts('645', '645.0000')).toBe(0);
+    expect(compareAmounts('-65.0000', '0')).toBe(-1);
+    // 0.1 + 0.2 > 0.3 as doubles. As minor units it is exactly equal.
+    expect(compareAmounts(addAmounts(['0.1', '0.2']) ?? '', '0.3')).toBe(0);
+    expect(compareAmounts('1.00', 'nope')).toBeNull();
+  });
+
+  it('turns an amount into a ratio of the largest without ever parsing one as a figure', () => {
+    // The chart's geometry. The ratio is a plain number; the money never is.
+    expect(amountFraction('500.0000', '1000.0000')).toBe(0.5);
+    expect(amountFraction('1000.0000', '1000.0000')).toBe(1);
+    expect(amountFraction('0', '1000.0000')).toBe(0);
+    expect(amountFraction('-20.0000', '1000.0000')).toBe(-0.02);
+  });
+
+  it('keeps a third exact to a millionth rather than to a float’s whim', () => {
+    expect(amountFraction('1.0000', '3.0000')).toBeCloseTo(1 / 3, 6);
+  });
+
+  it('refuses to scale by nothing, so an unplottable point is a gap and not a zero', () => {
+    expect(amountFraction('500.0000', '0')).toBeNull();
+    expect(amountFraction('nope', '1000.0000')).toBeNull();
+    expect(amountFraction('500.0000', 'nope')).toBeNull();
   });
 });

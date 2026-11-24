@@ -155,6 +155,10 @@ const SHORT: PeriodSummary = {
   billsOutstanding: '340.0000',
   billsOverdue: '0.0000',
   envelopesAllocated: '380.0000',
+  owed: '26480.0000',
+  debtCount: 3,
+  debtMinimums: '645.0000',
+  debtMinimumsNotInBills: '303.0000',
   left: '-180.0000',
   currency: 'GBP',
 };
@@ -275,14 +279,66 @@ describe('BillsPage', () => {
     expect(headline?.classList.contains('is-short')).toBe(false);
   });
 
-  it('shows the three terms the subtraction is made of', async () => {
+  it('shows the four terms the subtraction is made of', async () => {
     const fixture = await render();
 
-    // So that a plan counted twice — rent as a bill *and* as an envelope — is visible.
+    // So that a plan counted twice — rent as a bill *and* as an envelope — is visible. The
+    // fourth term is the debt minimums no bill row already carries (debt-plan.md, decision 2).
     const terms = root(fixture).querySelector('.terms');
     expect(terms?.textContent).toContain('£2,200.00');
     expect(terms?.textContent).toContain('£2,000.00');
     expect(terms?.textContent).toContain('£380.00');
+    expect(terms?.textContent).toContain('£303.00');
+  });
+
+  it('shows the part of the minimums that comes off, not the whole of them', async () => {
+    const fixture = await render();
+
+    // 303, not 645: the car payment's 342 is already one of the bill rows, and subtracting it
+    // again would understate what is left by a figure nobody could tell apart from the right one.
+    const terms = root(fixture).querySelector('.terms');
+    expect(terms?.textContent).toContain('£303.00');
+    expect(terms?.textContent).not.toContain('£645.00');
+  });
+
+  // --------------------------------------------------------------------------------- 4. owed
+
+  it('shows what is owed as a balance, and says it is not part of the subtraction', async () => {
+    const fixture = await render();
+
+    const owed = root(fixture).querySelector('section[aria-labelledby="owed-heading"]');
+    expect(owed?.textContent).toContain('£26,480.00');
+    expect(owed?.textContent).toContain('£645.00');
+    expect(owed?.textContent).toContain('not taken off what is left');
+    // And the headline is still the subtraction, which never loses the balance.
+    expect(root(fixture).querySelector('.headline-amount')?.textContent).toContain('-£180.00');
+  });
+
+  it('says the count spans every currency while the totals do not', async () => {
+    const fixture = await render();
+
+    // A household with a foreign-currency debt gets a count and a total that do not describe the
+    // same debts (ADR-0022). The card says so rather than letting them look like a pair.
+    const owed = root(fixture).querySelector('section[aria-labelledby="owed-heading"]');
+    expect(owed?.textContent).toContain('Across 3 debts');
+    expect(owed?.textContent).toContain('The count covers debts in every currency');
+    expect(owed?.textContent).toContain('GBP only');
+  });
+
+  it('says plainly that no debts means nothing comes off, rather than showing zeroes', async () => {
+    const fixture = await render({
+      summary: {
+        ...SHORT,
+        owed: '0.0000',
+        debtCount: 0,
+        debtMinimums: '0.0000',
+        debtMinimumsNotInBills: '0.0000',
+      },
+    });
+
+    const owed = root(fixture).querySelector('section[aria-labelledby="owed-heading"]');
+    expect(owed?.textContent).toContain('No debts recorded');
+    expect(owed?.textContent).not.toContain('£0.00');
   });
 
   it('reports what is still to pay without leading with it', async () => {

@@ -1,0 +1,211 @@
+<dialog appModal class="dialog" aria-labelledby="debt-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="debt-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="debt-name">{{ 'debt.field.name' | t }}</label>
+      <input
+        id="debt-name"
+        class="input"
+        type="text"
+        maxlength="60"
+        autocomplete="off"
+        formControlName="name"
+        aria-describedby="debt-name-hint debt-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="debt-name-hint">{{ 'debt.field.nameHint' | t }}</p>
+      <app-field-error [control]="form.controls.name" errorId="debt-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="debt-kind">{{ 'debt.field.kind' | t }}</label>
+      <select id="debt-kind" class="input" formControlName="kind">
+        @for (kind of kinds; track kind) {
+          <option [value]="kind">{{ kindKey(kind) | t }}</option>
+        }
+      </select>
+      <p class="field-hint">{{ 'debt.field.kindHint' | t }}</p>
+    </div>
+
+    <div class="field">
+      <label for="debt-servicer">{{ 'debt.field.servicer' | t }}</label>
+      <input
+        id="debt-servicer"
+        class="input"
+        type="text"
+        maxlength="80"
+        autocomplete="off"
+        formControlName="servicer"
+        aria-describedby="debt-servicer-hint debt-servicer-error"
+      />
+      <p class="field-hint" id="debt-servicer-hint">{{ 'debt.field.servicerHint' | t }}</p>
+      <app-field-error [control]="form.controls.servicer" errorId="debt-servicer-error" />
+    </div>
+
+    <div class="field">
+      <label for="debt-balance">{{ 'debt.field.balance' | t }}</label>
+      <!-- type="text" with inputmode="decimal", never type="number": a number input hands back a
+           double and an amount that has been through one has already lost it (ADR-0006). -->
+      <input
+        id="debt-balance"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="balance"
+        aria-describedby="debt-balance-hint debt-balance-error"
+        [attr.aria-invalid]="
+          form.controls.balance.invalid && form.controls.balance.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="debt-balance-hint">
+        {{ 'debt.field.balanceHint' | t: { currency: currency() } }}
+      </p>
+      <app-field-error [control]="form.controls.balance" errorId="debt-balance-error" />
+    </div>
+
+    <div class="field">
+      <label for="debt-balance-date">{{ 'debt.field.balanceDate' | t }}</label>
+      <input
+        id="debt-balance-date"
+        class="input"
+        type="date"
+        formControlName="balanceDate"
+        aria-describedby="debt-balance-date-hint debt-balance-date-error"
+        [attr.aria-invalid]="
+          form.controls.balanceDate.invalid && form.controls.balanceDate.touched ? 'true' : null
+        "
+      />
+      <!-- The balance and its date are one fact. A figure with no date has no provenance, which
+           is exactly what balanceSource exists to stop. -->
+      <p class="field-hint" id="debt-balance-date-hint">
+        {{ 'debt.field.balanceDateHint' | t }}
+      </p>
+      <app-field-error [control]="form.controls.balanceDate" errorId="debt-balance-date-error" />
+    </div>
+
+    @if (editing()) {
+      <div class="field">
+        <label class="checkbox" for="debt-apr-solved">
+          <input id="debt-apr-solved" type="checkbox" formControlName="aprSolved" />
+          <span>{{ 'debt.field.aprSolved' | t }}</span>
+        </label>
+        <p class="field-hint">
+          {{
+            (rateAlreadySolved() ? 'debt.field.aprAlreadySolved' : 'debt.field.aprSolvedHint') | t
+          }}
+        </p>
+      </div>
+    }
+
+    @if (!rateReleased()) {
+      <div class="field">
+        <label for="debt-apr">{{ 'debt.field.apr' | t }}</label>
+        <input
+          id="debt-apr"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="apr"
+          aria-describedby="debt-apr-hint debt-apr-error"
+          [attr.aria-invalid]="
+            form.controls.apr.invalid && form.controls.apr.touched ? 'true' : null
+          "
+        />
+        <p class="field-hint" id="debt-apr-hint">{{ 'debt.field.aprHint' | t }}</p>
+        <app-field-error [control]="form.controls.apr" errorId="debt-apr-error" />
+      </div>
+    }
+
+    <div class="field">
+      <label for="debt-minimum">{{ 'debt.field.minimum' | t }}</label>
+      <input
+        id="debt-minimum"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="minimumPayment"
+        aria-describedby="debt-minimum-hint debt-minimum-error"
+        [attr.aria-invalid]="
+          form.controls.minimumPayment.invalid && form.controls.minimumPayment.touched
+            ? 'true'
+            : null
+        "
+      />
+      <p class="field-hint" id="debt-minimum-hint">{{ 'debt.field.minimumHint' | t }}</p>
+      <app-field-error [control]="form.controls.minimumPayment" errorId="debt-minimum-error" />
+    </div>
+
+    <div class="field">
+      <label for="debt-original">{{ 'debt.field.originalBalance' | t }}</label>
+      <input
+        id="debt-original"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="originalBalance"
+        aria-describedby="debt-original-hint debt-original-error"
+      />
+      <!-- Optional, and progress is simply absent without it rather than rendered as 0%. -->
+      <p class="field-hint" id="debt-original-hint">
+        {{ 'debt.field.originalBalanceHint' | t }}
+      </p>
+      <app-field-error [control]="form.controls.originalBalance" errorId="debt-original-error" />
+    </div>
+
+    <div class="field">
+      <label for="debt-account">{{ 'debt.field.account' | t }}</label>
+      <select id="debt-account" class="input" formControlName="accountId">
+        <!-- First, and named: a debt held nowhere this household tracks is ordinary — the student
+             loan in every artboard is "Nelnet · manual entry". -->
+        <option value="">{{ 'debt.field.noAccount' | t }}</option>
+        @for (account of openAccounts(); track account.id) {
+          <option [value]="account.id">{{ account.name }}</option>
+        }
+      </select>
+      <p class="field-hint">{{ 'debt.field.accountHint' | t }}</p>
+    </div>
+
+    @if (!editing() && !accountLinked()) {
+      <!-- Offered only when no account is named: a linked debt's currency IS the account's and is
+           not independently settable (ADR-0022). -->
+      <app-currency-field
+        [control]="form.controls.currency"
+        fieldId="debt-currency"
+        [label]="'debt.field.currency' | t"
+        [hint]="'debt.field.currencyHint' | t"
+        [emptyLabel]="'debt.field.currencyDefault' | t: { currency: currency() }"
+      />
+    }
+
+    <div class="field">
+      <label for="debt-bill">{{ 'debt.field.bill' | t }}</label>
+      <select id="debt-bill" class="input" formControlName="billId">
+        <option value="">{{ 'debt.field.noBill' | t }}</option>
+        @for (bill of bills(); track bill.id) {
+          <option [value]="bill.id">{{ bill.name }}</option>
+        }
+      </select>
+      <!-- The link is explicit, never inferred: matching a debt to a bill by name or amount would
+           be guessing, and the figure it decides is what a household has left this month. -->
+      <p class="field-hint">{{ 'debt.field.billHint' | t }}</p>
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

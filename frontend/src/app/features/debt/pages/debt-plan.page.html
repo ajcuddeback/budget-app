@@ -1,0 +1,346 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'debt.title' | t }}</h1>
+    <p class="page-lede">{{ 'debt.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <app-error-alert [error]="actionError()" />
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said | t }}</p>
+      </div>
+    }
+
+    @if (empty()) {
+      <!-- The empty state. No $0 balance, no chart of nothing, and no debt-free date of today:
+           a household with no debt being told it is debt-free *this month* reads as a bug. -->
+      <section class="card" aria-labelledby="debt-empty-heading">
+        <h2 class="card-title" id="debt-empty-heading">{{ 'debt.empty.heading' | t }}</h2>
+        <p class="card-note">{{ 'debt.empty.body' | t }}</p>
+        <p class="card-note">{{ 'debt.empty.counted' | t }}</p>
+        @if (canWrite()) {
+          <div>
+            <button type="button" class="btn btn-primary" (click)="openAdd()">
+              {{ 'debt.add' | t }}
+            </button>
+          </div>
+        } @else {
+          <p class="field-hint">{{ 'debt.emptyReadOnly' | t }}</p>
+        }
+      </section>
+    } @else {
+      <!-- 1. The header strip: the monthly commitment, and how much of it is strategic. -->
+      @if (header(); as said) {
+        <p class="header-strip">{{ said.key | t: said.params }}</p>
+      }
+
+      <!-- 3. The strategy. Choosing one is a WRITE, so a VIEWER is told what the plan is and
+              offered nothing — absent, not disabled-looking. -->
+      <section class="card" aria-labelledby="debt-strategy-heading">
+        <h2 class="card-title" id="debt-strategy-heading">{{ 'debt.strategyHeading' | t }}</h2>
+        @if (canWrite()) {
+          <!-- A group of pressed buttons rather than ARIA tabs: these are not tabs over panels,
+               they save a choice to the server. aria-pressed says which one is in force. -->
+          <div class="strategy" role="group" [attr.aria-label]="'debt.strategyHeading' | t">
+            @for (option of strategies(); track option.strategy) {
+              <button
+                type="button"
+                class="btn"
+                [class.btn-primary]="option.selected"
+                [class.btn-secondary]="!option.selected"
+                [attr.aria-pressed]="option.selected"
+                [disabled]="savingStrategy()"
+                (click)="choose(option.strategy)"
+              >
+                {{ option.name }}
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="strategy-static" role="status">
+            {{ 'debt.strategyIs' | t: { name: selectedStrategyName() } }}
+          </p>
+        }
+        <p class="card-note">{{ 'debt.strategyNote' | t }}</p>
+      </section>
+
+      @if (mixedCurrency()) {
+        <!-- Grouped per currency with no combined total: a single debt-free date across two
+             currencies would need a rate this instance may not have (ADR-0022). -->
+        <div class="alert" role="note">
+          <p>{{ 'debt.mixedCurrency' | t }}</p>
+        </div>
+      }
+
+      @for (group of groups(); track group.currency) {
+        <!-- 4. Balance to zero. -->
+        <section class="card" [attr.aria-labelledby]="'debt-chart-' + group.currency + '-heading'">
+          <h2 class="card-title" [id]="'debt-chart-' + group.currency + '-heading'">
+            {{ 'debt.chartHeading' | t }}
+          </h2>
+          @if (mixedCurrency()) {
+            <p class="card-note">{{ 'debt.inCurrency' | t: { currency: group.currency } }}</p>
+          }
+
+          @if (group.belowMinimums; as said) {
+            <p class="card-note">{{ said.key | t: said.params }}</p>
+            <p class="card-note">{{ 'debt.belowMinimumsNote' | t }}</p>
+          } @else {
+            <app-line-chart
+              [series]="group.series"
+              [marker]="group.marker"
+              [assumption]="group.assumption"
+              [coincidentLabel]="group.coincidentLabel"
+              [label]="'debt.chartHeading' | t"
+              [chartId]="'debt-chart-' + group.currency"
+            />
+            <p class="headline">{{ group.headline.key | t: group.headline.params }}</p>
+          }
+        </section>
+
+        <!-- 5. The two comparison cards, side by side everywhere — the canvas settles that much.
+                Neither is pre-blessed beyond showing which one is selected. -->
+        <section
+          class="card"
+          [attr.aria-labelledby]="'debt-compare-' + group.currency + '-heading'"
+        >
+          <h2 class="card-title" [id]="'debt-compare-' + group.currency + '-heading'">
+            {{ 'debt.compareHeading' | t }}
+          </h2>
+
+          <ul class="compare">
+            @for (card of group.cards; track card.strategy) {
+              <li class="compare-card" [class.is-selected]="card.selected">
+                <h3 class="compare-name">
+                  {{ card.name }}
+                  @if (card.selected) {
+                    <span class="tag">{{ 'debt.selected' | t }}</span>
+                  }
+                </h3>
+                <p class="compare-rationale">{{ card.rationale | t }}</p>
+                <p class="compare-figure">{{ card.debtFree.key | t: card.debtFree.params }}</p>
+                @if (card.firstWin; as win) {
+                  <p class="compare-note">{{ win.key | t: win.params }}</p>
+                }
+                <p class="compare-note">
+                  @if (card.totalInterest) {
+                    {{
+                      'debt.card.totalInterest'
+                        | t: { amount: card.totalInterest | money: group.currency }
+                    }}
+                  } @else {
+                    {{ 'debt.card.noInterest' | t }}
+                  }
+                </p>
+              </li>
+            }
+          </ul>
+
+          @if (group.comparison; as said) {
+            <p class="comparison">{{ said.key | t: said.params }}</p>
+          }
+          @if (whatIfSaid(); as said) {
+            <p class="card-note">{{ said.key | t: said.params }}</p>
+          }
+          @if (offerAvalanche()) {
+            <div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="savingStrategy()"
+                (click)="choose('AVALANCHE')"
+              >
+                {{ 'debt.useAvalanche' | t }}
+              </button>
+            </div>
+          }
+        </section>
+
+        <!-- 6. Your debts. The same data in two structures: a table on desktop, the ladder on a
+                phone (decision 5). Only one is in the accessibility tree at a time — the other is
+                display:none, which screen readers skip. -->
+        <section class="card" [attr.aria-labelledby]="'debt-list-' + group.currency + '-heading'">
+          <div class="cluster section-head">
+            <h2 class="card-title" [id]="'debt-list-' + group.currency + '-heading'">
+              {{ 'debt.listHeading' | t }}
+            </h2>
+            @if (canWrite()) {
+              <button type="button" class="btn btn-primary btn-small" (click)="openAdd()">
+                {{ 'debt.add' | t }}
+              </button>
+            }
+          </div>
+          <p class="card-note">
+            {{ 'debt.order' | t: { strategy: selectedStrategyName() } }}
+            {{ 'debt.openAny' | t }}
+          </p>
+
+          <div class="table-scroll only-wide">
+            <table class="debt-table">
+              <caption class="visually-hidden">
+                {{
+                  'debt.tableCaption' | t: { strategy: selectedStrategyName() }
+                }}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">{{ 'debt.col.rung' | t }}</th>
+                  <th scope="col">{{ 'debt.col.debt' | t }}</th>
+                  <th scope="col" class="numeric">{{ 'debt.col.balance' | t }}</th>
+                  <th scope="col" class="numeric">{{ 'debt.col.rate' | t }}</th>
+                  <th scope="col">{{ 'debt.col.progress' | t }}</th>
+                  <th scope="col">{{ 'debt.col.clears' | t }}</th>
+                  <th scope="col">{{ 'debt.col.paying' | t }}</th>
+                  <th scope="col">
+                    <span class="visually-hidden">{{ 'debt.col.actions' | t }}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of group.rows; track row.id) {
+                  <tr>
+                    <td class="numeric">{{ row.rung }}</td>
+                    <th scope="row" class="debt-name">
+                      <span class="row-title">{{ row.name }}</span>
+                      <span class="row-sub">{{ row.naming.key | t: row.naming.params }}</span>
+                    </th>
+                    <td class="numeric">
+                      <span class="figure-main">{{ row.balance | money: row.currency }}</span>
+                      <span class="row-sub" [class.is-estimated]="row.balanceEstimated">{{
+                        row.balanceNote.key | t: row.balanceNote.params
+                      }}</span>
+                    </td>
+                    <td class="numeric">
+                      {{ row.rate.key | t: row.rate.params }}
+                      @if (row.rateSolved) {
+                        <span class="tag">{{ 'debt.source.SOLVED' | t }}</span>
+                      }
+                    </td>
+                    <td>
+                      @if (row.progress; as said) {
+                        {{ said.key | t: said.params }}
+                      } @else {
+                        <span class="row-sub">{{ 'debt.noProgress' | t }}</span>
+                      }
+                    </td>
+                    <td>{{ row.clears.key | t: row.clears.params }}</td>
+                    <td>{{ row.paying.key | t: row.paying.params }}</td>
+                    <td class="row-actions">
+                      <a class="link" [routerLink]="['/debt-plan', row.id]">
+                        {{ 'debt.open' | t }}
+                      </a>
+                      @if (canWrite()) {
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-small"
+                          (click)="openEdit(row.debt)"
+                        >
+                          {{ 'debt.editTerms' | t }}
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <ul class="ladder only-narrow">
+            @for (row of group.rows; track row.id) {
+              <li class="rung-card">
+                @if (row.rung !== null) {
+                  <p class="rung-number">{{ 'debt.rung' | t: { rung: row.rung } }}</p>
+                }
+                <h3 class="rung-name">{{ row.name }}</h3>
+                <p class="row-sub">{{ row.naming.key | t: row.naming.params }}</p>
+                <p class="rung-balance">
+                  <span class="figure-main">{{ row.balance | money: row.currency }}</span>
+                  <span class="row-sub" [class.is-estimated]="row.balanceEstimated">{{
+                    row.balanceNote.key | t: row.balanceNote.params
+                  }}</span>
+                </p>
+                <p class="row-sub">
+                  {{ row.rate.key | t: row.rate.params }}
+                  @if (row.rateSolved) {
+                    <span class="tag">{{ 'debt.source.SOLVED' | t }}</span>
+                  }
+                </p>
+                <p class="rung-paying">{{ row.paying.key | t: row.paying.params }}</p>
+                <p class="row-sub">{{ row.clears.key | t: row.clears.params }}</p>
+                @if (row.progress; as said) {
+                  <p class="row-sub">{{ said.key | t: said.params }}</p>
+                }
+                <p class="row-actions">
+                  <a class="link" [routerLink]="['/debt-plan', row.id]">{{ 'debt.open' | t }}</a>
+                  @if (canWrite()) {
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-small"
+                      (click)="openEdit(row.debt)"
+                    >
+                      {{ 'debt.editTerms' | t }}
+                    </button>
+                  }
+                </p>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <!-- Debts outside every ladder: settled, or at zero. Listed rather than dropped. -->
+      @if (unranked().length > 0) {
+        <section class="card" aria-labelledby="debt-settled-heading">
+          <h2 class="card-title" id="debt-settled-heading">{{ 'debt.settledHeading' | t }}</h2>
+          <ul class="rows">
+            @for (row of unranked(); track row.id) {
+              <li class="row">
+                <span class="row-main">
+                  <span class="row-title">{{ row.name }}</span>
+                  <span class="row-sub">{{ row.naming.key | t: row.naming.params }}</span>
+                </span>
+                <span class="figures">
+                  <span class="figure-main">{{ row.balance | money: row.currency }}</span>
+                  <span class="row-sub">{{ row.balanceNote.key | t: row.balanceNote.params }}</span>
+                </span>
+                <span class="row-actions">
+                  <a class="link" [routerLink]="['/debt-plan', row.id]">{{ 'debt.open' | t }}</a>
+                </span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <!-- 7. The counted-once rule, in the household's own language. -->
+      @if (footer(); as said) {
+        <p class="footer-line">{{ said.key | t: said.params }}</p>
+      }
+    }
+  }
+</div>
+
+@if (dialog(); as target) {
+  <app-debt-dialog
+    [debt]="target.debt"
+    [accounts]="accounts()"
+    [bills]="bills()"
+    [currency]="debts()?.currency ?? ''"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submit($event)"
+    (closed)="closeDialog()"
+  />
+}

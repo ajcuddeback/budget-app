@@ -85,6 +85,11 @@ type PendingAction =
  *   Marking due is an assertion; forgetting is the absence of one, and the confirmation says so.
  * - **Nothing here does arithmetic on money.** Every figure comes from the server as a string and
  *   goes to `Intl` as one (ADR-0006); the server computes and the client displays.
+ * - **Owed is a balance, so it is not part of the subtraction.** It gets its own block and its own
+ *   words; what `left` actually loses is `debtMinimumsNotInBills`, which is shown as the fourth
+ *   term beside the other three (`debt-plan.md`, decision 2). The count on that card spans every
+ *   currency while its two totals are the base currency only, and the card says so — a count and a
+ *   total that look like they describe the same debts and do not is worse than either alone.
  */
 @Component({
   selector: 'app-bills-page',
@@ -630,6 +635,11 @@ export class BillsPage {
   /** Two keys rather than "1 arrivals": the catalogue has no plural machinery. */
   protected arrivalsKey(source: IncomeSource): MessageKey {
     return source.dates.length === 1 ? 'bills.income.arrivalsOne' : 'bills.income.arrivals';
+  }
+
+  /** Same reason, for the Owed card's count. */
+  protected debtCountKey(summary: PeriodSummary): MessageKey {
+    return summary.debtCount === 1 ? 'bills.owed.countOne' : 'bills.owed.count';
   }
 
   private resetDialogState(): void {

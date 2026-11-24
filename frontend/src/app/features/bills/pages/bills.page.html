@@ -63,6 +63,13 @@
             <dt>{{ 'bills.termEnvelopes' | t }}</dt>
             <dd>{{ sums.envelopesAllocated | money: sums.currency }}</dd>
           </div>
+          <!-- The fourth term (debt-plan.md, decision 2). Shown beside the other three so the
+               subtraction is explainable on the page rather than mysterious: only the minimums no
+               bill row already carries come off, which is how a card's minimum is counted once. -->
+          <div>
+            <dt>{{ 'bills.termDebtMinimums' | t }}</dt>
+            <dd>{{ sums.debtMinimumsNotInBills | money: sums.currency }}</dd>
+          </div>
         </dl>
 
         <!-- Secondary, deliberately: bills count whether or not they are paid, so this is not the
@@ -518,7 +525,48 @@
       }
     </section>
 
-    <!-- 4. Envelopes — the other half of the subtraction, which has its own screen. -->
+    <!-- 4. Owed — a balance, and the one figure here that is NOT part of the subtraction. -->
+    @if (summary(); as sums) {
+      <section class="card" aria-labelledby="owed-heading">
+        <h2 class="card-title" id="owed-heading">{{ 'bills.owed.heading' | t }}</h2>
+
+        @if (sums.debtCount === 0) {
+          <p class="card-note">{{ 'bills.owed.none' | t }}</p>
+        } @else {
+          <p class="secondary-figure">
+            <span class="secondary-label">{{ 'bills.owed.total' | t }}</span>
+            <span class="secondary-amount">{{ sums.owed | money: sums.currency }}</span>
+          </p>
+          <p class="secondary-figure">
+            <span class="secondary-label">{{ 'bills.owed.minimums' | t }}</span>
+            <span class="secondary-amount">{{ sums.debtMinimums | money: sums.currency }}</span>
+          </p>
+          <p class="card-note">{{ debtCountKey(sums) | t: { count: sums.debtCount } }}</p>
+          <!-- Said out loud because the figures are NOT period-scoped: the summary asks the debt
+               service for today's balances whatever month the page is showing, and a past month's
+               heading over today's balance would be the wrong one (debt-plan.md, Known gaps). -->
+          <p class="card-note">{{ 'bills.owed.asOfToday' | t }}</p>
+          <p class="card-note">{{ 'bills.owed.body' | t }}</p>
+          <!-- Says which part of the minimums actually comes off, so the headline's fourth term is
+               explainable from this card. -->
+          <p class="card-note">
+            {{
+              'bills.owed.notInBills'
+                | t: { amount: sums.debtMinimumsNotInBills | money: sums.currency }
+            }}
+          </p>
+          <!-- The count spans every currency; the two totals are the base currency only
+               (ADR-0022). Said out loud, because a count and a total that look like they describe
+               the same debts and do not is worse than either on its own. -->
+          <p class="card-note">{{ 'bills.owed.mixedCurrency' | t: { currency: sums.currency } }}</p>
+        }
+        <div>
+          <a class="btn btn-secondary" routerLink="/debt-plan">{{ 'bills.owed.open' | t }}</a>
+        </div>
+      </section>
+    }
+
+    <!-- 5. Envelopes — the other half of the subtraction, which has its own screen. -->
     @if (summary(); as sums) {
       <section class="card" aria-labelledby="envelopes-summary-heading">
         <h2 class="card-title" id="envelopes-summary-heading">
