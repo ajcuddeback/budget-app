@@ -1,6 +1,8 @@
 package com.budgetowl.config;
 
 import com.budgetowl.common.web.MoneyJsonModule;
+import com.budgetowl.debt.service.DebtTermsSolver;
+import com.budgetowl.debt.service.PayoffLadder;
 import java.time.Clock;
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -79,5 +81,23 @@ public class CoreConfig {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    /**
+     * The debt arithmetic, as beans rather than as {@code @Component} scanning.
+     *
+     * <p>Both are stateless, thread-safe and hold no clock, no repository and no household, which
+     * is what keeps them unit-testable with no Spring context at all — {@code DebtTermsSolverTest}
+     * and {@code PayoffLadderTest} construct them directly. Declaring them here rather than
+     * annotating them keeps that true: nothing in either class knows it is in an application.
+     */
+    @Bean
+    DebtTermsSolver debtTermsSolver() {
+        return new DebtTermsSolver();
+    }
+
+    @Bean
+    PayoffLadder payoffLadder(DebtTermsSolver solver) {
+        return new PayoffLadder(solver);
     }
 }

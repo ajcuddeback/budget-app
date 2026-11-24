@@ -1,7 +1,9 @@
 # Feature: Debt plan and debt detail
 
 - **Slice:** 10
-- **Status:** Planned
+- **Status:** In progress — **API, services and schema shipped**; the two Angular routes, the
+  user-guide page and the demo fixtures are not built yet (see
+  [What slice 10 has built](#what-slice-10-has-built))
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-24
 - **Depends on:** accounts (3), transactions (5), bills & income (7)
@@ -347,8 +349,21 @@ debt's minimum, set by the household when it creates or edits the debt. Matching
 name, amount or category would be guessing, which is precisely why `bills-and-income.md` refuses to
 match bills to envelopes that way.
 
-So: `debtMinimumsNotInBills = Σ minimumPayment over active debts where bill_id is null`, and that is
-the only debt figure the Bills & Income period summary adds to anything.
+So: `debtMinimumsNotInBills = Σ minimumPayment over active debts whose bill_id is null **or
+names a retired bill**`, and that is the only debt figure the Bills & Income period summary adds to
+anything.
+
+**A retired bill carries nothing**, which is why the rule asks about the bill and not merely about
+the link. Retiring a bill is not deleting it: `bill_id` survives, so the obvious reading — *"it has
+a `bill_id`, so a bill covers it"* — would leave that minimum counted in **neither** place.
+`BillService.list` gives an inactive bill no occurrences at all, so it contributes nothing to the
+month's bills, and `left` would quietly rise by the minimum the household still owes. For the
+designs' figures: retire the car payment and `left` must stay at 1,755, not become 2,097.
+Active-only is exact rather than approximate, because a bill recurs by day-of-month and so every
+active bill has an occurrence in every period. Asserted by
+`DebtPeriodSummaryIT.retiring_the_bill_makes_that_minimum_count_into_what_is_left`, which is
+distinct from the delete case: deleting nulls the link (`ON DELETE SET NULL (bill_id)`), retiring
+does not.
 
 ### Currencies
 
@@ -474,8 +489,13 @@ because a field dropped by accident would silently change what the household bel
 payoff date.
 
 **Bills & Income gains debt figures.** `GET /api/periods/{period}/summary` adds `owed` (the total
-balance), `debtCount`, `debtMinimums` and `debtMinimumsNotInBills`. Whether the `left` figure
-subtracts the last of those is an open question below.
+balance), `debtCount`, `debtMinimums` and `debtMinimumsNotInBills`, and **`left` now subtracts
+`debtMinimumsNotInBills`** — decision 2 below, which changed a figure that had already shipped.
+`owed` is **not** subtracted: it is a balance, not a monthly commitment, and taking it off would
+tell a household owing £26,000 that it has nothing to spend this month. `owed` and `debtMinimums`
+are per currency — the household's base currency only — because a combined figure would need a rate
+the instance may not have (ADR-0022); `debtCount` spans them all, because a count needs no
+currency.
 
 Error codes: `terms-over-determined` · `terms-unsolvable` · `never-clears` (a reason on a null
 projection, not an error) · `plan-below-minimums` (a flag on the plan, not an error) ·
@@ -787,6 +807,19 @@ bounded and these unbounded:
   here because they are controls: a per-household debt cap, a paginated payment history, and a
   chart series bounded independently of the solver's iteration limit. Without them a cheap `POST`
   loop amplifies into an expensive `GET`.
+- **A rate that can be neither entered nor derived is ranked as 0%.** A debt with an entered
+  payment and horizon and no rate implies one — until its balance falls far enough that the payment
+  clears it before the horizon at *every* rate under 1000%, at which point no rate follows from the
+  three figures. The debt still gets its minimum and its place in the ladder, with
+  `aprDerivable: false` and `apr: null` on the wire, and the detail page says the rate is not
+  available rather than showing a figure nobody can check. Ranking it at 0% puts it last under
+  avalanche, which is the wrong end for a card: the alternative — dropping it from the plan — would
+  understate the household's commitments, which is worse. Fixed by the household entering the rate.
+- **A back-dated payment's split is taken against today's balance.** The interest on a payment the
+  household forgot last month is `round(balance_now × apr ÷ 1200)`, not the balance as it stood on
+  that date: reconstructing a balance as at an arbitrary past day needs a per-day ledger this slice
+  does not keep. The stored split is still what it always is — what was true when it was recorded —
+  and `interest + principal = amount` holds.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
 
@@ -868,6 +901,68 @@ places where it cannot be taken literally.
   *Installment · Alpine Auto Finance* and *Installment · Nelnet · manual entry*; neither `Debt` nor
   `Account` carries an institution name today. Added above as nullable text.
 
+## What slice 10 has built
+
+The API, the services, the entities and the repositories, plus the four new fields on the Bills &
+Income summary. **Not** the two Angular routes, the user-guide page or the debt fixtures in
+`tools/ui/fixtures/demo-data.ts` — those are the rest of the slice, and non-negotiables #8 and #11
+still apply to them.
+
+**The numbers the threat model left to the implementation**, each a constant with its reasoning
+beside it in code:
+
+| Bound | Value | Where |
+|---|---|---|
+| Debts per household | 50 | `DebtService.MAXIMUM_PER_HOUSEHOLD`, `409 debt-limit-reached` |
+| Payments per debt | 2,000 | `DebtService.MAXIMUM_PAYMENTS_PER_DEBT`, `409 conflict` |
+| Points in one chart line | 60 | `PayoffPlanService.MAXIMUM_SERIES_POINTS` |
+| Estimated months | 12 | `DebtBalanceService.MAXIMUM_ESTIMATED_MONTHS`, then **stale** |
+| Solves per caller per minute | 60 | `TermsSolveRateLimiter`, `429` with `Retry-After` |
+
+Past the series bound the line is **thinned, not truncated** — every *n*th month, with the first
+and last points always kept — and `seriesMonthStride` travels with it, because a truncated line
+would show a fifty-year plan clearing in five years and a client that assumed one point per month
+would mislabel the axis of exactly the long plan the cap exists for.
+
+**The rate limiter is new rather than reused.** `AuthRateLimiter` counts *failures* and backs off
+exponentially from the fifth, which is right for a login and wrong for a terms editor where a run
+of successful calls is the normal case. `TermsSolveRateLimiter` is a fixed window per caller, with
+the same refusal (`RateLimitedException` → `429`, finite `Retry-After`) and the same accepted risk:
+in memory, per instance (ADR-0026).
+
+**Two rules the doc above could not state precisely enough to implement**, recorded here because
+they decide what a balance reads as:
+
+1. **The anchor is the figure as at the *start* of its date.** The balance is the anchor minus the
+   principal of every payment dated **on or after** `anchorDate` — not strictly after. Strictly
+   after means a household that records a debt from today's statement and then logs the payment it
+   made today watches nothing happen, which is the first thing anybody does. The exception is a
+   `STATEMENT_CORRECTION` dated exactly on `anchorDate`: that is the row which *explains* where the
+   anchor came from, so applying it again would count the statement's disagreement twice. It still
+   stands in the history, which is the point of recording it rather than adjusting silently.
+2. **Confirming a balance writes an anchor that absorbs that date's payments.** `anchorBalance`
+   becomes the confirmed figure *plus* the principal already recorded on or after that date, so the
+   derivation above returns the statement figure exactly. In the ordinary case — a statement dated
+   after the last payment — that sum is zero and the anchor is the statement figure unchanged.
+
+**A rate is solved against the anchored balance**, before estimation: estimating needs a rate and
+solving a rate needs a balance, and taking the pre-estimate figure is the one order that
+terminates.
+
+**Not built, and deliberately:** decision 3's prompt on marking a linked bill's occurrence paid.
+That is a change to `PUT /api/bills/{id}/occurrences/{date}` and a UI prompt, neither of which is
+one of the sixteen endpoints here. The column, the uniqueness rule and the scoped resolution all
+exist — `POST /api/debts/{id}/payments` accepts a `billOccurrenceId` and refuses another
+household's or a second payment against the same occurrence — so the prompt is the only part left.
+
+**Deviation from the controls table:** the degrees-of-freedom rule is enforced in the **service**
+(`422 terms-over-determined`, naming the fields) and by `ck_debts_degrees_of_freedom`, rather than
+by Bean Validation at the edge. Bean Validation can only answer `400 validation-failed`, and the
+API table above names a `422` with its own code — and a `PATCH` is only over-determined once the
+three-way changes have been merged into the stored row, which is a judgement the edge cannot make.
+The request DTOs still carry the shape constraints (`@Pattern` on every amount and the rate), which
+is what keeps a malformed figure a `400` naming its field.
+
 ## Testing notes
 
 Beyond `../guides/testing-style.md`. The solver is the part that will be wrong silently, so most of
@@ -920,7 +1015,10 @@ this is about it.
   debt payments; deleting a debt takes its payments and no transactions.
 - **`DebtPeriodSummaryIT`** — the counted-once arithmetic, with the designs' own shape: three
   minimums of 185, 342 and 118 where the 342 is a linked bill, giving `debtMinimums = 645` and
-  `debtMinimumsNotInBills = 303`. Then delete the bill and watch the second figure become 645.
+  `debtMinimumsNotInBills = 303`. Then delete the bill and watch the second figure become 645. It
+  also asserts the subtraction itself — `left` is 1,755 and **not** 1,413 — because the figure it
+  guards had already shipped, and a quiet switch to `debtMinimums` would understate what is left by
+  a figure nobody could tell apart from the right one.
 - **`MoneyCrossHouseholdIT`** — another household's debt, payment, account, bill and transaction are
   all `404` on every route, as for transfers.
 - **`DebtLimitsIT`** — the three controls the threat model added, each proved by removing it:
@@ -931,9 +1029,23 @@ this is about it.
     payments than one page holds — it does not return everything and call it a page.
   - `GET /api/debt-plan` on a never-clearing debt returns a **bounded** series. Asserted against
     the bound, not against "it came back", because an unbounded series also comes back.
-  - `POST /api/debt-terms/solve` with values chosen to drive bisection to its limit answers
-    `terms-unsolvable` within the step cap rather than running on. Timed, so a regression that
-    removes the cap fails rather than merely getting slower.
+  - `POST /api/debt-terms/solve` with values chosen to drive the search to a cap answers
+    `terms-unsolvable` rather than running on. Timed, so a regression that removes a cap fails
+    rather than merely getting slower. **The cap that fires is the 600-month one**: the bisection
+    step cap needs a balance larger than `NUMERIC(19,4)` can hold, so it is unreachable through
+    the edge's own `@Pattern` and is asserted in `DebtTermsSolverTest` instead.
+  - A loop of solves past `TermsSolveRateLimiter.PERMITTED_PER_WINDOW` is `429` with a finite
+    `Retry-After`, and `TermsSolveRateLimiterTest` proves the window rolls, that one caller's loop
+    does not throttle another's editor, and that the refusal is never permanent.
+  - **A rung that cannot clear on its own minimum still clears once the roll-down reaches it**,
+    which is why the never-clears plan case is asserted on a ladder of **one** debt. With a second
+    debt below it the plan clears both, and a test written the obvious way would prove the
+    opposite of what it claims.
+- **`DebtTest`, `DebtPaymentTest`, `PayoffPlanTest`** — the entities validating themselves with no
+  database: releasing a field leaves `NULL` rather than a zero, entering one face of the horizon
+  clears the other, the split reconciles by construction and a correction keeps the interest that
+  was true on the day, an overpayment is not clamped, a monthly amount below the minimums is
+  accepted, and no `toString` prints a name, a servicer, a balance or a rate.
 - **`debt-data.spec.ts`** — the request builders: the entered set is sent explicitly, a release is
   sent as a release and not as an omission, amounts and `apr` leave as strings, the what-if is a
   `GET` that writes nothing, and a payment's split is displayed from the response rather than

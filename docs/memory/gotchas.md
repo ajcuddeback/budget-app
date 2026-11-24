@@ -961,3 +961,31 @@ test "to be safe". A property test that found a real counterexample in the payof
 (ADR-0036) is exactly the kind of result this text would have you discard.
 
 Mention it when it appears, so the person knows their build output contains it, and carry on.
+
+---
+
+## A figure composed from two services can fall between their definitions
+
+**Symptom.** `left` on Bills & Income read £342 too high — but only for a household that had
+retired the bill its car loan pointed at. Every test was green, including one for the delete case.
+
+**What happened.** The counted-once rule says a debt's minimum is not subtracted when a bill
+already carries it, and the obvious implementation asks the debt: *does it have a `bill_id`?* The
+other half of the subtraction asks the bills service, which gives an **inactive** bill no
+occurrences at all. Retiring a bill satisfies both exclusions at once: the link survives, so the
+debt code thinks a bill covers it, and the bill is gone from the month, so the bills total does
+not. The minimum was counted in neither term.
+
+**Why the tests did not catch it.** There *was* a test for deleting the bill, and it passed —
+deleting nulls the link (`ON DELETE SET NULL (bill_id)`), so the minimum starts counting. Retiring
+looks like the same operation from the debt's side and is the opposite from the bill's. A test for
+one is not a test for the other.
+
+**The shape to look for.** Whenever one figure is composed from two services, each with its own
+idea of which rows are "in", the gap is a row one of them counts and the other has excluded. Ask
+the question of the service that owns the answer — here, *is this bill live?* goes to the bills
+table, not to the presence of a foreign key — and write the test for the state in between, not
+only for the two obvious ones.
+
+**Where.** `DebtService.figures`, `BillRepository.findActiveIdsForHousehold`,
+`DebtPeriodSummaryIT.retiring_the_bill_makes_that_minimum_count_into_what_is_left`.

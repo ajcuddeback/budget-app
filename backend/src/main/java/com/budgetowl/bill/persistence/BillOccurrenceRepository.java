@@ -40,6 +40,17 @@ public interface BillOccurrenceRepository extends Repository<BillOccurrence, UUI
             @Param("householdId") UUID householdId, @Param("period") LocalDate period);
 
     /**
+     * One recorded occurrence by its own id.
+     *
+     * <p>Added for the debt slice: a debt payment may name the occurrence that wrote it ({@code
+     * debt_payments.bill_occurrence_id}), and an id arriving in a request body is a lookup key that
+     * has to be resolved through the household before anything references it (ADR-0017). The
+     * occurrence routes themselves still address the natural key {@code (billId, dueDate)} — see
+     * {@link #findOne} — because that URL is valid before a row exists at it.
+     */
+    Optional<BillOccurrence> findByIdAndHouseholdId(UUID id, UUID householdId);
+
+    /**
      * How many rows one bill has.
      *
      * <p>Scoped on the household as well as the bill, as everything here is, although the bill was

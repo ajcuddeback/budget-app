@@ -1,9 +1,11 @@
 # Feature: Bills and income
 
 - **Slice:** 7
-- **Status:** Shipped
+- **Status:** Shipped. **Amended by slice 10** — `left` lost a fourth term; see
+  [What is left to spend](#what-is-left-to-spend)
 - **Depends on:** categories (4), transactions (5), envelopes (6)
-- **Related:** ADR-0025 (bills are occurrences), ADR-0032 (occurrences are projected), ADR-0006
+- **Related:** ADR-0025 (bills are occurrences), ADR-0032 (occurrences are projected), ADR-0006,
+  `debt-plan.md` (slice 10, which changed this page's headline figure)
 - **Designs:** `design/canvas/` — the Bills & Income page, bills and income blocks with envelopes
   beneath them
 
@@ -15,8 +17,12 @@ the only question the page exists for:
 
 > **What is left to spend this month?**
 
-That figure is income, minus the month's bills, minus what is set aside in envelopes. It is one
-subtraction and the page leads with it.
+That figure is income, minus the month's bills, minus what is set aside in envelopes, minus the
+debt minimums that are not already a bill row. It is one subtraction and the page leads with it.
+
+**Slice 10 added the fourth term**, which changed a figure that had already shipped — the owner's
+decision, recorded in `debt-plan.md`. See [What is left to spend](#what-is-left-to-spend) for why
+it is the *not-already-a-bill* minimums and not all of them.
 
 **Bills count whether or not they are paid.** Rent that has already gone is not money still
 available, so subtracting only the unpaid ones would make "what's left" _rise_ every time somebody
@@ -35,6 +41,44 @@ skipped one contributes nothing. The outstanding figure is reported alongside, s
 - As a member, I want to see what is left after the predictable things are accounted for.
 
 ## Rules and behaviour
+
+### What is left to spend
+
+```
+left = income − bills − envelopesAllocated − debtMinimumsNotInBills
+```
+
+The fourth term arrived with slice 10 (`debt-plan.md`, decision 2) and is the part of the debt
+minimums **not already carried by a bill row**. A card's or a car loan's minimum is frequently also
+a bill — *"the car payment is its bill row"* — and subtracting all of them would count that one
+twice. The designs' own figures are minimums of 185, 342 and 118: 645 in all, of which only
+185 + 118 = **303** is new, because the 342 is already one of the bill rows.
+
+The link is **explicit, never inferred**: `debts.bill_id` names the bill, set by the household.
+Matching a debt to a bill by name, amount or category would be guessing — the same refusal this
+page already makes about matching bills to envelopes.
+
+The term asks whether the bill is **live**, not merely whether the link exists. A retired bill
+produces no occurrences, so it contributes nothing to `bills`; if its debt were still treated as
+covered, that minimum would be counted in neither term and this page's headline would rise by it
+the moment somebody retired the bill. So retiring the car payment moves its 342 out of `bills` and
+into `debtMinimumsNotInBills`, and `left` does not move. Deleting the bill does the same thing by a
+different route — the link is nulled.
+
+Three consequences, all of them visible rather than hidden:
+
+- **The figure fell when slice 10 shipped**, for any household with a debt whose minimum is not a
+  bill. That is the point: the money was already committed and the page was not saying so.
+- **Deleting a bill that a debt is linked to makes `left` fall further.** The link is nulled
+  (`ON DELETE SET NULL (bill_id)`), so that minimum starts counting here instead. Correct and
+  surprising, which is why the page says why.
+- **`owed` is not part of the subtraction.** It is the total debt balance — a balance, not a
+  monthly commitment — and taking it off would tell a household owing £26,000 that it has nothing
+  to spend this month. It is reported for the **Owed** card and nothing else.
+
+`owed` and `debtMinimums` cover the household's base currency only; a combined figure across
+currencies would need a rate the instance may not have (ADR-0022). `debtCount` spans every
+currency, because a count needs none.
 
 ### A bill is a plan, not a transaction
 
@@ -110,7 +154,7 @@ settle two bills, for the reason ADR-0031 gives about envelope entries.
 | `PUT`                               | `/api/bills/{id}/occurrences/{date}` | Record a status. Idempotent; creates the row  |
 | `DELETE`                            | `/api/bills/{id}/occurrences/{date}` | Back to projected — forget what was recorded  |
 | `GET` · `POST` · `PATCH` · `DELETE` | `/api/income[/{id}]`                 |                                               |
-| `GET`                               | `/api/periods/{period}/summary`      | Income, bills, envelopes and what is left     |
+| `GET`                               | `/api/periods/{period}/summary`      | Income, bills, envelopes, debts and what is left |
 
 `PUT` rather than `POST` for an occurrence: the URL is valid before anything exists at it, and
 recording the same status twice is the same request twice. `{date}` is the occurrence's due date,
@@ -155,6 +199,13 @@ picker (previous / next) that every block follows at once:
 4. **Envelopes** — a summary block using `envelopesAllocated`, linking to `/envelopes`. The
    block slice 6 deliberately did not build, because this page did not exist; it is a link and a
    figure, not a second envelopes screen.
+5. **Owed** — the fourth block, added by slice 10 and linking to `/debt-plan`: `owed`, `debtCount`,
+   and the counted-once sentence in the household's own language (*"Minimums · each counted once
+   here (the car payment is its bill row) — £645"*). The **What's left** card shows
+   `debtMinimumsNotInBills` as its fourth term beside the other three, so the subtraction is
+   visible rather than mysterious. The card and the headline both come from
+   `GET /api/periods/{period}/summary`, which composes them from the debt service — so the page
+   cannot show an Owed card its own headline disagrees with.
 
 A bill that is overdue says so. A bill paid for other than its expected amount shows both figures,
 labelled, and is tagged as not what was budgeted — and **one** figure when they agree, because the
@@ -211,6 +262,10 @@ Retiring a bill or a source is `PATCH active: false` and is offered as **Retire*
   idempotent `PUT`, and that a projected period and an untouched one read identically.
 - `BillProjectionTest` — the schedule arithmetic as a unit, including February and leap years.
 - `IncomeIT`, `PeriodSummaryIT` — the figure the page leads with.
+- `DebtPeriodSummaryIT` (slice 10) — the fourth term: the counted-once arithmetic on the designs'
+  own 185 / 342 / 118, that `left` subtracts 303 and **not** 645, and that deleting the linked bill
+  makes it 645. `PeriodSummaryIT`'s own cases stay green because a household with no debts has a
+  fourth term of zero, which is the property that made this a safe change to a shipped figure.
 - `bills-data.spec.ts` — the request builders: a schedule sends only its own parameters, a kind
   change clears and re-requires them, `amountVaries` and `tolerance` travel together, an amount
   stays a string, and recording a status is a `PUT` to a date with no version.

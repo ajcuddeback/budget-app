@@ -1,7 +1,10 @@
 package com.budgetowl.api;
 
 import com.budgetowl.auth.service.AuthRateLimiter;
+import com.budgetowl.debt.service.TermsSolveRateLimiter;
 import com.budgetowl.smoke.PostgresTestBase;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,15 +54,24 @@ public abstract class ApiTestBase extends PostgresTestBase {
      */
     @Autowired private AuthRateLimiter rateLimiter;
 
+    /**
+     * The solve endpoint's limiter, for the same reason: it is in memory and one instance serves
+     * the whole shared context, so {@code DebtLimitsIT} deliberately exhausting it would leave
+     * every later test's solve refused with a {@code 429}.
+     */
+    @Autowired private TermsSolveRateLimiter solveRateLimiter;
+
     protected JdbcTemplate jdbc;
 
     @BeforeEach
     void resetDatabase() {
         rateLimiter.clearAll();
         jdbc = new JdbcTemplate(dataSource);
+        solveRateLimiter.clearAll();
         jdbc.execute(
                 """
-                TRUNCATE envelope_entries, envelopes, transactions, payees, categories, accounts,
+                TRUNCATE debt_payments, debts, payoff_plan_snapshots, payoff_plans,
+                         envelope_entries, envelopes, transactions, payees, categories, accounts,
                          household_invitations,
                          auth_tokens, household_members, households, users,
                          spring_session_attributes, spring_session
@@ -271,6 +283,44 @@ public abstract class ApiTestBase extends PostgresTestBase {
                                         categoryId == null ? "null" : "\"" + categoryId + "\""));
         if (response.status() != 201) {
             throw new AssertionError("could not create a transaction: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * A debt, created through the API as a caller who may write.
+     *
+     * <p>Only the fields every debt needs: a name, a kind, a balance and the date it was true, a
+     * rate and a minimum. The rate alone is enough — the payment comes from the plan, or falls back
+     * to the minimum — which is exactly what onboarding's three fields capture.
+     *
+     * @param billId the bill whose occurrence pays this minimum, or null. The only thing that keeps
+     *     a minimum from being counted in both Bills &amp; Income and the debt plan
+     * @return its id
+     */
+    protected UUID createDebt(
+            ApiClient client,
+            String name,
+            String balance,
+            String apr,
+            String minimumPayment,
+            UUID billId) {
+        ApiResponse response =
+                client.post(
+                        "/api/debts",
+                        """
+                        {"name":"%s","kind":"CREDIT_CARD","balance":"%s","balanceDate":"%s",
+                         "apr":"%s","minimumPayment":"%s","billId":%s}
+                        """
+                                .formatted(
+                                        name,
+                                        balance,
+                                        LocalDate.now(ZoneOffset.UTC),
+                                        apr,
+                                        minimumPayment,
+                                        billId == null ? "null" : "\"" + billId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a debt: " + response.body());
         }
         return UUID.fromString(response.stringField("id"));
     }

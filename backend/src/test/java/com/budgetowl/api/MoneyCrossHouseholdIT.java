@@ -47,6 +47,15 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
     private static final String THEIR_INCOME = "Grace's salary";
 
     /**
+     * The sharpest string in this file. A servicer name discloses with no amount attached at all —
+     * <em>Nelnet</em> says this household has student debt — so it is the thing to search a
+     * response for.
+     */
+    private static final String THEIR_SERVICER = "Grace's payday lender";
+
+    private static final String THEIR_DEBT = "Grace's loan";
+
+    /**
      * Distinctive, because the envelope term of the summary is a <b>SUM</b> rather than a row. An
      * unscoped sum leaks a number, not a record — it reads as the household being several hundred
      * pounds worse off than it is, and nobody files a bug about that.
@@ -64,7 +73,9 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
             UUID bill,
             UUID income,
             UUID envelope,
-            UUID transferGroup) {}
+            UUID transferGroup,
+            UUID debt,
+            UUID debtPayment) {}
 
     @AfterEach
     void restoreTheSingletonIndex() {
@@ -472,6 +483,160 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         assertThat(ledger.numberField("totalElements")).isZero();
     }
 
+    static List<DebtIT.Endpoint> everyRouteNamingADebt() {
+        return DebtIT.everyRoute().stream()
+                .filter(endpoint -> endpoint.path().contains("{id}"))
+                .toList();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyRouteNamingADebt")
+    void answers404AndNever403ForAnotherHouseholdsDebt(DebtIT.Endpoint endpoint) {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+
+        ApiResponse response = endpoint.callWith(signIn(OWNER_EMAIL, OWNER_SECRET), theirs.debt());
+
+        // 404 for both a missing row and one belonging to somebody else, as everywhere since
+        // ADR-0008. There is no oracle to build.
+        assertThat(response.status()).isEqualTo(404);
+        assertThat(response.stringField("code")).isEqualTo("not-found");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyRouteNamingADebt")
+    void answers404ForAnotherHouseholdsDebtOnTheBearerTransportToo(DebtIT.Endpoint endpoint) {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        ApiClient phone = mobile(OWNER_EMAIL, OWNER_SECRET, "Ada's phone");
+
+        assertThat(endpoint.callWith(phone, theirs.debt()).status())
+                .as("neither transport may skip a check the other applies (ADR-0018)")
+                .isEqualTo(404);
+    }
+
+    @Test
+    void answers404ForAnotherHouseholdsDebtPayment() {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        UUID ours =
+                createDebt(
+                        signIn(OWNER_EMAIL, OWNER_SECRET),
+                        "Ours",
+                        "100.00",
+                        "1.000",
+                        "10.00",
+                        null);
+        ApiClient us = signIn(OWNER_EMAIL, OWNER_SECRET);
+
+        // Their payment id under OUR debt: the pair has to be scoped, not just the debt. A query
+        // that resolved the payment by id alone would edit a row in another household through a
+        // path that looks entirely ordinary.
+        assertThat(
+                        us.patch(
+                                        "/api/debts/" + ours + "/payments/" + theirs.debtPayment(),
+                                        "{\"amount\":\"1.0000\",\"version\":0}")
+                                .status())
+                .isEqualTo(404);
+        assertThat(us.delete("/api/debts/" + ours + "/payments/" + theirs.debtPayment()).status())
+                .isEqualTo(404);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT amount::text FROM debt_payments WHERE id = ?",
+                                String.class,
+                                theirs.debtPayment()))
+                .as("their record of their own payment, exactly as it was")
+                .isEqualTo("342.0000");
+    }
+
+    @Test
+    void doesNotLeakAnotherHouseholdsDebtsIntoOurListOrOurPlan() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse listed = household.owner().get("/api/debts?includeArchived=true");
+        ApiResponse plan = household.owner().get("/api/debt-plan");
+
+        assertThat(listed.status()).isEqualTo(200);
+        assertThat(listed.body())
+                .doesNotContain(THEIR_DEBT)
+                .doesNotContain(THEIR_SERVICER)
+                .doesNotContain("9876.0000");
+        assertThat(listed.stringField("owed")).isEqualTo("0.0000");
+        assertThat(listed.stringField("debtMinimums")).isEqualTo("0.0000");
+        // The plan is a statement of disposable income, and the strategy is a choice somebody
+        // made. One household per instance means this reads from OUR plan row or from none.
+        assertThat(plan.body()).doesNotContain("1234.0000").doesNotContain("SNOWBALL");
+        assertThat(plan.numberField("debtCount")).isZero();
+    }
+
+    @Test
+    void doesNotCountAnotherHouseholdsDebtMinimumsInWhatIsLeftToSpend() {
+        Household household = seedHousehold();
+        seedASecondHousehold();
+
+        ApiResponse summary = household.owner().get("/api/periods/2099-03/summary");
+
+        // A leak here would not look like a leak. It would look like the household being £342 a
+        // month worse off than it is, which nobody files a bug about.
+        assertThat(summary.stringField("owed")).isEqualTo("0.0000");
+        assertThat(summary.stringField("debtMinimums")).isEqualTo("0.0000");
+        assertThat(summary.stringField("debtMinimumsNotInBills")).isEqualTo("0.0000");
+        assertThat(summary.numberField("debtCount")).isZero();
+        assertThat(summary.stringField("left")).isEqualTo("0.0000");
+    }
+
+    @Test
+    void cannotBindOneOfOurDebtsToAnotherHouseholdsAccountBillOrTransaction() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        String today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+
+        ApiResponse foreignAccount =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts",
+                                """
+                                {"name":"Ours","kind":"CREDIT_CARD","balance":"100.0000",
+                                 "balanceDate":"%s","apr":"1.000","minimumPayment":"10.0000",
+                                 "accountId":"%s"}
+                                """
+                                        .formatted(today, theirs.account()));
+        ApiResponse foreignBill =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts",
+                                """
+                                {"name":"Ours","kind":"CREDIT_CARD","balance":"100.0000",
+                                 "balanceDate":"%s","apr":"1.000","minimumPayment":"10.0000",
+                                 "billId":"%s"}
+                                """
+                                        .formatted(today, theirs.bill()));
+
+        // Binding to their account would leak its currency and its existence through our own debt
+        // screen; binding to their bill would subtract their minimum from our month.
+        assertThat(foreignAccount.status()).isEqualTo(404);
+        assertThat(foreignBill.status()).isEqualTo(404);
+
+        UUID ours = createDebt(household.owner(), "Ours", "100.00", "1.000", "10.00", null);
+        ApiResponse foreignTransaction =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + ours + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"10.0000","transactionId":"%s"}
+                                """
+                                        .formatted(today, theirs.transaction()));
+
+        assertThat(foreignTransaction.status()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debt_payments", Long.class))
+                .as("only their own seeded payment exists")
+                .isEqualTo(1L);
+    }
+
     @Test
     void reallyHasTwoHouseholdsInTheDatabase() {
         // Without this, every assertion above would also pass against a single household — which
@@ -488,6 +653,11 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM income_sources", Long.class))
                 .isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM envelopes", Long.class)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debts", Long.class)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debt_payments", Long.class))
+                .isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM payoff_plans", Long.class))
+                .isEqualTo(1L);
     }
 
     /** Seeds a whole second household — user, membership, account, category, payee, transaction. */
@@ -517,6 +687,8 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
         UUID envelope = UUID.randomUUID();
         UUID transferGroup = UUID.randomUUID();
         UUID secondAccount = UUID.randomUUID();
+        UUID debt = UUID.randomUUID();
+        UUID debtPayment = UUID.randomUUID();
 
         // A household and its first OWNER have to be committed together: the at-least-one-owner
         // constraint is DEFERRABLE INITIALLY DEFERRED and re-reads the counter at COMMIT.
@@ -640,8 +812,57 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                                     household,
                                     secondAccount,
                                     transferGroup);
+                            // A debt and a payment against it, with a servicer name and a
+                            // balance distinctive enough that a leak would be visible in any
+                            // response body — and real rows rather than random ids, because a
+                            // random UUID answers 404 against a completely unscoped findById.
+                            jdbc.update(
+                                    """
+                                    INSERT INTO debts (id, household_id, name, kind, servicer,
+                                                       currency, apr, minimum_payment,
+                                                       anchor_balance, anchor_date, balance_source,
+                                                       bill_id, account_id)
+                                    VALUES (?, ?, ?, 'INSTALLMENT', ?, 'GBP', 29.900, 342.0000,
+                                            9876.0000, DATE '2026-07-01', 'CONFIRMED', ?, ?)
+                                    """,
+                                    debt,
+                                    household,
+                                    THEIR_DEBT,
+                                    THEIR_SERVICER,
+                                    bill,
+                                    account);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO debt_payments (id, household_id, debt_id, paid_date,
+                                                               amount, interest, principal,
+                                                               balance_after, provenance,
+                                                               transaction_id)
+                                    VALUES (?, ?, ?, DATE '2026-07-15', 342.0000, 42.0000,
+                                            300.0000, 9576.0000, 'USER_LOGGED', ?)
+                                    """,
+                                    debtPayment,
+                                    household,
+                                    debt,
+                                    transaction);
+                            jdbc.update(
+                                    """
+                                    INSERT INTO payoff_plans (id, household_id, strategy,
+                                                              monthly_amount)
+                                    VALUES (?, ?, 'SNOWBALL', 1234.0000)
+                                    """,
+                                    UUID.randomUUID(),
+                                    household);
                         });
         return new Theirs(
-                household, account, category, transaction, bill, income, envelope, transferGroup);
+                household,
+                account,
+                category,
+                transaction,
+                bill,
+                income,
+                envelope,
+                transferGroup,
+                debt,
+                debtPayment);
     }
 }

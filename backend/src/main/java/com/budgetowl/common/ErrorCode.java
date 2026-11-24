@@ -149,10 +149,45 @@ public enum ErrorCode {
      */
     PASSWORD_LOGIN_LOCKED("password-login-locked", 409, "Password login cannot be turned off yet"),
 
+    /**
+     * A household is capped at {@code DebtService.MAXIMUM_PER_HOUSEHOLD} debts.
+     *
+     * <p>Not a tidiness rule: {@code GET /api/debt-plan} projects <b>both</b> strategies over every
+     * debt, so an unbounded number of debts turns a loop of cheap {@code POST}s into an expensive
+     * {@code GET} (docs/features/debt-plan.md, Security considerations).
+     */
+    DEBT_LIMIT_REACHED("debt-limit-reached", 409, "This household has too many debts"),
+
+    /**
+     * A debt whose balance has reached zero takes no new payments and no new terms. Confirming a
+     * balance is the way back — a correction reopens it, which is why that one route is allowed.
+     */
+    DEBT_PAID_OFF("debt-paid-off", 409, "This debt is paid off"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 
     CONFLICT("conflict", 409, "Conflict"),
+
+    /**
+     * All three of {@code apr}, {@code payment} and the horizon were entered.
+     *
+     * <p>One equation among four quantities has three degrees of freedom, so a third entered value
+     * over-determines it. A {@code 422} naming the fields rather than silently dropping one: a
+     * number the household typed must never be quietly replaced by a computed one. The client is
+     * what releases a field (docs/features/debt-plan.md).
+     */
+    TERMS_OVER_DETERMINED("terms-over-determined", 422, "These terms over-determine the equation"),
+
+    /**
+     * There is no answer: a horizon the balance cannot reach at any non-negative rate, a payment
+     * that clears it at every rate, a payoff month in the past, or a search that hit one of the
+     * solver's caps. The cap being reachable is the point — it is what keeps one request bounded.
+     *
+     * <p><b>Not</b> the same as {@code never-clears}, which is a reason reported beside a null
+     * projection on terms that were accepted and stored.
+     */
+    TERMS_UNSOLVABLE("terms-unsolvable", 422, "These terms have no solution"),
 
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
     INTERNAL_ERROR("internal-error", 500, "Internal error");

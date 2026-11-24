@@ -36,8 +36,13 @@ public class PeriodController {
     }
 
     /**
-     * The three terms and the subtraction.
+     * The four terms and the subtraction.
      *
+     * @param owed the total debt balance — the <b>Owed</b> card. <b>Not</b> part of the
+     *     subtraction: it is a balance rather than a monthly commitment
+     * @param debtMinimumsNotInBills the fourth term, and the only debt figure {@code left} loses.
+     *     The minimums already carried by a bill row are excluded, so a card's minimum is counted
+     *     once (docs/features/debt-plan.md)
      * @param left <b>goes negative</b>, and a client must render that rather than clamping it: "you
      *     are £180 short this month" is the information
      */
@@ -48,6 +53,10 @@ public class PeriodController {
             BigDecimal billsOutstanding,
             BigDecimal billsOverdue,
             BigDecimal envelopesAllocated,
+            BigDecimal owed,
+            int debtCount,
+            BigDecimal debtMinimums,
+            BigDecimal debtMinimumsNotInBills,
             BigDecimal left,
             String currency) {
 
@@ -65,6 +74,10 @@ public class PeriodController {
                     summary.billsOutstanding().amount(),
                     summary.billsOverdue().amount(),
                     summary.envelopesAllocated().amount(),
+                    summary.owed().amount(),
+                    summary.debtCount(),
+                    summary.debtMinimums().amount(),
+                    summary.debtMinimumsNotInBills().amount(),
                     summary.left().amount(),
                     summary.left().currency().getCurrencyCode());
         }

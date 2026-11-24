@@ -3,6 +3,7 @@ package com.budgetowl.bill.persistence;
 import com.budgetowl.bill.domain.Bill;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -47,6 +48,20 @@ public interface BillRepository extends Repository<Bill, UUID> {
     List<Bill> findAllForHousehold(
             @Param("householdId") UUID householdId,
             @Param("includeInactive") boolean includeInactive);
+
+    /**
+     * The ids of the bills that the Bills &amp; Income page actually carries.
+     *
+     * <p>Exists for one rule in the period summary: a debt's minimum is left out of {@code
+     * debtMinimumsNotInBills} when a bill already carries it, and a <b>retired</b> bill carries
+     * nothing — {@code BillService.list} gives an inactive bill no occurrences, so it contributes
+     * zero to the month's total. Without this query, retiring the bill a debt points at would leave
+     * that minimum counted in neither place and the "what's left" headline would quietly rise by
+     * it. Active-only is also exact rather than approximate: a bill recurs by day-of-month, so
+     * every active bill has an occurrence in every period.
+     */
+    @Query("select b.id from Bill b where b.householdId = :householdId and b.active = true")
+    Set<UUID> findActiveIdsForHousehold(@Param("householdId") UUID householdId);
 
     long countByHouseholdId(UUID householdId);
 }

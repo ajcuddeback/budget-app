@@ -38,7 +38,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | File import (CSV/OFX/QIF) | Planned | _not written_ |
 | Bank connections | Planned | _not written_ |
 | Admin console (instance operation) | In progress — slice 9 | [admin-console.md](admin-console.md) |
-| Debt plan & debt detail | Planned — slice 10; feature doc written, open questions outstanding | [debt-plan.md](debt-plan.md) |
+| Debt plan & debt detail | In progress — slice 10; API, services and schema shipped, the two screens and the user-guide page are not | [debt-plan.md](debt-plan.md) |
 | Goals | Planned | _not written_ |
 | Reporting & insights | Planned | _not written_ |
 | Weekly check-in | Planned | _not written_ |

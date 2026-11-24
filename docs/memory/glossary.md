@@ -23,12 +23,12 @@ tiebreaker. Add with `/remember`.
 | **Converted** | A figure derived from a rate on a date. Always labelled as such, never persisted, never the input to stored arithmetic |
 | **Locale** | A per-member language and formatting choice. Independent of currency — English text with German number formatting is legitimate |
 | **Income** | A transaction with a positive amount in a category of kind `INCOME`. Distinct from an **IncomeSource**, which is the *scheduled* arrival — salary every other Wednesday — and carries whether its figure is derived from history or entered by hand. |
-| **Left over** | What remains after income, bills and envelopes are accounted for. A product term the designs use on Bills & Income — in code and in the API, prefer **net** or **available**. |
+| **Left over** | What remains after income, bills, envelopes **and the debt minimums that are not already a bill row** are accounted for: `left = income − bills − envelopesAllocated − debtMinimumsNotInBills`. The fourth term arrived with slice 10 and changed a figure slice 7 had already shipped (`docs/features/debt-plan.md`, decision 2); a minimum that is also a bill is counted once, and `owed` — a balance, not a monthly commitment — is never subtracted. A product term the designs use on Bills & Income — in code and in the API, prefer **net** or **available**. |
 | **Money** | The value object: `BigDecimal` + currency. Never a bare number. |
 | **Payee** | Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" are one payee. |
 | **Period** | A `YearMonth`. Serialized `"2026-08"`. Replaces the legacy month/year string pair. |
 | **Reconciled** | A transaction confirmed against a bank statement. Stronger than `CLEARED`. |
-| **Debt** | A balance being reduced, with terms. Its minimum payment appears in Bills & Income as a bill row and is counted once. |
+| **Debt** | A balance being reduced, with terms. Where the household links it to a **live** bill (`debts.bill_id`), that minimum is the bill's row and is counted once; where it does not — no link, or a link to a retired bill, which produces no occurrences — the minimum is what Bills & Income subtracts. The balance is an **anchor** plus the payments after it, never a stored total. |
 | **Balance source** | Where a debt's balance came from: a linked statement, a figure the user confirmed, or Owl's estimate. Never presented identically — an inferred number and a confirmed one are different claims. |
 | **Check-in** | The weekly four-step pass: what's new, categorize, bills, next week. Steps with nothing to answer are skipped. Persisted as a draft; nothing takes effect until it is finished. |
 | **Owl** | The optional assistant. Runs in a self-hosted sidecar or does not exist on that instance (ADR-0027). |
