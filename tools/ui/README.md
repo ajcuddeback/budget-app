@@ -97,6 +97,13 @@ mvn -f backend/pom.xml test -Dtest=DemoFixtureIT -Dfixtures.write=true
 Read the diff afterwards and recapture the guide screenshots it changes
 (`tools/userguide-check.sh` finds the stale ones).
 
+The Visa is **seeded at an older statement and paid down**, not conjured at its current balance.
+That is what makes the detail page's payment history a real one: six payments the application
+split into interest and principal itself — interest falling, principal rising — and a statement
+correction the application computed when the August figure was confirmed. A hand-written history
+would be six rows whose arithmetic nobody checked, printed directly beneath a sentence explaining
+how compounding works.
+
 Three things worth knowing before extending it:
 
 - **It is a `.ts` file, not a `.json` one.** Playwright runs this harness's TypeScript through its

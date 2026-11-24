@@ -972,6 +972,20 @@ These were open forks the designs do not settle. The repository owner ruled on a
 2026-11-23, before any code was written, which is the point of writing this doc first. Each one
 below is settled; the reasoning that was weighed is kept so it is not re-argued from scratch.
 
+**An eighth, decided during implementation rather than before it, and flagged for reversal.**
+Building the page surfaced a gap this doc had: its UI section gives **no control that sets
+`monthlyAmount`**. Every date on `/debt-plan` — the debt-free month, each rung's clear date, the
+whole chart — derives from that one figure, and there was nowhere in the application to enter it.
+The three options were a field on `/debt-plan` beside the header strip that already displays the
+figure; a field in the Add-a-debt dialog, which is wrong because it is plan-level rather than
+per-debt; and deferring to slice 11, since this doc says the extra *"comes from what's left after
+your goals"* and goals may want to compute it.
+
+It is built as a plain editable amount on `/debt-plan`, because the alternative ships a page whose
+every number comes from a value the household can neither see the source of nor change. **If
+slice 11 computes it from goals, this becomes the manual override rather than dead work** — which
+is the reason this was a safe call to make without waiting: the shapes do not conflict.
+
 1. **A debt payment does not write a transaction.** It is a plan record with a nullable
    `transactionId`, so a household can attach the ledger row they already recorded. Deleting that
    transaction leaves the payment standing and **does not move the debt balance** — the link is

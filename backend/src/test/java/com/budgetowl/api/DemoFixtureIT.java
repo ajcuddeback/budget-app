@@ -60,8 +60,28 @@ class DemoFixtureIT extends ApiTestBase {
     private static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
 
     /** The day the statements the demo balances come from were true. */
-    private static final java.sql.Date DEMO_ANCHOR_DATE =
-            java.sql.Date.valueOf(LocalDate.of(2026, 8, 20));
+    private static final LocalDate DEMO_STATEMENT_DATE = LocalDate.of(2026, 8, 20);
+
+    /**
+     * Where the Visa's history starts.
+     *
+     * <p>The card is seeded at an older statement and paid down, rather than conjured at its
+     * current balance, so the detail page's history is a <b>real</b> one: six payments the
+     * application split into interest and principal itself, and a statement correction the
+     * application computed. A hand-written history would be six rows whose arithmetic nobody
+     * checked, under a heading that says what the balance was after each one.
+     */
+    private static final LocalDate VISA_FIRST_STATEMENT = LocalDate.of(2026, 2, 20);
+
+    /**
+     * What the Visa owed in February.
+     *
+     * <p>Chosen so that six payments of $445 land near the $6,180 the designs show for August: the
+     * confirmation then writes a small correction rather than a large one, which is the shape a
+     * real statement reconciliation has. The exact figure is the application's, not this constant's
+     * — {@code confirmBalance} absorbs whatever the difference turns out to be.
+     */
+    private static final String VISA_FEBRUARY_BALANCE = "8240.00";
 
     private static final Path COMMITTED =
             Path.of("..", "tools", "ui", "fixtures", "debt-api.generated.ts");
@@ -131,15 +151,10 @@ class DemoFixtureIT extends ApiTestBase {
         Household household = seedDemoHousehold();
         Fixture seeded = seedTheDemoDebts(household);
 
-        // Every date the household ENTERED is normalised to the demo month, so regenerating on a
-        // different day cannot change the file. The API refuses a balance date in the future, so
-        // these cannot be entered as August 2026 while the clock still says today — hence the
-        // UPDATE rather than a different request body.
-        jdbc.update("UPDATE debts SET anchor_date = ?", DEMO_ANCHOR_DATE);
-        jdbc.update("UPDATE debt_payments SET paid_date = ?", DEMO_ANCHOR_DATE);
-
-        // And now the clock, so every DERIVED date — payoff months, the debt-free month, the
-        // estimated-months count — is relative to a fixed point.
+        // Nothing to normalise: the demo household lives in a month that is already in the past,
+        // so every date it enters can be written literally and the API accepts it. Only the
+        // DERIVED dates need the clock — payoff months, the debt-free month, the estimated-months
+        // count — so it moves once, here, after everything is stored.
         clock.moveTo(DEMO_TODAY);
 
         Map<String, String> generated = new LinkedHashMap<>();
@@ -242,8 +257,7 @@ class DemoFixtureIT extends ApiTestBase {
      */
     private Fixture seedTheDemoDebts(Household household) {
         Map<UUID, String> stable = new LinkedHashMap<>();
-        // Seeded at real time; normalised to DEMO_ANCHOR_DATE afterwards.
-        String statementDate = LocalDate.now(ZoneOffset.UTC).toString();
+        String statementDate = DEMO_STATEMENT_DATE.toString();
 
         UUID carPaymentBill =
                 UUID.fromString(
@@ -258,18 +272,21 @@ class DemoFixtureIT extends ApiTestBase {
                                 .stringField("id"));
         stable.put(carPaymentBill, "bil-0008");
 
+        // The Visa is seeded at its FEBRUARY statement and paid down, so the detail page's
+        // history is one the application produced rather than one somebody typed.
         UUID visa =
                 createDemoDebt(
                         household,
                         "Visa",
                         "CREDIT_CARD",
                         "Chase",
-                        "6180.00",
+                        VISA_FEBRUARY_BALANCE,
                         "22.900",
                         "185.00",
                         "10650.00",
-                        statementDate,
+                        VISA_FIRST_STATEMENT.toString(),
                         null);
+        payDownTheVisa(household, visa);
         UUID carLoan =
                 createDemoDebt(
                         household,
@@ -313,6 +330,51 @@ class DemoFixtureIT extends ApiTestBase {
         debts.put("deb-0002", carLoan);
         debts.put("deb-0003", student);
         return new Fixture(debts, carPaymentBill, stable);
+    }
+
+    /**
+     * Six months of payments, and then the statement that settles what they came to.
+     *
+     * <p>Every figure in the resulting history — each split into interest and principal, each
+     * closing balance, and the size of the correction — is the application's own. That is the
+     * point: the user guide's payment history is a screenshot of real arithmetic, and the
+     * compounding sentence printed beneath it is therefore true of the rows above it.
+     *
+     * <p>The correction is written by confirming the August statement at the figure the designs
+     * show. It is a {@code STATEMENT_CORRECTION} rather than a payment, which is what the
+     * provenance column on every row exists to keep apart: an inferred figure must never be shown
+     * as one somebody asserted.
+     */
+    private void payDownTheVisa(Household household, UUID visa) {
+        for (int month = 3; month <= 8; month++) {
+            LocalDate paidOn = LocalDate.of(2026, month, 20);
+            ApiResponse logged =
+                    household
+                            .owner()
+                            .post(
+                                    "/api/debts/" + visa + "/payments",
+                                    """
+                                    {"paidDate":"%s","amount":"445.00"}
+                                    """
+                                            .formatted(paidOn));
+            if (logged.status() != 201) {
+                throw new AssertionError("could not log a demo payment: " + logged.body());
+            }
+        }
+
+        ApiResponse confirmed =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + visa + "/balance",
+                                """
+                                {"balance":"6180.00","balanceDate":"%s",
+                                 "note":"Statement from Chase"}
+                                """
+                                        .formatted(DEMO_STATEMENT_DATE));
+        if (confirmed.status() != 200) {
+            throw new AssertionError("could not confirm the demo balance: " + confirmed.body());
+        }
     }
 
     private UUID createDemoDebt(
