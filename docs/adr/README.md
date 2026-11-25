@@ -61,3 +61,5 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0034](0034-rotating-the-oidc-client-secret-withdraws-the-proof.md) | Rotating the OIDC client secret withdraws the proof that the provider works | Accepted      | 2026-11-22 |
 | [0035](0035-a-debt-payment-is-a-plan-record-not-a-transaction.md) | A debt payment is a plan record, not a transaction | Accepted      | 2026-11-23 |
 | [0036](0036-the-ladder-never-overpays-a-rung.md) | The ladder never overpays a rung; the leftover flows down the same month | Accepted      | 2026-11-24 |
+| [0037](0037-import-preview-is-stateless-commit-re-uploads-the-file.md) | An import preview is stateless; the commit re-uploads the file and proves it with a digest | Accepted      | 2026-11-25 |
+| [0038](0038-an-imported-file-is-never-stored.md) | An imported file is never stored — not its bytes, not its name, not its hash | Accepted      | 2026-11-25 |
