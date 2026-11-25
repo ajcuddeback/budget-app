@@ -441,6 +441,26 @@ class IncomeAndSpendingIT extends ReportTestBase {
         assertThat(gbp.get("completeMonths").asInt()).isZero();
     }
 
+    @Test
+    void theRangeTotalsAreSummedByTheServerIncludingTheMonthInProgress() {
+        createTransaction(household.owner(), current, "2026-07-02", "-54.80", null);
+        createTransaction(household.owner(), current, "2026-08-02", "-10.00", null);
+        createTransaction(household.owner(), current, "2026-08-03", "25.00", null);
+        createTransaction(household.owner(), current, "2026-07-01", "2000.00", salary);
+        createTransaction(household.owner(), current, "2026-08-04", "-300.00", groceries);
+        readAt(IN_AUGUST_2026);
+
+        JsonNode totals =
+                currency(incomeAndSpending(household.owner(), "2026-07", AUGUST), "GBP")
+                        .get("totals");
+
+        assertThat(text(totals, "income")).isEqualTo("2000.0000");
+        assertThat(text(totals, "spending")).isEqualTo("300.0000");
+        assertThat(text(totals, "uncategorisedIn")).isEqualTo("25.0000");
+        assertThat(text(totals, "uncategorisedOut")).isEqualTo("64.8000");
+        assertThat(text(totals, "kept")).isEqualTo("1660.2000");
+    }
+
     // ------------------------------------------------------------------------------- the wire
 
     @Test

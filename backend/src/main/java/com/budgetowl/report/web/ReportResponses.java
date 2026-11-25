@@ -75,6 +75,7 @@ public final class ReportResponses {
     public record CurrencyIncomeAndSpendingResponse(
             String currency,
             List<MonthResponse> months,
+            TotalsResponse totals,
             String averageKept,
             BestMonthResponse bestMonth,
             int completeMonths,
@@ -85,6 +86,7 @@ public final class ReportResponses {
             return new CurrencyIncomeAndSpendingResponse(
                     c.currency().getCurrencyCode(),
                     c.months().stream().map(MonthResponse::of).toList(),
+                    TotalsResponse.of(c.totals()),
                     c.averageKept().map(ReportResponses::amount).orElse(null),
                     c.bestMonth().map(BestMonthResponse::of).orElse(null),
                     c.completeMonths(),
@@ -126,6 +128,29 @@ public final class ReportResponses {
         @Override
         public String toString() {
             return "MonthResponse[period=" + period + ", complete=" + complete + "]";
+        }
+    }
+
+    /** The range's figures summed by the server, the in-progress month included. */
+    public record TotalsResponse(
+            String income,
+            String spending,
+            String uncategorisedIn,
+            String uncategorisedOut,
+            String kept) {
+
+        static TotalsResponse of(IncomeAndSpendingReport.Totals totals) {
+            return new TotalsResponse(
+                    amount(totals.income()),
+                    amount(totals.spending()),
+                    amount(totals.uncategorisedIn()),
+                    amount(totals.uncategorisedOut()),
+                    amount(totals.kept()));
+        }
+
+        @Override
+        public String toString() {
+            return "TotalsResponse[]";
         }
     }
 

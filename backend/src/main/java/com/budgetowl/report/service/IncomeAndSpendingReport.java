@@ -50,10 +50,13 @@ public record IncomeAndSpendingReport(
      * @param uncategorisedCount uncategorised rows in the range, in either direction
      * @param transactionCount every non-transfer row in the range. Zero is the empty state: figures
      *     that net to zero are not the same fact as nothing recorded
+     * @param totals the range's figures summed, by the server, so the page's "isn't counted as
+     *     income or spending" sentence needs no arithmetic in the browser
      */
     public record CurrencyFigures(
             Currency currency,
             List<MonthFigures> months,
+            Totals totals,
             Optional<Money> averageKept,
             Optional<BestMonth> bestMonth,
             int completeMonths,
@@ -63,6 +66,7 @@ public record IncomeAndSpendingReport(
         public CurrencyFigures {
             Objects.requireNonNull(currency, "currency");
             months = List.copyOf(months);
+            Objects.requireNonNull(totals, "totals");
             Objects.requireNonNull(averageKept, "averageKept");
             Objects.requireNonNull(bestMonth, "bestMonth");
         }
@@ -104,6 +108,44 @@ public record IncomeAndSpendingReport(
         @Override
         public String toString() {
             return "MonthFigures[period=" + period + ", complete=" + complete + "]";
+        }
+    }
+
+    /** Every month's figures added up, the in-progress month included. */
+    public record Totals(
+            Money income,
+            Money spending,
+            Money uncategorisedIn,
+            Money uncategorisedOut,
+            Money kept) {
+
+        public Totals {
+            Objects.requireNonNull(income, "income");
+            Objects.requireNonNull(spending, "spending");
+            Objects.requireNonNull(uncategorisedIn, "uncategorisedIn");
+            Objects.requireNonNull(uncategorisedOut, "uncategorisedOut");
+            Objects.requireNonNull(kept, "kept");
+        }
+
+        static Totals of(Currency currency, List<MonthFigures> months) {
+            Money income = Money.zero(currency);
+            Money spending = Money.zero(currency);
+            Money in = Money.zero(currency);
+            Money out = Money.zero(currency);
+            Money kept = Money.zero(currency);
+            for (MonthFigures month : months) {
+                income = income.plus(month.income());
+                spending = spending.plus(month.spending());
+                in = in.plus(month.uncategorisedIn());
+                out = out.plus(month.uncategorisedOut());
+                kept = kept.plus(month.kept());
+            }
+            return new Totals(income, spending, in, out, kept);
+        }
+
+        @Override
+        public String toString() {
+            return "Totals[currency=" + kept.currency() + "]";
         }
     }
 

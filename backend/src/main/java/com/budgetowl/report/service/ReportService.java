@@ -209,6 +209,7 @@ public class ReportService {
         return new CurrencyFigures(
                 currency,
                 months,
+                IncomeAndSpendingReport.Totals.of(currency, months),
                 averageKept,
                 bestMonth,
                 completeMonths,
