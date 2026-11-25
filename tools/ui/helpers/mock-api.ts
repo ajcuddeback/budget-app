@@ -37,6 +37,7 @@ import {
   DEMO_IMPORT_CSV_PREVIEW,
   DEMO_IMPORT_HISTORY,
   DEMO_IMPORT_PREVIEW,
+  DEMO_PAIRING_ROWS,
   DEMO_USER,
   DEMO_ADMIN_ACCOUNTS,
   DEMO_INSTANCE,
@@ -834,6 +835,111 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return json(route, 200, DEMO_TRANSFER);
     }
 
+    // ---- file import (docs/features/file-import.md) ------------------------------------------
+    // The preview writes nothing and the commit resends the file (ADR-0037), so the mock answers
+    // from the request alone. A CSV with no column mapping gets the "how do I read this?" answer,
+    // as the real server gives; anything else gets the statement preview. Payees and amounts are
+    // the fixture's, never parsed from the base64 the page sent: nothing here reads the file.
+    // Above the household section on purpose: its catch-all DELETE would answer an undo with a
+    // 204 and never reach the handler below, so the history would never show it.
+    if (at === 'POST /api/imports/preview') {
+      const options = (field('options') ?? {}) as Record<string, unknown>;
+      if (field('format') === 'CSV') {
+        return json(
+          route,
+          200,
+          options['columns'] === undefined ? DEMO_IMPORT_CSV_ASKING : DEMO_IMPORT_CSV_PREVIEW,
+        );
+      }
+      return json(route, 200, { ...DEMO_IMPORT_PREVIEW, format: field('format') ?? 'OFX' });
+    }
+    if (at === 'POST /api/imports') {
+      // What the decisions sent would write: the new rows, plus each suspected one included.
+      const included =
+        field('suspectedDuplicates') === 'INCLUDE'
+          ? DEMO_IMPORT_PREVIEW.counts.suspected
+          : ((field('overrides') as { include: boolean }[] | undefined) ?? []).filter(
+              (override) => override.include,
+            ).length;
+      const batch = {
+        ...DEMO_IMPORT_BATCH,
+        format: field('format') ?? 'OFX',
+        imported: DEMO_IMPORT_BATCH.imported + included,
+        excluded: DEMO_IMPORT_BATCH.excluded - included,
+        removable: DEMO_IMPORT_BATCH.removable + included,
+      };
+      importedBatches.unshift(batch);
+      return json(route, 201, batch);
+    }
+    if (at === 'GET /api/imports') {
+      return json(route, 200, {
+        content: importedBatches,
+        page: 0,
+        size: 10,
+        totalElements: importedBatches.length,
+        totalPages: 1,
+      });
+    }
+    const importBatch = /^\/api\/imports\/([^/]+)$/.exec(url.pathname);
+    if (importBatch) {
+      const index = importedBatches.findIndex((one) => one.id === importBatch[1]);
+      if (index < 0) {
+        return problem(route, DEMO_PROBLEMS.notFound);
+      }
+      if (method === 'DELETE') {
+        // Undo: the rows go, and the batch stays in the history with nothing left to remove.
+        importedBatches[index] = { ...importedBatches[index], removable: 0 };
+        return route.fulfill({ status: 204 });
+      }
+      return json(route, 200, importedBatches[index]);
+    }
+    if (/^\/api\/accounts\/[^/]+\/import-mapping$/.test(url.pathname)) {
+      // No account in the fixture household has a saved mapping yet.
+      return method === 'GET'
+        ? problem(route, DEMO_PROBLEMS.notFound)
+        : json(route, 200, { ok: true });
+    }
+
+    // ---- pairing two rows into a transfer (file-import.md rule 12) -------------------------
+    const pair = /^\/api\/transactions\/([^/]+)\/pair$/.exec(url.pathname);
+    if (method === 'POST' && pair) {
+      const rows = [...DEMO_PAIRING_ROWS, ...DEMO_TRANSACTIONS];
+      const one = rows.find((row) => row.id === pair[1]);
+      const other = rows.find((row) => row.id === field('withTransactionId'));
+      if (!one || !other) {
+        return problem(route, DEMO_PROBLEMS.notFound);
+      }
+      const [out, into] = one.amount.startsWith('-') ? [one, other] : [other, one];
+      // Each leg keeps its own date and note; the figures are the two rows' own, unparsed.
+      return json(route, 200, {
+        ...DEMO_TRANSFER,
+        id: 'tgr-0099',
+        fromAccountId: out.accountId,
+        fromAccountName: out.accountName,
+        toAccountId: into.accountId,
+        toAccountName: into.accountName,
+        fromDate: out.date,
+        toDate: into.date,
+        sent: out.amount.replace(/^-/, ''),
+        received: into.amount.replace(/^-/, ''),
+        fromNote: out.note,
+        toNote: into.note,
+        version: out.version + into.version + 2,
+      });
+    }
+    const split = /^\/api\/transfers\/([^/]+)\/split$/.exec(url.pathname);
+    if (method === 'POST' && split) {
+      const legs = DEMO_TRANSACTIONS.filter((row) => row.transferGroupId === split[1]);
+      return json(route, 200, {
+        transactions: legs.map((leg) => ({
+          ...leg,
+          transfer: false,
+          transferGroupId: null,
+          version: leg.version + 1,
+        })),
+      });
+    }
+
     // ---- bills, income and the month's summary ---------------------------------------------
     // An occurrence is addressed by its DUE DATE, not an id (ADR-0032), because for most of its
     // life it has no row. The routes below are matched in that shape so a spec can assert that a
@@ -1246,108 +1352,6 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return detail === undefined
         ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
         : json(route, 200, detail);
-    }
-
-    // ---- file import (docs/features/file-import.md) ------------------------------------------
-    // The preview writes nothing and the commit resends the file (ADR-0037), so the mock answers
-    // from the request alone. A CSV with no column mapping gets the "how do I read this?" answer,
-    // as the real server gives; anything else gets the statement preview. Payees and amounts are
-    // the fixture's, never parsed from the base64 the page sent: nothing here reads the file.
-    if (at === 'POST /api/imports/preview') {
-      const options = (field('options') ?? {}) as Record<string, unknown>;
-      if (field('format') === 'CSV') {
-        return json(
-          route,
-          200,
-          options['columns'] === undefined ? DEMO_IMPORT_CSV_ASKING : DEMO_IMPORT_CSV_PREVIEW,
-        );
-      }
-      return json(route, 200, { ...DEMO_IMPORT_PREVIEW, format: field('format') ?? 'OFX' });
-    }
-    if (at === 'POST /api/imports') {
-      // What the decisions sent would write: the new rows, plus each suspected one included.
-      const included =
-        field('suspectedDuplicates') === 'INCLUDE'
-          ? DEMO_IMPORT_PREVIEW.counts.suspected
-          : ((field('overrides') as { include: boolean }[] | undefined) ?? []).filter(
-              (override) => override.include,
-            ).length;
-      const batch = {
-        ...DEMO_IMPORT_BATCH,
-        format: field('format') ?? 'OFX',
-        imported: DEMO_IMPORT_BATCH.imported + included,
-        excluded: DEMO_IMPORT_BATCH.excluded - included,
-        removable: DEMO_IMPORT_BATCH.removable + included,
-      };
-      importedBatches.unshift(batch);
-      return json(route, 201, batch);
-    }
-    if (at === 'GET /api/imports') {
-      return json(route, 200, {
-        content: importedBatches,
-        page: 0,
-        size: 10,
-        totalElements: importedBatches.length,
-        totalPages: 1,
-      });
-    }
-    const importBatch = /^\/api\/imports\/([^/]+)$/.exec(url.pathname);
-    if (importBatch) {
-      const index = importedBatches.findIndex((one) => one.id === importBatch[1]);
-      if (index < 0) {
-        return problem(route, DEMO_PROBLEMS.notFound);
-      }
-      if (method === 'DELETE') {
-        // Undo: the rows go, and the batch stays in the history with nothing left to remove.
-        importedBatches[index] = { ...importedBatches[index], removable: 0 };
-        return route.fulfill({ status: 204 });
-      }
-      return json(route, 200, importedBatches[index]);
-    }
-    if (/^\/api\/accounts\/[^/]+\/import-mapping$/.test(url.pathname)) {
-      // No account in the fixture household has a saved mapping yet.
-      return method === 'GET'
-        ? problem(route, DEMO_PROBLEMS.notFound)
-        : json(route, 200, { ok: true });
-    }
-
-    // ---- pairing two rows into a transfer (file-import.md rule 12) -------------------------
-    const pair = /^\/api\/transactions\/([^/]+)\/pair$/.exec(url.pathname);
-    if (method === 'POST' && pair) {
-      const one = DEMO_TRANSACTIONS.find((row) => row.id === pair[1]);
-      const other = DEMO_TRANSACTIONS.find((row) => row.id === field('withTransactionId'));
-      if (!one || !other) {
-        return problem(route, DEMO_PROBLEMS.notFound);
-      }
-      const [out, into] = one.amount.startsWith('-') ? [one, other] : [other, one];
-      // Each leg keeps its own date and note; the figures are the two rows' own, unparsed.
-      return json(route, 200, {
-        ...DEMO_TRANSFER,
-        id: 'tgr-0099',
-        fromAccountId: out.accountId,
-        fromAccountName: out.accountName,
-        toAccountId: into.accountId,
-        toAccountName: into.accountName,
-        fromDate: out.date,
-        toDate: into.date,
-        sent: out.amount.replace(/^-/, ''),
-        received: into.amount.replace(/^-/, ''),
-        fromNote: out.note,
-        toNote: into.note,
-        version: out.version + into.version + 2,
-      });
-    }
-    const split = /^\/api\/transfers\/([^/]+)\/split$/.exec(url.pathname);
-    if (method === 'POST' && split) {
-      const legs = DEMO_TRANSACTIONS.filter((row) => row.transferGroupId === split[1]);
-      return json(route, 200, {
-        transactions: legs.map((leg) => ({
-          ...leg,
-          transfer: false,
-          transferGroupId: null,
-          version: leg.version + 1,
-        })),
-      });
     }
 
     // ---- everything else ------------------------------------------------------------------

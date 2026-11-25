@@ -1759,3 +1759,50 @@ export const DEMO_IMPORT_HISTORY = [
     removable: 14,
   },
 ] as const;
+
+/**
+ * Two statement rows that are one transfer: $300.00 left Everyday Checking on 18 August and
+ * arrived in Emergency Fund on 19 August, each imported from its own bank's file with the bank's
+ * wording as the payee. Kept out of DEMO_TRANSACTIONS so every other capture of the ledger, and
+ * its page total, stays as it was; the pairing screens serve DEMO_PAIRING_LEDGER instead.
+ */
+export const DEMO_PAIRING_ROWS = [
+  {
+    ...DEMO_TRANSACTIONS[0],
+    id: 'txn-0021',
+    accountId: 'acc-0002',
+    accountName: 'Emergency Fund',
+    date: '2026-08-19',
+    amount: '300.00',
+    payeeId: 'pay-0021',
+    payeeName: 'TRANSFER FROM CHK 4417',
+    status: 'CLEARED',
+    createdAt: '2026-09-01T08:03:00Z',
+    updatedAt: '2026-09-01T08:03:00Z',
+  },
+  {
+    ...DEMO_TRANSACTIONS[0],
+    id: 'txn-0020',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-18',
+    amount: '-300.00',
+    payeeId: 'pay-0020',
+    payeeName: 'ONLINE TRANSFER TO SAVINGS',
+    status: 'CLEARED',
+    createdAt: '2026-09-01T08:03:00Z',
+    updatedAt: '2026-09-01T08:03:00Z',
+  },
+] as const;
+
+/** The ledger with the two rows above at the top, newest first, for the pairing screens. */
+export const DEMO_PAIRING_LEDGER = {
+  content: [...DEMO_PAIRING_ROWS, ...DEMO_TRANSACTIONS],
+  // The fixture page total, plus 300.00 in and 300.00 out: unchanged.
+  pageTotal: DEMO_LEDGER_PAGE_TOTAL,
+  pageTotalCurrency: 'USD',
+  page: 0,
+  size: 50,
+  totalElements: DEMO_PAIRING_ROWS.length + DEMO_TRANSACTIONS.length,
+  totalPages: 1,
+} as const;

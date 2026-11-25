@@ -3,6 +3,7 @@ import {
   DEMO_IMPORT_PREVIEW_DIFFERENT_BALANCE,
   DEMO_IMPORT_PREVIEW_HOSTILE,
   DEMO_IMPORT_PREVIEW_OTHER_ACCOUNT,
+  DEMO_PAIRING_LEDGER,
 } from '../../fixtures/demo-data.js';
 import { mockApi } from '../../helpers/mock-api.js';
 import { expect, test } from '../../helpers/ui-test.js';
@@ -270,14 +271,20 @@ test.describe('import: pairing two rows into a transfer', () => {
 
   test('preselects nothing and says what pairing costs before the button', async ({ page, ui }) => {
     const calls = await mockApi(page, { session: 'owner' });
+    await page.route(
+      (url) => url.pathname === '/api/transactions',
+      (route) => route.fulfill({ status: 200, json: DEMO_PAIRING_LEDGER }),
+    );
     await page.goto('/transactions');
-    const row = page.locator('.ledger-row').filter({ hasText: 'Metro Power' });
+    const row = page.locator('.ledger-row').filter({ hasText: 'ONLINE TRANSFER TO SAVINGS' });
     await row.getByRole('button', { name: 'This is a transfer…' }).click();
 
     const dialog = page.getByRole('dialog', { name: /Pair this with the other half/ });
     await expect(dialog).toBeVisible();
     const radios = dialog.getByRole('radio');
-    expect(await radios.count()).toBeGreaterThan(0);
+    // Only rows that went the other way, in another account, and are not already a transfer.
+    await expect(radios).toHaveCount(1);
+    await expect(radios.first()).toHaveAccessibleName(/TRANSFER FROM CHK 4417/);
     for (const radio of await radios.all()) {
       await expect(radio).not.toBeChecked();
     }
@@ -291,7 +298,7 @@ test.describe('import: pairing two rows into a transfer', () => {
     await radios.first().check();
     await dialog.getByRole('button', { name: 'Pair these two rows' }).click();
     await expect(page.getByText('Paired into a transfer.')).toBeVisible();
-    const pair = calls.find((call) => call.path === '/api/transactions/txn-0007/pair');
+    const pair = calls.find((call) => call.path === '/api/transactions/txn-0020/pair');
     expect(pair?.body).toMatchObject({
       version: expect.any(Number),
       withVersion: expect.any(Number),

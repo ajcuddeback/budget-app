@@ -77,6 +77,14 @@ const IN: Transaction = {
 /** Another Current row: never a candidate, because a transfer needs two accounts. */
 const SAME_ACCOUNT: Transaction = { ...OUT, id: 't3', amount: '200.0000', payeeName: 'Refund' };
 
+/** Another account, but the money went the same way: never a candidate either. */
+const SAME_SIGN: Transaction = {
+  ...IN,
+  id: 't5',
+  amount: '-15.0000',
+  payeeName: 'Savings fee',
+};
+
 /** An existing leg: never a candidate, because it is already half of something. */
 const LEG: Transaction = {
   ...IN,
@@ -141,7 +149,7 @@ describe('TransactionsPage — pairing two rows into a transfer', () => {
 
   async function render(
     role: HouseholdRole = 'OWNER',
-    rows: readonly Transaction[] = [OUT, IN, SAME_ACCOUNT, LEG],
+    rows: readonly Transaction[] = [OUT, IN, SAME_ACCOUNT, SAME_SIGN, LEG],
   ): Promise<ComponentFixture<TransactionsPage>> {
     for (const fn of [
       ...Object.values(service),
@@ -248,7 +256,7 @@ describe('TransactionsPage — pairing two rows into a transfer', () => {
     expect(transfers.pair).not.toHaveBeenCalled();
   });
 
-  it('lists only rows that could be the other half: another account, not already a leg', async () => {
+  it('lists only rows that could be the other half: another account, the other way, not a leg', async () => {
     const fixture = await render();
 
     const sheet = await openSheet(fixture);
@@ -256,6 +264,7 @@ describe('TransactionsPage — pairing two rows into a transfer', () => {
     const choices = sheet.querySelector('fieldset')?.textContent ?? '';
     expect(choices).toContain('TFR FROM CURRENT');
     expect(choices).not.toContain('Refund');
+    expect(choices).not.toContain('Savings fee');
     expect(choices).not.toContain('TFR TO SAVINGS');
     expect(sheet.querySelectorAll('input[type="radio"]')).toHaveLength(1);
   });
@@ -328,6 +337,23 @@ describe('TransactionsPage — pairing two rows into a transfer', () => {
     expect(root(fixture).querySelector('app-pair-dialog')?.textContent).toContain(
       "The two amounts aren't equal",
     );
+  });
+
+  it('says what each leg is dated when a paired transfer is edited', async () => {
+    const fixture = await render();
+    transfers.get.mockReturnValue(of(PAIRED));
+    transfers.update.mockReturnValue(of(PAIRED));
+    const leg = Array.from(root(fixture).querySelectorAll<HTMLElement>('.ledger-row')).find((row) =>
+      row.textContent?.includes('Transfer'),
+    )!;
+
+    buttonNamed(leg, /^\s*Edit\s*$/).click();
+    await settle(fixture);
+
+    const sheet = root(fixture).querySelector<HTMLElement>('app-transfer-dialog')!;
+    expect(sheet.textContent).toContain('The two halves are dated 3 Aug 2026 and 5 Aug 2026');
+    // Untouched, the date is not sent: each leg keeps the day its own bank gave it.
+    expect(sheet.querySelector<HTMLInputElement>('#transfer-date')?.value).toBe('2026-08-03');
   });
 
   // ---------------------------------------------------------------------------------- split

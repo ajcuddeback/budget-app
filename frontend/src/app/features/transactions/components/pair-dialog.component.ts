@@ -7,6 +7,10 @@ import { ModalDirective } from '../../../shared/components/modal.directive';
 import { Account } from '../../accounts/data/account.models';
 import { Transaction } from '../data/transaction.models';
 
+function outgoing(transaction: Transaction): boolean {
+  return transaction.amount.trimStart().startsWith('-');
+}
+
 /** What the person narrowed the list to, using the ledger's own account and date filters. */
 export interface PairFilter {
   accountId: string;
@@ -26,8 +30,9 @@ export interface PairFilter {
  * - **The loss is said before the button.** Both rows lose their category and payee and stop
  *   counting as income or spending; the sentence sits above the confirm button, always.
  * - **Only rows that could be the other half are listed**: not this row, not one in the same
- *   account, not one that is already a transfer leg. That is display; the server checks every rule
- *   again and refuses with a code the alert renders.
+ *   account, not one that is already a transfer leg, not one that went the same way. Those are the
+ *   pair rules, not a guess: nothing is ranked, and amounts are not compared. That is display; the
+ *   server checks every rule again and refuses with a code the alert renders.
  */
 @Component({
   selector: 'app-pair-dialog',
@@ -64,9 +69,14 @@ export class PairDialogComponent {
 
   protected readonly choices = computed(() => {
     const row = this.row();
+    const rowOut = outgoing(row);
     return this.candidates().filter(
       (candidate) =>
-        candidate.id !== row.id && candidate.accountId !== row.accountId && !candidate.transfer,
+        candidate.id !== row.id &&
+        candidate.accountId !== row.accountId &&
+        !candidate.transfer &&
+        // The other half went the other way. Read from the sign, never parsed.
+        outgoing(candidate) !== rowOut,
     );
   });
 
