@@ -169,9 +169,18 @@ public final class GoalProjection {
         Currency currency = ledger.currency();
         int scale = minorUnitScale(currency);
         BigDecimal unit = BigDecimal.ONE.movePointLeft(scale);
+        // ⌈(target − savedBefore(C)) ÷ n⌉, written as remaining plus what this month has already
+        // put towards the plan: the same figure when this month recorded money in, and the right
+        // one when it recorded a net withdrawal, which puts nothing towards the plan (see
+        // GoalLedger.stillToCome).
+        Money towardsPlan = ledger.recorded(current);
+        if (towardsPlan.isNegative()) {
+            towardsPlan = Money.zero(currency);
+        }
         BigDecimal candidate =
-                ceilingDivide(ledger.target().minus(ledger.savedBefore(current)), months, scale);
-        if (candidate.compareTo(ledger.recorded(current).amount()) <= 0 && months > 1) {
+                ceilingDivide(
+                        ledger.target().minus(ledger.saved()).plus(towardsPlan), months, scale);
+        if (candidate.compareTo(towardsPlan.amount()) <= 0 && months > 1) {
             candidate = ceilingDivide(ledger.target().minus(ledger.saved()), months - 1, scale);
         }
 

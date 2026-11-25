@@ -147,9 +147,22 @@ public record GoalLedger(
         return recordedThen.compareTo(planned) > 0 ? recordedThen : planned;
     }
 
-    /** What is still to come this month: {@code max(planned − recorded, 0)}. */
+    /**
+     * What is still to come this month: {@code max(planned − max(recorded, 0), 0)}.
+     *
+     * <p><b>A net withdrawal counts as nothing recorded towards the plan</b>, not as a debt the
+     * plan must repay. Read literally, {@code planned − recorded} would make a £500 withdrawal
+     * against a £110 plan "£610 still to come": the projection would then assume the withdrawal is
+     * put back this month while {@link #monthContribution} reserves only £110 of the left-over
+     * figure — the two halves of the page disagreeing about the same month. Found by {@code
+     * GoalProjectionTest}; recorded in the feature doc's Decisions.
+     */
     public Money stillToCome(YearMonth period) {
-        Money gap = planned(period).minus(recorded(period));
+        Money towardsPlan = recorded(period);
+        if (towardsPlan.isNegative()) {
+            towardsPlan = Money.zero(currency());
+        }
+        Money gap = planned(period).minus(towardsPlan);
         return gap.isNegative() ? Money.zero(currency()) : gap;
     }
 

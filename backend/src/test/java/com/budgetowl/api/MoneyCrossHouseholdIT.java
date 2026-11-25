@@ -700,6 +700,219 @@ class MoneyCrossHouseholdIT extends ApiTestBase {
                 .isEqualTo(1L);
     }
 
+    // ------------------------------------------------------------------------- goals (slice 11)
+
+    /**
+     * The sharpest string a goal has. A name discloses a household's plans, health or relationships
+     * with no amount attached (docs/features/goals.md), so it is what to search a response for.
+     */
+    private static final String THEIR_GOAL = "Grace's bail fund";
+
+    private static final String THEIR_GOAL_TARGET = "8765.0000";
+
+    /** Their goal and a contribution to it, kept out of {@link Theirs} so slices stay separate. */
+    private record TheirGoal(UUID goal, UUID contribution) {}
+
+    static List<GoalIT.Endpoint> everyRouteNamingAGoal() {
+        return GoalIT.everyRoute().stream()
+                .filter(endpoint -> endpoint.path().contains("{id}"))
+                .toList();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyRouteNamingAGoal")
+    void answers404AndNever403ForAnotherHouseholdsGoal(GoalIT.Endpoint endpoint) {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        TheirGoal theirGoal = seedTheirGoal(theirs);
+
+        ApiResponse response =
+                endpoint.callWith(signIn(OWNER_EMAIL, OWNER_SECRET), theirGoal.goal());
+
+        assertThat(response.status()).isEqualTo(404);
+        assertThat(response.stringField("code")).isEqualTo("not-found");
+        assertThat(response.body()).doesNotContain(THEIR_GOAL).doesNotContain(THEIR_GOAL_TARGET);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("everyRouteNamingAGoal")
+    void answers404ForAnotherHouseholdsGoalOnTheBearerTransportToo(GoalIT.Endpoint endpoint) {
+        seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        TheirGoal theirGoal = seedTheirGoal(theirs);
+        ApiClient phone = mobile(OWNER_EMAIL, OWNER_SECRET, "Ada's phone");
+
+        assertThat(endpoint.callWith(phone, theirGoal.goal()).status())
+                .as("neither transport may skip a check the other applies (ADR-0018)")
+                .isEqualTo(404);
+    }
+
+    @Test
+    void answers404ForAnotherHouseholdsContributionUnderOneOfOurGoals() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        TheirGoal theirGoal = seedTheirGoal(theirs);
+        UUID ours =
+                UUID.fromString(
+                        household
+                                .owner()
+                                .post("/api/goals", "{\"name\":\"Ours\",\"targetAmount\":\"10\"}")
+                                .stringField("id"));
+
+        // Their contribution id under OUR goal: the pair has to be scoped, not just the goal.
+        String path = "/api/goals/" + ours + "/contributions/" + theirGoal.contribution();
+        assertThat(household.owner().patch(path, "{\"amount\":\"1\",\"version\":0}").status())
+                .isEqualTo(404);
+        assertThat(household.owner().delete(path).status()).isEqualTo(404);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT amount::text FROM goal_contributions WHERE id = ?",
+                                String.class,
+                                theirGoal.contribution()))
+                .as("their record of their own saving, exactly as it was")
+                .isEqualTo("432.0000");
+    }
+
+    @Test
+    void cannotBindOneOfOurGoalsToAnotherHouseholdsAccountOrTransaction() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        String today = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+
+        ApiResponse foreignAccount =
+                household
+                        .owner()
+                        .post(
+                                "/api/goals",
+                                "{\"name\":\"Ours\",\"targetAmount\":\"10\",\"accountId\":\"%s\"}"
+                                        .formatted(theirs.account()));
+        // Binding to their account would put its balance and currency on our goal page.
+        assertThat(foreignAccount.status()).isEqualTo(404);
+
+        ApiResponse created =
+                household.owner().post("/api/goals", "{\"name\":\"Ours\",\"targetAmount\":\"10\"}");
+        UUID ours = UUID.fromString(created.stringField("id"));
+        assertThat(
+                        household
+                                .owner()
+                                .patch(
+                                        "/api/goals/" + ours,
+                                        "{\"accountId\":\"%s\",\"version\":%d}"
+                                                .formatted(
+                                                        theirs.account(),
+                                                        created.numberField("version")))
+                                .status())
+                .isEqualTo(404);
+
+        // Attaching their transaction would disclose its amount and date through our history.
+        ApiResponse foreignTransaction =
+                household
+                        .owner()
+                        .post(
+                                "/api/goals/" + ours + "/contributions",
+                                "{\"amount\":\"1\",\"date\":\"%s\",\"transactionId\":\"%s\"}"
+                                        .formatted(today, theirs.transaction()));
+        assertThat(foreignTransaction.status()).isEqualTo(404);
+
+        ApiResponse contribution =
+                household
+                        .owner()
+                        .post(
+                                "/api/goals/" + ours + "/contributions",
+                                "{\"amount\":\"1\",\"date\":\"%s\"}".formatted(today));
+        assertThat(
+                        household
+                                .owner()
+                                .patch(
+                                        "/api/goals/"
+                                                + ours
+                                                + "/contributions/"
+                                                + contribution.stringField("id"),
+                                        "{\"transactionId\":\"%s\",\"version\":%d}"
+                                                .formatted(
+                                                        theirs.transaction(),
+                                                        contribution.numberField("version")))
+                                .status())
+                .isEqualTo(404);
+
+        assertThat(
+                        jdbc.queryForObject(
+                                """
+                                SELECT count(*) FROM goals g
+                                WHERE g.household_id <> ? AND g.account_id IS NOT NULL
+                                """,
+                                Long.class,
+                                theirs.household()))
+                .as("no goal of ours ended up bound to an account of theirs")
+                .isZero();
+        assertThat(
+                        jdbc.queryForObject(
+                                """
+                                SELECT count(*) FROM goal_contributions c
+                                WHERE c.household_id <> ? AND c.transaction_id IS NOT NULL
+                                """,
+                                Long.class,
+                                theirs.household()))
+                .as("no contribution of ours points at a transaction of theirs")
+                .isZero();
+    }
+
+    @Test
+    void doesNotLeakAnotherHouseholdsGoalsIntoOurListOrWhatIsLeftToSpend() {
+        Household household = seedHousehold();
+        Theirs theirs = seedASecondHousehold();
+        seedTheirGoal(theirs);
+        String now = java.time.YearMonth.now(java.time.ZoneOffset.UTC).toString();
+
+        ApiResponse listed = household.owner().get("/api/goals?includeArchived=true");
+        ApiResponse summary = household.owner().get("/api/periods/" + now + "/summary");
+
+        assertThat(listed.numberField("totalElements")).isZero();
+        assertThat(listed.body()).doesNotContain(THEIR_GOAL).doesNotContain(THEIR_GOAL_TARGET);
+        // A leak here would not look like one: it would look like the household setting aside
+        // £150 a month more than it does, and nobody files a bug about that.
+        assertThat(summary.stringField("goalsSetAside")).isEqualTo("0.0000");
+        assertThat(summary.numberField("goalsCounted")).isZero();
+    }
+
+    /** Their goal, its plan and a contribution, in plain SQL for the reason the class gives. */
+    private TheirGoal seedTheirGoal(Theirs theirs) {
+        UUID goal = UUID.randomUUID();
+        UUID contribution = UUID.randomUUID();
+        jdbc.update(
+                """
+                INSERT INTO goals (id, household_id, name, currency, target_amount, account_id)
+                VALUES (?, ?, ?, 'GBP', ?, ?)
+                """,
+                goal,
+                theirs.household(),
+                THEIR_GOAL,
+                new java.math.BigDecimal(THEIR_GOAL_TARGET),
+                theirs.account());
+        jdbc.update(
+                """
+                INSERT INTO goal_contribution_steps (id, household_id, goal_id, from_period,
+                                                     monthly_amount)
+                VALUES (?, ?, ?, date_trunc('month', now())::date, 150.0000)
+                """,
+                UUID.randomUUID(),
+                theirs.household(),
+                goal);
+        jdbc.update(
+                """
+                INSERT INTO goal_contributions (id, household_id, goal_id, contributed_on, period,
+                                                amount, note, transaction_id)
+                VALUES (?, ?, ?, CURRENT_DATE, date_trunc('month', CURRENT_DATE)::date, 432.0000,
+                        ?, ?)
+                """,
+                contribution,
+                theirs.household(),
+                goal,
+                THEIR_NOTE,
+                theirs.transaction());
+        return new TheirGoal(goal, contribution);
+    }
+
     @Test
     void reallyHasTwoHouseholdsInTheDatabase() {
         // Without this, every assertion above would also pass against a single household — which
