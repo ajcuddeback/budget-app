@@ -189,6 +189,57 @@ public enum ErrorCode {
      */
     TERMS_UNSOLVABLE("terms-unsolvable", 422, "These terms have no solution"),
 
+    // --------------------------------------------------------------- file import (slice 12)
+    // docs/features/file-import.md, "Error codes". Every refusal of a file carries a code and,
+    // for import-file-malformed, a params.reason from a FIXED list — never text from a parser
+    // exception, which quotes the bytes it choked on.
+
+    /** Over the 5 MiB cap, at nginx, at the request filter or after decoding. */
+    IMPORT_FILE_TOO_LARGE("import-file-too-large", 413, "The file is too large"),
+
+    /**
+     * A {@code Content-Encoding} other than {@code identity}. A compressed body decompresses to a
+     * size nothing counted, so it is refused rather than inflated.
+     */
+    IMPORT_CONTENT_ENCODING_REFUSED(
+            "import-content-encoding-refused", 415, "Compressed request bodies are not accepted"),
+
+    IMPORT_FILE_EMPTY("import-file-empty", 400, "The file is empty"),
+
+    /** A structural refusal. {@code params.reason} names which, from a fixed list. */
+    IMPORT_FILE_MALFORMED("import-file-malformed", 400, "The file could not be read"),
+
+    /** The declared format is not what the bytes are. The server never guesses instead. */
+    IMPORT_FORMAT_MISMATCH("import-format-mismatch", 400, "The file is not in the declared format"),
+
+    IMPORT_ENCODING_UNSUPPORTED(
+            "import-encoding-unsupported", 422, "The file's character set is not supported"),
+
+    /** One statement for one account per file. */
+    IMPORT_MULTIPLE_ACCOUNTS(
+            "import-multiple-accounts", 422, "The file holds more than one account's statement"),
+
+    IMPORT_CURRENCY_MISMATCH(
+            "import-currency-mismatch", 422, "The file is in a different currency"),
+
+    /** Over the line or record cap. The whole file is refused, never truncated. */
+    IMPORT_TOO_MANY_ROWS("import-too-many-rows", 422, "The file has too many rows"),
+
+    /** The parse deadline passed. */
+    IMPORT_FILE_TOO_COMPLEX("import-file-too-complex", 422, "The file took too long to read"),
+
+    /**
+     * The commit's digest is not the preview's — the ledger or the file changed in between, or a
+     * concurrent commit won the unique index. Nothing was written.
+     */
+    IMPORT_PREVIEW_STALE("import-preview-stale", 409, "The preview is out of date"),
+
+    /**
+     * Two rows that cannot be one transfer (file-import.md rule 12). {@code params.reason} is
+     * {@code same-account}, {@code same-sign} or {@code amounts-differ}.
+     */
+    TRANSFER_PAIR_MISMATCH("transfer-pair-mismatch", 422, "These two rows cannot be one transfer"),
+
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
     INTERNAL_ERROR("internal-error", 500, "Internal error");
 

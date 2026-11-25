@@ -106,6 +106,22 @@ budgetowl:
   invitations:
     # Default 7 days. The link is a credential, so its lifetime is a security setting.
     time-to-live: 7d
+  # File import (docs/features/file-import.md rule 3, decision 1). Fixed limits, not per request.
+  # Bytes are counted before anything decodes them and lines before anything parses them; a file
+  # over any of these is refused whole, never truncated. Raising maximum-file-size also means
+  # raising client_max_body_size on `location /api/imports` in frontend/nginx.conf.
+  import:
+    maximum-file-size: 5MB
+    csv-maximum-lines: 12000
+    qif-maximum-lines: 200000
+    maximum-line-length: 4096
+    maximum-rows: 10000
+    csv-maximum-columns: 64
+    ofx-maximum-depth: 32
+    ofx-maximum-elements: 200000
+    ofx-maximum-name-length: 64
+    ofx-maximum-leaf-length: 1024
+    parse-deadline: 15s
 
 logging:
   level:
