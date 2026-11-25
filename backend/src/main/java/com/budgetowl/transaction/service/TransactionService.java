@@ -278,6 +278,19 @@ public class TransactionService {
                 .toList();
     }
 
+    /**
+     * Ledger rows for transactions a caller in this service layer has <b>already resolved through a
+     * household-scoped lookup</b> — splitting a transfer answers with its two rows in the ledger
+     * shape (file-import.md rule 12). Names are resolved in one query per kind, as for a page.
+     *
+     * <p>Not a lookup: it takes entities, never ids, so it cannot be used to read a row the caller
+     * has not already been allowed to hold.
+     */
+    @Transactional(readOnly = true)
+    public List<TransactionView> rowsOf(UUID householdId, List<Transaction> resolved) {
+        return views(householdId, resolved);
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     /**

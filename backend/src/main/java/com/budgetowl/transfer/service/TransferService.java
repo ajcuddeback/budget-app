@@ -16,6 +16,8 @@ import com.budgetowl.household.service.MembershipService;
 import com.budgetowl.transaction.domain.Transaction;
 import com.budgetowl.transaction.domain.TransactionStatus;
 import com.budgetowl.transaction.persistence.TransactionRepository;
+import com.budgetowl.transaction.service.TransactionService;
+import com.budgetowl.transaction.service.TransactionView;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -74,14 +76,17 @@ public class TransferService {
     private final TransactionRepository transactions;
     private final AccountRepository accounts;
     private final MembershipService memberships;
+    private final TransactionService ledger;
 
     public TransferService(
             TransactionRepository transactions,
             AccountRepository accounts,
-            MembershipService memberships) {
+            MembershipService memberships,
+            TransactionService ledger) {
         this.transactions = transactions;
         this.accounts = accounts;
         this.memberships = memberships;
+        this.ledger = ledger;
     }
 
     @Transactional(readOnly = true)
@@ -160,20 +165,37 @@ public class TransferService {
         // An account archived AFTER the transfer happened does not invalidate it: the money
         // already moved. Only a new transfer through an archived account is refused.
 
-        LocalDate date = changes.date() == null ? out.date() : changes.date();
-        Money sent =
-                changes.amount() == null
-                        ? Money.of(out.amount().abs(), from.currency())
-                        : amount(changes.amount(), from.currency(), "amount");
-        Money received = receivedAfter(changes.amountReceived(), sent, in, from, to);
-        String note = noteAfter(changes.note(), out);
-
-        out.on(date);
-        out.correctAmount(sent.negated(), from.currency());
-        out.annotate(note);
-        in.on(date);
-        in.correctAmount(received, to.currency());
-        in.annotate(note);
+        // Only what was sent is written (file-import.md rule 12, change 2). Each leg keeps its own
+        // date and note — a pair made from two statements clears on two days — so an edit of the
+        // amount must not quietly move the incoming row to the outgoing row's date. A date or a
+        // note that IS sent goes on both legs, as "Move money" has always done.
+        if (changes.date() != null) {
+            out.on(changes.date());
+            in.on(changes.date());
+        }
+        if (changes.amount() != null) {
+            Money sent = amount(changes.amount(), from.currency(), "amount");
+            out.correctAmount(sent.negated(), from.currency());
+            in.correctAmount(
+                    receivedAfter(changes.amountReceived(), sent, in, from, to), to.currency());
+        } else if (changes.amountReceived() != null) {
+            Money sent = Money.of(out.amount().abs(), from.currency());
+            in.correctAmount(
+                    receivedAfter(changes.amountReceived(), sent, in, from, to), to.currency());
+        }
+        switch (changes.note()) {
+            case Change.Unchanged<String> ignored -> {
+                // Not mentioned: each leg keeps its own.
+            }
+            case Change.Cleared<String> ignored -> {
+                out.annotate(null);
+                in.annotate(null);
+            }
+            case Change.SetTo<String> written -> {
+                out.annotate(written.value());
+                in.annotate(written.value());
+            }
+        }
 
         log.info(
                 "transfer updated householdId={} transferGroupId={} byUserId={}",
@@ -204,7 +226,145 @@ public class TransferService {
                 actorId);
     }
 
+    /**
+     * "These two rows are one transfer" (docs/features/file-import.md rule 12, decision 7).
+     *
+     * <p>Turns two existing transactions — imported or typed — into a linked pair. <b>Matching is
+     * manual</b>: nothing here suggests, ranks or looks for a partner; the person named both rows.
+     * Every rule is checked before anything is written, and a refusal writes nothing. The rules are
+     * the pair invariants of ADR-0033 and this class; pairing adds none of its own.
+     *
+     * <p>What changes: both rows get one new {@code transfer_group_id}; category and payee are
+     * cleared on both, because a transfer has neither ({@code ck_transactions_transfer_has_no_*});
+     * both versions move forward. <b>Nothing else</b>: account, amount, date, note, status, {@code
+     * external_id} and {@code import_batch_id} stay as they were — so a later overlapping statement
+     * still sees each row as an exact duplicate, and each leg keeps the date its own bank gave it.
+     *
+     * @throws ForbiddenException {@code read-only-role}, checked before either row is looked up
+     * @throws NotFoundException for either row not in this household
+     * @throws ConflictException {@code transfer-leg-not-separate}, {@code stale-version}, {@code
+     *     account-archived}
+     * @throws InvalidRequestException {@code transfer-pair-mismatch} with {@code params.reason}
+     */
+    @Transactional
+    public TransferView pair(UUID actorId, UUID transactionId, PairRequest request) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        Household household = membership.household();
+        UUID householdId = household.id();
+
+        Transaction one = requireRow(transactionId, householdId);
+        Transaction other = requireRow(request.withTransactionId(), householdId);
+
+        if (one.isTransfer() || other.isTransfer()) {
+            throw new ConflictException(
+                    ErrorCode.TRANSFER_LEG_NOT_SEPARATE,
+                    "one of these rows is already half of a transfer");
+        }
+        if (one.accountId().equals(other.accountId())) {
+            // Also the answer for a row paired with itself.
+            throw mismatch("same-account");
+        }
+        if (one.amount().signum() == other.amount().signum()) {
+            throw mismatch("same-sign");
+        }
+        Account first = account(one.accountId(), householdId);
+        Account second = account(other.accountId(), householdId);
+        boolean sameCurrency = first.currency().equals(second.currency());
+        if (sameCurrency && one.amount().abs().compareTo(other.amount().abs()) != 0) {
+            // Within one currency a transfer is equal and opposite. A fee taken on the way is its
+            // own transaction, and the person edits one row first.
+            throw mismatch("amounts-differ");
+        }
+        if (one.version() != request.version() || other.version() != request.withVersion()) {
+            throw new ConflictException(
+                    ErrorCode.STALE_VERSION, "one of these rows changed since it was read");
+        }
+        requireOpen(first);
+        requireOpen(second);
+
+        UUID groupId = UUID.randomUUID();
+        for (Transaction leg : List.of(one, other)) {
+            leg.linkToTransfer(groupId);
+            leg.fileUnder(null);
+            leg.payTo(null);
+        }
+        // Flushed so the response carries the versions the database now holds, and so a second
+        // pairing racing for the same row fails here, at its UPDATE ... WHERE version = ?, rather
+        // than after this method has answered (docs/memory/gotchas.md). The pair trigger is
+        // deferred to COMMIT and is the backstop if anything above were wrong.
+        transactions.saveAndFlush(one);
+        transactions.saveAndFlush(other);
+
+        log.info(
+                "transfer paired householdId={} transferGroupId={} transactionId={}"
+                        + " withTransactionId={} byUserId={}",
+                householdId,
+                groupId,
+                one.id(),
+                other.id(),
+                actorId);
+        Transaction out = one.amount().signum() < 0 ? one : other;
+        Transaction in = out == one ? other : one;
+        return view(household, List.of(out, in));
+    }
+
+    /**
+     * Undoes a pairing — or any transfer, since nothing records how a pair was made: turns it back
+     * into two ordinary rows (rule 12, "Undo is a split").
+     *
+     * <p>{@code transfer_group_id} is cleared on both and their versions move forward; nothing else
+     * changes. The rows come back with <b>no category and no payee</b>, because pairing cleared
+     * them and nothing kept the old values, so they land in "Needs a category". Allowed when an
+     * account has since been archived, as editing or deleting a transfer is.
+     *
+     * @param version the pair's, as {@code GET /api/transfers/{id}} reports it
+     * @return both rows, in the ledger's own shape, the leaving one first
+     */
+    @Transactional
+    public List<TransactionView> split(UUID actorId, UUID transferGroupId, long version) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        UUID householdId = membership.household().id();
+        List<Transaction> legs = requireLegs(transferGroupId, householdId);
+        requireCurrentVersion(pairVersion(legs), version);
+
+        for (Transaction leg : legs) {
+            leg.linkToTransfer(null);
+        }
+        List<Transaction> saved =
+                List.of(
+                        transactions.saveAndFlush(legs.get(0)),
+                        transactions.saveAndFlush(legs.get(1)));
+        log.info(
+                "transfer split householdId={} transferGroupId={} byUserId={}",
+                householdId,
+                transferGroupId,
+                actorId);
+        return ledger.rowsOf(householdId, saved);
+    }
+
+    /** The two rows to pair, each at the version the caller read. */
+    public record PairRequest(UUID withTransactionId, long version, long withVersion) {}
+
     // ------------------------------------------------------------------------------- internals
+
+    private Transaction requireRow(UUID transactionId, UUID householdId) {
+        if (transactionId == null) {
+            throw new InvalidRequestException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "a transaction is required",
+                    Map.of("field", "withTransactionId"));
+        }
+        return transactions
+                .findByIdAndHouseholdId(transactionId, householdId)
+                .orElseThrow(() -> new NotFoundException("no such transaction"));
+    }
+
+    private static InvalidRequestException mismatch(String reason) {
+        return new InvalidRequestException(
+                ErrorCode.TRANSFER_PAIR_MISMATCH,
+                "these two rows cannot be one transfer",
+                Map.of("reason", reason));
+    }
 
     private static Transaction leg(
             Account account, LocalDate date, Money amount, UUID groupId, String note) {
@@ -293,11 +453,13 @@ public class TransferService {
                 to.id(),
                 to.name(),
                 out.date(),
+                in.date(),
                 sent,
                 received,
                 crossCurrency,
                 crossCurrency ? impliedRate(sent, received) : null,
                 out.note().orElse(null),
+                in.note().orElse(null),
                 out.createdAt(),
                 laterOf(out.updatedAt(), in.updatedAt()),
                 pairVersion(legs));
@@ -335,14 +497,6 @@ public class TransferService {
             return right;
         }
         return right == null || left.isAfter(right) ? left : right;
-    }
-
-    private static String noteAfter(Change<String> change, Transaction leg) {
-        return switch (change) {
-            case Change.Unchanged<String> ignored -> leg.note().orElse(null);
-            case Change.Cleared<String> ignored -> null;
-            case Change.SetTo<String> written -> written.value();
-        };
     }
 
     /**

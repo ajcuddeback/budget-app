@@ -50,6 +50,25 @@ public final class TransferRequests {
     }
 
     /**
+     * "These two rows are one transfer" (file-import.md rule 12). No amount and no date: every
+     * figure stays where it was.
+     *
+     * @param version the version of the row in the path, as the caller read it
+     * @param withVersion the other row's
+     */
+    public record PairTransactionRequest(
+            @NotNull UUID withTransactionId, @NotNull Long version, @NotNull Long withVersion) {
+
+        @Override
+        public String toString() {
+            return "PairTransactionRequest[version=" + version + "]";
+        }
+    }
+
+    /** Turns a pair back into two rows. {@code version} is the pair's. */
+    public record SplitTransferRequest(@NotNull Long version) {}
+
+    /**
      * A change to a transfer.
      *
      * <p>A class with setters because an absent {@code note} and an explicit {@code null} are

@@ -18,6 +18,10 @@ import java.util.UUID;
  * @param impliedRate {@code received / sent}, to six places, or null when the currencies match.
  *     <b>Derived for display and stored nowhere</b> (ADR-0022): nothing reads it back, nothing
  *     multiplies by it, and it is not what the bank charged — it is what the two figures imply
+ * @param fromDate the outgoing leg's date, and {@code toDate} the incoming leg's. The same for a
+ *     transfer made with "Move money"; possibly two days for a pair made from two statements, where
+ *     each bank's date is the true one (file-import.md rule 12)
+ * @param fromNote the outgoing leg's note, and {@code toNote} the incoming leg's, likewise
  * @param version the pair's. Both legs are written together and bumped together, so one number
  *     describes both; the legs' own versions are an implementation detail of that
  */
@@ -27,12 +31,14 @@ public record TransferView(
         String fromAccountName,
         UUID toAccountId,
         String toAccountName,
-        LocalDate date,
+        LocalDate fromDate,
+        LocalDate toDate,
         Money sent,
         Money received,
         boolean crossCurrency,
         BigDecimal impliedRate,
-        String note,
+        String fromNote,
+        String toNote,
         Instant createdAt,
         Instant updatedAt,
         long version) {
