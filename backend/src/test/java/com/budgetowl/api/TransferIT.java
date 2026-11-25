@@ -294,7 +294,8 @@ class TransferIT extends ApiTestBase {
         assertThat(edited.status()).isEqualTo(200);
         assertThat(edited.stringField("sent")).isEqualTo("200.0000");
         assertThat(edited.stringField("received")).isEqualTo("228.4000");
-        assertThat(edited.stringField("note")).isEqualTo("holiday money");
+        assertThat(edited.stringField("fromNote")).isEqualTo("holiday money");
+        assertThat(edited.stringField("toNote")).isEqualTo("holiday money");
     }
 
     @Test

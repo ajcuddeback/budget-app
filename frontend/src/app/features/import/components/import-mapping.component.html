@@ -1,0 +1,272 @@
+@let s = settings();
+
+<div class="stack">
+  @if (csv()) {
+    @if (headerChanged()) {
+      <div class="alert" role="note">
+        <p>{{ 'import.mappingChanged' | t }}</p>
+      </div>
+    } @else {
+      <p class="card-note">
+        {{ (fromSaved() ? 'import.mappingSaved' : 'import.mappingSuggested') | t }}
+      </p>
+    }
+  }
+
+  @if (asksCharset()) {
+    <div class="field">
+      <label for="import-charset">{{ 'import.charsetQuestion' | t }}</label>
+      <p class="field-hint" id="import-charset-hint">{{ 'import.charsetHint' | t }}</p>
+      <select
+        id="import-charset"
+        class="input"
+        aria-describedby="import-charset-hint"
+        [value]="s.charset"
+        (change)="change({ charset: $any($event.target).value })"
+      >
+        <option value="">{{ 'import.charsetAuto' | t }}</option>
+        @for (charset of charsets(); track charset) {
+          <option [value]="charset" [selected]="charset === s.charset">{{ charset }}</option>
+        }
+      </select>
+      @if (preview().charsetCandidates.length > 0) {
+        <ul class="samples">
+          @for (candidate of preview().charsetCandidates; track candidate.charset) {
+            <li>
+              <p class="field-label">
+                {{ 'import.charsetSamples' | t: { charset: candidate.charset } }}
+              </p>
+              @for (sample of candidate.samples; track $index) {
+                <p class="sample">
+                  <bdi dir="auto">{{ sample }}</bdi>
+                </p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  @if (showsDate() && (asksDate() || csv())) {
+    <div class="field">
+      <label for="import-date-format">{{ 'import.dateFormat' | t }}</label>
+      <p class="field-hint" id="import-date-format-hint">
+        {{ (asksDate() ? 'import.dateFormatAmbiguous' : 'import.dateFormatHint') | t }}
+      </p>
+      <select
+        id="import-date-format"
+        class="input"
+        aria-describedby="import-date-format-hint"
+        [value]="s.dateFormat"
+        (change)="change({ dateFormat: $any($event.target).value })"
+      >
+        <option value="">{{ 'import.dateFormatChoose' | t }}</option>
+        @for (pattern of dateChoices(); track pattern) {
+          <option [value]="pattern" [selected]="pattern === s.dateFormat">
+            {{ dateLabels[pattern] | t }}
+          </option>
+        }
+      </select>
+    </div>
+  }
+
+  @if (csv(); as file) {
+    <div class="settings-grid">
+      <div class="field">
+        <label for="import-delimiter">{{ 'import.delimiter' | t }}</label>
+        <select
+          id="import-delimiter"
+          class="input"
+          [value]="s.delimiter"
+          (change)="change({ delimiter: $any($event.target).value })"
+        >
+          @for (delimiter of delimiters; track delimiter) {
+            <option [value]="delimiter" [selected]="delimiter === s.delimiter">
+              {{ delimiterLabels[delimiter] | t }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="import-header-row">{{ 'import.headerRow' | t }}</label>
+        <input
+          id="import-header-row"
+          class="input"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          max="20"
+          aria-describedby="import-header-row-hint"
+          [value]="s.headerRow"
+          (change)="setHeaderRow($any($event.target).value)"
+        />
+        <p class="field-hint" id="import-header-row-hint">{{ 'import.headerRowHint' | t }}</p>
+      </div>
+
+      <div class="field">
+        <label for="import-decimal">{{ 'import.decimalSeparator' | t }}</label>
+        <select
+          id="import-decimal"
+          class="input"
+          [value]="s.decimalSeparator"
+          (change)="change({ decimalSeparator: $any($event.target).value })"
+        >
+          <option value="." [selected]="s.decimalSeparator === '.'">
+            {{ 'import.decimal.dot' | t }}
+          </option>
+          <option value="," [selected]="s.decimalSeparator === ','">
+            {{ 'import.decimal.comma' | t }}
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="import-grouping">{{ 'import.groupingSeparator' | t }}</label>
+        <select
+          id="import-grouping"
+          class="input"
+          [value]="s.groupingSeparator"
+          (change)="change({ groupingSeparator: $any($event.target).value })"
+        >
+          @for (grouping of groupings; track grouping) {
+            <option [value]="grouping" [selected]="grouping === s.groupingSeparator">
+              {{ groupingLabels[grouping] | t }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="import-money-out">{{ 'import.moneyOutAs' | t }}</label>
+        <select
+          id="import-money-out"
+          class="input"
+          [value]="moneyOut()"
+          (change)="setMoneyOut($any($event.target).value)"
+        >
+          <option value="negative" [selected]="moneyOut() === 'negative'">
+            {{ 'import.moneyOut.negative' | t }}
+          </option>
+          <option value="positive" [selected]="moneyOut() === 'positive'">
+            {{ 'import.moneyOut.positive' | t }}
+          </option>
+          <option value="columns" [selected]="moneyOut() === 'columns'">
+            {{ 'import.moneyOut.columns' | t }}
+          </option>
+        </select>
+        @if (moneyOut() === 'columns') {
+          <p class="field-hint">{{ 'import.moneyOutColumnsHint' | t }}</p>
+        }
+      </div>
+    </div>
+
+    <fieldset class="columns">
+      <legend class="field-label">{{ 'import.columns' | t }}</legend>
+      <!-- One list for both viewports: "Column 1 · Date → [Date]". A select above each column of
+           the table would have to be duplicated for the narrow layout, and two controls with one
+           meaning is two things for a screen reader to get wrong. -->
+      <ul class="role-list">
+        @for (role of s.columns; track $index; let index = $index) {
+          <li class="field">
+            <label [for]="'import-role-' + index">
+              @if (label(index); as named) {
+                {{ 'import.column' | t: { number: index + 1 } }} ·
+                <bdi dir="auto">{{ named }}</bdi>
+              } @else {
+                {{ 'import.column' | t: { number: index + 1 } }}
+              }
+            </label>
+            <select
+              class="input"
+              [id]="'import-role-' + index"
+              [value]="role"
+              (change)="setRole(index, $any($event.target).value)"
+            >
+              <option value="">{{ 'import.role.none' | t }}</option>
+              @for (option of roles; track option) {
+                <option [value]="option" [selected]="option === role">
+                  {{ roleLabels[option] | t }}
+                </option>
+              }
+            </select>
+          </li>
+        }
+      </ul>
+    </fieldset>
+
+    @if (usesDirection()) {
+      <div class="settings-grid">
+        <div class="field">
+          <label for="import-direction-in">{{ 'import.directionIn' | t }}</label>
+          <input
+            id="import-direction-in"
+            class="input"
+            type="text"
+            maxlength="32"
+            autocomplete="off"
+            [value]="s.directionIn"
+            (change)="change({ directionIn: $any($event.target).value })"
+          />
+        </div>
+        <div class="field">
+          <label for="import-direction-out">{{ 'import.directionOut' | t }}</label>
+          <input
+            id="import-direction-out"
+            class="input"
+            type="text"
+            maxlength="32"
+            autocomplete="off"
+            [value]="s.directionOut"
+            (change)="change({ directionOut: $any($event.target).value })"
+          />
+        </div>
+      </div>
+    }
+
+    <div class="table-box" tabindex="0" role="region" aria-labelledby="import-records-caption">
+      <table class="records">
+        <caption id="import-records-caption">
+          {{
+            'import.columnsCaption' | t
+          }}
+        </caption>
+        <thead>
+          <tr>
+            @for (role of s.columns; track $index; let index = $index) {
+              <th scope="col">
+                <span class="th-number">{{ 'import.column' | t: { number: index + 1 } }}</span>
+                <span class="th-role">{{
+                  (role === '' ? 'import.role.none' : roleLabels[role]) | t
+                }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (record of file.firstRecords; track $index) {
+            <tr>
+              @for (cell of record; track $index) {
+                <td>
+                  <bdi dir="auto">{{ cell }}</bdi>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <div>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="busy()"
+      (click)="updateRequested.emit()"
+    >
+      {{ 'import.updatePreview' | t }}
+    </button>
+  </div>
+</div>

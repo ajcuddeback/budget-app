@@ -26,14 +26,16 @@ const SAME: Transfer = {
   fromAccountName: 'Current',
   toAccountId: 'a2',
   toAccountName: 'Savings',
-  date: '2026-11-11',
+  fromDate: '2026-11-11',
+  toDate: '2026-11-11',
   sent: '200.0000',
   sentCurrency: 'GBP',
   received: '200.0000',
   receivedCurrency: 'GBP',
   crossCurrency: false,
   impliedRate: null,
-  note: 'to the pot',
+  fromNote: 'to the pot',
+  toNote: 'to the pot',
   createdAt: '2026-11-11T09:00:00Z',
   updatedAt: '2026-11-11T09:00:00Z',
   version: 2,
@@ -49,7 +51,8 @@ const CROSS: Transfer = {
   receivedCurrency: 'EUR',
   crossCurrency: true,
   impliedRate: '1.162000',
-  note: null,
+  fromNote: null,
+  toNote: null,
 };
 
 const form = (overrides: Partial<TransferFormValue> = {}): TransferFormValue => ({
@@ -136,10 +139,31 @@ describe('buildTransferCreate', () => {
 
 describe('buildTransferPatch', () => {
   it('sends the pair version and only what changed', () => {
-    const patch = buildTransferPatch(SAME, transferFormValue({ ...SAME, date: '2026-11-11' }));
+    const patch = buildTransferPatch(SAME, transferFormValue({ ...SAME, fromDate: '2026-11-11' }));
 
     // Everything the form holds matches, so the patch is the version and nothing else.
     expect(patch).toEqual({ version: 2 });
+  });
+
+  it('leaves each leg its own date and note when a paired transfer is edited (rule 12)', () => {
+    // Two statement rows paired: the bank cleared them on different days, with different notes.
+    const paired: Transfer = {
+      ...SAME,
+      fromDate: '2026-08-03',
+      toDate: '2026-08-05',
+      fromNote: 'TFR OUT',
+      toNote: 'TFR IN',
+    };
+
+    const patch = buildTransferPatch(
+      paired,
+      transferFormValue({ ...paired, sent: '250.0000', received: '250.0000' }),
+    );
+
+    // Only the amount moved. Sending the date or the note would rewrite the incoming leg's.
+    expect(patch).toEqual({ version: 2, amount: '250.0000' });
+    expect(patch).not.toHaveProperty('date');
+    expect(patch).not.toHaveProperty('note');
   });
 
   it('never compares amounts as strings', () => {

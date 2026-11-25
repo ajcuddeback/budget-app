@@ -161,6 +161,14 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "packaging" ]; then
       pass "compose refuses to start without DB_PASSWORD"
     fi
 
+    # The import size cap in nginx is tested, not just configured (file-import.md rule 3): a body
+    # just under and just over it, through the real frontend/nginx.conf in the shipped image.
+    if docker info >/dev/null 2>&1; then
+      run "nginx passes a statement under the import cap and refuses one over it" tools/nginx-check.sh
+    else
+      missing "nginx import cap" "Docker is not running"
+    fi
+
     # Only the web port reaches the host, and only on loopback by default.
     published=$(env DB_PASSWORD=verify-only docker compose config 2>/dev/null | grep -c 'published:' || true)
     if [ "$published" -eq 1 ]; then

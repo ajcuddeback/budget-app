@@ -35,7 +35,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Bills & income | Shipped — API, web UI and user guide | [bills-and-income.md](bills-and-income.md) |
 | Transfers | In progress — slice 8 | [transfers.md](transfers.md) |
 | Household management (invites, roles) | Shipped with authentication & households | [authentication-and-households.md](authentication-and-households.md) |
-| File import (CSV/OFX/QIF) | Planned | [file-import.md](file-import.md) |
+| File import (CSV/OFX/QIF) | Shipped — API, web UI and user guide (slice 12) | [file-import.md](file-import.md) |
 | Bank connections | Planned | _not written_ |
 | Admin console (instance operation) | In progress — slice 9 | [admin-console.md](admin-console.md) |
 | Debt plan & debt detail | Done — slice 10 | [debt-plan.md](debt-plan.md) |

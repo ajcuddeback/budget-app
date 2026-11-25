@@ -1,9 +1,10 @@
 # Feature: File import (CSV / OFX / QIF)
 
 - **Slice:** 12
-- **Status:** Planned — ready to build. Nothing is built yet: no endpoint, no migration, no screen,
-  no user guide. The open questions were answered on 2026-11-25; see [Decisions](#decisions). **Two
-  ADRs must be written at the start of implementation**, before any code (decision 10).
+- **Status:** Built (slice 12) — API, schema (V19), the `/import` page, pairing and splitting in
+  the ledger, and the user guide. ADR-0037 and ADR-0038 were written before any code. See
+  [What slice 12 built](#what-slice-12-built), including where the spec was silent and the stricter
+  option was taken, and the deviations from this doc.
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-25
 - **Depends on:** accounts (3), categories (4), transactions (5), and transfers (8) for the pairing
@@ -1321,6 +1322,121 @@ does not fit there:
   transfer. `tools/ui/specs/app/import.spec.ts` covers both
   viewports, dark mode and axe, with a hostile-payee fixture row rendered as text.
 
+## What slice 12 built
+
+Built on branch `worktree-agent-a6bceda1124702da9`, 2026-11-25.
+
+**Schema.** `V19__file_import.sql`: `import_batches` (composite FK to the account, `UNIQUE
+(household_id, preview_digest)` for idempotent commits, count and digest `CHECK`s, no file name and
+no file hash), `transactions.import_batch_id` (composite FK, `ON DELETE SET NULL`), and
+`import_mappings` (one per account, allowlist `CHECK`s on every option, `columns` as bounded
+`jsonb`). `ApplicationRoleRestrictionsIT` proves the runtime role can write them and change no
+schema.
+
+**API.** Exactly the routes in [API](#api), plus `POST /api/transactions/{id}/pair` and
+`POST /api/transfers/{id}/split` (rule 12). The order inside preview and commit is: role check,
+rate limit, concurrency gate, account lookup scoped to the household, strict base64 decode, then
+the reader. A `VIEWER` is refused before the file is decoded.
+
+**The reader** (`com.budgetowl.imports.domain`): size cap, empty file, archive magic numbers, the
+charset rule (BOM, then a declaration that decodes, then the person's choice, then strict UTF-8,
+then a question with single-byte candidates and decoded samples), NUL, format sniffing, a line
+pre-scan, then one of four readers — the purpose-built OFX 1.x tokenizer, StAX for OFX 2.x through
+`OfxXmlFactory` only, QIF, and RFC 4180 CSV — then one interpreter. Amounts go through
+`ImportAmountLexer`; dates through `ImportDateParser` (`STRICT`, `uuuu`). Every refusal is an
+`ImportRefusal` carrying a fixed code and reason, never a parser's message.
+
+**Duplicates and the digest.** `RowIdentity` (account id inside every hash; the bank's identifier
+when it is unique in the file, else a fingerprint with an occurrence ordinal), `ImportClassifier`
+(tier 1 exact, tier 2 suspected, one-to-one, closest date first), and `PreviewDigest` over the
+account, its currency and every row's classification and content.
+
+**The writer.** One transaction: re-read the account, refuse an archived one, re-classify, compare
+the digest, accept overrides only for suspected rows, bulk-insert payees with `INSERT … ON
+CONFLICT DO NOTHING` then select, write the rows `CLEARED` with no category, and turn a lost race on
+either unique index into `409 import-preview-stale` with nothing written.
+
+**Transfers (rule 12).** Each leg keeps its own date and note (`fromDate`/`toDate`,
+`fromNote`/`toNote`), `PATCH` writes only what it is sent, and pair and split are built as
+[transfers.md](transfers.md) now describes.
+
+**Edge.** `ImportBodyLimitFilter` runs before Spring Security on the two upload routes: a
+`Content-Encoding` other than `identity` is `415`; a declared length over the cap is `413`; and an
+undeclared (chunked) body is counted as it streams, so Jackson is stopped one byte past the cap.
+`frontend/nginx.conf` has `location /api/imports` with `client_max_body_size 7m` (5 MiB of file
+as base64 plus the JSON around it), request and response buffering to disk off, and nginx's own
+`413` rewritten to the API's problem shape. `tools/nginx-check.sh` (run by `tools/verify.sh` when
+Docker is available) sends bodies just under and over the cap, with and without `Content-Length`,
+through the real config.
+
+**UI.** `/import` (page, mapping component, preview component), reached from the ledger's
+**Import a statement** and each open account's **Import**. The ledger gains **This is a transfer…**
+and **Split into two rows**, and accepts `?accountId=` so the success state can open it filtered.
+**User guide:** `userguide/features/import-a-bank-statement.md` and
+`userguide/features/pair-two-rows-into-a-transfer.md`, captured from the running UI.
+
+### Where the spec was silent, and the stricter option was taken
+
+- **Multipart is off for the whole API** (`spring.servlet.multipart.enabled: false`). Spring
+  parses multipart eagerly and Tomcat writes every part to disk before any controller can refuse
+  it; no route here takes multipart. A multipart upload is `415` and no `MultipartResolver` exists.
+- **Body limits run before authentication.** An anonymous oversized or compressed body is refused
+  without being read, and an anonymous chunked body is refused by Spring Security without being
+  read. The counting stream holds no buffer of its own.
+- **The limits the spec left open:** 12,000 lines for CSV and 200,000 for QIF in the pre-scan,
+  4,096 characters per line, 64 CSV columns, OFX depth 32, 200,000 elements, element names of 64
+  characters and leaves of 1,024, and a 15 s parse deadline checked every 256 records on a
+  monotonic clock.
+- **The concurrency gate answers `429` with `Retry-After: 15`**, and a refused caller never holds a
+  slot. The rate limit (30 per user per 10 minutes) counts previews and commits together and is
+  checked after the role, so a `VIEWER` cannot spend anybody's budget.
+- **UTF-7 and a UTF-32 BOM are refused** whatever the file declares; a byte a single-byte charset
+  does not define is an error, never a replacement character; and the charset allowlist is a name
+  comparison, never a `Charset.forName` lookup of a client string.
+- **OFX 2.x:** an `ENTITY_REFERENCE` event is a refusal (`not-a-statement`) even though nothing is
+  declared to resolve, and the factory's resolver throws if anything ever asks it to fetch.
+  **OFX 1.x:** a bare `&` is literal text and an unknown `&name;` marks the row
+  `row-entity-unknown` rather than being looked up.
+- **An archived account is refused at preview too**, not only at commit.
+- **An option that does not apply to the format is a `400` naming it** (a delimiter with an OFX
+  file), rather than being ignored.
+- **The preview response is asserted `Cache-Control: no-store`** (`ImportIT.a_preview_is_never_cached`).
+  The header comes from the API-wide security headers; the test makes sure it stays true for the one
+  response that carries a statement's rows.
+- **Pairing offers only rows that went the other way.** The sheet leaves out this row, rows in the
+  same account, existing legs and rows with the same sign — the pair rules, not a guess. Nothing is
+  ranked and amounts are not compared.
+
+### Deviations from this doc
+
+- **Entry points.** The admin Connections card and the Bills & Income **Import CSV** button
+  (decision 2 and 2b) are not built: neither screen exists in the app yet, so there was nothing to
+  add them to. The ledger and every account row link to `/import`.
+- **The CSV mapping** uses one list of "Column 1 · Posted → [Date]" selects in both viewports,
+  above a table of the first records that scrolls inside its own box, instead of a select above
+  each column on desktop and a list on a phone. Two controls with one meaning would be two things
+  for a screen reader to get wrong.
+- **A Recent imports list** on the import page, with **Undo** on each batch that still has rows to
+  remove. The UI section offers undo only on the success state, which is lost on navigation.
+- **The preview response adds `suggestedCharset`** (`windows-1252` when the charset is still a
+  question), shown preselected in the charset select and applied only on **Update preview**.
+- **UI fixtures for import are hand-written**, not generated from the server as the debt fixtures
+  are. Their arithmetic (balance now, after, with suspected rows) is written out in minor units in
+  `tools/ui/fixtures/demo-data.ts`.
+- **The browser harness ran on port 4312.** Port 4200 was held throughout by the main checkout's
+  own dev server (running for over nine hours), which was not stopped; `tools/ui-check.sh --url
+  http://localhost:4312` and `tools/userguide-capture.sh --url http://localhost:4312` ran against
+  this branch's own dev server instead.
+
+### Known gaps
+
+- **`AmountText.parse` still accepts exponent notation** (see Implementation notes and
+  `gotchas.md`). Import does not use it.
+- **The ledger's own "Needs a category" and money-in colours use fixed `-700` ramp steps** that
+  fail contrast on the dark ground; the import preview uses the text roles instead.
+- **Nothing proves `proxy_max_temp_file_size 0` by test.** A preview response is far below the
+  size at which nginx would spool it, so the response-side setting is configured, not exercised.
+
 ## Implementation notes
 
 Found while writing this doc. Each needs action outside this file, and none was changed here.
@@ -1333,6 +1449,8 @@ Found while writing this doc. Each needs action outside this file, and none was 
   refuse exponent notation and non-ASCII digits. This belongs in `gotchas.md`.
 - **`frontend/nginx.conf` sets no `client_max_body_size`**, so every `/api` body over 1 MiB already
   gets an nginx `413`. That is harmless today and will break import on its first real statement.
+  *Resolved in slice 12:* `location /api/imports` carries its own 7 MiB cap; every other route
+  keeps the 1 MiB default, and `tools/nginx-check.sh` proves both.
 - **`api-style.md` says money-moving endpoints accept an `Idempotency-Key` header. Nothing in the
   backend implements one** (`POST /api/transactions` and `POST /api/transfers` included). Import
   gets idempotency from its digest instead (rule 1). The style guide and the code disagree, and that

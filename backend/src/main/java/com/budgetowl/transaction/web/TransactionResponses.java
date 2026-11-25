@@ -1,6 +1,7 @@
 package com.budgetowl.transaction.web;
 
 import com.budgetowl.transaction.domain.TransactionStatus;
+import com.budgetowl.transaction.service.TransactionView;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,6 +59,32 @@ public final class TransactionResponses {
         @Override
         public String toString() {
             return "TransactionResponse[id=" + id + ", status=" + status + "]";
+        }
+
+        /**
+         * The ledger row shape, for a response outside the ledger's own controller that returns
+         * rows — splitting a transfer answers with its two rows (file-import.md rule 12).
+         */
+        public static TransactionResponse of(TransactionView transaction) {
+            return new TransactionResponse(
+                    transaction.id(),
+                    transaction.accountId(),
+                    transaction.accountName(),
+                    transaction.date(),
+                    transaction.amount().amount(),
+                    transaction.amount().currency().getCurrencyCode(),
+                    transaction.payeeId(),
+                    transaction.payeeName(),
+                    transaction.categoryId(),
+                    transaction.categoryName(),
+                    transaction.categoryParentName(),
+                    transaction.note(),
+                    transaction.status(),
+                    transaction.transferGroupId(),
+                    transaction.transfer(),
+                    transaction.createdAt(),
+                    transaction.updatedAt(),
+                    transaction.version());
         }
     }
 

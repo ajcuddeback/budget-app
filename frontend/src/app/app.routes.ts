@@ -92,6 +92,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/preferences/preferences.routes').then((m) => m.PREFERENCES_ROUTES),
       },
+      {
+        // A household page, not the admin console: importing is a household write by an owner or
+        // a member (file-import.md decision 2, ADR-0029).
+        path: 'import',
+        title: 'title.import',
+        loadChildren: () => import('./features/import/import.routes').then((m) => m.IMPORT_ROUTES),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

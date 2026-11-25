@@ -1,12 +1,15 @@
 package com.budgetowl.transfer.web;
 
 import com.budgetowl.auth.service.TransportAuthentication;
+import com.budgetowl.transaction.web.TransactionResponses.TransactionResponse;
 import com.budgetowl.transfer.service.NewTransfer;
 import com.budgetowl.transfer.service.TransferChanges;
 import com.budgetowl.transfer.service.TransferService;
 import com.budgetowl.transfer.service.TransferView;
 import com.budgetowl.transfer.web.TransferRequests.CreateTransferRequest;
+import com.budgetowl.transfer.web.TransferRequests.SplitTransferRequest;
 import com.budgetowl.transfer.web.TransferRequests.UpdateTransferRequest;
+import com.budgetowl.transfer.web.TransferResponses.SplitResponse;
 import com.budgetowl.transfer.web.TransferResponses.TransferResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -84,6 +87,21 @@ public class TransferController {
                                 body.amountReceived(),
                                 body.noteChange(),
                                 body.version())));
+    }
+
+    /**
+     * Turns the pair back into two ordinary rows, which come back with no category and no payee
+     * (file-import.md rule 12). Answers with both rows, in the ledger's own shape.
+     */
+    @PostMapping("/{id}/split")
+    SplitResponse split(
+            TransportAuthentication caller,
+            @PathVariable UUID id,
+            @Valid @RequestBody SplitTransferRequest body) {
+        return new SplitResponse(
+                transfers.split(caller.userId(), id, body.version()).stream()
+                        .map(TransactionResponse::of)
+                        .toList());
     }
 
     /** Removes both legs, in one database transaction. */

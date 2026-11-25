@@ -841,14 +841,16 @@ export const DEMO_TRANSFER = {
   fromAccountName: 'Everyday Checking',
   toAccountId: 'acc-0002',
   toAccountName: 'Emergency Fund',
-  date: '2026-08-16',
+  fromDate: '2026-08-16',
+  toDate: '2026-08-16',
   sent: '500.00',
   sentCurrency: 'USD',
   received: '500.00',
   receivedCurrency: 'USD',
   crossCurrency: false,
   impliedRate: null,
-  note: 'Transfer to Emergency Fund',
+  fromNote: 'Transfer to Emergency Fund',
+  toNote: 'Transfer to Emergency Fund',
   createdAt: '2026-08-16T08:00:00Z',
   updatedAt: '2026-08-16T08:00:00Z',
   version: 0,
@@ -1619,3 +1621,282 @@ for (const row of DEMO_TRANSACTIONS) {
     );
   }
 }
+
+// ---- file import (docs/features/file-import.md) ------------------------------------------------
+//
+// One statement for Everyday Checking (•4417), as the API's preview describes it. Hand-written,
+// and the arithmetic is kept honest by hand, in minor units: balanceNow is the account's balance
+// (2480.15); the six new rows net +1968.95 (in 2150.00, out -181.05), so balanceAfter is 4449.10;
+// including the one suspected row (-92.15) gives 4356.95. The bank's closing balance is 4449.10,
+// because the suspected row really is the purchase already typed in on 20 August.
+//
+// No real person's data: the payees are the fixture household's usual ones (design/README.md).
+
+const IMPORT_ACCOUNT = {
+  id: 'acc-0001',
+  name: 'Everyday Checking',
+  lastFour: '4417',
+  currency: 'USD',
+} as const;
+
+const importRow = (
+  row: number,
+  date: string,
+  amount: string,
+  payeeName: string | null,
+  note: string | null = null,
+) => ({
+  row,
+  date,
+  amount,
+  currency: 'USD',
+  payeeName,
+  note,
+  payeeCut: false,
+  noteCut: false,
+});
+
+/** The preview of an OFX statement that needs nothing more from the person. */
+export const DEMO_IMPORT_PREVIEW = {
+  previewDigest: '3f9a1c0d5e7b2a8f6c4d1e0b9a7f5c3e2d1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f',
+  account: IMPORT_ACCOUNT,
+  format: 'OFX',
+  decodedBytes: 4096,
+  charset: 'UTF-8',
+  charsetSource: 'DECLARED',
+  charsetCandidates: [],
+  charsetsAllowed: ['UTF-8', 'UTF-16LE', 'UTF-16BE', 'windows-1252', 'ISO-8859-1', 'ISO-8859-15'],
+  suggestedCharset: null,
+  dateFormat: null,
+  dateFormatSource: null,
+  dateFormatCandidates: [],
+  needs: [],
+  statement: {
+    from: '2026-08-18',
+    to: '2026-08-31',
+    bankClosingBalance: '4449.10',
+    accountHint: 'MATCHES',
+  },
+  counts: { read: 10, new: 6, duplicate: 2, suspected: 1, unreadable: 1, zero: 0 },
+  totals: { moneyIn: '2150.00', moneyOut: '-181.05', currency: 'USD' },
+  balanceNow: '2480.15',
+  balanceAfter: '4449.10',
+  balanceAfterWithSuspected: '4356.95',
+  attention: [
+    {
+      row: 3,
+      kind: 'SUSPECTED_DUPLICATE',
+      date: '2026-08-20',
+      amount: '-92.15',
+      payeeName: 'Greenfield Market',
+      code: null,
+      column: null,
+      text: null,
+      resembles: { transactionId: 'txn-0010', date: '2026-08-20' },
+    },
+    {
+      row: 1,
+      kind: 'DUPLICATE',
+      date: '2026-08-18',
+      amount: '-36.20',
+      payeeName: 'Corner Kitchen',
+      code: null,
+      column: null,
+      text: null,
+      resembles: null,
+    },
+    {
+      row: 2,
+      kind: 'DUPLICATE',
+      date: '2026-08-19',
+      amount: '-2.75',
+      payeeName: 'City Transit',
+      code: null,
+      column: null,
+      text: null,
+      resembles: null,
+    },
+    {
+      row: 10,
+      kind: 'UNREADABLE',
+      date: null,
+      amount: null,
+      payeeName: null,
+      code: 'row-date-unreadable',
+      column: null,
+      text: '20260231',
+      resembles: null,
+    },
+  ],
+  attentionTruncated: false,
+  sample: [
+    importRow(4, '2026-08-21', '-54.30', 'Greenfield Market'),
+    importRow(5, '2026-08-22', '-2.75', 'City Transit'),
+    importRow(6, '2026-08-25', '2150.00', 'Northwind Systems', 'Salary'),
+    importRow(7, '2026-08-27', '-88.40', 'Metro Power'),
+    importRow(8, '2026-08-28', '-12.00', 'Hillside Pharmacy'),
+    importRow(9, '2026-08-30', '-23.60', 'Corner Kitchen'),
+  ],
+  identical: [],
+  reusedIdentifier: false,
+  textCut: false,
+  csv: null,
+} as const;
+
+/**
+ * The same statement with two hostile payees: markup, and a right-to-left override. Both must be
+ * rendered as text, isolated, and change nothing around them.
+ */
+export const DEMO_IMPORT_PREVIEW_HOSTILE = {
+  ...DEMO_IMPORT_PREVIEW,
+  sample: [
+    importRow(4, '2026-08-21', '-54.30', '<img src=x onerror="window.__owned=1">'),
+    importRow(5, '2026-08-22', '-2.75', '‮egrahc‬ City Transit'),
+    ...DEMO_IMPORT_PREVIEW.sample.slice(2),
+  ],
+} as const;
+
+/** The same statement, when the bank's balance and ours disagree after the import. */
+export const DEMO_IMPORT_PREVIEW_DIFFERENT_BALANCE = {
+  ...DEMO_IMPORT_PREVIEW,
+  statement: { ...DEMO_IMPORT_PREVIEW.statement, bankClosingBalance: '4512.60' },
+} as const;
+
+/** The same statement, from a file whose account number does not end in 4417. */
+export const DEMO_IMPORT_PREVIEW_OTHER_ACCOUNT = {
+  ...DEMO_IMPORT_PREVIEW,
+  statement: { ...DEMO_IMPORT_PREVIEW.statement, accountHint: 'DIFFERS' },
+} as const;
+
+/** A CSV before its columns are mapped: the server read the shape and asks before reading rows. */
+export const DEMO_IMPORT_CSV_ASKING = {
+  ...DEMO_IMPORT_PREVIEW,
+  previewDigest: null,
+  format: 'CSV',
+  charsetSource: 'DETECTED',
+  needs: ['MAPPING'],
+  statement: null,
+  counts: null,
+  totals: null,
+  balanceNow: null,
+  balanceAfter: null,
+  balanceAfterWithSuspected: null,
+  attention: [],
+  sample: [],
+  csv: {
+    columnCount: 5,
+    headerLabels: ['Posted', 'Description', 'Debit', 'Credit', 'Balance'],
+    firstRecords: [
+      ['08/21/2026', 'GREENFIELD MARKET #12', '54.30', '', '2425.85'],
+      ['08/22/2026', 'CITY TRANSIT', '2.75', '', '2423.10'],
+      ['08/25/2026', 'NORTHWIND SYSTEMS PAYROLL', '', '2150.00', '4573.10'],
+      ['08/27/2026', 'METRO POWER', '88.40', '', '4484.70'],
+      ['08/28/2026', 'HILLSIDE PHARMACY', '12.00', '', '4472.70'],
+    ],
+    suggested: {
+      delimiter: ',',
+      headerRow: 1,
+      dateFormat: 'MM/dd/uuuu',
+      dateFormatCandidates: ['MM/dd/uuuu'],
+      decimalSeparator: '.',
+      groupingSeparator: null,
+      columns: { '0': 'DATE', '1': 'PAYEE', '2': 'DEBIT', '3': 'CREDIT' },
+    },
+    mappingMatchesSaved: null,
+  },
+} as const;
+
+/** The CSV once mapped: the same rows, read. */
+export const DEMO_IMPORT_CSV_PREVIEW = {
+  ...DEMO_IMPORT_PREVIEW,
+  format: 'CSV',
+  charsetSource: 'DETECTED',
+  statement: {
+    from: '2026-08-18',
+    to: '2026-08-31',
+    bankClosingBalance: null,
+    accountHint: 'UNKNOWN',
+  },
+  csv: DEMO_IMPORT_CSV_ASKING.csv,
+} as const;
+
+/** What committing the preview above writes, with suspected rows left out. */
+export const DEMO_IMPORT_BATCH = {
+  id: 'imp-0002',
+  accountId: 'acc-0001',
+  accountName: 'Everyday Checking',
+  format: 'OFX',
+  imported: 6,
+  duplicate: 2,
+  excluded: 1,
+  unreadable: 1,
+  zero: 0,
+  importedBy: DEMO_USER.id,
+  createdAt: '2026-09-01T08:03:00Z',
+  removable: 6,
+} as const;
+
+/** An earlier import, already in the history. */
+export const DEMO_IMPORT_HISTORY = [
+  {
+    id: 'imp-0001',
+    accountId: 'acc-0003',
+    accountName: 'Travel Card',
+    format: 'QIF',
+    imported: 14,
+    duplicate: 0,
+    excluded: 0,
+    unreadable: 0,
+    zero: 0,
+    importedBy: DEMO_USER.id,
+    createdAt: '2026-08-10T19:42:00Z',
+    removable: 14,
+  },
+] as const;
+
+/**
+ * Two statement rows that are one transfer: $300.00 left Everyday Checking on 18 August and
+ * arrived in Emergency Fund on 19 August, each imported from its own bank's file with the bank's
+ * wording as the payee. Kept out of DEMO_TRANSACTIONS so every other capture of the ledger, and
+ * its page total, stays as it was; the pairing screens serve DEMO_PAIRING_LEDGER instead.
+ */
+export const DEMO_PAIRING_ROWS = [
+  {
+    ...DEMO_TRANSACTIONS[0],
+    id: 'txn-0021',
+    accountId: 'acc-0002',
+    accountName: 'Emergency Fund',
+    date: '2026-08-19',
+    amount: '300.00',
+    payeeId: 'pay-0021',
+    payeeName: 'TRANSFER FROM CHK 4417',
+    status: 'CLEARED',
+    createdAt: '2026-09-01T08:03:00Z',
+    updatedAt: '2026-09-01T08:03:00Z',
+  },
+  {
+    ...DEMO_TRANSACTIONS[0],
+    id: 'txn-0020',
+    accountId: 'acc-0001',
+    accountName: 'Everyday Checking',
+    date: '2026-08-18',
+    amount: '-300.00',
+    payeeId: 'pay-0020',
+    payeeName: 'ONLINE TRANSFER TO SAVINGS',
+    status: 'CLEARED',
+    createdAt: '2026-09-01T08:03:00Z',
+    updatedAt: '2026-09-01T08:03:00Z',
+  },
+] as const;
+
+/** The ledger with the two rows above at the top, newest first, for the pairing screens. */
+export const DEMO_PAIRING_LEDGER = {
+  content: [...DEMO_PAIRING_ROWS, ...DEMO_TRANSACTIONS],
+  // The fixture page total, plus 300.00 in and 300.00 out: unchanged.
+  pageTotal: DEMO_LEDGER_PAGE_TOTAL,
+  pageTotalCurrency: 'USD',
+  page: 0,
+  size: 50,
+  totalElements: DEMO_PAIRING_ROWS.length + DEMO_TRANSACTIONS.length,
+  totalPages: 1,
+} as const;

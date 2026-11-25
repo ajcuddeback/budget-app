@@ -139,12 +139,28 @@
 
     <div class="field">
       <label for="transfer-date">{{ 'transfers.date' | t }}</label>
+      @if (legsDiffer(); as differ) {
+        @if (differ.dates) {
+          <p class="field-hint" id="transfer-date-legs">
+            {{
+              'transfers.legDates'
+                | t
+                  : {
+                      from: (differ.transfer.fromDate | dateOnly),
+                      to: (differ.transfer.toDate | dateOnly),
+                    }
+            }}
+          </p>
+        }
+      }
       <input
         id="transfer-date"
         class="input"
         type="date"
         formControlName="date"
-        aria-describedby="transfer-date-error"
+        [attr.aria-describedby]="
+          legsDiffer()?.dates ? 'transfer-date-legs transfer-date-error' : 'transfer-date-error'
+        "
       />
       <app-field-error [control]="form.controls.date" errorId="transfer-date-error" />
     </div>
@@ -160,7 +176,9 @@
         formControlName="note"
         aria-describedby="transfer-note-hint transfer-note-error"
       />
-      <p class="field-hint" id="transfer-note-hint">{{ 'transfers.noteHint' | t }}</p>
+      <p class="field-hint" id="transfer-note-hint">
+        {{ (legsDiffer()?.notes ? 'transfers.legNotes' : 'transfers.noteHint') | t }}
+      </p>
       <app-field-error [control]="form.controls.note" errorId="transfer-note-error" />
     </div>
 

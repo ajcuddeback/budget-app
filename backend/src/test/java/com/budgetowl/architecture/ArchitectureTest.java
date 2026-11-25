@@ -261,7 +261,103 @@ class ArchitectureTest {
                     .notHaveRawReturnType(Float.class)
                     .because("ADR-0006 — no floating point anywhere near this codebase");
 
+    /**
+     * File import reads amounts from a file nobody here wrote, and no amount from a file goes
+     * anywhere near floating point (ADR-0006, docs/features/file-import.md rule 7).
+     *
+     * <p>{@code Double.parseDouble("0x1p3")} is 8 and {@code NumberFormat.parse("12abc")} is 12,
+     * and both return a binary float on the way. The field and return-type rules above cannot see a
+     * local {@code double} or a call that returns one, so this rule looks at every call the import
+     * package makes: none may take or return {@code double}, {@code float} or their boxes, and none
+     * may touch {@code NumberFormat} or {@code DecimalFormat} at all.
+     */
+    @ArchTest
+    static final ArchRule import_never_reads_a_number_through_floating_point =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.budgetowl.imports..")
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(
+                            Double.class,
+                            Float.class,
+                            java.text.NumberFormat.class,
+                            java.text.DecimalFormat.class)
+                    .orShould()
+                    .callCodeUnitWhere(takesOrReturnsFloatingPoint())
+                    .because(
+                            "an amount from a file goes through ImportAmountLexer to a canonical"
+                                    + " string and only then to BigDecimal; every floating-point"
+                                    + " path accepts something it must not (file-import.md rule 7)");
+
+    /**
+     * One XML parser in the application, configured in one place (docs/features/file-import.md rule
+     * 5). A second {@code XMLInputFactory} made with defaults — or a DOM or SAX parser, whose
+     * defaults resolve external entities — would be an XXE the moment it met a file.
+     */
+    @ArchTest
+    static final ArchRule only_the_ofx_factory_creates_an_xml_parser =
+            noClasses()
+                    .that()
+                    .doNotHaveFullyQualifiedName(
+                            com.budgetowl.imports.domain.OfxXmlFactory.class.getName())
+                    .should()
+                    .callMethodWhere(createsAStaxFactory())
+                    .because(
+                            "OfxXmlFactory is the only factory configured with DTDs and external"
+                                    + " entities off (file-import.md rule 5)");
+
+    @ArchTest
+    static final ArchRule nothing_uses_a_dom_sax_or_transformer_parser =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(
+                            javax.xml.parsers.DocumentBuilderFactory.class,
+                            javax.xml.parsers.SAXParserFactory.class,
+                            javax.xml.transform.TransformerFactory.class,
+                            javax.xml.validation.SchemaFactory.class)
+                    .because(
+                            "their defaults resolve external entities; OFX 2.x is read with StAX"
+                                    + " from OfxXmlFactory and nothing else (file-import.md rule 5)");
+
     // ---------------------------------------------------------------------------------- helpers
+
+    private static DescribedPredicate<com.tngtech.archunit.core.domain.JavaCall<?>>
+            takesOrReturnsFloatingPoint() {
+        return new DescribedPredicate<>("takes or returns double, float, Double or Float") {
+            @Override
+            public boolean test(com.tngtech.archunit.core.domain.JavaCall<?> call) {
+                var target = call.getTarget();
+                if (isFloatingPoint(target.getRawReturnType().getName())) {
+                    return true;
+                }
+                return target.getRawParameterTypes().stream()
+                        .anyMatch(type -> isFloatingPoint(type.getName()));
+            }
+        };
+    }
+
+    private static boolean isFloatingPoint(String typeName) {
+        return typeName.equals("double")
+                || typeName.equals("float")
+                || typeName.equals(Double.class.getName())
+                || typeName.equals(Float.class.getName());
+    }
+
+    private static DescribedPredicate<com.tngtech.archunit.core.domain.JavaMethodCall>
+            createsAStaxFactory() {
+        return new DescribedPredicate<>("creates an XMLInputFactory") {
+            @Override
+            public boolean test(com.tngtech.archunit.core.domain.JavaMethodCall call) {
+                var target = call.getTarget();
+                return target.getOwner().isAssignableTo(javax.xml.stream.XMLInputFactory.class)
+                        && (target.getName().equals("newInstance")
+                                || target.getName().equals("newFactory")
+                                || target.getName().equals("newDefaultFactory"));
+            }
+        };
+    }
 
     private static DescribedPredicate<JavaMethod> declaredOnARepositoryForHouseholdOwnedData() {
         return new DescribedPredicate<>("declared on a repository for household-owned data") {

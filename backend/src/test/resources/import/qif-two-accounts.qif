@@ -1,0 +1,14 @@
+!Option:AutoSwitch
+!Account
+NCurrent
+TBank
+^
+NSavings
+TBank
+^
+!Clear:AutoSwitch
+!Type:Bank
+D8/ 3'26
+T-3.50
+PBLUE BOTTLE
+^

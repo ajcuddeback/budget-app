@@ -181,9 +181,10 @@ on the **Accounts** screen and it comes back to both lists. A transfer you made 
 an account stays exactly as it is — it already happened.
 
 **I already recorded the two sides by hand, as an expense and some income.**
-Delete both of those transactions and use **Move money** instead. Recorded as an expense and
-income, the same money counts as spending in one place and earnings in another, and every total
-that uses either is wrong.
+Select **This is a transfer…** on one of them and pick the other — see
+[Pair two rows into a transfer](pair-two-rows-into-a-transfer.md). The same goes for two rows
+imported from two statements. Left as an expense and income, the same money counts as spending in
+one place and earnings in another, and every total that uses either is wrong.
 
 **I picked the wrong account.**
 Delete the transfer and make it again. The accounts are fixed once a transfer exists, for the same
@@ -192,5 +193,7 @@ reason you can't move a transaction between accounts: it would change two balanc
 ## Related
 
 - [Record a transaction](record-a-transaction.md) — money going to or coming from somebody else
+- [Pair two rows into a transfer](pair-two-rows-into-a-transfer.md) — when both halves are already
+  in your ledger
 - [Add an account](add-an-account.md)
 - [Archive or delete an account](archive-or-delete-an-account.md)

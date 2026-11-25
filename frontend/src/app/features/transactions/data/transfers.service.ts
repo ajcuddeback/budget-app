@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateTransferRequest, Transfer, UpdateTransferRequest } from './transfer.models';
+import {
+  CreateTransferRequest,
+  PairTransactionRequest,
+  SplitTransferResponse,
+  Transfer,
+  UpdateTransferRequest,
+} from './transfer.models';
 
 const BASE = '/api/transfers';
 
@@ -43,5 +49,25 @@ export class TransfersService {
   /** Removes both legs. There is no way to remove one. */
   remove(transferGroupId: string): Observable<void> {
     return this.http.delete<void>(`${BASE}/${encodeURIComponent(transferGroupId)}`);
+  }
+
+  /**
+   * "These two rows are one transfer" (file-import.md rule 12). Both rows are looked up in the
+   * caller's household and both versions must be the ones read; the server checks every pair rule
+   * before writing anything, and clears both rows' category and payee.
+   */
+  pair(transactionId: string, request: PairTransactionRequest): Observable<Transfer> {
+    return this.http.post<Transfer>(
+      `/api/transactions/${encodeURIComponent(transactionId)}/pair`,
+      request,
+    );
+  }
+
+  /** Undoes a pair: two ordinary rows again, with no category and no payee. */
+  split(transferGroupId: string, version: number): Observable<SplitTransferResponse> {
+    return this.http.post<SplitTransferResponse>(
+      `${BASE}/${encodeURIComponent(transferGroupId)}/split`,
+      { version },
+    );
   }
 }

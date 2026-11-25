@@ -45,6 +45,10 @@ export class TransactionListComponent {
   /** Both carry the leg; the page resolves the pair it belongs to. */
   readonly transferEditRequested = output<Transaction>();
   readonly transferDeleteRequested = output<Transaction>();
+  /** "This is a transfer…", on a row that is not one. Carries the row the person started from. */
+  readonly pairRequested = output<Transaction>();
+  /** "Split into two rows", on a transfer leg. The page resolves the pair and its version. */
+  readonly splitRequested = output<Transaction>();
 
   protected readonly statusKey = transactionStatusKey;
 

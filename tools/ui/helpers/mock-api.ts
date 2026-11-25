@@ -36,6 +36,12 @@ import {
   DEMO_PROBLEMS,
   DEMO_TOKENS,
   DEMO_TRANSFER,
+  DEMO_IMPORT_BATCH,
+  DEMO_IMPORT_CSV_ASKING,
+  DEMO_IMPORT_CSV_PREVIEW,
+  DEMO_IMPORT_HISTORY,
+  DEMO_IMPORT_PREVIEW,
+  DEMO_PAIRING_ROWS,
   DEMO_USER,
   DEMO_ADMIN_ACCOUNTS,
   DEMO_INSTANCE,
@@ -347,6 +353,11 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
   // so a move on screen shows the figures the real application computes for the order it sent.
   // Per page, never shared.
   let customOrder: string | null = null;
+
+  // The household's imports, newest first: the fixture's earlier one, then whatever this run
+  // commits. Kept so the page's history and undo show what just happened. Per page, never shared.
+  const importedBatches: { id: string; removable: number; [field: string]: unknown }[] =
+    DEMO_IMPORT_HISTORY.map((batch) => ({ ...batch }));
 
   const me = () => {
     const base =
@@ -818,13 +829,15 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         fromAccountName: from?.name ?? DEMO_TRANSFER.fromAccountName,
         toAccountId: to?.id ?? DEMO_TRANSFER.toAccountId,
         toAccountName: to?.name ?? DEMO_TRANSFER.toAccountName,
-        date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+        fromDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.fromDate,
+        toDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.toDate,
         sent,
         sentCurrency: from?.currency ?? 'USD',
         received,
         receivedCurrency: to?.currency ?? 'USD',
         crossCurrency: (from?.currency ?? 'USD') !== (to?.currency ?? 'USD'),
-        note: (field('note') as string | undefined) ?? null,
+        fromNote: (field('note') as string | undefined) ?? null,
+        toNote: (field('note') as string | undefined) ?? null,
       });
     }
     const transfer = /^\/api\/transfers\/([^/]+)$/.exec(url.pathname);
@@ -836,16 +849,126 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         const sent = (field('amount') as string | undefined) ?? DEMO_TRANSFER.sent;
         return json(route, 200, {
           ...DEMO_TRANSFER,
-          date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+          // Only what was sent is written: an absent date leaves each leg's own alone.
+          fromDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.fromDate,
+          toDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.toDate,
           sent,
           // Within one currency the legs are equal, and the real API refuses a second figure here.
           received: (field('amountReceived') as string | undefined) ?? sent,
-          note: field('note') === undefined ? DEMO_TRANSFER.note : (field('note') as string | null),
+          fromNote:
+            field('note') === undefined ? DEMO_TRANSFER.fromNote : (field('note') as string | null),
+          toNote:
+            field('note') === undefined ? DEMO_TRANSFER.toNote : (field('note') as string | null),
           // The pair's version moves by two: both legs are written together.
           version: DEMO_TRANSFER.version + 2,
         });
       }
       return json(route, 200, DEMO_TRANSFER);
+    }
+
+    // ---- file import (docs/features/file-import.md) ------------------------------------------
+    // The preview writes nothing and the commit resends the file (ADR-0037), so the mock answers
+    // from the request alone. A CSV with no column mapping gets the "how do I read this?" answer,
+    // as the real server gives; anything else gets the statement preview. Payees and amounts are
+    // the fixture's, never parsed from the base64 the page sent: nothing here reads the file.
+    // Above the household section on purpose: its catch-all DELETE would answer an undo with a
+    // 204 and never reach the handler below, so the history would never show it.
+    if (at === 'POST /api/imports/preview') {
+      const options = (field('options') ?? {}) as Record<string, unknown>;
+      if (field('format') === 'CSV') {
+        return json(
+          route,
+          200,
+          options['columns'] === undefined ? DEMO_IMPORT_CSV_ASKING : DEMO_IMPORT_CSV_PREVIEW,
+        );
+      }
+      return json(route, 200, { ...DEMO_IMPORT_PREVIEW, format: field('format') ?? 'OFX' });
+    }
+    if (at === 'POST /api/imports') {
+      // What the decisions sent would write: the new rows, plus each suspected one included.
+      const included =
+        field('suspectedDuplicates') === 'INCLUDE'
+          ? DEMO_IMPORT_PREVIEW.counts.suspected
+          : ((field('overrides') as { include: boolean }[] | undefined) ?? []).filter(
+              (override) => override.include,
+            ).length;
+      const batch = {
+        ...DEMO_IMPORT_BATCH,
+        format: field('format') ?? 'OFX',
+        imported: DEMO_IMPORT_BATCH.imported + included,
+        excluded: DEMO_IMPORT_BATCH.excluded - included,
+        removable: DEMO_IMPORT_BATCH.removable + included,
+      };
+      importedBatches.unshift(batch);
+      return json(route, 201, batch);
+    }
+    if (at === 'GET /api/imports') {
+      return json(route, 200, {
+        content: importedBatches,
+        page: 0,
+        size: 10,
+        totalElements: importedBatches.length,
+        totalPages: 1,
+      });
+    }
+    const importBatch = /^\/api\/imports\/([^/]+)$/.exec(url.pathname);
+    if (importBatch) {
+      const index = importedBatches.findIndex((one) => one.id === importBatch[1]);
+      if (index < 0) {
+        return problem(route, DEMO_PROBLEMS.notFound);
+      }
+      if (method === 'DELETE') {
+        // Undo: the rows go, and the batch stays in the history with nothing left to remove.
+        importedBatches[index] = { ...importedBatches[index], removable: 0 };
+        return route.fulfill({ status: 204 });
+      }
+      return json(route, 200, importedBatches[index]);
+    }
+    if (/^\/api\/accounts\/[^/]+\/import-mapping$/.test(url.pathname)) {
+      // No account in the fixture household has a saved mapping yet.
+      return method === 'GET'
+        ? problem(route, DEMO_PROBLEMS.notFound)
+        : json(route, 200, { ok: true });
+    }
+
+    // ---- pairing two rows into a transfer (file-import.md rule 12) -------------------------
+    const pair = /^\/api\/transactions\/([^/]+)\/pair$/.exec(url.pathname);
+    if (method === 'POST' && pair) {
+      const rows = [...DEMO_PAIRING_ROWS, ...DEMO_TRANSACTIONS];
+      const one = rows.find((row) => row.id === pair[1]);
+      const other = rows.find((row) => row.id === field('withTransactionId'));
+      if (!one || !other) {
+        return problem(route, DEMO_PROBLEMS.notFound);
+      }
+      const [out, into] = one.amount.startsWith('-') ? [one, other] : [other, one];
+      // Each leg keeps its own date and note; the figures are the two rows' own, unparsed.
+      return json(route, 200, {
+        ...DEMO_TRANSFER,
+        id: 'tgr-0099',
+        fromAccountId: out.accountId,
+        fromAccountName: out.accountName,
+        toAccountId: into.accountId,
+        toAccountName: into.accountName,
+        fromDate: out.date,
+        toDate: into.date,
+        sent: out.amount.replace(/^-/, ''),
+        received: into.amount.replace(/^-/, ''),
+        fromNote: out.note,
+        toNote: into.note,
+        version: out.version + into.version + 2,
+      });
+    }
+    const split = /^\/api\/transfers\/([^/]+)\/split$/.exec(url.pathname);
+    if (method === 'POST' && split) {
+      const legs = DEMO_TRANSACTIONS.filter((row) => row.transferGroupId === split[1]);
+      return json(route, 200, {
+        transactions: legs.map((leg) => ({
+          ...leg,
+          transfer: false,
+          transferGroupId: null,
+          version: leg.version + 1,
+        })),
+      });
     }
 
     // ---- bills, income and the month's summary ---------------------------------------------

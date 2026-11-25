@@ -94,7 +94,9 @@ export function buildTransferPatch(
 ): UpdateTransferRequest {
   const patch: UpdateTransferRequest = { version: original.version };
 
-  if (form.date !== original.date) {
+  // Compared with the outgoing leg's date, which is what the sheet shows. Untouched, it is not sent,
+  // so a pair whose legs cleared on two different days keeps both (file-import.md rule 12).
+  if (form.date !== original.fromDate) {
     patch.date = form.date;
   }
 
@@ -111,7 +113,7 @@ export function buildTransferPatch(
   }
 
   const note = form.note.trim();
-  const originalNote = original.note ?? '';
+  const originalNote = original.fromNote ?? '';
   if (note !== originalNote) {
     patch.note = note === '' ? null : note;
   }
@@ -134,11 +136,11 @@ export function transferFormValue(transfer: Transfer): TransferFormValue {
   return {
     fromAccountId: transfer.fromAccountId,
     toAccountId: transfer.toAccountId,
-    date: transfer.date,
+    date: transfer.fromDate,
     amount: transfer.sent,
     // Empty within one currency: the field is off screen, and filling it would send a figure the
     // server refuses.
     amountReceived: transfer.crossCurrency ? transfer.received : '',
-    note: transfer.note ?? '',
+    note: transfer.fromNote ?? '',
   };
 }

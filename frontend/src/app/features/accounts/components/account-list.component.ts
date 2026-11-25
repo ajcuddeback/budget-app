@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CurrencyNamePipe, MoneyPipe } from '../../../core/i18n/format.pipes';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { CurrencyGroup } from '../data/account-grouping';
@@ -18,7 +19,7 @@ import { Account, accountTypeKey, isKnownToHaveHistory } from '../data/account.m
  */
 @Component({
   selector: 'app-account-list',
-  imports: [TranslatePipe, MoneyPipe, CurrencyNamePipe],
+  imports: [RouterLink, TranslatePipe, MoneyPipe, CurrencyNamePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './account-list.component.html',
   styleUrl: './account-list.component.css',

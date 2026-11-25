@@ -2,7 +2,7 @@
 
 - **Status:** In progress — slice 8 (API and UI landed)
 - **Owner:** Repository owner
-- **Last updated:** 2026-11-21
+- **Last updated:** 2026-11-25 (slice 12: each leg keeps its own date and note; pair and split)
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency),
   ADR-0033 (a transfer is a linked pair), `transactions.md` (slice 5)
 - **Designs:** `design/canvas/` — the transfer sheet, reached from the ledger
@@ -54,7 +54,12 @@ a request that sets them is a `400`, so a client cannot believe it filed a trans
 This slice adds the endpoints that act on the pair, inside one database transaction, so there is
 no moment at which money has left one account and arrived nowhere.
 
-Editing a transfer rewrites both legs: the date, the figures, the note.
+Editing a transfer writes **only what the edit sends** (changed in slice 12, file-import.md
+rule 12). A date sent moves both legs to it, a note sent replaces both legs' notes, and the figures
+are written to the legs they belong to. A field left out is left alone **on each leg**: a pair made
+from two statement rows that cleared on 3 and 5 August keeps both dates through an amount-only
+edit. *Move money* still sends one date and one note, so a transfer made that way has the same on
+both legs.
 
 **Not the accounts.** `Transaction` already fixes an account at creation — moving a row between
 accounts changes two balances and, where the currencies differ, what the amount means — and a
@@ -62,6 +67,33 @@ transfer is two such rows, so it would change up to four. Picking the wrong savi
 corrected by deleting the transfer and making it again, which costs exactly what a mis-keyed
 transaction costs today. It also keeps the pair's version honest: a leg is only ever corrected,
 never replaced, so the version moves forward and nothing else.
+
+### Two existing rows can be paired into a transfer, and a pair split back
+
+Slice 12 (file-import.md rule 12). A transfer between your own accounts usually arrives as two
+ordinary rows, one in each account's statement, so the ledger offers **"These two rows are one
+transfer"**: `POST /api/transactions/{id}/pair` with the other row's id and **both rows'
+versions**. Every rule above is checked before anything is written, and a refusal writes nothing:
+
+| Rule | Refused with |
+|---|---|
+| The caller is `OWNER` or `MEMBER`, checked before either row is looked up | `403 read-only-role` |
+| Both rows are in the caller's household, each through the scoped ledger lookup | `404 not-found` |
+| Neither row is already a leg | `409 transfer-leg-not-separate` |
+| Different accounts | `422 transfer-pair-mismatch`, reason `same-account` |
+| Opposite signs | `422 transfer-pair-mismatch`, reason `same-sign` |
+| Same currency: equal and opposite (`compareTo`). Across currencies, each row keeps its own figure | `422 transfer-pair-mismatch`, reason `amounts-differ` |
+| Both versions are the ones read | `409 stale-version` |
+| Neither account is archived | `409 account-archived` |
+
+Pairing gives both rows one new `transfer_group_id` and **clears their category and payee**, which
+the pair invariants require. Dates, notes, amounts, status, `external_id` and `import_batch_id`
+are untouched. **Nothing suggests or preselects a partner.**
+
+`POST /api/transfers/{id}/split` (with the pair's `version`) undoes it, for any transfer however it
+was made: both rows lose the `transfer_group_id` and nothing else changes. They come back with **no
+category and no payee**, because nothing stored the old ones. A split is allowed when an account
+has since been archived, as editing and deleting are. A `VIEWER` is refused both.
 
 ### The two accounts must differ
 
@@ -95,6 +127,8 @@ schema cannot express:
 | `GET`    | `/api/transfers/{id}`   | `{id}` is the `transferGroupId`                    |
 | `PATCH`  | `/api/transfers/{id}`   | Rewrites both legs. Requires `version`             |
 | `DELETE` | `/api/transfers/{id}`   | Removes both legs. `204`                           |
+| `POST`   | `/api/transactions/{id}/pair` | Pairs two existing rows (slice 12). `200` with the transfer |
+| `POST`   | `/api/transfers/{id}/split`   | Two ordinary rows again (slice 12). `200` with both rows   |
 
 A transfer is addressed by its **group id**, not by either leg's id: the pair is the thing, and
 naming one leg would make the other one's id a second name for the same object.
@@ -103,6 +137,10 @@ naming one leg would make the other one's id a second name for the same object.
 bumped together, so the sum moves by two on every edit, is stale exactly when either leg is, and
 only ever moves forward. A stale one is a `409`, as everywhere else. `PATCH` carries no account
 ids.
+
+The response carries **`fromDate`/`toDate` and `fromNote`/`toNote`**, the outgoing and incoming
+legs' own (slice 12; it used to be one `date` and one `note`, the outgoing leg's). They are equal
+for a transfer made with *Move money* and may differ for a paired one.
 
 The ledger (`GET /api/transactions`) carries both legs, each marked `transfer: true` and each
 carrying the pair's `transferGroupId` — **which is what lets a ledger row act on the transfer**.
@@ -130,7 +168,9 @@ still take a transaction — with one, the sheet could offer nothing but an acco
 There is **no category picker and no payee field anywhere on the sheet**, and it says why in a
 sentence rather than leaving the absence to be noticed.
 
-**Editing** offers the date, the figures and the note. It has **no account pickers at all**: the
+**Editing** offers the date, the figures and the note. When the two legs' dates or notes differ
+(a pair made from two statement rows), the sheet says what each leg holds; left untouched, neither
+is sent, so each leg keeps its own. It has **no account pickers at all**: the
 two accounts are named, and the sheet says that moving a transfer to different accounts means
 deleting it and making it again — rather than leaving somebody hunting for a picker that is not
 there. The patch carries **only what changed**: an absent `amountReceived` means "leave the
@@ -150,7 +190,14 @@ with `409 transfer-leg-not-separate`. Deleting says that **both halves go** befo
 leg that somehow arrives with no `transferGroupId` offers neither button and says that both halves
 change together, rather than offering a write that could only be refused or aimed by guesswork.
 
-A `VIEWER` sees every transfer, both legs and every figure, and no write control.
+Every ordinary row gets **This is a transfer…**, which opens a sheet listing the ledger's rows in
+other accounts, in ledger order, filtered with the ledger's own account and date filters. **Nothing
+is preselected**, and the sheet says that both rows lose their category and payee and stop counting
+as income or spending **before** the confirm button. Every transfer row gets **Split into two
+rows** beside Edit and Delete, whose confirmation says the rows come back with no category.
+
+A `VIEWER` sees every transfer, both legs and every figure, and no write control: no pairing and no
+split either.
 
 ## Security considerations
 
@@ -165,8 +212,8 @@ A `VIEWER` sees every transfer, both legs and every figure, and no write control
 
 ## Out of scope
 
-- **Matching imported pairs** (slice 12). An import sees two rows and cannot know they are one
-  transfer; that is its problem to solve.
+- **Matching imported pairs automatically.** An import sees two rows and cannot know they are one
+  transfer. Slice 12 ships the manual pairing above; nothing detects, suggests or ranks a partner.
 - **Scheduled or recurring transfers.** A standing order between your own accounts is a real
   thing, but it is a bill-shaped idea and belongs with schedules, not here.
 - **Netting a transfer out of a household roll-up.** Across currencies that needs conversion,
@@ -213,3 +260,13 @@ A `VIEWER` sees every transfer, both legs and every figure, and no write control
   sends nothing; an archived account is not offered; there is no category picker; a transfer row's
   Edit and Delete call `/api/transfers`, never the leg's own endpoints; an edit has no account
   pickers; the implied rate is labelled as derived; a `VIEWER` gets no write control.
+- `TransferPairingIT` (slice 12) — a same-currency and a cross-currency pair are made with both
+  balances unchanged, category and payee cleared and `external_id`/`import_batch_id` kept; each
+  refusal in the pairing table writes nothing; a split leaves two ordinary rows with every amount,
+  date and account unchanged, and a stale split is `409`; a `VIEWER` is refused both, before any
+  row is read; two pairings racing for one row make one transfer; an amount-only `PATCH` of a
+  pair leaves both dates alone, and a date sent moves both legs.
+- `pairing.page.spec.ts` (slice 12) — nothing is preselected; only rows in another account that
+  are not already legs are offered; the loss of category and payee is stated before the confirm
+  button; both versions are sent; a refusal is rendered from its code and reason; split asks first
+  and sends the pair's version; a `VIEWER` gets neither action.

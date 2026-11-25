@@ -101,6 +101,14 @@ public class Transaction implements HouseholdOwned {
     @Column(name = "transfer_group_id")
     private UUID transferGroupId;
 
+    /**
+     * The import that wrote this row, or {@code null} for a typed one (slice 12). Set once, at
+     * creation, and never by an update: the database clears it ({@code ON DELETE SET NULL}) when
+     * the batch is undone, which is the only way it changes.
+     */
+    @Column(name = "import_batch_id", updatable = false)
+    private UUID importBatchId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -191,6 +199,11 @@ public class Transaction implements HouseholdOwned {
         return Optional.ofNullable(transferGroupId);
     }
 
+    /** The import that wrote this row, if one did. Provenance, and the handle for undo. */
+    public Optional<UUID> importBatchId() {
+        return Optional.ofNullable(importBatchId);
+    }
+
     /** Part of a transfer, whose other half shares its {@code transferGroupId} (slice 8). */
     public boolean isTransfer() {
         return transferGroupId != null;
@@ -263,5 +276,10 @@ public class Transaction implements HouseholdOwned {
     /** Set by an importer so re-importing a file cannot duplicate rows (slice 12). */
     public void importedAs(String sourceId) {
         this.externalId = sourceId;
+    }
+
+    /** Records which import wrote this row (slice 12). Only meaningful before the first flush. */
+    public void importedIn(UUID batchId) {
+        this.importBatchId = Objects.requireNonNull(batchId, "batchId");
     }
 }

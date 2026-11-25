@@ -1,0 +1,262 @@
+@let p = preview();
+
+<div class="stack">
+  @if (p.statement?.accountHint === 'DIFFERS') {
+    <!-- Named, not hedged: the likeliest costly mistake is the right file in the wrong account. -->
+    <div class="alert" role="note" data-testid="account-differs">
+      <p>{{ 'import.accountDiffers' | t: { account: accountLabel() } }}</p>
+    </div>
+  }
+
+  <section class="summary" aria-labelledby="import-summary-heading">
+    <h3 class="card-title" id="import-summary-heading">{{ 'import.summary' | t }}</h3>
+
+    @if (p.counts; as counts) {
+      <dl class="counts">
+        <div class="count">
+          <dt>{{ 'import.count.new' | t }}</dt>
+          <dd>{{ counts.new }}</dd>
+        </div>
+        <div class="count">
+          <dt>{{ 'import.count.duplicate' | t }}</dt>
+          <dd>{{ counts.duplicate }}</dd>
+        </div>
+        <div class="count">
+          <dt>{{ 'import.count.suspected' | t }}</dt>
+          <dd>{{ counts.suspected }}</dd>
+        </div>
+        <div class="count">
+          <dt>{{ 'import.count.unreadable' | t }}</dt>
+          <dd>{{ counts.unreadable }}</dd>
+        </div>
+        @if (counts.zero > 0) {
+          <div class="count">
+            <dt>{{ 'import.count.zero' | t }}</dt>
+            <dd>{{ counts.zero }}</dd>
+          </div>
+        }
+      </dl>
+    }
+
+    <dl class="figures">
+      @if (p.statement; as statement) {
+        @if (statement.from && statement.to) {
+          <div class="figure">
+            <dt>{{ 'import.dates' | t }}</dt>
+            <dd>
+              {{
+                'import.dateRange'
+                  | t: { from: (statement.from | dateOnly), to: (statement.to | dateOnly) }
+              }}
+            </dd>
+          </div>
+        }
+      }
+      @if (p.totals; as totals) {
+        <div class="figure">
+          <dt>{{ 'import.moneyIn' | t }}</dt>
+          <dd class="amount">{{ totals.moneyIn | money: totals.currency }}</dd>
+        </div>
+        <div class="figure">
+          <dt>{{ 'import.moneyOutTotal' | t }}</dt>
+          <dd class="amount">{{ totals.moneyOut | money: totals.currency }}</dd>
+        </div>
+      }
+      @if (p.balanceNow !== null) {
+        <div class="figure">
+          <dt>{{ 'import.balanceNow' | t }}</dt>
+          <dd class="amount">{{ p.balanceNow | money: currency() }}</dd>
+        </div>
+      }
+      @if (p.balanceAfter !== null) {
+        <div class="figure">
+          <dt>{{ 'import.balanceAfter' | t }}</dt>
+          <dd class="amount">{{ p.balanceAfter | money: currency() }}</dd>
+        </div>
+      }
+      @if (p.balanceAfterWithSuspected !== null && p.counts !== null && p.counts.suspected > 0) {
+        <div class="figure">
+          <dt>{{ 'import.balanceAfterWithSuspected' | t }}</dt>
+          <dd class="amount">{{ p.balanceAfterWithSuspected | money: currency() }}</dd>
+        </div>
+      }
+    </dl>
+
+    @if (bank(); as said) {
+      <div [class]="said.matches ? 'alert alert-success' : 'alert'" data-testid="bank-balance">
+        <p>
+          {{
+            'import.bankSays'
+              | t
+                : { bank: (said.bank | money: currency()), after: (said.after | money: currency()) }
+          }}
+        </p>
+        <p>{{ (said.matches ? 'import.balanceMatches' : 'import.balanceDiffers') | t }}</p>
+      </div>
+    }
+
+    @if (p.reusedIdentifier) {
+      <p class="card-note">{{ 'import.reusedIdentifier' | t }}</p>
+    }
+    @if (p.textCut) {
+      <p class="card-note">{{ 'import.textCut' | t }}</p>
+    }
+  </section>
+
+  @if (p.attention.length > 0) {
+    <section class="stack" aria-labelledby="import-attention-heading">
+      <h3 class="card-title" id="import-attention-heading">{{ 'import.attention' | t }}</h3>
+
+      @if (suspected().length > 0) {
+        <fieldset class="group">
+          <legend class="field-label">{{ 'import.count.suspected' | t }}</legend>
+          <p class="card-note">{{ 'import.suspectedIntro' | t }}</p>
+          <div class="cluster">
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              (click)="includeAllRequested.emit()"
+            >
+              {{ 'import.includeAll' | t }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              (click)="excludeAllRequested.emit()"
+            >
+              {{ 'import.excludeAll' | t }}
+            </button>
+          </div>
+          <ul class="attention">
+            @for (item of suspected(); track item.row) {
+              <li class="attention-row">
+                <label class="checkbox">
+                  <input
+                    type="checkbox"
+                    [checked]="included().has(item.row)"
+                    (change)="toggled.emit(item.row)"
+                  />
+                  <span>
+                    {{ 'import.include' | t }}
+                    <span class="nowrap">{{ item.date | dateOnly }}</span>,
+                    <bdi dir="auto">{{ item.payeeName ?? ('transactions.noPayee' | t) }}</bdi>,
+                    <span class="amount nowrap">{{ item.amount | money: currency() }}</span>
+                  </span>
+                </label>
+                @if (item.resembles; as like) {
+                  <p class="field-hint">
+                    {{ 'import.resembles' | t: { date: (like.date | dateOnly) } }}
+                  </p>
+                }
+              </li>
+            }
+          </ul>
+        </fieldset>
+      }
+
+      @if (duplicates().length > 0) {
+        <div class="group">
+          <h4 class="field-label">{{ 'import.count.duplicate' | t }}</h4>
+          <p class="card-note">{{ 'import.duplicatesIntro' | t }}</p>
+          <ul class="attention">
+            @for (item of duplicates(); track item.row) {
+              <li class="attention-row muted">
+                <span class="nowrap">{{ item.date | dateOnly }}</span> ·
+                <bdi dir="auto">{{ item.payeeName ?? ('transactions.noPayee' | t) }}</bdi> ·
+                <span class="amount nowrap">{{ item.amount | money: currency() }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (unreadable().length > 0) {
+        <div class="group">
+          <h4 class="field-label">{{ 'import.count.unreadable' | t }}</h4>
+          <p class="card-note">{{ 'import.unreadableIntro' | t }}</p>
+          <ul class="attention">
+            @for (item of unreadable(); track item.row) {
+              <li class="attention-row">
+                <p>
+                  <strong>
+                    @if (item.column !== null) {
+                      {{ 'import.lineColumn' | t: { row: item.row, column: item.column + 1 } }}
+                    } @else {
+                      {{ 'import.line' | t: { row: item.row } }}
+                    }
+                  </strong>
+                  {{ rowProblemKey(item.code) | t }}
+                </p>
+                @if (item.text) {
+                  <p class="field-hint">
+                    {{ 'import.cellSays' | t }} <bdi dir="auto" class="cell">{{ item.text }}</bdi>
+                  </p>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (p.attentionTruncated) {
+        <p class="card-note">{{ 'import.attentionTruncated' | t }}</p>
+      }
+    </section>
+  }
+
+  @if (p.identical.length > 0) {
+    <section class="stack" aria-labelledby="import-identical-heading">
+      <h3 class="card-title" id="import-identical-heading">{{ 'import.identical' | t }}</h3>
+      <p class="card-note">{{ 'import.identicalIntro' | t }}</p>
+      <ul class="attention">
+        @for (same of p.identical; track $index) {
+          <li class="attention-row">
+            <span class="nowrap">{{ same.date | dateOnly }}</span> ·
+            <bdi dir="auto">{{ same.payeeName ?? ('transactions.noPayee' | t) }}</bdi> ·
+            <span class="amount nowrap">{{ same.amount | money: currency() }}</span>
+            <span class="muted">{{ 'import.identicalCount' | t: { count: same.count } }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (p.sample.length > 0) {
+    <section aria-labelledby="import-sample-heading">
+      <h3 class="card-title" id="import-sample-heading">{{ 'import.sample' | t }}</h3>
+      <!-- The ledger's own row layout, so what is about to be added looks like what it will be. -->
+      <ul class="ledger" data-testid="import-sample">
+        @for (row of p.sample; track row.row) {
+          <li class="ledger-row">
+            <div class="row-main">
+              <p class="row-primary">
+                <span class="row-payee">
+                  @if (row.payeeName) {
+                    <bdi dir="auto">{{ row.payeeName }}</bdi>
+                  } @else {
+                    <span class="unnamed">{{ 'transactions.noPayee' | t }}</span>
+                  }
+                </span>
+                <span class="row-amount" [class.incoming]="!outgoing(row.amount)">
+                  {{ row.amount | money: row.currency }}
+                </span>
+              </p>
+              <p class="row-secondary">
+                <span>{{ row.date | dateOnly }}</span>
+                <span class="row-sep" aria-hidden="true">·</span>
+                <span class="needs-category">{{ 'transactions.needsCategory' | t }}</span>
+              </p>
+              @if (row.note) {
+                <p class="row-note">
+                  <bdi dir="auto">{{ row.note }}</bdi>
+                </p>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+  } @else if (p.counts && p.counts.new === 0 && p.counts.suspected === 0) {
+    <p class="card-note">{{ 'import.nothingNew' | t }}</p>
+  }
+</div>
