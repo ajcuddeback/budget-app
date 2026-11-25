@@ -40,7 +40,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Admin console (instance operation) | In progress — slice 9 | [admin-console.md](admin-console.md) |
 | Debt plan & debt detail | Done — slice 10 | [debt-plan.md](debt-plan.md) |
 | Goals | Planned | [goals.md](goals.md) |
-| Reporting & insights | Planned | [reporting.md](reporting.md) |
+| Reporting & insights | Done — slice 13 | [reporting.md](reporting.md) |
 | Weekly check-in | Planned | _not written_ |
 | Owl chat (AI insights) | Planned | _not written_ |
 
