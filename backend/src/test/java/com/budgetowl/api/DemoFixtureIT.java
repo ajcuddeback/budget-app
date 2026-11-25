@@ -589,6 +589,465 @@ class DemoFixtureIT extends ApiTestBase {
         return UUID.fromString(created.stringField("id"));
     }
 
+    // ---------------------------------------------------------------- reports (slice 13)
+
+    private static final Path COMMITTED_REPORTS =
+            Path.of("..", "tools", "ui", "fixtures", "report-api.generated.ts");
+
+    private static final Path REGENERATED_REPORTS = Path.of("target", "report-api.generated.ts");
+
+    private static final Path COMMITTED_REPORT_STATES =
+            Path.of("..", "tools", "ui", "fixtures", "report-states.generated.ts");
+
+    private static final Path REGENERATED_REPORT_STATES =
+            Path.of("target", "report-states.generated.ts");
+
+    /** The three ranges the Insights chips ask for on 20 August 2026, by the device's date. */
+    private static final List<String> REPORT_RANGES =
+            List.of(
+                    "from=2025-09&to=2026-08",
+                    "from=2026-03&to=2026-08",
+                    "from=2026-06&to=2026-08");
+
+    /**
+     * The demo household's ledger as the reports sum it: <b>the August rows of {@code
+     * DEMO_TRANSACTIONS}, row for row</b>, and eleven months of history before them.
+     *
+     * <p>{@code date, amount, account, category, status}. The account and category are the stable
+     * ids {@code demo-data.ts} knows them by. {@code demo-data.ts} checks at load that every one of
+     * its own transactions is in the ledger this writes out, so editing a fixture row without
+     * regenerating fails every UI run rather than leaving Insights summing a different ledger from
+     * the one the transactions screen shows.
+     *
+     * <p>Shaped to have something to say: salary rising in April, a December bonus, winter
+     * utilities, two refunds (a duplicate transit pass, a grocery return), spending under the
+     * now-archived Wedding category in May and June, and transfers that must change nothing. The
+     * one uncategorised row is August's pending grocery shop.
+     */
+    private static final String[][] DEMO_LEDGER = {
+        // September 2025
+        {"2025-09-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2025-09-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2025-09-04", "-112.35", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-09-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2025-09-12", "-38.50", "acc-0003", "cat-0008", "CLEARED"},
+        {"2025-09-15", "-96.40", "acc-0001", "cat-0005", "CLEARED"},
+        {"2025-09-19", "-127.80", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-09-26", "-54.20", "acc-0003", "cat-0008", "CLEARED"},
+        // October
+        {"2025-10-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2025-10-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2025-10-03", "-104.60", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-10-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2025-10-11", "-46.75", "acc-0003", "cat-0008", "CLEARED"},
+        {"2025-10-15", "-112.80", "acc-0001", "cat-0005", "CLEARED"},
+        {"2025-10-17", "-131.15", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-10-24", "-29.90", "acc-0003", "cat-0008", "CLEARED"},
+        // November
+        {"2025-11-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2025-11-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2025-11-04", "-118.25", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-11-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2025-11-08", "-61.30", "acc-0003", "cat-0008", "CLEARED"},
+        {"2025-11-15", "-141.25", "acc-0001", "cat-0005", "CLEARED"},
+        {"2025-11-20", "-142.60", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-11-28", "-35.40", "acc-0003", "cat-0008", "CLEARED"},
+        // December: the bonus
+        {"2025-12-01", "3650.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2025-12-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2025-12-04", "-134.90", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-12-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2025-12-13", "-88.60", "acc-0003", "cat-0008", "CLEARED"},
+        {"2025-12-15", "-168.90", "acc-0001", "cat-0005", "CLEARED"},
+        {"2025-12-19", "-186.45", "acc-0001", "cat-0006", "CLEARED"},
+        {"2025-12-22", "-74.10", "acc-0003", "cat-0008", "CLEARED"},
+        {"2025-12-23", "-45.00", "acc-0003", "cat-0007", "CLEARED"},
+        // January 2026: a duplicate transit pass, refunded
+        {"2026-01-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-01-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-01-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-01-06", "-97.30", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-01-07", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-01-09", "62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-01-15", "-176.35", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-01-21", "-121.70", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-01-30", "-32.80", "acc-0003", "cat-0008", "CLEARED"},
+        // February
+        {"2026-02-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-02-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-02-03", "-109.85", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-02-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-02-14", "-96.40", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-02-15", "-159.10", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-02-18", "-118.30", "acc-0001", "cat-0006", "CLEARED"},
+        // March: a grocery return
+        {"2026-03-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-03-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-03-04", "-126.45", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-03-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-03-07", "18.40", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-03-13", "-41.60", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-03-15", "-132.60", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-03-20", "-114.95", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-03-27", "-58.25", "acc-0003", "cat-0008", "CLEARED"},
+        // April: the raise, and the new rent
+        {"2026-04-01", "3200.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-04-01", "-1450.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-04-03", "-101.20", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-04-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-04-10", "-44.30", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-04-15", "-108.45", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-04-17", "-129.60", "acc-0001", "cat-0006", "CLEARED"},
+        // May: the wedding
+        {"2026-05-01", "3200.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-05-01", "-1450.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-05-05", "-115.40", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-05-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-05-09", "-1200.00", "acc-0001", "cat-0009", "CLEARED"},
+        {"2026-05-15", "-94.20", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-05-16", "-67.85", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-05-22", "-133.10", "acc-0001", "cat-0006", "CLEARED"},
+        // June
+        {"2026-06-01", "3200.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-06-01", "-1450.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-06-04", "-108.75", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-06-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-06-06", "-350.00", "acc-0001", "cat-0009", "CLEARED"},
+        {"2026-06-12", "-52.40", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-06-15", "-88.75", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-06-19", "-119.35", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-06-26", "-39.95", "acc-0003", "cat-0008", "CLEARED"},
+        // July
+        {"2026-07-01", "3200.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-07-01", "-1450.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-07-03", "-98.60", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-07-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-07-11", "-71.20", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-07-15", "-101.30", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-07-17", "-126.85", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-07-24", "-33.15", "acc-0003", "cat-0008", "CLEARED"},
+        // August 2026: DEMO_TRANSACTIONS, row for row (the transfer is below)
+        {"2026-08-01", "3200.00", "acc-0001", "cat-0002", "CLEARED"},
+        {"2026-08-01", "-1450.00", "acc-0001", "cat-0004", "CLEARED"},
+        {"2026-08-03", "-86.40", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-08-05", "-62.00", "acc-0003", "cat-0007", "CLEARED"},
+        {"2026-08-09", "-41.20", "acc-0003", "cat-0008", "CLEARED"},
+        {"2026-08-12", "-104.75", "acc-0001", "cat-0006", "CLEARED"},
+        {"2026-08-15", "-128.30", "acc-0001", "cat-0005", "CLEARED"},
+        {"2026-08-20", "-92.15", "acc-0001", null, "PENDING"},
+    };
+
+    /** Transfers, both legs: {@code date, amount, from, to}. August's is DEMO_TRANSFER. */
+    private static final String[][] DEMO_TRANSFERS = {
+        {"2025-10-16", "300.00", "acc-0001", "acc-0002"},
+        {"2026-01-16", "300.00", "acc-0001", "acc-0002"},
+        {"2026-04-16", "300.00", "acc-0001", "acc-0002"},
+        {"2026-07-16", "300.00", "acc-0001", "acc-0002"},
+        {"2026-08-16", "500.00", "acc-0001", "acc-0002"},
+    };
+
+    /**
+     * Generates both report fixtures — every range the chips ask for, every month "where it went"
+     * can step to, and each as CSV — from the demo household's ledger, through the real endpoints,
+     * with the clock at the demo instant.
+     */
+    @Test
+    void the_committed_report_fixtures_are_what_the_application_returns() throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+        Map<UUID, String> stable = seedTheDemoLedger(household);
+        clock.moveTo(DEMO_TODAY);
+
+        Map<String, String> generated = new LinkedHashMap<>();
+        readReports(household.owner(), "", REPORT_RANGES, demoMonths(), generated);
+
+        String document =
+                canonicalise(renderReports(generated), new Fixture(Map.of(), null, stable));
+        compareOrWrite(document, COMMITTED_REPORTS, REGENERATED_REPORTS);
+    }
+
+    /**
+     * The two Insights states the demo household cannot have, from a household of their own so the
+     * demo figures cannot be perturbed: nothing recorded at all, and money in two currencies.
+     */
+    @Test
+    void the_committed_report_state_fixtures_are_what_the_application_returns() throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+        clock.moveTo(DEMO_TODAY);
+
+        Map<String, String> generated = new LinkedHashMap<>();
+        readReports(
+                household.owner(),
+                "EMPTY ",
+                List.of(REPORT_RANGES.get(0)),
+                List.of("2026-07"),
+                generated);
+
+        clock.moveTo(Instant.now());
+        Map<UUID, String> stable = new LinkedHashMap<>();
+        seedTwoCurrencies(household, stable);
+        clock.moveTo(DEMO_TODAY);
+        readReports(
+                household.owner(),
+                "TWO_CURRENCIES ",
+                List.of(REPORT_RANGES.get(0)),
+                List.of("2026-07"),
+                generated);
+
+        compareOrWrite(
+                canonicalise(
+                        render(generated, "REPORT_STATES"), new Fixture(Map.of(), null, stable)),
+                COMMITTED_REPORT_STATES,
+                REGENERATED_REPORT_STATES);
+    }
+
+    /** Every month "Where {month} went" can show without leaving the demo's year. */
+    private static List<String> demoMonths() {
+        List<String> months = new java.util.ArrayList<>();
+        for (java.time.YearMonth m = java.time.YearMonth.of(2025, 9);
+                !m.isAfter(java.time.YearMonth.of(2026, 8));
+                m = m.plusMonths(1)) {
+            months.add(m.toString());
+        }
+        return months;
+    }
+
+    private static void readReports(
+            ApiClient client,
+            String prefix,
+            List<String> ranges,
+            List<String> months,
+            Map<String, String> into) {
+        for (String range : ranges) {
+            String path = "/api/reports/income-and-spending?" + range;
+            into.put(prefix + "GET " + path, ok(client.get(path)).body());
+            into.put(
+                    prefix + "GET " + path + " CSV",
+                    jsonString(ok(client.getAccepting(path, "text/csv")).body()));
+        }
+        for (String month : months) {
+            String path = "/api/reports/spending-by-category?from=" + month + "&to=" + month;
+            into.put(prefix + "GET " + path, ok(client.get(path)).body());
+            into.put(
+                    prefix + "GET " + path + " CSV",
+                    jsonString(ok(client.getAccepting(path, "text/csv")).body()));
+        }
+    }
+
+    private static ApiResponse ok(ApiResponse response) {
+        if (response.status() != 200) {
+            throw new AssertionError("a report read failed: " + response.body());
+        }
+        return response;
+    }
+
+    /**
+     * The demo household's categories, accounts and ledger, entered through the API.
+     *
+     * @return the generated ids, by the stable names {@code demo-data.ts} uses
+     */
+    private Map<UUID, String> seedTheDemoLedger(Household household) {
+        ApiClient owner = household.owner();
+        Map<String, UUID> categories = new LinkedHashMap<>();
+        categories.put("cat-0001", seededCategoryId("Income"));
+        categories.put("cat-0002", seededCategoryId("Salary"));
+        categories.put("cat-0003", seededCategoryId("Bills"));
+        categories.put("cat-0004", seededCategoryId("Rent or mortgage"));
+        categories.put("cat-0005", seededCategoryId("Utilities"));
+        categories.put("cat-0006", seededCategoryId("Groceries"));
+        categories.put("cat-0007", seededCategoryId("Transport"));
+        categories.put("cat-0008", seededCategoryId("Eating Out"));
+        // demo-data.ts calls it "Rent".
+        ok200(
+                owner.patch(
+                        "/api/categories/" + categories.get("cat-0004"),
+                        "{\"version\":0,\"name\":\"Rent\"}"));
+        categories.put("cat-0009", createCategory(owner, "Wedding", "EXPENSE", null));
+
+        Map<String, UUID> accounts = new LinkedHashMap<>();
+        accounts.put(
+                "acc-0001", demoAccount(owner, "Everyday Checking", "4417", "CHECKING", "1641.75"));
+        accounts.put("acc-0002", demoAccount(owner, "Emergency Fund", null, "SAVINGS", "5620.00"));
+        accounts.put(
+                "acc-0003", demoAccount(owner, "Travel Card", "8820", "CREDIT_CARD", "-215.24"));
+
+        for (String[] row : DEMO_LEDGER) {
+            ApiResponse created =
+                    owner.post(
+                            "/api/transactions",
+                            """
+                            {"accountId":"%s","date":"%s","amount":"%s","categoryId":%s,
+                             "status":"%s"}
+                            """
+                                    .formatted(
+                                            accounts.get(row[2]),
+                                            row[0],
+                                            row[1],
+                                            row[3] == null
+                                                    ? "null"
+                                                    : "\"" + categories.get(row[3]) + "\"",
+                                            row[4]));
+            if (created.status() != 201) {
+                throw new AssertionError("could not seed a demo transaction: " + created.body());
+            }
+        }
+        for (String[] transfer : DEMO_TRANSFERS) {
+            transfer(
+                    owner,
+                    accounts.get(transfer[2]),
+                    accounts.get(transfer[3]),
+                    transfer[0],
+                    transfer[1]);
+        }
+        // Archived after its history was written, as a household would: the wedding is over.
+        ok200(owner.post("/api/categories/" + categories.get("cat-0009") + "/archive", null));
+
+        Map<UUID, String> stable = new LinkedHashMap<>();
+        categories.forEach((name, id) -> stable.put(id, name));
+        accounts.forEach((name, id) -> stable.put(id, name));
+        return stable;
+    }
+
+    /**
+     * A second account in euros with a little history beside a dollar one, so the currency switcher
+     * has two complete reports to switch between.
+     */
+    private void seedTwoCurrencies(Household household, Map<UUID, String> stable) {
+        ApiClient owner = household.owner();
+        UUID dollars = demoAccount(owner, "Everyday Checking", "4417", "CHECKING", "0.00");
+        UUID euros = demoAccount(owner, "Berlin Savings", null, "SAVINGS", "1200.00");
+        UUID salary = seededCategoryId("Salary");
+        UUID groceries = seededCategoryId("Groceries");
+        UUID eating = seededCategoryId("Eating Out");
+        String[][] rows = {
+            {"2026-06-01", "3200.00", "USD", "salary"},
+            {"2026-06-04", "-212.40", "USD", "groceries"},
+            {"2026-07-01", "3200.00", "USD", "salary"},
+            {"2026-07-03", "-198.60", "USD", "groceries"},
+            {"2026-07-11", "-61.20", "USD", "eating"},
+            {"2026-06-20", "450.00", "EUR", "salary"},
+            {"2026-07-08", "-84.30", "EUR", "groceries"},
+            {"2026-07-20", "450.00", "EUR", "salary"},
+            {"2026-07-22", "-37.50", "EUR", "eating"},
+        };
+        for (String[] row : rows) {
+            UUID category =
+                    switch (row[3]) {
+                        case "salary" -> salary;
+                        case "groceries" -> groceries;
+                        default -> eating;
+                    };
+            createTransaction(
+                    owner, "USD".equals(row[2]) ? dollars : euros, row[0], row[1], category);
+        }
+        stable.put(dollars, "acc-8001");
+        stable.put(euros, "acc-8002");
+        stable.put(salary, "cat-8002");
+        stable.put(groceries, "cat-8006");
+        stable.put(eating, "cat-8008");
+    }
+
+    private UUID demoAccount(
+            ApiClient owner, String name, String lastFour, String type, String openingBalance) {
+        String currency = name.startsWith("Berlin") ? "EUR" : "USD";
+        ApiResponse created =
+                owner.post(
+                        "/api/accounts",
+                        """
+                        {"name":"%s","lastFour":%s,"type":"%s","currency":"%s",
+                         "openingBalance":"%s"}
+                        """
+                                .formatted(
+                                        name,
+                                        lastFour == null ? "null" : "\"" + lastFour + "\"",
+                                        type,
+                                        currency,
+                                        openingBalance));
+        if (created.status() != 201) {
+            throw new AssertionError("could not seed a demo account: " + created.body());
+        }
+        return UUID.fromString(created.stringField("id"));
+    }
+
+    private UUID transfer(ApiClient owner, UUID from, UUID to, String date, String amount) {
+        ApiResponse created =
+                owner.post(
+                        "/api/transfers",
+                        """
+                        {"fromAccountId":"%s","toAccountId":"%s","date":"%s","amount":"%s"}
+                        """
+                                .formatted(from, to, date, amount));
+        if (created.status() != 201) {
+            throw new AssertionError("could not seed a demo transfer: " + created.body());
+        }
+        return UUID.fromString(created.stringField("id"));
+    }
+
+    private static void ok200(ApiResponse response) {
+        if (response.status() != 200) {
+            throw new AssertionError("a demo setup step failed: " + response.body());
+        }
+    }
+
+    /**
+     * The responses, and the ledger they were summed from, as one TypeScript module.
+     *
+     * <p>A CSV body is a JSON string with every non-ASCII character escaped — the byte-order mark
+     * first among them — so the committed file holds no invisible character a reviewer could miss.
+     */
+    private static String renderReports(Map<String, String> responses) {
+        StringBuilder out = new StringBuilder(render(responses, "REPORT_API"));
+        out.append(
+                """
+
+                // The ledger the reports above were summed from: every row, transfers included.
+                // demo-data.ts checks at load that each of DEMO_TRANSACTIONS is one of these.
+                export const REPORT_LEDGER = [
+                """);
+        for (String[] row : DEMO_LEDGER) {
+            out.append(
+                    "  { date: \"%s\", amount: \"%s\", account: \"%s\", category: %s, status: \"%s\", transfer: false },\n"
+                            .formatted(
+                                    row[0],
+                                    row[1],
+                                    row[2],
+                                    row[3] == null ? "null" : "\"" + row[3] + "\"",
+                                    row[4]));
+        }
+        for (String[] t : DEMO_TRANSFERS) {
+            out.append(
+                    "  { date: \"%s\", amount: \"-%s\", account: \"%s\", category: null, status: \"CLEARED\", transfer: true },\n"
+                            .formatted(t[0], t[1], t[2]));
+            out.append(
+                    "  { date: \"%s\", amount: \"%s\", account: \"%s\", category: null, status: \"CLEARED\", transfer: true },\n"
+                            .formatted(t[0], t[1], t[3]));
+        }
+        return out.append("] as const;\n").toString();
+    }
+
+    /** A JSON string literal, ASCII only. */
+    private static String jsonString(String value) {
+        StringBuilder out = new StringBuilder("\"");
+        for (char c : value.toCharArray()) {
+            switch (c) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (c < 0x20 || c > 0x7e) {
+                        out.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        out.append(c);
+                    }
+                }
+            }
+        }
+        return out.append('"').toString();
+    }
+
     /**
      * A TypeScript module rather than a JSON one.
      *

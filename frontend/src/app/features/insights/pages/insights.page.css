@@ -160,10 +160,10 @@
   font-size: 0.875rem;
 }
 
-.figures-table caption {
-  text-align: start;
+.figures-caption {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
   color: var(--color-muted);
-  padding-block-end: var(--space-2);
 }
 
 .figures-table th,

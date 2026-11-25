@@ -5,3 +5,5 @@
 # it. Regenerate it; never edit or reformat it.
 fixtures/debt-api.generated.ts
 fixtures/debt-states.generated.ts
+fixtures/report-api.generated.ts
+fixtures/report-states.generated.ts

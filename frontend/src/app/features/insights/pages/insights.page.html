@@ -111,9 +111,22 @@
                summarises; this enumerates. -->
           <details class="figures">
             <summary>{{ 'insights.figures.show' | t }}</summary>
-            <div class="table-scroll">
+            <!-- The caption, shown above the scrolling region rather than inside it: a caption is
+                 as wide as its table, so on a phone it was cut off at the card's edge. The real caption
+                 element stays, for a screen reader; this copy is hidden from one. -->
+            <p class="figures-caption" aria-hidden="true">
+              {{ tableCaption().key | t: tableCaption().params }}
+            </p>
+            <!-- Focusable and named, because it scrolls on a phone and a keyboard has to reach it
+                 (axe: scrollable-region-focusable). -->
+            <div
+              class="table-scroll"
+              tabindex="0"
+              role="region"
+              [attr.aria-label]="'insights.figures.show' | t"
+            >
               <table class="figures-table">
-                <caption>
+                <caption class="visually-hidden">
                   {{
                     tableCaption().key | t: tableCaption().params
                   }}
@@ -147,7 +160,7 @@
           <div>
             <button
               type="button"
-              class="btn btn-ghost btn-small"
+              class="btn btn-secondary btn-small"
               [disabled]="downloading() !== null"
               (click)="download('income-and-spending')"
             >
@@ -290,7 +303,7 @@
           <div>
             <button
               type="button"
-              class="btn btn-ghost btn-small"
+              class="btn btn-secondary btn-small"
               [disabled]="downloading() !== null"
               (click)="download('spending-by-category')"
             >
