@@ -1101,6 +1101,7 @@
   "error.goal-name-taken": "You already have a goal with this name. Choose a different one.",
   "error.goal-archived": "This goal is archived. Restore it to set money aside or change its plan.",
   "error.goal-plan-period-past": "The plan can only change from this month on. To correct a past month, record or remove what was set aside then.",
+  "error.goal-plan-period-too-far": "The plan can only change up to two years ahead. Choose an earlier month.",
   "error.goal-currency-mismatch": "That account is in a different currency from this goal, so it cannot hold it.",
   "bills.termGoals": "Goals",
   "bills.goalsNote": "Goals count what you plan to set aside each month, or what you recorded if that is more. Money already saved before you started tracking a goal is never counted.",
