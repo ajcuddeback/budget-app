@@ -32,6 +32,17 @@ export interface ChartSeries {
   readonly points: readonly ChartPoint[];
   /** Two roles, drawn differently in weight **and** in dash, never in colour alone. */
   readonly role: 'selected' | 'compared';
+  /**
+   * The stroke's colour, for two lines that are **peers** rather than a choice and its
+   * alternative — income and spending (docs/features/reporting.md). It changes the colour and
+   * nothing else: `role` still decides weight and dash, so the pair stays distinguishable in
+   * greyscale (WCAG 1.4.1). Absent, the debt plan's colours apply.
+   *
+   * The colour itself is the page's: `--chart-tone-accent` and `--chart-tone-accent-2`, falling
+   * back to the accent roles, so a page can step a tone for contrast or for dark mode without this
+   * component knowing why.
+   */
+  readonly tone?: 'accent' | 'accent-2';
 }
 
 /** An optional vertical mark — a payoff month, a statement date. */
@@ -47,6 +58,7 @@ interface PlottedLine {
   readonly name: string;
   readonly points: string;
   readonly compared: boolean;
+  readonly tone: 'accent' | 'accent-2' | null;
 }
 
 /** The month range the chart is drawn against, shared by every line and the marker. */
@@ -145,6 +157,8 @@ const COINCIDENT_TOLERANCE = 0.005;
             <polyline
               class="chart-line"
               [class.is-compared]="line.compared"
+              [class.tone-accent]="line.tone === 'accent'"
+              [class.tone-accent-2]="line.tone === 'accent-2'"
               [attr.points]="line.points"
               fill="none"
               vector-effect="non-scaling-stroke"
@@ -192,6 +206,8 @@ const COINCIDENT_TOLERANCE = 0.005;
                 <span
                   class="chart-swatch"
                   [class.is-compared]="line.role === 'compared'"
+                  [class.tone-accent]="line.tone === 'accent'"
+                  [class.tone-accent-2]="line.tone === 'accent-2'"
                   aria-hidden="true"
                 ></span>
                 <span>{{ line.name }}</span>
@@ -251,6 +267,16 @@ const COINCIDENT_TOLERANCE = 0.005;
       stroke-dasharray: 5 4;
     }
 
+    /* A peer's colour. After .is-compared, at the same specificity, so it replaces the colour and
+       keeps the dash and the weight. */
+    .chart-line.tone-accent {
+      stroke: var(--chart-tone-accent, var(--color-accent));
+    }
+
+    .chart-line.tone-accent-2 {
+      stroke: var(--chart-tone-accent-2, var(--color-accent-2));
+    }
+
     .chart-mark {
       stroke: var(--color-accent-2);
       stroke-width: 2;
@@ -291,6 +317,14 @@ const COINCIDENT_TOLERANCE = 0.005;
     .chart-swatch.is-compared {
       border-block-start-style: dashed;
       border-color: var(--color-muted);
+    }
+
+    .chart-swatch.tone-accent {
+      border-color: var(--chart-tone-accent, var(--color-accent));
+    }
+
+    .chart-swatch.tone-accent-2 {
+      border-color: var(--chart-tone-accent-2, var(--color-accent-2));
     }
 
     /* Prose where the picture would have been, not an empty box with an axis around it. */
@@ -391,6 +425,7 @@ export class LineChartComponent {
           name: line.name,
           points,
           compared: line.role === 'compared',
+          tone: line.tone ?? null,
         });
       }
     }

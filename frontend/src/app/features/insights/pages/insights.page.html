@@ -1,0 +1,305 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'insights.title' | t }}</h1>
+    <p class="page-lede">{{ 'insights.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <app-error-alert [error]="actionError()" />
+    <!-- Always in the document, even while empty: a live region has to exist before its text
+         changes, or the first announcement is made to nobody. -->
+    <p class="visually-hidden" role="status">{{ announcement() }}</p>
+
+    @if (currencies().length > 1) {
+      <!-- Each currency is a complete report. There is never a combined figure (ADR-0039). -->
+      <section class="currency" aria-labelledby="insights-currency-label">
+        <p class="currency-label" id="insights-currency-label">
+          {{ 'insights.currency.label' | t }}
+        </p>
+        <div class="chips" role="group" aria-labelledby="insights-currency-label">
+          @for (code of currencies(); track code) {
+            <button
+              type="button"
+              class="btn btn-small"
+              [class.btn-primary]="code === currency()"
+              [class.btn-secondary]="code !== currency()"
+              [attr.aria-pressed]="code === currency()"
+              (click)="chooseCurrency(code)"
+            >
+              {{ code }}
+            </button>
+          }
+        </div>
+        <p class="card-note">{{ 'insights.currency.note' | t }}</p>
+      </section>
+    }
+
+    <div class="insights-grid">
+      <!-- 1. Income vs spending. -->
+      <section class="card insights-card" aria-labelledby="insights-income-heading">
+        <div class="card-head">
+          <h2 class="label" id="insights-income-heading">{{ 'insights.income.heading' | t }}</h2>
+          @if (keptShort(); as said) {
+            <p class="insight-short only-narrow">{{ said.key | t: said.params }}</p>
+          }
+        </div>
+
+        <!-- Pressed buttons, as the debt plan's strategy control: a chip re-asks report 1 with
+             a new range and saves nothing. -->
+        <div class="chips" role="group" [attr.aria-label]="'insights.range.label' | t">
+          @for (months of ranges; track months) {
+            <button
+              type="button"
+              class="btn btn-small"
+              [class.btn-primary]="months === range()"
+              [class.btn-secondary]="months !== range()"
+              [attr.aria-pressed]="months === range()"
+              [attr.aria-label]="rangeName(months)"
+              (click)="chooseRange(months)"
+            >
+              {{ rangeShort(months) }}
+            </button>
+          }
+        </div>
+
+        @if (empty()) {
+          <p class="card-note">{{ emptySaid().key | t: emptySaid().params }}</p>
+          <p class="card-note">{{ 'insights.envelopes' | t }}</p>
+          <p class="card-note">
+            <a class="link" routerLink="/transactions">{{ 'insights.empty.link' | t }}</a>
+          </p>
+        } @else {
+          @if (keptLong(); as said) {
+            <p class="insight-long only-wide">{{ said.key | t: said.params }}</p>
+          }
+
+          <app-line-chart
+            [series]="series()"
+            [label]="'insights.chart.label' | t"
+            [coincidentLabel]="'insights.coincident' | t"
+            chartId="insights-income-chart"
+          />
+          <p class="range-label">{{ rangeLabel() }}</p>
+          @if (hasNegativeSpending()) {
+            <p class="card-note">{{ 'insights.chart.negative' | t }}</p>
+          }
+
+          @if (uncategorised(); as said) {
+            <p class="needs-category">
+              {{ said.key | t: said.params }}
+              <a
+                class="link"
+                routerLink="/transactions"
+                [queryParams]="{ filter: 'uncategorised' }"
+                >{{ 'insights.uncategorised.link' | t }}</a
+              >
+            </p>
+          }
+
+          <!-- The table behind the chart: exactly the CSV's rows. The SVG's description
+               summarises; this enumerates. -->
+          <details class="figures">
+            <summary>{{ 'insights.figures.show' | t }}</summary>
+            <div class="table-scroll">
+              <table class="figures-table">
+                <caption>
+                  {{
+                    tableCaption().key | t: tableCaption().params
+                  }}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{{ 'insights.figures.month' | t }}</th>
+                    <th scope="col" class="num">{{ 'insights.figures.income' | t }}</th>
+                    <th scope="col" class="num">{{ 'insights.figures.spending' | t }}</th>
+                    <th scope="col" class="num">{{ 'insights.figures.uncategorisedIn' | t }}</th>
+                    <th scope="col" class="num">{{ 'insights.figures.uncategorisedOut' | t }}</th>
+                    <th scope="col" class="num">{{ 'insights.figures.kept' | t }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of monthRows(); track row.period) {
+                    <tr>
+                      <th scope="row">{{ row.label }}</th>
+                      <td class="num">{{ row.figures.income | money: currency() }}</td>
+                      <td class="num">{{ row.figures.spending | money: currency() }}</td>
+                      <td class="num">{{ row.figures.uncategorisedIn | money: currency() }}</td>
+                      <td class="num">{{ row.figures.uncategorisedOut | money: currency() }}</td>
+                      <td class="num">{{ row.figures.kept | money: currency() }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-small"
+              [disabled]="downloading() !== null"
+              (click)="download('income-and-spending')"
+            >
+              {{ incomeDownloadKey() | t }}
+              <span class="visually-hidden">{{ 'insights.downloadIncome' | t }}</span>
+            </button>
+          </div>
+        }
+      </section>
+
+      <!-- 2. Where {month} went. -->
+      <section class="card insights-card" aria-labelledby="insights-where-heading">
+        <div class="card-head">
+          <h2 class="label" id="insights-where-heading">
+            {{ whereHeading().key | t: whereHeading().params }}
+          </h2>
+          <div class="month-nav" role="group" [attr.aria-label]="'insights.where.navigation' | t">
+            <button type="button" class="btn btn-secondary btn-small" (click)="step(-1)">
+              <span aria-hidden="true">‹</span>
+              <span class="visually-hidden">{{ 'insights.where.previous' | t }}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              [disabled]="!canGoForward()"
+              (click)="step(1)"
+            >
+              <span aria-hidden="true">›</span>
+              <span class="visually-hidden">{{ 'insights.where.next' | t }}</span>
+            </button>
+          </div>
+        </div>
+
+        @if (whereEmpty()) {
+          <p class="card-note">{{ whereNothing().key | t: whereNothing().params }}</p>
+        } @else {
+          @if (segments().length > 0) {
+            <!-- A picture of the rows' shares, and nothing more: every name and figure is in
+                 the list below it. -->
+            <div class="bar" aria-hidden="true">
+              @for (segment of segments(); track segment.id) {
+                <span
+                  class="bar-segment"
+                  [class]="'tone-' + segment.tone"
+                  [style.flex-grow]="segment.share"
+                ></span>
+              }
+            </div>
+          }
+
+          @if (whereTotal(); as said) {
+            <p class="card-note">{{ said.key | t: said.params }}</p>
+          }
+
+          <ul class="categories" [attr.aria-label]="whereListLabel()">
+            @for (row of visibleRows(); track row.id) {
+              <li class="category">
+                <div class="category-line">
+                  <span class="dot" [class]="'tone-' + row.tone" aria-hidden="true"></span>
+                  <span class="category-name">
+                    {{ row.name }}
+                    @if (row.archived) {
+                      <span class="tag tag-neutral">{{ 'insights.where.archived' | t }}</span>
+                    }
+                  </span>
+                  <span class="category-amount">{{ row.spending | money: currency() }}</span>
+                  <!-- A real space, so the figure and its direction are read as two words. -->
+                  &ngsp;
+                  @if (row.change; as said) {
+                    <span class="change" [class]="'is-' + row.direction">{{
+                      said.key | t: said.params
+                    }}</span>
+                  }
+                </div>
+                @if (row.children.length > 0) {
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-small children-toggle"
+                    [attr.aria-expanded]="isExpanded(row.id)"
+                    [attr.aria-controls]="'insights-children-' + row.id"
+                    (click)="toggleChildren(row.id)"
+                  >
+                    {{ childrenLabel(row) }}
+                  </button>
+                  @if (isExpanded(row.id)) {
+                    <ul class="children" [id]="'insights-children-' + row.id">
+                      @for (child of row.children; track child.id) {
+                        <li class="category-line">
+                          <span class="category-name">
+                            {{ child.name }}
+                            @if (child.archived) {
+                              <span class="tag tag-neutral">{{
+                                'insights.where.archived' | t
+                              }}</span>
+                            }
+                          </span>
+                          <span class="category-amount">{{
+                            child.spending | money: currency()
+                          }}</span>
+                          &ngsp;
+                          @if (child.change; as said) {
+                            <span class="change" [class]="'is-' + child.direction">{{
+                              said.key | t: said.params
+                            }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                }
+              </li>
+            }
+          </ul>
+
+          @if (hiddenCount() > 0) {
+            <div>
+              <button
+                type="button"
+                class="btn btn-ghost btn-small"
+                [attr.aria-expanded]="showAll()"
+                (click)="toggleShowAll()"
+              >
+                {{ showAllSaid().key | t: showAllSaid().params }}
+              </button>
+            </div>
+          }
+
+          @if (whereUncategorised(); as said) {
+            <p class="needs-category">
+              {{ said.key | t: said.params }}
+              <a
+                class="link"
+                routerLink="/transactions"
+                [queryParams]="{ filter: 'uncategorised' }"
+                >{{ 'insights.uncategorised.link' | t }}</a
+              >
+            </p>
+          }
+
+          <div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-small"
+              [disabled]="downloading() !== null"
+              (click)="download('spending-by-category')"
+            >
+              {{ whereDownloadKey() | t }}
+              <span class="visually-hidden">{{ downloadWhereLabel() }}</span>
+            </button>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</div>

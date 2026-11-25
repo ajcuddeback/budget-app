@@ -1,0 +1,310 @@
+/* Every colour, space and radius here is a design token (design/README.md).
+ *
+ * Font sizes and weights are literals with a reason, not oversights: the token sheet carries no
+ * type scale and no weight tokens (design/README.md, Known gaps), and a CSS variable that does not
+ * exist fails silently to the inherited value. The debt plan's stylesheet sets the precedent.
+ */
+
+/* ---- the page's own colour roles ---------------------------------------------------------- */
+
+/*
+ * Roles, not new colours: every value is a ramp step from the token sheet.
+ *
+ * The chart strokes. The canvas draws income in accent-2-500 and spending in the accent. On the
+ * light card surface those measure about 2.1:1 and 2.7:1, under the 3:1 WCAG 1.4.11 asks of a
+ * graphic, so light mode steps each to its 600 tint (about 3.1:1 and 3.4:1). Dark mode takes the
+ * 400 tints, as every accent does there. docs/features/reporting.md records the step.
+ *
+ * "Down" is accent-2-700 on a light ground, as the canvas has it, and a light step on a dark one,
+ * for the reason --color-accent-text exists.
+ */
+:host {
+  --chart-tone-accent-2: var(--color-accent-2-600);
+  --chart-tone-accent: var(--color-accent-600);
+  --insights-down: var(--color-accent-2-700);
+  --insights-kept: var(--color-accent-2-700);
+}
+
+:host-context([data-theme='dark']) {
+  --chart-tone-accent-2: var(--color-accent-2-400);
+  --chart-tone-accent: var(--color-accent-400);
+  --insights-down: var(--color-accent-2-300);
+  --insights-kept: var(--color-accent-2-300);
+}
+
+@media (prefers-color-scheme: dark) {
+  :host-context(html:not([data-theme='light'])) {
+    --chart-tone-accent-2: var(--color-accent-2-400);
+    --chart-tone-accent: var(--color-accent-400);
+    --insights-down: var(--color-accent-2-300);
+    --insights-kept: var(--color-accent-2-300);
+  }
+}
+
+/* ---- layout ------------------------------------------------------------------------------- */
+
+/* Stacked on a phone, side by side from the debt plan's breakpoint, same fields in the same order
+   (design/README.md rule 1). */
+.insights-grid {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.insights-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+/* The same insight twice, long on desktop and short on a phone. display: none, so only one is ever
+   in the accessibility tree. */
+.only-narrow {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .only-wide {
+    display: none;
+  }
+
+  .only-narrow {
+    display: block;
+  }
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* The canvas's small-caps card label. */
+.label {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-variant: all-small-caps;
+  letter-spacing: 0.06em;
+  /* 700: there is no weight token. See the note at the top. */
+  font-weight: 700;
+}
+
+.insight-short {
+  margin: 0;
+  color: var(--insights-kept);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-long {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  max-inline-size: 60ch;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.currency {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.currency-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.range-label {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.needs-category {
+  margin: 0;
+  max-inline-size: 60ch;
+}
+
+/* ---- the table alternative ---------------------------------------------------------------- */
+
+.figures summary {
+  cursor: pointer;
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+/* The table scrolls inside its card on a narrow screen rather than widening the page. */
+.table-scroll {
+  overflow-x: auto;
+  margin-block-start: var(--space-2);
+}
+
+.figures-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.figures-table caption {
+  text-align: start;
+  color: var(--color-muted);
+  padding-block-end: var(--space-2);
+}
+
+.figures-table th,
+.figures-table td {
+  padding: var(--space-1) var(--space-2);
+  border-block-end: 1px solid var(--color-divider);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.figures-table thead th {
+  font-weight: 700;
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.figures-table tbody th {
+  font-weight: 600;
+}
+
+.figures-table .num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- where {month} went ------------------------------------------------------------------- */
+
+.month-nav {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Decorative: a picture of the rows' shares. Colour carries nothing the rows do not say. */
+.bar {
+  display: flex;
+  gap: calc(var(--space-1) / 2);
+  block-size: var(--space-3);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.bar-segment {
+  flex-basis: 0;
+  min-inline-size: var(--space-1);
+}
+
+.tone-s1 {
+  background: var(--color-accent);
+}
+
+.tone-s2 {
+  background: var(--color-accent-500);
+}
+
+.tone-s3 {
+  background: var(--color-accent-2-500);
+}
+
+.tone-s4 {
+  background: var(--color-accent-2-400);
+}
+
+.tone-s5 {
+  background: var(--color-neutral-500);
+}
+
+.tone-s6,
+.tone-rest {
+  background: var(--color-neutral-300);
+}
+
+.categories,
+.children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.category {
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--color-divider);
+}
+
+.category:last-child {
+  border-block-end: 0;
+}
+
+.category-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.dot {
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  border-radius: 50%;
+  flex: none;
+  align-self: center;
+}
+
+.category-name {
+  flex: 1 1 8rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.category-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.change {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+/* The canvas's colours for a rise and a fall, beside the word that says which, so neither relies
+   on colour. */
+.change.is-up {
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+.change.is-down {
+  color: var(--insights-down);
+  font-weight: 600;
+}
+
+.children {
+  margin-block-start: var(--space-2);
+  padding-inline-start: calc(var(--space-3) + var(--space-3));
+}
+
+.children .category-line {
+  padding-block: var(--space-1);
+  font-size: 0.9375rem;
+}
+
+.children-toggle {
+  margin-block-start: var(--space-1);
+  margin-inline-start: calc(var(--space-3) + var(--space-3));
+}
