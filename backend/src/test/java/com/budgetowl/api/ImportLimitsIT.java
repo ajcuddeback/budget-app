@@ -21,6 +21,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.multipart.MultipartResolver;
 
 /**
  * The limits that keep one upload from taking the instance down (docs/features/file-import.md rule
@@ -34,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 class ImportLimitsIT extends ImportApiTestBase {
 
     @Autowired private ImportGate gate;
+    @Autowired private ApplicationContext context;
     @Autowired private ImportLimits limits;
 
     private final ListAppender<ILoggingEvent> captured = new ListAppender<>();
@@ -141,6 +144,12 @@ class ImportLimitsIT extends ImportApiTestBase {
         assertThat(refused.statusCode()).isEqualTo(415);
         assertThat(newFilesHolding("OFXHEADER:100", started))
                 .as("multipart is off, so nothing spooled a part to java.io.tmpdir (ADR-0038)")
+                .isEmpty();
+        // The files check alone cannot fail: a spooled part is deleted when the request ends, so
+        // it passed with multipart turned back on (found by sabotage, gotchas.md). The control is
+        // that nothing exists to spool a part in the first place.
+        assertThat(context.getBeanNamesForType(MultipartResolver.class))
+                .as("spring.servlet.multipart.enabled is false, so there is no multipart resolver")
                 .isEmpty();
     }
 

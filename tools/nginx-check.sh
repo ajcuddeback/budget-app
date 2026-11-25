@@ -90,4 +90,13 @@ check "every other route keeps the 1 MiB default (got $code)" "$([ "$code" = 413
 spooled=$(docker exec "$name" sh -c 'find /var/cache/nginx /tmp -type f 2>/dev/null | wc -l')
 check "nothing spooled to /var/cache/nginx ($spooled files)" "$([ "$spooled" -eq 0 ] && echo ok)"
 
+# A spooled body is deleted when the request ends, so an empty directory afterwards proves little.
+# nginx says so in its error log at the moment it does it: "a client request body is buffered to a
+# temporary file". With proxy_request_buffering off on /api/imports, that line never appears for
+# an import, however large the body. (Found by sabotage: turning buffering back on passed the
+# directory check above.)
+buffered=$(docker logs "$name" 2>&1 | grep -c 'buffered to a temporary file' || true)
+check "no import body was buffered to a temporary file ($buffered log lines)" \
+  "$([ "$buffered" -eq 0 ] && echo ok)"
+
 exit "$failed"
