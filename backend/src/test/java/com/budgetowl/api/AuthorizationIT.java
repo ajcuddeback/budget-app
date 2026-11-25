@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -26,6 +27,21 @@ class AuthorizationIT extends ApiTestBase {
      */
     static List<Endpoint> protectedEndpoints() {
         UUID any = UUID.fromString("00000000-0000-4000-8000-00000000f00d");
+        // Goals' routes come from GoalIT's own list, so a route added there joins this sweep too
+        // (slice-11 security audit).
+        List<Endpoint> goals =
+                GoalIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path().replace("{id}", any.toString()),
+                                                route.body()))
+                        .toList();
+        return Stream.concat(fixedEndpoints(any).stream(), goals.stream()).toList();
+    }
+
+    private static List<Endpoint> fixedEndpoints(UUID any) {
         return List.of(
                 new Endpoint("POST", "/api/auth/logout", null),
                 new Endpoint("GET", "/api/auth/me", null),

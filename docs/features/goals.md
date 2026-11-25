@@ -619,9 +619,15 @@ upload**. Path parameters are two UUIDs and one `YearMonth`. Query parameters ar
    `SUM` from cheap writes.
    **Control:** per-household and per-goal caps, enforced with `countBy…` before insert the way
    `DebtService` does. Proposed: **50 goals** (`409 goal-limit-reached`) and **2,000 contributions
-   per goal**, mirroring the debt caps. The plan steps are bounded by `UNIQUE (goal_id,
-   from_period)` and the ban on past periods, so they grow by at most one a month. The 600-month
-   horizon caps that too. Collections are paginated.
+   per goal**, mirroring the debt caps. ~~The plan steps are bounded by `UNIQUE (goal_id,
+   from_period)` and the ban on past periods, so they grow by at most one a month.~~ **Corrected
+   after the slice-11 security audit (medium 1):** the ban on past periods did not bound the plan,
+   because future periods were open to year 9999, so a member could chain changes month by month
+   and every list read and period summary loads every step. A plan change may now start **at most
+   24 months ahead** (`422 goal-plan-period-too-far`, `GoalService.MAXIMUM_PLAN_LEAD_MONTHS`). A
+   goal holds **at most 240 steps** as a backstop (`409 goal-limit-reached`). `GoalLimitsIT` covers
+   both, and disabling either check fails it. V18's comment makes the old claim and cannot be
+   edited. Collections are paginated.
 7. *An operator turns on `DEBUG` to chase a bug and gets* goal names, amounts and notes in the log.
    This is not an attack by a stranger, but it is the leak this codebase has had twice.
    **Control:** a redacted `toString` on every request and response DTO, entity, view and projection
@@ -756,6 +762,19 @@ upload**. Path parameters are two UUIDs and one `YearMonth`. Query parameters ar
 
 ## Known gaps
 
+- **From the slice-11 security audit, left open (all low):**
+  - **The two caps can be overshot under concurrent requests.** Count-then-insert has no lock, so
+    parallel requests can pass 50 goals or 2,000 contributions by roughly the number in flight. It
+    is not unbounded, and the debt caps work the same way. The fix is `SELECT … FOR UPDATE` on the
+    goal row (contributions) and the household row (goals) before counting.
+  - **A linked account can change currency while it is empty**, leaving a goal linked to an
+    account in another currency. The link is for reference and no amount moves. The debt plan
+    has the same hole. The fix is to refuse the currency change while a goal or debt links the
+    account.
+  - **A retried request records a contribution twice.** The dialog disables its button while
+    saving, and the extra row can be removed. There is no idempotency key anywhere yet.
+  - **Debts are not in `AuthorizationIT.protectedEndpoints()`.** Goals now are, taken from
+    `GoalIT.everyRoute()`. Debts are still covered only by `DebtIT`'s own sweep.
 - **Nothing records who logged a contribution or changed the plan.** This is the same gap bills,
   transfers, occurrences and debt payments have. The column can be added later without losing
   anything that exists.

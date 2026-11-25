@@ -195,6 +195,13 @@ public enum ErrorCode {
             "goal-plan-period-past", 422, "The plan can only change from the current month"),
 
     /**
+     * A plan change may start at most {@code GoalService.MAXIMUM_PLAN_LEAD_MONTHS} ahead. Without
+     * it a plan could be chained out to year 9999, one step a month, and every read loads them all.
+     */
+    GOAL_PLAN_PERIOD_TOO_FAR(
+            "goal-plan-period-too-far", 422, "The plan can only change up to two years ahead"),
+
+    /**
      * A goal kept in an account is in that account's currency. Linking one in another currency
      * would leave the goal page showing two figures in two units side by side as if comparable.
      */

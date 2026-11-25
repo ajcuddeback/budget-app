@@ -91,6 +91,20 @@ public class GoalService {
     public static final int MAXIMUM_CONTRIBUTIONS_PER_GOAL = 2_000;
 
     /**
+     * How far ahead a plan change may start. Refusing the past alone did not bound the plan: a
+     * member could chain changes month by month to year 9999, and every list read and period
+     * summary loads every step (slice-11 security audit, medium 1). The app offers this month or
+     * next; two years leaves room for a client that plans ahead.
+     */
+    public static final int MAXIMUM_PLAN_LEAD_MONTHS = 24;
+
+    /**
+     * Plan steps per goal, kept history included. With the lead capped, a plan grows by at most one
+     * step a month of real time; this is the backstop if that ever stops being true.
+     */
+    public static final int MAXIMUM_PLAN_STEPS_PER_GOAL = 240;
+
+    /**
      * The window a target month must fall in. Not a product rule: a year outside it is a request
      * with no meaning in it, and an unbounded one reaches the database's date range.
      */
@@ -394,6 +408,14 @@ public class GoalService {
                             + " contribution",
                     Map.of("field", "fromPeriod"));
         }
+        if (fromPeriod.isAfter(currentPeriod().plusMonths(MAXIMUM_PLAN_LEAD_MONTHS))) {
+            throw new InvalidRequestException(
+                    ErrorCode.GOAL_PLAN_PERIOD_TOO_FAR,
+                    "the plan can change at most "
+                            + MAXIMUM_PLAN_LEAD_MONTHS
+                            + " months ahead of the current month",
+                    Map.of("field", "fromPeriod"));
+        }
         Money amount =
                 amount(
                         monthlyAmount,
@@ -404,6 +426,11 @@ public class GoalService {
         GoalLedger ledger = ledgers(household.id(), List.of(goal)).get(goal.id());
         List<PlanStep> planned = ledger.stepsWith(fromPeriod, amount);
         if (!planned.equals(ledger.steps())) {
+            if (planned.size() > MAXIMUM_PLAN_STEPS_PER_GOAL) {
+                throw new ConflictException(
+                        ErrorCode.GOAL_LIMIT_REACHED,
+                        "a goal's plan is limited to " + MAXIMUM_PLAN_STEPS_PER_GOAL + " steps");
+            }
             steps.deleteFrom(household.id(), goal.id(), fromPeriod.atDay(1));
             for (PlanStep step : planned) {
                 if (!step.fromPeriod().isBefore(fromPeriod)) {

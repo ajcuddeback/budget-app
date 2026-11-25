@@ -6,6 +6,7 @@ import com.budgetowl.goal.service.GoalService;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayNameGeneration;
@@ -75,6 +76,77 @@ class GoalLimitsIT extends ApiTestBase {
                 .isEqualTo((long) GoalService.MAXIMUM_CONTRIBUTIONS_PER_GOAL);
     }
 
+    /**
+     * Security audit, medium 1: refusing past months alone left the plan unbounded, because a
+     * member could chain changes month by month out to year 9999 and every read loads every step.
+     */
+    @Test
+    void a_plan_change_more_than_the_lead_ahead_is_refused_and_nothing_is_written() {
+        Household household = seedHousehold();
+        UUID goal = createGoal(household.owner(), "Fund");
+        YearMonth now = YearMonth.now(ZoneOffset.UTC);
+        YearMonth furthest = now.plusMonths(GoalService.MAXIMUM_PLAN_LEAD_MONTHS);
+
+        ApiResponse tooFar =
+                household
+                        .owner()
+                        .put(
+                                "/api/goals/"
+                                        + goal
+                                        + "/contribution-plan/"
+                                        + furthest.plusMonths(1),
+                                "{\"monthlyAmount\":\"10\",\"version\":%d}"
+                                        .formatted(version(household.owner(), goal)));
+
+        assertThat(tooFar.status()).isEqualTo(422);
+        assertThat(tooFar.stringField("code")).isEqualTo("goal-plan-period-too-far");
+        assertThat(stepCount()).isZero();
+
+        ApiResponse atTheLimit =
+                household
+                        .owner()
+                        .put(
+                                "/api/goals/" + goal + "/contribution-plan/" + furthest,
+                                "{\"monthlyAmount\":\"10\",\"version\":%d}"
+                                        .formatted(version(household.owner(), goal)));
+
+        assertThat(atTheLimit.status()).isEqualTo(200);
+        assertThat(stepCount()).isEqualTo(1L);
+    }
+
+    @Test
+    void past_the_plan_step_cap_a_plan_change_is_refused_and_the_plan_is_untouched() {
+        Household household = seedHousehold();
+        UUID goal = createGoal(household.owner(), "Fund");
+        // Kept history, one step a month going back, alternating so no two neighbours merge.
+        jdbc.update(
+                """
+                INSERT INTO goal_contribution_steps (id, household_id, goal_id, from_period,
+                                                     monthly_amount)
+                SELECT gen_random_uuid(), g.household_id, g.id,
+                       (date_trunc('month', now()) - make_interval(months => n))::date,
+                       (n % 2) + 1
+                FROM goals g, generate_series(1, ?) AS n
+                WHERE g.id = ?
+                """,
+                GoalService.MAXIMUM_PLAN_STEPS_PER_GOAL, goal);
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .put(
+                                "/api/goals/"
+                                        + goal
+                                        + "/contribution-plan/"
+                                        + YearMonth.now(ZoneOffset.UTC),
+                                "{\"monthlyAmount\":\"500\",\"version\":%d}"
+                                        .formatted(version(household.owner(), goal)));
+
+        assertThat(refused.status()).isEqualTo(409);
+        assertThat(refused.stringField("code")).isEqualTo("goal-limit-reached");
+        assertThat(stepCount()).isEqualTo((long) GoalService.MAXIMUM_PLAN_STEPS_PER_GOAL);
+    }
+
     @Test
     void the_goal_list_returns_a_page_and_clamps_an_oversized_one() {
         Household household = seedHousehold();
@@ -140,6 +212,14 @@ class GoalLimitsIT extends ApiTestBase {
 
     private UUID householdId() {
         return jdbc.queryForObject("SELECT id FROM households", UUID.class);
+    }
+
+    private long stepCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM goal_contribution_steps", Long.class);
+    }
+
+    private static long version(ApiClient client, UUID goal) {
+        return client.get("/api/goals/" + goal).numberField("version");
     }
 
     private UUID createGoal(ApiClient client, String name) {
