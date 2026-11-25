@@ -1136,3 +1136,82 @@ a password.
 **The general lesson.** A constraint is only proven by sending something that violates it and
 reading the status code. A green suite full of *valid* requests says nothing about what an invalid
 one does — and the invalid one is the one an attacker sends.
+## `AmountText.parse` is not a safe backstop for text nobody validated
+
+**Symptom.** Its Javadoc calls it the backstop for anything that arrives without a DTO `@Pattern`.
+It is not one. It calls `new BigDecimal(text)`, which accepts exponent notation, and
+`1E+10000000` passes its scale check and then costs about 4.4 s of CPU in `Money.of`'s `setScale`
+(measured 2026-11-25). A file of 10,000 such cells is most of a day.
+
+**Why nobody noticed.** Every JSON caller is protected by a DTO `@Pattern` that refuses the
+exponent before `AmountText` sees it. Text from anywhere else — a statement file, a future CSV
+export round-trip — is not.
+
+**What to do.** Never hand untrusted text to `new BigDecimal(String)`. File import has its own
+strict lexer (`ImportAmountLexer`, file-import.md rule 7) that refuses exponents, non-ASCII digits,
+more than 15 integer digits and more than 4 decimals **before** a `BigDecimal` exists, and an
+ArchUnit rule keeps `double`, `float`, `NumberFormat` and `DecimalFormat` out of the import
+package. `AmountText` itself should refuse exponents and non-ASCII digits too; that is a follow-up.
+
+_Added 2026-11-25 — slice 12._
+
+## Spring spools a multipart body to disk before any controller says no
+
+**Symptom.** A route that only accepts JSON still writes an uploaded file to `java.io.tmpdir` when
+somebody sends it as `multipart/form-data`. `DispatcherServlet` parses multipart eagerly, through
+the `MultipartResolver` that Spring Boot registers by default, and Tomcat writes every part to
+disk (the default file-size threshold is 0). The controller then answers `415` — after the file
+was already written.
+
+**Why a test did not see it.** The parts are deleted when the request ends, so a test that looks
+for new files _afterwards_ passes with multipart on or off. Sabotage proved it: turning multipart
+back on left `aMultipartUploadIsRefusedAndLeavesNothingOnDisk` green.
+
+**What to do.** `spring.servlet.multipart.enabled: false` (application.yml) — no route in this API
+takes multipart, and file import takes base64 inside JSON (ADR-0038). The test now also asserts
+that **no `MultipartResolver` bean exists**, which is the control itself rather than its
+after-effects.
+
+_Added 2026-11-25 — slice 12._
+
+## nginx buffers a request body to a temporary file, and deletes it before you can look
+
+**Symptom.** nginx's default `proxy_request_buffering on` writes any body larger than
+`client_body_buffer_size` to `client_body_temp` before proxying it. For a statement upload that
+is the whole file, on disk, on the proxy — exactly what ADR-0038 forbids.
+
+**Why a test did not see it.** The temporary file is removed when the request completes, so
+"nothing in `/var/cache/nginx` afterwards" passes either way. Sabotage proved it.
+
+**What to do.** `location /api/imports` sets `proxy_request_buffering off` and
+`proxy_max_temp_file_size 0`. `tools/nginx-check.sh` checks the **error log**, where nginx says
+"a client request body is buffered to a temporary file" at the moment it does it; that line must
+never appear for an import.
+
+_Added 2026-11-25 — slice 12._
+
+## A `[value]` binding on a `<select>` loses to options that render after it
+
+**Symptom.** `<select [value]="role">` with `@for` options inside showed the first option, not
+`role`, when the options and the value arrived in the same change detection. The value was set
+on the element before the matching `<option>` existed, so the browser had nothing to select and
+fell back to the first.
+
+**What to do.** Bind `[selected]="option === current"` on each `<option>` as well (the import
+mapping does), or use a reactive form control, which re-applies its value when the options change.
+A spec that reads the select's `.value` after render catches it; one that only reads the signal
+does not.
+
+_Added 2026-11-25 — slice 12._
+
+## The UI mock's household section answers every `DELETE` with `204`
+
+**Symptom.** A new `DELETE` handler added near the end of `tools/ui/helpers/mock-api.ts` was never
+reached: undoing an import "worked" on screen, but the history still offered Undo, because the
+household section's catch-all `if (method === 'DELETE') return 204` answered first.
+
+**What to do.** Put a new feature's handlers **above** the household section (file import's are),
+or match your path before any catch-all. When a mocked write seems to do nothing, log the calls
+and the responses from the page — `calls` from `mockApi` shows which handler's answer came back.
+
+_Added 2026-11-25 — slice 12._
