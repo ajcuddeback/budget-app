@@ -46,7 +46,7 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0019](0019-flutter-for-mobile.md)                               | Flutter for the mobile app                                      | Accepted                   | 2026-09-05 |
 | [0020](0020-bank-connections-use-user-credentials.md)            | Bank connections use the user's own credentials                 | Accepted                   | 2026-09-05 |
 | [0021](0021-licence-agpl-3.md)                                   | Licence — AGPL-3.0                                              | Accepted                   | 2026-09-25 |
-| [0022](0022-multi-currency-display.md)                           | Multi-currency — store in account currency, convert for display | Accepted                   | 2026-09-07 |
+| [0022](0022-multi-currency-display.md)                           | Multi-currency — store in account currency, convert for display | Accepted (amended by 0039) | 2026-09-07 |
 | [0023](0023-internationalisation.md)                             | Internationalisation — runtime locale, codes over prose         | Accepted                   | 2026-09-07 |
 | [0024](0024-test-quality-enforcement.md)                         | Measure test quality, not just coverage                         | Accepted                   | 2026-09-07 |
 | [0025](0025-bills-are-occurrences-not-generated-transactions.md) | Bills are occurrences with a status, not generated transactions | Accepted                   | 2026-09-09 |
@@ -61,3 +61,4 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0034](0034-rotating-the-oidc-client-secret-withdraws-the-proof.md) | Rotating the OIDC client secret withdraws the proof that the provider works | Accepted      | 2026-11-22 |
 | [0035](0035-a-debt-payment-is-a-plan-record-not-a-transaction.md) | A debt payment is a plan record, not a transaction | Accepted      | 2026-11-23 |
 | [0036](0036-the-ladder-never-overpays-a-rung.md) | The ladder never overpays a rung; the leftover flows down the same month | Accepted      | 2026-11-24 |
+| [0039](0039-reports-are-per-currency-until-rates-exist.md) | Reports are per currency; exchange rates and the roll-up get their own slice | Accepted      | 2026-11-25 |
