@@ -262,6 +262,46 @@ export interface DebtPayment {
   version: number;
 }
 
+/**
+ * What logging a payment **would** record, without recording it.
+ *
+ * Built by the server through the same code as logging, so it cannot disagree with what gets
+ * stored. The browser holds no second copy of `balance × apr ÷ 1200` to drift from it — which is
+ * the whole reason this is a request rather than a calculation.
+ */
+export interface PaymentPreview {
+  currency: string;
+  interest: string;
+  principal: string;
+  balanceBefore: string;
+  balanceAfter: string;
+}
+
+/**
+ * Whether a response really is a preview.
+ *
+ * `unknown` plus a guard rather than a cast: this figure goes straight onto the screen beside the
+ * word "interest", and a body that is merely *shaped* like JSON would render as a split with
+ * three blanks in it. Anything that does not answer in amounts is treated as no preview at all,
+ * and the sheet says the split will come once the payment is recorded.
+ */
+export function isPaymentPreview(value: unknown): value is PaymentPreview {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate['currency'] === 'string' &&
+    isAmount(candidate['interest']) &&
+    isAmount(candidate['principal']) &&
+    isAmount(candidate['balanceAfter'])
+  );
+}
+
+function isAmount(value: unknown): boolean {
+  return typeof value === 'string' && /^-?\d{1,15}(\.\d{1,4})?$/.test(value);
+}
+
 /** One page of a debt's history — the envelope every collection returns. */
 export interface DebtPaymentPage {
   content: DebtPayment[];
@@ -421,6 +461,11 @@ export interface UpdateDebtRequest {
   billId?: string | null;
   /** Three-way. Only `CUSTOM` stores an order. */
   customOrder?: number | null;
+}
+
+/** The amount a sheet is about to record, asked about before it is. */
+export interface PreviewPaymentRequest {
+  amount: string;
 }
 
 /** A payment to log. `transactionId` is evidence of a real movement, not authority for it. */

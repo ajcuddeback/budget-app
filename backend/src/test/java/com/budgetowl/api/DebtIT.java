@@ -363,16 +363,17 @@ class DebtIT extends ApiTestBase {
                                         .formatted(TODAY));
 
         assertThat(logged.status()).isEqualTo(201);
-        // round(6180 × 22.9 ÷ 1200, 4) = 117.9350, and the principal takes the remainder, so the
-        // split reconciles to the cent by construction.
-        assertThat(logged.stringField("interest")).isEqualTo("117.9350");
-        assertThat(logged.stringField("principal")).isEqualTo("327.0650");
-        assertThat(logged.stringField("balanceAfter")).isEqualTo("5852.9350");
+        // 6180 × 22.9 ÷ 1200 = 117.935 exactly, rounded half-even to the cent = 117.94. The
+        // principal takes the remainder, 445.00 − 117.94 = 327.06, and the balance after is
+        // 6180.00 − 327.06 = 5852.94: three cent figures, and interest + principal = 445.00.
+        assertThat(logged.stringField("interest")).isEqualTo("117.9400");
+        assertThat(logged.stringField("principal")).isEqualTo("327.0600");
+        assertThat(logged.stringField("balanceAfter")).isEqualTo("5852.9400");
         assertThat(logged.stringField("provenance")).isEqualTo("USER_LOGGED");
 
         // The balance is the anchor rolled forward by the payments after it — nothing stored it.
         assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
-                .isEqualTo("5852.9350");
+                .isEqualTo("5852.9400");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM transactions", Long.class))
                 .as("a debt payment writes no ledger row (ADR-0035)")
                 .isZero();
@@ -397,15 +398,16 @@ class DebtIT extends ApiTestBase {
                         .post(
                                 "/api/debts/" + debt + "/balance",
                                 """
-                                {"balance":"5857.0350","balanceDate":"%s"}
+                                {"balance":"5857.04","balanceDate":"%s"}
                                 """
                                         .formatted(TODAY));
 
         assertThat(confirmed.status()).isEqualTo(200);
-        assertThat(confirmed.stringField("balance")).isEqualTo("5857.0350");
+        assertThat(confirmed.stringField("balance")).isEqualTo("5857.0400");
         assertThat(confirmed.stringField("balanceSource")).isEqualTo("CONFIRMED");
         // "Statement corrected +$4.10": the gap is a ROW, not an edit. History is never silently
-        // adjusted to agree with the present.
+        // adjusted to agree with the present. Derived: 6180.00 + 117.94 − 445.00 = 5852.94; the
+        // statement says 5857.04, so the row is −(5857.04 − 5852.94) = −4.10.
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT amount::text FROM debt_payments"
@@ -446,7 +448,7 @@ class DebtIT extends ApiTestBase {
         assertThat(payments.numberField("totalElements")).isEqualTo(1L);
         assertThat(payments.body()).contains("\"transactionId\":null");
         assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
-                .isEqualTo("5852.9350");
+                .isEqualTo("5852.9400");
     }
 
     @Test
@@ -528,7 +530,7 @@ class DebtIT extends ApiTestBase {
         assertThat(payments.body()).contains("\"paidFromAccountId\":null");
         assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
                 .as("the balance is derived from the payment, not from the account")
-                .isEqualTo("5852.9350");
+                .isEqualTo("5852.9400");
     }
 
     @Test
@@ -771,8 +773,8 @@ class DebtIT extends ApiTestBase {
         assertThat(preview.stringField("principal")).isEqualTo(logged.stringField("principal"));
         assertThat(preview.stringField("balanceAfter"))
                 .isEqualTo(logged.stringField("balanceAfter"));
-        // 6180 × 22.9 ÷ 1200 = 117.9350, rounded half-even at scale 4, in ONE division.
-        assertThat(preview.stringField("interest")).isEqualTo("117.9350");
+        // 6180 × 22.9 ÷ 1200 = 117.935, rounded half-even to the cent in ONE division = 117.94.
+        assertThat(preview.stringField("interest")).isEqualTo("117.9400");
         assertThat(preview.stringField("balanceBefore")).isEqualTo("6180.0000");
     }
 
@@ -960,9 +962,11 @@ class DebtIT extends ApiTestBase {
         assertThat(corrected.status()).isEqualTo(200);
         // The household is saying what they paid, not that the rate was different. Recomputing
         // the interest against today's APR would rewrite history to agree with the present.
-        assertThat(corrected.stringField("interest")).isEqualTo("117.9350");
-        assertThat(corrected.stringField("principal")).isEqualTo("382.0650");
-        assertThat(corrected.stringField("balanceAfter")).isEqualTo("5797.9350");
+        // Interest stays at the day's 117.94; principal 500.00 − 117.94 = 382.06; balance after
+        // 6180.00 − 382.06 = 5797.94.
+        assertThat(corrected.stringField("interest")).isEqualTo("117.9400");
+        assertThat(corrected.stringField("principal")).isEqualTo("382.0600");
+        assertThat(corrected.stringField("balanceAfter")).isEqualTo("5797.9400");
     }
 
     @Test

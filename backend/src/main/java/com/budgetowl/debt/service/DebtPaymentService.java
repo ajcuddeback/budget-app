@@ -44,8 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li><b>The split is computed once and stored.</b> {@code interest = round(balance × apr ÷ 100 ÷
- *       12, 4, HALF_EVEN)} at the time, the principal takes the remainder, so {@code interest +
- *       principal = amount} exactly and no payment loses or invents a cent.
+ *       12, minor unit, HALF_EVEN)} at the time, the principal takes the remainder, so {@code
+ *       interest + principal = amount} exactly and no payment loses or invents a cent — and a
+ *       payment in cents splits into two cent figures that each display exactly.
  *   <li><b>A correction keeps the interest.</b> Recomputing it against today's rate would rewrite
  *       history to agree with the present.
  *   <li><b>Overpaying is not clamped.</b> A payment whose principal exceeds the balance takes it

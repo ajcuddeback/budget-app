@@ -34,14 +34,14 @@ class DebtPaymentTest {
 
     @Test
     void the_split_reconciles_exactly_and_the_principal_takes_the_remainder() {
-        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.9350", "GBP"));
+        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP"));
 
         assertThat(payment.amount()).isEqualByComparingTo("445.0000");
-        assertThat(payment.interest()).isEqualByComparingTo("117.9350");
-        assertThat(payment.principal()).isEqualByComparingTo("327.0650");
+        assertThat(payment.interest()).isEqualByComparingTo("117.94");
+        assertThat(payment.principal()).isEqualByComparingTo("327.06");
         assertThat(payment.interest().add(payment.principal()))
                 .isEqualByComparingTo(payment.amount());
-        assertThat(payment.balanceAfter()).isEqualByComparingTo("5852.9350");
+        assertThat(payment.balanceAfter()).isEqualByComparingTo("5852.94");
         assertThat(payment.balanceBefore()).isEqualByComparingTo("6180.0000");
         assertThat(payment.provenance()).isEqualTo(PaymentProvenance.USER_LOGGED);
         assertThat(payment.paidDate()).isEqualTo(PAID);
@@ -49,7 +49,7 @@ class DebtPaymentTest {
 
     @Test
     void an_overpayment_takes_the_balance_below_zero_rather_than_being_clamped() {
-        DebtPayment payment = payment(Money.of("6500.00", "GBP"), Money.of("117.9350", "GBP"));
+        DebtPayment payment = payment(Money.of("6500.00", "GBP"), Money.of("117.94", "GBP"));
 
         // The screen says the debt is overpaid by that much. Clamping would hide a real error in
         // somebody's favour.
@@ -68,35 +68,35 @@ class DebtPaymentTest {
                         PAID,
                         Money.of("-4.10", "GBP"),
                         Money.zero(GBP),
-                        Money.of("5852.9350", "GBP"),
+                        Money.of("5852.94", "GBP"),
                         PaymentProvenance.STATEMENT_CORRECTION);
 
         // "Statement corrected +$4.10": a negative amount against a rising balance, which is why
         // no sign constraint exists on these columns.
         assertThat(correction.amount()).isEqualByComparingTo("-4.1000");
         assertThat(correction.principal()).isEqualByComparingTo("-4.1000");
-        assertThat(correction.balanceAfter()).isEqualByComparingTo("5857.0350");
+        assertThat(correction.balanceAfter()).isEqualByComparingTo("5857.04");
         assertThat(correction.provenance()).isEqualTo(PaymentProvenance.STATEMENT_CORRECTION);
     }
 
     @Test
     void correcting_the_amount_keeps_the_interest_that_was_true_on_the_day() {
-        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.9350", "GBP"));
+        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP"));
 
         payment.correctAmount(Money.of("500.00", "GBP"));
 
         // A household correcting a mistyped figure is not telling us the rate was different.
         // Recomputing the interest here would rewrite history to agree with the present.
-        assertThat(payment.interest()).isEqualByComparingTo("117.9350");
-        assertThat(payment.principal()).isEqualByComparingTo("382.0650");
-        assertThat(payment.balanceAfter()).isEqualByComparingTo("5797.9350");
+        assertThat(payment.interest()).isEqualByComparingTo("117.94");
+        assertThat(payment.principal()).isEqualByComparingTo("382.06");
+        assertThat(payment.balanceAfter()).isEqualByComparingTo("5797.94");
         assertThat(payment.interest().add(payment.principal()))
                 .isEqualByComparingTo(payment.amount());
     }
 
     @Test
     void the_links_are_evidence_and_are_set_and_cleared_by_id() {
-        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.9350", "GBP"));
+        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP"));
         UUID transaction = UUID.randomUUID();
         UUID occurrence = UUID.randomUUID();
 
@@ -114,12 +114,12 @@ class DebtPaymentTest {
         payment.recordedFrom(null);
         assertThat(payment.transactionId()).isEmpty();
         assertThat(payment.billOccurrenceId()).isEmpty();
-        assertThat(payment.balanceAfter()).isEqualByComparingTo("5852.9350");
+        assertThat(payment.balanceAfter()).isEqualByComparingTo("5852.94");
     }
 
     @Test
     void a_blank_note_is_absent_rather_than_an_empty_string() {
-        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.9350", "GBP"));
+        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP"));
 
         payment.annotate("  paid early  ");
         assertThat(payment.note()).contains("paid early");
@@ -183,7 +183,7 @@ class DebtPaymentTest {
     @Test
     void prints_no_amount() {
         DebtPayment payment =
-                Ids.withId(payment(Money.of("445.00", "GBP"), Money.of("117.9350", "GBP")));
+                Ids.withId(payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP")));
 
         String printed = payment.toString();
 

@@ -231,7 +231,9 @@ class PayoffLadderTest {
         for (PayoffProjection.Rung rung : plan.rungs()) {
             summed = summed.plus(rung.totalInterest());
         }
-        assertThat(plan.totalInterest()).isEqualTo(summed).isEqualTo(money("2861.4944"));
+        // Visa 1069.36 (17 months at 445, as in DebtTermsSolverTest) + car loan 877.35 + student
+        // loan 914.75, each a sum of interest figures rounded to the penny = 2861.46.
+        assertThat(plan.totalInterest()).isEqualTo(summed).isEqualTo(money("2861.46"));
     }
 
     @Test
@@ -271,12 +273,72 @@ class PayoffLadderTest {
                 (PayoffProjection.Ranked)
                         ladder.project(PayoffStrategy.SNOWBALL, MONTHLY, threeDebts(), DECEMBER);
 
+        // Visa 1069.36 + student loan 803.64 + car loan 1039.62 = 2912.62, against avalanche's
+        // 2861.46. The Visa is first in both orders, so its 1069.36 is common to both.
         assertThat(avalanche().totalInterest()).isLessThanOrEqualTo(snowball.totalInterest());
-        assertThat(snowball.totalInterest()).isEqualTo(money("2912.6501"));
+        assertThat(snowball.totalInterest()).isEqualTo(money("2912.62"));
     }
 
+    @Test
+    void adr0036sCounterexampleCostsLessUnderAvalancheBecauseTheOvershootFlowsDown() {
+        // ADR-0036's worked case, which costs avalanche pounds if a clearing rung keeps its whole
+        // allocation. 1196.45 a month, so 856.55 of surplus over two 169.95 minimums:
+        //   avalanche, B first: B 1298.52 → 11.33, pays 1026.50, 283.35 left; A 858.46 → 6.90,
+        //     pays 169.95, 695.41 left. Month 2: B 283.35 → 2.47, A 695.41 → 5.59; both clear.
+        //     11.33 + 2.47 + 6.90 + 5.59 = 26.29
+        //   snowball, A first: A → 6.90 and clears on 865.36, the 161.14 it did not need flowing
+        //     to B, which pays 331.09 on 1298.52 + 11.33 and has 978.76 left; month 2 → 8.54.
+        //     6.90 + 11.33 + 8.54 = 26.77
+        LadderDebt a = debt(12, "A", "858.46", "9.645", "169.95");
+        LadderDebt b = debt(13, "B", "1298.52", "10.474", "169.95");
+
+        Money avalanche = totalInterest(PayoffStrategy.AVALANCHE, money("1196.45"), List.of(a, b));
+        Money snowball = totalInterest(PayoffStrategy.SNOWBALL, money("1196.45"), List.of(a, b));
+
+        assertThat(avalanche).isEqualTo(money("26.29"));
+        assertThat(snowball).isEqualTo(money("26.77"));
+    }
+
+    @Test
+    void penniesOfRoundingCanPutSnowballAheadWhenTheRatesAreAlmostEqual() {
+        // Interest is rounded to the penny every month, so "avalanche never costs more" holds to
+        // within rounding and no further. A at 110.00 / 20.3% / min 30, B at 100.00 / 20.1% / min
+        // 50, 97.00 a month (17 surplus):
+        //   avalanche, A first: A 1.86 + 1.10 + 0.32 = 3.28, B 1.68 + 0.87 + 0.04 = 2.59 → 5.87
+        //     (110.00×20.3÷1200 = 1.8608 → 1.86; 100.00×20.1÷1200 = 1.675 → 1.68; then on
+        //      64.86 → 1.10, 51.68 → 0.87; on 18.96 → 0.32, 2.55 → 0.04; both clear in month 3)
+        //   snowball, B first:  B 1.68 + 0.58 = 2.26, A 1.86 + 1.38 + 0.36 = 3.60 → 5.86
+        //     (B on 34.68 → 0.58 and clears in month 2; A on 81.86 → 1.38, on 21.50 → 0.36)
+        // A penny the other way. At four places the same ladder was 5.8619 against 5.8651.
+        LadderDebt a = debt(10, "A", "110.00", "20.300", "30.00");
+        LadderDebt b = debt(11, "B", "100.00", "20.100", "50.00");
+
+        Money avalanche = totalInterest(PayoffStrategy.AVALANCHE, money("97.00"), List.of(a, b));
+        Money snowball = totalInterest(PayoffStrategy.SNOWBALL, money("97.00"), List.of(a, b));
+
+        assertThat(avalanche).isEqualTo(money("5.87"));
+        assertThat(snowball).isEqualTo(money("5.86"));
+    }
+
+    /**
+     * ADR-0036's property, stated to the precision the arithmetic has.
+     *
+     * <p>Interest is rounded to the penny once per debt per month, and two orders round different
+     * balances, so where two rates are almost equal the rounding can outweigh the rate difference
+     * and put snowball a few pennies ahead ({@link
+     * #penniesOfRoundingCanPutSnowballAheadWhenTheRatesAreAlmostEqual}).
+     *
+     * <p>The tolerance is the first-order size of that rounding: each total is a sum of one
+     * interest figure per rung per month, each within half a penny of the figure it rounds, so the
+     * two totals can be pulled apart by at most half a penny per rung-month of the two plans
+     * together. That is an argument, not a proof — a rounded balance compounds — so it was checked
+     * against an independent model over about 37,000 ladders weighted towards almost-equal rates,
+     * where the largest inversion was 85% of it ($3.78 over 324 months, two debts 0.03 points apart
+     * with minimums barely above the interest). It is not a licence for pounds: an overshoot thrown
+     * away the month a rung clears, the failure ADR-0036 exists to rule out, still fails.
+     */
     @Property(tries = 150)
-    void avalancheCostsNoMoreInterestThanSnowballForAnyLadder(
+    void avalancheCostsNoMoreInterestThanSnowballBeyondRoundingForAnyLadder(
             @ForAll("ladders") List<LadderDebt> debts,
             @ForAll @IntRange(min = 0, max = 300) int surplusPercent) {
         Assume.that(distinctNames(debts));
@@ -300,9 +362,24 @@ class PayoffLadderTest {
                 avalanche instanceof PayoffProjection.Ranked ranked && ranked.clearsEveryDebt());
         Assume.that(snowball instanceof PayoffProjection.Ranked ranked && ranked.clearsEveryDebt());
 
+        int rungMonths =
+                rungMonths((PayoffProjection.Ranked) avalanche)
+                        + rungMonths((PayoffProjection.Ranked) snowball);
+        Money rounding = money("0.005").times(rungMonths);
         assertThat(((PayoffProjection.Ranked) avalanche).totalInterest())
                 .as("attacking the highest rate first is never the more expensive order")
-                .isLessThanOrEqualTo(((PayoffProjection.Ranked) snowball).totalInterest());
+                .isLessThanOrEqualTo(
+                        ((PayoffProjection.Ranked) snowball).totalInterest().plus(rounding));
+    }
+
+    /** One per row of the plan: every month each rung carried a balance, and so was rounded. */
+    private static int rungMonths(PayoffProjection.Ranked plan) {
+        return plan.rungs().stream().mapToInt(rung -> rung.months().size()).sum();
+    }
+
+    private Money totalInterest(PayoffStrategy strategy, Money monthly, List<LadderDebt> debts) {
+        return ((PayoffProjection.Ranked) ladder.project(strategy, monthly, debts, DECEMBER))
+                .totalInterest();
     }
 
     // ------------------------------------------------------------------ the awkward cases

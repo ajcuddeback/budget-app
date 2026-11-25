@@ -78,9 +78,10 @@ interface Plot {
  * stay in the text alternative, and the page's own comparison still reports each strategy's total
  * separately — what is suppressed is a second stroke nobody could see, not a difference.
  *
- * Only two series are ever collapsed. Three lines that happen to agree are left alone: the
- * question "which of these three is missing" is one the viewer can answer from the legend, and
- * the case does not arise from the plan's own two named strategies.
+ * **All of them or none.** Collapsing a subset would key two lines together and leave a third
+ * keyed separately over the same pixels, which is the original confusion rearranged. The case is
+ * not hypothetical: choosing *Your own order* from the avalanche order makes all three of the
+ * plan's lines identical, and that is the first thing a household sees after choosing it.
  */
 const COINCIDENT_TOLERANCE = 0.005;
 
@@ -178,11 +179,12 @@ const COINCIDENT_TOLERANCE = 0.005;
       @if (plot()) {
         <ul class="chart-legend">
           @if (coincident() && coincidentLabel()) {
-            <!-- One key for one stroke, naming both series. Two keys over a single visible line is
-               the bug this avoids; dropping one of the names would be the same bug inverted. -->
+            <!-- One key for one stroke, naming every series it stands for. Keys over a single
+               visible line is the bug this avoids; dropping a name would be the same bug
+               inverted. -->
             <li>
               <span class="chart-swatch" aria-hidden="true"></span>
-              <span>{{ series()[0].name }} · {{ series()[1].name }}</span>
+              <span>{{ everyName() }}</span>
             </li>
           } @else {
             @for (line of series(); track line.id) {
@@ -340,8 +342,15 @@ export class LineChartComponent {
    */
   readonly coincidentLabel = input<string>('');
 
-  /** True when two lines were drawn as one. Drives the legend, which must not claim two. */
+  /** True when the lines were drawn as one. Drives the legend, which must not claim more. */
   protected readonly coincident = computed(() => this.plot()?.coincident ?? false);
+
+  /** One key naming every line it stands for: dropping a name would be the same bug inverted. */
+  protected readonly everyName = computed(() =>
+    this.series()
+      .map((line) => line.name)
+      .join(' · '),
+  );
 
   /**
    * The geometry, and the only place a figure becomes a number.
@@ -359,7 +368,8 @@ export class LineChartComponent {
 
     // Two series within a hair of each other are drawn once and said once. Overlapping strokes
     // are indistinguishable from one line that is missing, which is the worse of the two readings.
-    const coincident = lines.length === 2 && this.coincide(lines[0], lines[1], largest);
+    const coincident =
+      lines.length > 1 && lines.every((line) => this.coincide(lines[0], line, largest));
 
     // One axis for every line, in MONTHS rather than in point indices.
     //
@@ -440,6 +450,9 @@ export class LineChartComponent {
    * a visible difference whatever its balances do.
    */
   private coincide(left: ChartSeries, right: ChartSeries, largest: string): boolean {
+    if (left === right) {
+      return true;
+    }
     if (left.points.length !== right.points.length || left.points.length < 2) {
       return false;
     }

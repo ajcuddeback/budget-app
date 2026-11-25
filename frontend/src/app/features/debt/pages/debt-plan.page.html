@@ -17,6 +17,9 @@
     </div>
   } @else {
     <app-error-alert [error]="actionError()" />
+    <!-- Always in the document, even while empty: a live region has to exist before its text
+         changes, or the first announcement is made to nobody. -->
+    <p class="visually-hidden" role="status">{{ announcement() }}</p>
     @if (notice(); as said) {
       <div class="alert alert-success" role="status">
         <p>{{ said | t }}</p>
@@ -172,6 +175,12 @@
             {{ 'debt.compareHeading' | t }}
           </h2>
 
+          <!-- What the order in force costs, when it is not one of the two cards. Without it the
+               page shows two totals the household is not paying and never names the one they are. -->
+          @if (group.selected; as said) {
+            <p class="comparison">{{ said.key | t: said.params }}</p>
+          }
+
           <ul class="compare">
             @for (card of group.cards; track card.strategy) {
               <li class="compare-card" [class.is-selected]="card.selected">
@@ -235,15 +244,18 @@
             }
           </div>
           <p class="card-note">
-            {{ 'debt.order' | t: { strategy: selectedStrategyName() } }}
+            {{ orderSaid().key | t: orderSaid().params }}
             {{ 'debt.openAny' | t }}
+            @if (arranging()) {
+              {{ 'debt.arrangeHint' | t }}
+            }
           </p>
 
           <div class="table-scroll only-wide">
             <table class="debt-table">
               <caption class="visually-hidden">
                 {{
-                  'debt.tableCaption' | t: { strategy: selectedStrategyName() }
+                  tableCaption().key | t: tableCaption().params
                 }}
               </caption>
               <thead>
@@ -302,6 +314,34 @@
                           {{ 'debt.editTerms' | t }}
                         </button>
                       }
+                      <!-- Buttons, not drag and drop: a drag handle is unreachable from a
+                           keyboard by default, and the order decides every date on this page.
+                           The accessible name carries the debt as well as the direction, and
+                           contains the visible label so the two agree (WCAG 2.5.3). -->
+                      @if (arranging()) {
+                        @if (row.canMoveUp) {
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-small"
+                            [disabled]="savingStrategy()"
+                            [attr.aria-label]="'debt.moveUpNamed' | t: { name: row.name }"
+                            (click)="move(group.currency, row.id, -1)"
+                          >
+                            {{ 'debt.moveUp' | t }}
+                          </button>
+                        }
+                        @if (row.canMoveDown) {
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-small"
+                            [disabled]="savingStrategy()"
+                            [attr.aria-label]="'debt.moveDownNamed' | t: { name: row.name }"
+                            (click)="move(group.currency, row.id, 1)"
+                          >
+                            {{ 'debt.moveDown' | t }}
+                          </button>
+                        }
+                      }
                     </td>
                   </tr>
                 }
@@ -344,6 +384,30 @@
                     >
                       {{ 'debt.editTerms' | t }}
                     </button>
+                  }
+                  @if (arranging()) {
+                    @if (row.canMoveUp) {
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-small"
+                        [disabled]="savingStrategy()"
+                        [attr.aria-label]="'debt.moveUpNamed' | t: { name: row.name }"
+                        (click)="move(group.currency, row.id, -1)"
+                      >
+                        {{ 'debt.moveUp' | t }}
+                      </button>
+                    }
+                    @if (row.canMoveDown) {
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-small"
+                        [disabled]="savingStrategy()"
+                        [attr.aria-label]="'debt.moveDownNamed' | t: { name: row.name }"
+                        (click)="move(group.currency, row.id, 1)"
+                      >
+                        {{ 'debt.moveDown' | t }}
+                      </button>
+                    }
                   }
                 </p>
               </li>

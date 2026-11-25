@@ -796,7 +796,7 @@
   "bills.owed.none": "No debts recorded, so nothing here comes off what is left.",
   "bills.owed.open": "Open the debt plan",
   "bills.owed.asOfToday": "These two totals and the count are as they stand today, not as they stood in the month shown — a balance as at a past month would need a day-by-day ledger Budget Owl does not keep.",
-  "debt.chart.coincide": "{first} and {second} are one line here — over this plan the two orders stay closer together than the chart can draw. The cards below give each one's own figures.",
+  "debt.chart.coincide": "{lines} are one line here — over this plan these orders stay closer together than the chart can draw. The cards below give each one's own figures.",
   "title.debtDetail": "Debt",
   "debt.monthlyAmount": "Towards debt each month",
   "debt.monthlyAmountHint": "What you put against your debts in all, minimums included. Every date on this page is worked out from it.",
@@ -887,5 +887,17 @@
   "debt.chart.noLine": "There is no line to draw, because {reason}.",
   "debt.term.noInterestTotal": "No total — it never clears",
   "debt.estimate.figureEstimate": "my estimate of what is owed now",
-  "debt.estimate.figureStale": "the last figure you confirmed"
+  "debt.estimate.figureStale": "the last figure you confirmed",
+  "debt.moveUp": "Move up",
+  "debt.moveDown": "Move down",
+  "debt.moveUpNamed": "Move up: {name}",
+  "debt.moveDownNamed": "Move down: {name}",
+  "debt.movedTo": "{name} is now rung {rung} of {of}.",
+  "debt.arrangeHint": "Move a debt up or down to set the order yourself; the dates are worked out again each time.",
+  "debt.payment.preview": "{interest} interest · {principal} principal · balance after {balance}",
+  "debt.payment.previewUnavailable": "I could not work out the split just now. You can still record the payment — the interest and the principal will be shown on it once it is.",
+  "debt.orderCustom": "In the order you chose.",
+  "debt.tableCaptionCustom": "Your debts in the order you chose, with what each one is paying and when it clears.",
+  "debt.yourOrder": "Your own order: debt-free {month}, with {amount} of interest along the way.",
+  "debt.yourOrder.noDate": "Your own order has no debt-free date, because {reason}."
 }

@@ -91,3 +91,30 @@ are paying £1,196 this month when £338 of it has been deferred.
 **Reduce the surplus so no rung ever overshoots.** Rejected: it underspends the household's stated
 monthly amount, which is worse than either — they committed the money and the plan quietly does
 not use it.
+
+## Amendment (2026-11-25): "never costs more" holds to within rounding
+
+Interest is now rounded to the currency's minor unit when it is computed (`debt-plan.md`,
+decision 9), not kept to four places. Under that rule the first consequence above is true only
+**to within rounding**.
+
+When two rates are nearly equal, avalanche can cost a few cents more than snowball. The smallest
+case found:
+
+- £110.00 at 20.3% and £100.00 at 20.1%, paid at £97 a month;
+- avalanche costs £5.87 in interest and snowball £5.86.
+
+At four places the same search found inversions too, at a hundredth of a cent, so the claim was
+never exact; rounding to the cent only makes the gap visible.
+
+What changed in the tests:
+
+- **The property:** it now allows half a minor unit per rung-month across the two plans. Across
+  about 37,000 independently modelled ladders, the worst inversion was 85% of that allowance.
+- **A pinned example:** this ADR's own worked example is now asserted exactly (avalanche 26.29,
+  snowball 26.77). The loosened property no longer reliably catches a return to the literal rule,
+  and this example does.
+
+The screen is unaffected. It names whichever order the server says is cheaper, so a near-tie is
+reported truthfully. The decision itself (never overpay a rung, and let the leftover flow down the
+same month) stands unchanged.

@@ -18,9 +18,12 @@ import java.util.Objects;
  * of the period:
  *
  * <pre>
- *   interest(m) = round(balance(m-1) × apr ÷ 100 ÷ 12, 4, HALF_EVEN)
+ *   interest(m) = round(balance(m-1) × apr ÷ 100 ÷ 12, minor unit, HALF_EVEN)
  *   balance(m)  = balance(m-1) + interest(m) − payment
  * </pre>
+ *
+ * <p>The <em>minor unit</em> is the currency's own — the cent, the whole yen — and why it is that
+ * rather than the storage scale is on {@link #interestFor}.
  *
  * <p>The debt clears in the first month {@code m} where {@code balance(m) ≤ 0}. {@code apr ÷ 100 ÷
  * 12} is the <b>nominal</b> monthly rate, not the effective {@code (1 + apr)^(1/12) − 1} — that is
@@ -72,18 +75,28 @@ public final class DebtTermsSolver {
     private static final BigDecimal TWO = BigDecimal.valueOf(2);
 
     /**
-     * One month's interest: {@code round(balance × apr ÷ 100 ÷ 12, 4, HALF_EVEN)}.
+     * One month's interest: {@code round(balance × apr ÷ 100 ÷ 12, minor units, HALF_EVEN)}.
      *
      * <p>The only rounding step in the whole projection. Negative for an overpaid balance, which is
      * arithmetic rather than a case: the recurrence has already stopped by then.
+     *
+     * <p><b>Rounded to the currency's minor unit</b> (cents for USD, whole yen for JPY), as a
+     * lender's statement is. Interest used to be kept to four places, and the interest and
+     * principal halves of a payment then could not both be shown on screen: interest of $117.935
+     * displays as $117.94, the $377.065 of principal as $377.07, and the split of a $495.00 payment
+     * read $495.01. Kept to the cent, a payment in cents splits into two figures that add up
+     * exactly, and every balance stays on the cent grid. A currency with no fixed minor unit
+     * ({@code getDefaultFractionDigits() < 0}) keeps the storage scale.
      */
     public Money interestFor(Money balance, BigDecimal apr) {
         Objects.requireNonNull(balance, "balance");
         Objects.requireNonNull(apr, "apr");
+        int minorUnits = balance.currency().getDefaultFractionDigits();
+        int scale = minorUnits < 0 ? Money.SCALE : Math.min(minorUnits, Money.SCALE);
         BigDecimal interest =
                 balance.amount()
                         .multiply(apr)
-                        .divide(MONTHLY_RATE_DIVISOR, Money.SCALE, RoundingMode.HALF_EVEN);
+                        .divide(MONTHLY_RATE_DIVISOR, scale, RoundingMode.HALF_EVEN);
         return Money.of(interest, balance.currency());
     }
 

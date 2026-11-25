@@ -267,6 +267,49 @@ describe('LineChartComponent', () => {
     expect(root.querySelectorAll('.chart-legend li')).toHaveLength(2);
   });
 
+  it('collapses three lines that agree, not just two', () => {
+    // Choosing Your own order from the avalanche order makes all three of the plan's lines the
+    // same line, and that is the first thing a household sees after choosing it.
+    host.coincidentLabel = 'These three are one line here';
+    const root = render([
+      { ...avalanche, name: 'Your own order' },
+      {
+        ...snowball,
+        id: 's2',
+        name: 'Avalanche',
+        points: points(['1000.0000', '501.0000', '0.0000']),
+      },
+      {
+        ...snowball,
+        id: 's3',
+        name: 'Snowball',
+        points: points(['1000.0000', '499.0000', '0.0000']),
+      },
+    ]);
+
+    expect(root.querySelectorAll('polyline')).toHaveLength(1);
+    // One key, naming all three — and the explanation as prose beside it.
+    expect(root.querySelectorAll('.chart-legend li')).toHaveLength(1);
+    expect(root.querySelector('.chart-legend')?.textContent?.trim()).toBe(
+      'Your own order · Avalanche · Snowball',
+    );
+    expect(root.textContent).toContain('These three are one line here');
+  });
+
+  it('collapses none of three when one of them diverges', () => {
+    // A subset would key two together and leave the third keyed separately over the same pixels,
+    // which is the original confusion rearranged.
+    host.coincidentLabel = 'one line';
+    const root = render([
+      avalanche,
+      { ...snowball, id: 's2', points: points(['1000.0000', '501.0000', '0.0000']) },
+      { ...snowball, id: 's3', points: points(['1000.0000', '900.0000', '0.0000']) },
+    ]);
+
+    expect(root.querySelectorAll('polyline')).toHaveLength(3);
+    expect(root.querySelectorAll('.chart-legend li')).toHaveLength(3);
+  });
+
   it('never collapses two lines of different lengths, however close their balances', () => {
     // A plan that runs longer is a visible difference whatever the balances do.
     host.coincidentLabel = 'one line';

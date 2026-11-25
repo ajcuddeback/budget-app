@@ -699,6 +699,150 @@ describe('DebtPlanPage', () => {
     expect(text(fixture)).toContain('now worked out from your other figures');
   });
 
+  it('names what the household’s own order costs, which neither card shows', async () => {
+    // The two cards are always avalanche and snowball. Under CUSTOM neither is the plan, so
+    // without this the page shows two totals nobody is paying and never names the one they are.
+    const fixture = await render({
+      plan: planOf({
+        strategy: 'CUSTOM',
+        currencies: [
+          groupOf({
+            selected: projectionOf('CUSTOM', {
+              debtFreeMonth: '2029-06',
+              totalInterest: '4570.9800',
+              rungs: [
+                rungOf(CARD, '260.0000', '445.0000'),
+                rungOf(CAR, '0.0000', '342.0000'),
+                rungOf(STUDENT, '0.0000', '118.0000'),
+              ],
+            }),
+          }),
+        ],
+      }),
+    });
+
+    const shown = text(fixture);
+    expect(shown).toContain('Your own order: debt-free June 2029, with £4,570.98 of interest');
+    // And both cards still carry their own, because the comparison is not a view of the choice.
+    expect(shown).toContain('£3,120.00');
+    expect(shown).toContain('£3,900.00');
+  });
+
+  it('says nothing twice: a named strategy’s cost is on its own card', async () => {
+    const fixture = await render();
+
+    expect(text(fixture)).not.toContain('Your own order: debt-free');
+  });
+
+  it('does not say "Your own order order"', async () => {
+    const fixture = await render({ plan: planOf({ strategy: 'CUSTOM' }) });
+
+    const shown = text(fixture);
+    expect(shown).toContain('In the order you chose.');
+    expect(shown).not.toContain('order order');
+  });
+
+  it('offers no way to rearrange the ladder unless the household owns the order', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    // Under avalanche the order is the strategy's; a control that the next read would undo is a
+    // control that does nothing.
+    expect(root.querySelectorAll('[aria-label^="Move"]')).toHaveLength(0);
+  });
+
+  it('carries the order already on screen when Your own order is chosen', async () => {
+    const fixture = await render({ role: 'MEMBER' });
+    plans.update.mockReturnValue(of(planOf({ strategy: 'CUSTOM', version: 5 })));
+
+    buttonNamed(fixture.nativeElement as HTMLElement, 'Your own order').click();
+    await settle(fixture);
+
+    // Switching changes nothing until something is moved. Without the order, every debt would be
+    // unplaced and the first move would happen against a ladder nobody had seen.
+    expect(plans.update).toHaveBeenCalledWith({
+      version: 4,
+      strategy: 'CUSTOM',
+      customOrder: ['d1', 'd2', 'd3'],
+    });
+  });
+
+  it('moves a rung by sending the whole order, and reads the plan back', async () => {
+    const fixture = await render({ plan: planOf({ strategy: 'CUSTOM' }) });
+    const root = fixture.nativeElement as HTMLElement;
+    plans.update.mockReturnValue(of(planOf({ strategy: 'CUSTOM', version: 5 })));
+    plans.get.mockReturnValue(of(planOf({ strategy: 'CUSTOM', version: 5 })));
+
+    const up = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.getAttribute('aria-label') === 'Move up: Student loan',
+    );
+    up!.click();
+    await settle(fixture);
+
+    // The whole order, rung 1 first — a debt the list omits has its position cleared.
+    expect(plans.update).toHaveBeenCalledWith({
+      version: 4,
+      strategy: 'CUSTOM',
+      customOrder: ['d1', 'd3', 'd2'],
+    });
+    // Read back rather than spliced: every date on the page depends on the order.
+    expect(plans.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the debt and the direction, and says where it landed', async () => {
+    const fixture = await render({ plan: planOf({ strategy: 'CUSTOM' }) });
+    const root = fixture.nativeElement as HTMLElement;
+    plans.update.mockReturnValue(of(planOf({ strategy: 'CUSTOM', version: 5 })));
+
+    const labels = Array.from(root.querySelectorAll<HTMLButtonElement>('[aria-label^="Move"]')).map(
+      (button) => button.getAttribute('aria-label'),
+    );
+    // The first rung has no up and the last no down; every name says which debt.
+    expect(labels).toEqual([
+      'Move down: Visa',
+      'Move up: Car loan',
+      'Move down: Car loan',
+      'Move up: Student loan',
+      'Move down: Visa',
+      'Move up: Car loan',
+      'Move down: Car loan',
+      'Move up: Student loan',
+    ]);
+
+    const announcer = root.querySelector('[role="status"].visually-hidden');
+    expect(announcer?.textContent?.trim()).toBe('');
+
+    Array.from(root.querySelectorAll<HTMLButtonElement>('[aria-label^="Move"]'))
+      .find((button) => button.getAttribute('aria-label') === 'Move up: Student loan')!
+      .click();
+    await settle(fixture);
+
+    expect(announcer?.textContent).toContain('Student loan is now rung 2 of 3');
+  });
+
+  it('re-reads and says so when another member moved something first', async () => {
+    const fixture = await render({ plan: planOf({ strategy: 'CUSTOM' }) });
+    const root = fixture.nativeElement as HTMLElement;
+    plans.update.mockReturnValue(throwError(() => ({ status: 409 })));
+
+    Array.from(root.querySelectorAll<HTMLButtonElement>('[aria-label^="Move"]'))
+      .find((button) => button.getAttribute('aria-label') === 'Move up: Car loan')!
+      .click();
+    await settle(fixture);
+
+    expect(root.querySelector('[role="alert"]')).toBeTruthy();
+    // Re-read, so the ladder on screen is the one the server has.
+    expect(plans.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives a VIEWER no way to rearrange, even under Your own order', async () => {
+    const fixture = await render({ role: 'VIEWER', plan: planOf({ strategy: 'CUSTOM' }) });
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelectorAll('[aria-label^="Move"]')).toHaveLength(0);
+    expect(Array.from(root.querySelectorAll('button'))).toEqual([]);
+  });
+
   it('lets a member set the figure every date on the page derives from', async () => {
     const fixture = await render({ role: 'MEMBER' });
     const root = fixture.nativeElement as HTMLElement;

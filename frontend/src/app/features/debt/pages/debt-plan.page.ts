@@ -56,6 +56,9 @@ interface Said {
 interface DebtRowView {
   readonly id: string;
   readonly name: string;
+  /** Whether this rung has somewhere to go. The first has no up; the last has no down. */
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
   readonly currency: string;
   readonly balance: string;
   readonly naming: Said;
@@ -92,6 +95,8 @@ interface GroupView {
   readonly coincidentLabel: string;
   readonly marker: ChartMarker | null;
   readonly cards: readonly StrategyCardView[];
+  /** What the order in force costs, when it is not one of the two cards below. */
+  readonly selected: Said | null;
   readonly comparison: Said | null;
   readonly belowMinimums: Said | null;
   readonly rows: readonly DebtRowView[];
@@ -216,6 +221,25 @@ export class DebtPlanPage {
     const plan = this.plan();
     return plan ? this.i18n.t(strategyKey(plan.strategy)) : '';
   });
+
+  /**
+   * How the list says which order it is in.
+   *
+   * Its own sentence for `CUSTOM`, because the template that works for the named strategies —
+   * *"{strategy} order."* — produces *"Your own order order."* for this one. Seen in a snapshot,
+   * not in a test.
+   */
+  protected readonly orderSaid = computed<Said>(() =>
+    this.plan()?.strategy === 'CUSTOM'
+      ? { key: 'debt.orderCustom' }
+      : { key: 'debt.order', params: { strategy: this.selectedStrategyName() } },
+  );
+
+  protected readonly tableCaption = computed<Said>(() =>
+    this.plan()?.strategy === 'CUSTOM'
+      ? { key: 'debt.tableCaptionCustom' }
+      : { key: 'debt.tableCaption', params: { strategy: this.selectedStrategyName() } },
+  );
 
   /** *"$645/mo committed · $560 of it strategic"* — the two terms the API defines. */
   protected readonly header = computed<Said | null>(() => {
@@ -409,6 +433,15 @@ export class DebtPlanPage {
     if (!plan || plan.strategy === strategy || this.savingStrategy()) {
       return;
     }
+    if (strategy === 'CUSTOM') {
+      // Your own order starts from the order on screen. Without sending it, switching would leave
+      // every debt unplaced, the ladder would fall back to the avalanche ordering, and the first
+      // move would happen against an order nobody had seen.
+      await this.saveOrder(plan.version, this.rankedIds(), () =>
+        this.notice.set('debt.strategySaved'),
+      );
+      return;
+    }
     this.savingStrategy.set(true);
     this.actionError.set(null);
     this.notice.set(null);
@@ -473,6 +506,85 @@ export class DebtPlanPage {
       this.actionError.set(asApiError(thrown));
     } finally {
       this.savingAmount.set(false);
+    }
+  }
+
+  /**
+   * Whether the household is arranging its own order, which is when the moves appear.
+   *
+   * Only under `CUSTOM`: under avalanche or snowball the order is the strategy's, and offering to
+   * move a rung that the next read would put back is a control that does nothing.
+   */
+  protected readonly arranging = computed(
+    () => this.canWrite() && this.plan()?.strategy === 'CUSTOM',
+  );
+
+  /** What was just moved and where it landed, for the live region. */
+  protected readonly announcement = signal('');
+
+  /**
+   * Every ranked debt, rung 1 first, across every currency.
+   *
+   * **The whole order, not one group's.** `PUT /api/debt-plan` reads `customOrder` as the
+   * complete instruction and clears the position of any debt the list leaves out, so sending one
+   * currency's ladder would silently unplace the other's.
+   */
+  private rankedIds(): string[] {
+    return this.groups().flatMap((group) => group.rows.map((row) => row.id));
+  }
+
+  /**
+   * Moves a rung one place, and asks the server for the plan that follows.
+   *
+   * The new order is applied by the server and read back, never spliced into the plan here: every
+   * date, every allocation and the debt-free month depend on the order, and only the server
+   * computes them. A local reorder would show the new positions beside the old dates.
+   */
+  protected async move(currency: string, id: string, by: -1 | 1): Promise<void> {
+    const plan = this.plan();
+    if (!plan || !this.arranging() || this.savingStrategy()) {
+      return;
+    }
+    const group = this.groups().find((one) => one.currency === currency);
+    const within = group?.rows.map((row) => row.id) ?? [];
+    const at = within.indexOf(id);
+    const to = at + by;
+    if (at === -1 || to < 0 || to >= within.length) {
+      return;
+    }
+    const moved = [...within];
+    [moved[at], moved[to]] = [moved[to], moved[at]];
+    // Rebuilt across every group, with this group's ladder replaced by the moved one.
+    const order = this.groups().flatMap((one) =>
+      one.currency === currency ? moved : one.rows.map((row) => row.id),
+    );
+
+    const name = group?.rows[at]?.name ?? '';
+    await this.saveOrder(plan.version, order, () =>
+      this.announcement.set(this.i18n.t('debt.movedTo', { name, rung: to + 1, of: within.length })),
+    );
+  }
+
+  /**
+   * One `PUT` carrying the strategy, the whole order and the version.
+   *
+   * `409 stale-version` is reported and the page re-read, exactly as the strategy buttons do: two
+   * members arranging the same ladder collide rather than one silently winning.
+   */
+  private async saveOrder(version: number, order: string[], said: () => void): Promise<void> {
+    this.savingStrategy.set(true);
+    this.actionError.set(null);
+    this.notice.set(null);
+    this.announcement.set('');
+    try {
+      await firstValueFrom(this.plans.update({ version, strategy: 'CUSTOM', customOrder: order }));
+      await this.reload();
+      said();
+    } catch (thrown) {
+      this.actionError.set(asApiError(thrown));
+      await this.reload();
+    } finally {
+      this.savingStrategy.set(false);
     }
   }
 
@@ -551,7 +663,12 @@ export class DebtPlanPage {
     const rows = debts.debts
       .filter((debt) => debt.currency === group.currency && debt.rung !== null)
       .sort((left, right) => (left.rung ?? 0) - (right.rung ?? 0))
-      .map((debt) => this.rowOf(debt, rungs.get(debt.id) ?? null, group.selected.reason));
+      .map((debt, at, all) =>
+        this.rowOf(debt, rungs.get(debt.id) ?? null, group.selected.reason, {
+          at,
+          of: all.length,
+        }),
+      );
     const series = this.seriesOf(plan, group);
     return {
       currency: group.currency,
@@ -565,15 +682,18 @@ export class DebtPlanPage {
         : this.i18n.t('debt.chart.noLine', {
             reason: this.i18n.t(projectionReasonKey(group.selected.reason ?? '')),
           }),
+      // Supplied whenever there is more than one line; the chart uses it only if they turn out to
+      // coincide. Under CUSTOM there are three, and choosing your own order from the avalanche
+      // order makes all three the same line.
       coincidentLabel:
-        series.length === 2
+        series.length > 1
           ? this.i18n.t('debt.chart.coincide', {
-              first: series[0].name,
-              second: series[1].name,
+              lines: series.map((line) => line.name).join(' · '),
             })
           : '',
       marker: this.markerOf(group.selected),
       cards: this.cardsOf(plan, group),
+      selected: this.selectedSaid(plan, group),
       comparison: this.comparisonOf(group),
       belowMinimums: group.belowMinimums
         ? {
@@ -716,6 +836,38 @@ export class DebtPlanPage {
   }
 
   /**
+   * What the order in force actually costs, **when it is the household's own**.
+   *
+   * The two cards are always avalanche and snowball, whichever strategy is selected — that is the
+   * product requirement. Under `CUSTOM` neither of them is the plan, so without this the page
+   * shows two totals the household is not paying and never names the one they are: rearranging
+   * the designs' own ladder moves the interest from $2,847.88 to $4,570.98 and both cards carry
+   * on reading as before.
+   *
+   * Omitted for `AVALANCHE` and `SNOWBALL`, where the matching card already says it.
+   */
+  private selectedSaid(plan: Plan, group: CurrencyGroup): Said | null {
+    if (plan.strategy !== 'CUSTOM') {
+      return null;
+    }
+    const month = group.selected.debtFreeMonth;
+    const interest = group.selected.totalInterest;
+    if (month === null || interest === null) {
+      return {
+        key: 'debt.yourOrder.noDate',
+        params: { reason: this.i18n.t(projectionReasonKey(group.selected.reason ?? '')) },
+      };
+    }
+    return {
+      key: 'debt.yourOrder',
+      params: {
+        month: this.i18n.formatMonth(month),
+        amount: this.money(interest, group.currency),
+      },
+    };
+  }
+
+  /**
    * The sentence that compares them — *"either is a good answer"*.
    *
    * It states which costs less interest and which clears the first debt sooner, and it **invents
@@ -758,10 +910,17 @@ export class DebtPlanPage {
    * plan does something it does not do. The at-minimum date is a real figure and belongs on the
    * detail page's chart, under a label that says what it is.
    */
-  private rowOf(debt: Debt, rung: Rung | null, planReason: string | null): DebtRowView {
+  private rowOf(
+    debt: Debt,
+    rung: Rung | null,
+    planReason: string | null,
+    place: { readonly at: number; readonly of: number } = { at: 0, of: 1 },
+  ): DebtRowView {
     return {
       id: debt.id,
       name: debt.name,
+      canMoveUp: place.at > 0,
+      canMoveDown: place.at < place.of - 1,
       currency: debt.currency,
       balance: debt.balance,
       naming: debt.servicer

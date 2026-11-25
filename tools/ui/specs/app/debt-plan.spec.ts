@@ -238,6 +238,49 @@ test.describe('one debt, as an owner', () => {
     ui.noErrors();
   });
 
+  test('shows what the amount would record before it is recorded', async ({ page, ui }) => {
+    await page.goto('/debt-plan/deb-0001');
+    await page.getByRole('button', { name: 'Log a payment' }).first().click();
+
+    const sheet = page.getByRole('dialog');
+    // The server's own figures, built by the same code as logging, so they cannot disagree with
+    // what gets stored. $6,180.00 at 22.9% for $445: 6180 × 22.9 ÷ 1200 = 117.935, which is
+    // $117.94 to the cent, and the principal is the $327.06 left — the two add up to $445.00.
+    await expect(sheet).toContainText(
+      '$117.94 interest · $327.06 principal · balance after $5,852.94',
+    );
+
+    // One tap for fifty more asks again, immediately: the interest is the same and the principal
+    // takes the rest.
+    await sheet.getByRole('button', { name: /\$495\.00/ }).click();
+    await expect(sheet).toContainText('$117.94 interest · $377.06 principal');
+
+    await ui.shot('debt-detail-payment-preview');
+    expect(await ui.a11y('the log-a-payment sheet, with the split')).toBe(0);
+    ui.noErrors();
+  });
+
+  test('still records a payment when the split cannot be worked out', async ({ page, ui }) => {
+    await page.goto('/debt-plan/deb-0001');
+    await page.getByRole('button', { name: 'Log a payment' }).first().click();
+
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toContainText('$117.94 interest');
+
+    // An amount the generator has no answer for. The preview is a convenience and must never be
+    // the thing that stops somebody recording what they paid.
+    await sheet.getByLabel('Amount paid').fill('200.00');
+    await expect(sheet).toContainText('could not work out the split just now');
+    await expect(sheet).not.toContainText('interest ·');
+    await expect(sheet.getByRole('button', { name: 'Record it' })).toBeEnabled();
+
+    await ui.shot('debt-detail-payment-preview-unavailable');
+    expect(await ui.a11y('the sheet with no preview')).toBe(0);
+    // No `noErrors()` here, and no console assertion either: this check *provokes* a refusal, and
+    // the browser logs a failed request as a console error. What is under test is that the sheet
+    // goes on working, which is asserted above.
+  });
+
   test('steps between debts by id, never by a name in the URL', async ({ page, ui }) => {
     await page.goto('/debt-plan/deb-0001');
 
@@ -276,6 +319,85 @@ test.describe('one debt, as a viewer', () => {
   });
 });
 
+test.describe('the household arranging its own order', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockApi(page, { session: 'owner' });
+    await page.goto('/debt-plan');
+    await page.getByRole('group', { name: /Order of attack/ }).getByRole('button', {
+      name: /Your own order/,
+    }).click();
+    await expect(page.getByRole('button', { name: /Your own order/, pressed: true })).toBeVisible();
+  });
+
+  test('changes nothing until something is moved', async ({ page, ui }) => {
+    // Choosing Your own order sends the order already on screen, so the plan it comes back with
+    // is the one that was there: debt-free April 2029 and $2,847.88, exactly as under avalanche.
+    const comparison = page.getByRole('region', { name: /Avalanche or snowball/ });
+    await expect(comparison).toContainText(
+      'Your own order: debt-free April 2029, with $2,847.88 of interest',
+    );
+    await expect(page.getByRole('region', { name: 'Your debts' })).toContainText(
+      'Move a debt up or down',
+    );
+    // All three lines are the same line here, so the chart draws one and keys all three on it
+    // rather than offering three keys over a single visible stroke.
+    const chart = page.getByRole('region', { name: /Balance to zero/ });
+    await expect(chart.locator('.chart-legend li')).toHaveCount(1);
+    await expect(chart.locator('.chart-legend')).toContainText(
+      'Your own order · Avalanche · Snowball',
+    );
+
+    await ui.shot('debt-plan-own-order');
+    expect(await ui.a11y('the plan under Your own order')).toBe(0);
+    await ui.noOverflow();
+    ui.noErrors();
+  });
+
+  test('names each move by debt and direction, with no up on the first rung', async ({
+    page,
+    ui,
+  }) => {
+    const list = page.getByRole('region', { name: 'Your debts' });
+    // Buttons, not a drag handle: every one reachable from a keyboard and named for a screen
+    // reader. The visible label is inside the accessible name, so the two agree (WCAG 2.5.3).
+    await expect(list.getByRole('button', { name: 'Move up: Visa' })).toHaveCount(0);
+    await expect(list.getByRole('button', { name: 'Move down: Visa' })).toBeVisible();
+    await expect(list.getByRole('button', { name: 'Move up: Student loan' })).toBeVisible();
+    await expect(list.getByRole('button', { name: 'Move down: Student loan' })).toHaveCount(0);
+
+    await ui.shot('debt-plan-move-controls');
+    ui.noErrors();
+  });
+
+  test('recomputes every date from the order the household chose', async ({ page, ui }) => {
+    const list = page.getByRole('region', { name: 'Your debts' });
+
+    // Visa, Car, Student → Student, Car, Visa. Three moves, and the server answers each one.
+    await list.getByRole('button', { name: 'Move up: Student loan' }).click();
+    await expect(page.getByRole('status').first()).toContainText(
+      'Student loan is now rung 2 of 3',
+    );
+    await list.getByRole('button', { name: 'Move up: Student loan' }).click();
+    await list.getByRole('button', { name: 'Move down: Visa' }).click();
+
+    // Paying the 4.5% loan first costs $1,723 more and finishes two months later, and the page
+    // says so — the figures are the server's, not a local reshuffle of the old ones.
+    const comparison = page.getByRole('region', { name: /Avalanche or snowball/ });
+    // $4,570.98 exactly: interest is rounded to the cent every month, so the total the server
+    // sends is already a figure in cents and the page shows it as it is.
+    await expect(comparison).toContainText(
+      'Your own order: debt-free June 2029, with $4,570.98 of interest',
+    );
+    // And both cards still carry their own: the comparison is not a view of the choice.
+    await expect(comparison).toContainText('$2,847.88');
+
+    await ui.shot('debt-plan-own-order-reversed');
+    expect(await ui.a11y('the plan after rearranging')).toBe(0);
+    await ui.noOverflow();
+    ui.noErrors();
+  });
+});
+
 test.describe('a balance nobody has confirmed lately', () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page, { session: 'owner' });
@@ -288,9 +410,9 @@ test.describe('a balance nobody has confirmed lately', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Store card' })).toBeVisible();
 
     const balance = page.getByRole('region', { name: 'Balance now' });
-    // $1,196.63 against an anchor of $1,240.00: the estimate takes the minimum off as well as
+    // $1,196.64 against an anchor of $1,240.00: the estimate takes the minimum off as well as
     // adding the interest, so it is LOWER than the figure it rolled forward from.
-    await expect(balance).toContainText('$1,196.63');
+    await expect(balance).toContainText('$1,196.64');
     await expect(balance).toContainText('estimated — not confirmed');
 
     const terms = page.getByRole('region', { name: 'Loan terms' });
@@ -316,7 +438,7 @@ test.describe('a balance nobody has confirmed lately', () => {
     await expect(sheet).toContainText('3 months of $45.00 payments');
     await expect(sheet).toContainText('Last confirmed: $1,240.00');
     // Confirm, correct, and the two quieter answers beneath.
-    await expect(sheet.getByRole('button', { name: /Confirm \$1,196\.63/ })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: /Confirm \$1,196\.64/ })).toBeVisible();
     await expect(sheet.getByRole('button', { name: 'Correct it' })).toBeVisible();
     await expect(sheet.getByRole('button', { name: /Stop estimating/ })).toBeVisible();
     await expect(sheet.getByRole('button', { name: 'Log a payment instead' })).toBeVisible();
@@ -335,7 +457,7 @@ test.describe('a balance nobody has confirmed lately', () => {
     const figure = sheet.getByLabel('What the statement says');
     await expect(figure).toHaveAttribute('type', 'text');
     await expect(figure).toHaveAttribute('inputmode', 'decimal');
-    await expect(figure).toHaveValue('1196.6271');
+    await expect(figure).toHaveValue('1196.64');
     await expect(sheet).toContainText('recorded as a correction in the history');
 
     await ui.shot('debt-detail-correct-estimate');

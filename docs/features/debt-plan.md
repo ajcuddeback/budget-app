@@ -122,10 +122,12 @@ be.
 
 Monthly compounding on the balance, interest first, payment at the end of the period:
 
-> `interest(m) = round(balance(m-1) × apr ÷ 100 ÷ 12, 4, HALF_EVEN)`
+> `interest(m) = round(balance(m-1) × apr ÷ 100 ÷ 12, minor unit, HALF_EVEN)`
 > `balance(m)  = balance(m-1) + interest(m) − payment`
 
-The debt clears in the first month `m` where `balance(m) ≤ 0`.
+The debt clears in the first month `m` where `balance(m) ≤ 0`. *Minor unit* is the currency's own
+(`Currency.getDefaultFractionDigits()`: two places for USD, none for JPY), and four places for a
+currency that defines none; the result is still stored at `NUMERIC(19,4)` (decision 9).
 
 Three things follow, and all three are deliberate:
 
@@ -231,6 +233,33 @@ the same data:
 - `SNOWBALL`: balance ascending, then APR descending, then name, then id.
 - `CUSTOM`: `customOrder` ascending, then the `AVALANCHE` ordering for anything unordered.
 
+**How a household sets that order.** Under `CUSTOM`, each rung in **Your debts** carries *Move up*
+and *Move down*, in the table and in the ladder alike — **buttons, not drag and drop**: a drag
+handle is unreachable from a keyboard by default, and this control decides every date on the page.
+The first rung has no up and the last no down, each button's accessible name says which debt as
+well as which way, and a polite live region announces where the moved rung landed.
+
+Each move sends the **whole** order, because that is how the server reads it: a debt `customOrder`
+omits has its position cleared. With debts in more than one currency the list therefore spans every
+group, even though a move only ever happens within one ladder — sending a single group's ids would
+silently unplace the other's. **Choosing *Your own order* sends the order already on screen**, so
+switching changes nothing until something is moved; otherwise every debt would arrive unplaced, the
+ladder would fall back to the avalanche ordering, and the first move would be made against an order
+nobody had seen. The plan is **read back from the response**, never reordered locally: every date,
+every allocation and the debt-free month follow from the order, and only the server computes them.
+
+**The page names what the household's own order costs.** The two comparison cards are always
+avalanche and snowball — that is the product requirement — so under `CUSTOM` neither of them is
+the plan in force, and without a line for it the page would show two totals nobody is paying and
+never name the one they are. Rearranging the demo ladder moves the interest from $2,847.88 to
+$4,570.98; both cards carry on reading as before. The line is omitted under the two named
+strategies, where the matching card already says it.
+
+**Choosing it from the avalanche order makes all three chart lines identical**, which is the first
+thing a household sees after choosing it. The chart therefore collapses **any** number of
+coincident lines to one key naming all of them, not just two — keying a subset together and
+leaving the rest keyed separately over the same pixels is the original confusion rearranged.
+
 **Allocation is the ladder.** Every active debt gets its minimum. The surplus
 (`monthlyAmount − Σ minimums`) goes entirely to rung 1. When rung 1 clears, its minimum **and** the
 surplus roll down to rung 2, and so on — *"Pay the top one hard. Everything below gets its minimum
@@ -306,10 +335,12 @@ Consequences, stated so nobody rediscovers them:
   exists now so that a figure somebody asserted never becomes indistinguishable from one the app
   inferred.
 
-**The split.** A logged payment's `interest` is `round(balance × apr ÷ 100 ÷ 12, 4, HALF_EVEN)` at
-the time, `principal` is `amount − interest`, and `balanceAfter` is the previous balance minus
+**The split.** A logged payment's `interest` is `round(balance × apr ÷ 100 ÷ 12, minor unit, HALF_EVEN)`
+at the time, `principal` is `amount − interest`, and `balanceAfter` is the previous balance minus
 `principal`. `interest + principal = amount` exactly, by construction — the interest is rounded and
-the principal takes the remainder, so no payment ever loses or invents a cent.
+the principal takes the remainder, so no payment ever loses or invents a cent. Because the interest
+is a whole number of cents, a payment in cents splits into two cent figures that each display
+exactly and still add up, and the balance it leaves is on the cent grid too.
 
 **A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
 difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
@@ -401,8 +432,8 @@ that fact, exactly as it does for a transaction (`transactions.md`).
 
 `BigDecimal` in Java, `NUMERIC(19,4)` in Postgres, **strings over the wire** — amounts and `apr`
 both (ADR-0006). A JSON number is refused with `400`: `22.9` is not exactly representable as a
-double either, and it multiplies a balance. Rounding is `HALF_EVEN` at scale 4, applied at each
-monthly step and nowhere else, so the figure on screen and the figure in the chain of
+double either, and it multiplies a balance. Rounding is `HALF_EVEN` to the currency's minor unit
+(four places where it has none), applied at each monthly step and nowhere else, so the figure on screen and the figure in the chain of
 `balanceAfter` values are the same figure. `apr` is a **percentage**, because that is what a
 statement prints; the monthly rate is `apr ÷ 100 ÷ 12` and no stored column holds it.
 
@@ -661,7 +692,7 @@ session does not re-derive them:
   figure as a fresh confirmation, so every stale branch is checked before the source is looked at.
 - **An estimate is not described as something that only grows.** It is the anchor rolled forward
   with the interest *and* the minimum taken off, so it is frequently **lower** than the figure it
-  started from — $1,196.63 from an anchor of $1,240.00 in the balance-state fixtures.
+  started from — $1,196.64 from an anchor of $1,240.00 in the balance-state fixtures.
 - **A debt with no projection gets a sentence where the picture would be.** A payment that never
   covers its interest has an empty series; the card says why, and the legend goes with the lines
   it was describing rather than keying lines nobody drew.
@@ -687,20 +718,28 @@ which become dialogs on desktop with identical fields in identical order:
 3. **Confirm the estimate** — the estimate, what it assumed, what it was last confirmed at, and
    **Confirm $8,900** / **Correct it**, with *Stop estimating* and *Log a payment instead* beneath.
 
-**Two deviations from the sheets as drawn**, both with the same cause and both worth fixing in the
-API rather than in the client:
+**One deviation from the sheets as drawn, and one that has been closed:**
 
-1. **The split is not predicted before the payment is recorded.** The designs show *"$33.38
-   interest · $84.62 principal"* and the resulting balance in the sheet. Producing those needs
-   `round(balance × apr ÷ 1200, 4, HALF_EVEN)` in the browser — a second implementation of the one
-   formula this feature turns on, in the one place it could drift from the server's. This doc says
-   a few cents compounded eventually disagree by a whole month, which is the argument against
-   having two of them. The sheet says what will happen instead, and the page reports the server's
-   own split and resulting balance the moment it is recorded. **The fix is a preview that writes
-   nothing** — `POST /api/debts/{id}/payments?dryRun=true`, or its own sub-resource — returning
-   the split the server would store.
+1. **The split is shown before the payment is recorded, and it is the server's.** The designs ask
+   for *"$33.38 interest · $84.62 principal"* and the resulting balance in the sheet. Producing
+   those in the browser would need `round(balance × apr ÷ 1200, minor unit, HALF_EVEN)` — a second
+   implementation of the one formula this feature turns on, in the one place it could drift. So
+   the sheet asks the server instead, on open and whenever the amount settles, and **computes
+   nothing itself, not even as a fallback**.
 
-   **The preview now exists; the sheet does not call it yet.** `POST
+   Three rules the sheet keeps, because each is a way the figure could be false:
+
+   - **A late answer is dropped.** Typing produces a stream of questions whose answers can arrive
+     in any order; without a sequence check a slow reply about `44` lands after a quick one about
+     `445` and the sheet shows a split that is true of nothing on screen.
+   - **An amount the field cannot carry asks nothing.** Empty, or a half-typed `4.`, would be
+     refused and reported as a failure.
+   - **A failed or refused preview never blocks recording.** The sheet says the split will be
+     shown on the payment once it is recorded, and goes on accepting it. The reply is checked
+     against the shape it should have before it is rendered, so a body that is merely *shaped*
+     like JSON produces that same message rather than a split with three blanks in it.
+
+   `POST
    /api/debts/{id}/payments/preview` with `{"amount": "445.00"}` returns the interest, the
    principal, the balance the split is taken against and the balance it would leave. It **cannot
    disagree** with logging: `DebtPaymentService.preview` and `.log` both build the row through one
@@ -716,8 +755,7 @@ API rather than in the client:
    `VIEWER` is refused; the preview serves only the log-a-payment sheet, which a `VIEWER` never
    sees, so least privilege costs nobody anything. It sits in `DebtIT.everyRoute()` with every
    other route, so the 401, CSRF, `VIEWER` and cross-household sweeps cover it on both
-   transports. Wiring it into the sheet is held until the user guide is captured, so the guide's
-   screenshots of the sheet do not go stale mid-capture.
+   transports.
 
    **The plan's what-if still takes its amount in the query string**
    (`GET /api/debt-plan/projection?monthlyAmount=`), and that is an accepted risk rather than an
@@ -961,7 +999,7 @@ bounded and these unbounded:
     runs and stop retaining the rows — was rejected because those rows are **load-bearing for the
     property tests**: the invariants in `PayoffLadderTest` that "the monthly amount is spent
     exactly every month but the last" and that avalanche never costs more interest than snowball
-    (ADR-0036, found by a counterexample search) are asserted *from* the per-rung per-month
+    beyond rounding (ADR-0036, found by a counterexample search) are asserted *from* the per-rung per-month
     allocations. Trading a proven property for a memory bound is the wrong trade. The remaining
     cost is proportional to real data under a cap, so it is recorded rather than metered: the
     alternative was rate-limiting the household's own plan page, which for a two-person
@@ -1105,6 +1143,21 @@ is the reason this was a safe call to make without waiting: the shapes do not co
    household with debts in two currencies gets one strategy and two ungrouped projections, which is
    the mixed-currency gap in *Known gaps* seen from another angle.
 
+Decided on 2026-11-25, during implementation, and numbered after the eighth above:
+
+9. **Interest is rounded to the currency's minor unit, not to four places.** `interestFor` rounds
+   `balance × apr ÷ 1200` half-even to `Currency.getDefaultFractionDigits()` — cents for USD, whole
+   yen for JPY, four places for a currency that defines no minor unit — and the figure is stored at
+   `NUMERIC(19,4)` as before. Four places made a split impossible to show honestly: the designs'
+   Visa at $6,180.00 and 22.9% accrues $117.935, and a $495 payment read *"$117.94 interest ·
+   $377.07 principal"*, which is $495.01, while displayed balances in the history drifted by a cent
+   from row to row. Rounded to the cent, a payment in cents splits into two cent figures that add up
+   exactly, and every balance stays on the cent grid, as on a lender's statement. Reconciling on
+   display instead was rejected because it fixes the split and not the balance column. **This
+   replaced scale-4 rounding before slice 10 ever merged to main**, so no stored row predates it
+   and there is nothing to migrate. One consequence: avalanche never costing more than snowball now
+   holds to within rounding rather than exactly (*Testing notes*, `PayoffLadderTest`).
+
 ## Where the designs and the docs disagree
 
 Recorded rather than smoothed over, as the designs are the source of visual intent and these are
@@ -1129,7 +1182,7 @@ places where it cannot be taken literally.
 
 - **Avalanche and snowball barely differ for the designs' own debts**, which the comparison
   artboard does not prepare you for. Over $6,180 at 22.9%, $10,650 at 6.4% and $9,650 at 4.5%, the
-  two orders clear in the **same month** and differ by **$48.62** of interest in total. The screen
+  two orders clear in the **same month** and differ by **$48.61** of interest in total. The screen
   is honest about it — *"Avalanche costs less in interest, and both clear your first debt in the
   same month. Either is a good answer."* — but it means the strategy picker's own demo data makes
   the weakest possible case for it, and the balance-to-zero chart draws two lines that coincide.
@@ -1287,12 +1340,21 @@ this is about it.
   rung is ever paid more than it owes; `AVALANCHE` and `SNOWBALL` differ **only** in order (proved
   by replaying the snowball order as a `CUSTOM` one); ties break deterministically (two debts with
   the same APR, then the same balance, then the same name, then the id); avalanche's total interest
-  is never greater than snowball's for the same monthly amount; a `monthlyAmount` below the
+  is never greater than snowball's for the same monthly amount, to within rounding (below); a `monthlyAmount` below the
   minimums produces no projection rather than a nonsense one.
   **Avalanche-never-worse holds because a plan never projects an overpayment** (see Strategies).
   Under a literal reading of the recurrence — where a clearing rung is paid its whole allocation
   and the excess is lost — it is false, and counterexamples are easy to find: a snowball that
   clears a small debt in one month stops that debt's interest a month earlier and comes out ahead.
+  **It holds to within rounding, not exactly.** Interest is rounded to the cent once per debt per
+  month, and the two orders round different balances, so where two rates are almost equal the
+  rounding can outweigh the difference between them: £110.00 at 20.3% and £100.00 at 20.1%, at
+  £97 a month, cost 5.87 under avalanche and 5.86 under snowball. The property therefore allows
+  half a minor unit per rung-month of the two plans together, which an independent search over
+  about 37,000 ladders never came within 85% of, and ADR-0036's own counterexample is pinned
+  exactly, so the failure that ADR exists for still fails a test. It was never exact at four
+  places either — the same search found inversions there at a hundredth of a cent. The page names
+  whichever order costs less, so a near-tie reads truthfully either way.
 - **`DebtIT`** — over-determined terms are `422` and store nothing; a released field becomes `NULL`
   and comes back `SOLVED`; the `CHECK` refuses a third entered solver field at the database level
   too; amounts and `apr` keep every digit across the wire and a JSON number is a `400`; a payment

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { HouseholdRole } from '../../../core/auth.models';
 import { AuthService } from '../../../core/auth.service';
@@ -48,7 +48,7 @@ const VISA: Debt = {
   monthsLeft: 17,
   payoffMonth: '2027-12',
   horizonSource: 'SOLVED',
-  totalInterestLeft: '1069.3700',
+  totalInterestLeft: '1069.3600',
   projectionReason: null,
   rung: 1,
   planMinimum: '185.0000',
@@ -98,9 +98,9 @@ const LOGGED: DebtPayment = {
   paidDate: '2026-08-20',
   currency: 'GBP',
   amount: '445.0000',
-  interest: '123.7341',
-  principal: '321.2659',
-  balanceAfter: '6162.6195',
+  interest: '123.7300',
+  principal: '321.2700',
+  balanceAfter: '6162.6200',
   provenance: 'USER_LOGGED',
   transactionId: null,
   billOccurrenceId: null,
@@ -112,13 +112,22 @@ const LOGGED: DebtPayment = {
 const CORRECTION: DebtPayment = {
   ...LOGGED,
   id: 'pay-2',
-  amount: '23.9924',
+  amount: '23.9900',
   interest: '0.0000',
-  principal: '23.9924',
+  principal: '23.9900',
   balanceAfter: '6180.0000',
   provenance: 'STATEMENT_CORRECTION',
   paidFromAccountId: null,
   note: 'Statement from Chase',
+};
+
+/** What the server says $445 would record — built by the same code as logging. */
+const PREVIEW = {
+  currency: 'GBP',
+  interest: '117.9400',
+  principal: '327.0600',
+  balanceBefore: '6180.0000',
+  balanceAfter: '5852.9400',
 };
 
 const ACCOUNT = {
@@ -147,6 +156,7 @@ describe('DebtDetailPage', () => {
     unarchive: vi.fn(),
     confirmBalance: vi.fn(),
     payments: vi.fn(),
+    previewPayment: vi.fn(),
     logPayment: vi.fn(),
     correctPayment: vi.fn(),
     removePayment: vi.fn(),
@@ -172,6 +182,7 @@ describe('DebtDetailPage', () => {
     }
 
     const payments = options.payments ?? [LOGGED, CORRECTION];
+    debtsService.previewPayment.mockReturnValue(of(PREVIEW));
     debtsService.get.mockReturnValue(of(options.detail ?? detailOf(VISA)));
     debtsService.payments.mockReturnValue(
       of({
@@ -413,26 +424,133 @@ describe('DebtDetailPage', () => {
     });
   });
 
-  it('reports the server’s split rather than predicting one of its own', async () => {
+  it('shows what the amount would record, asked of the server as the sheet opens', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '445' });
+    const sheet = root.querySelector('dialog');
+    expect(sheet?.textContent).toContain(
+      '£117.94 interest · £327.06 principal · balance after £5,852.94',
+    );
+  });
+
+  it('asks again, immediately, for a one-tap amount', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+    debtsService.previewPayment.mockClear();
+
+    buttonNamed(root, '£495.00').click();
+    await settle(fixture);
+
+    // Nobody is typing, so there is nothing to wait to settle.
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '495' });
+  });
+
+  it('waits for typing to settle before asking', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+    debtsService.previewPayment.mockClear();
+
+    type(root, '#payment-amount', '500.00');
+    await settle(fixture);
+    expect(debtsService.previewPayment).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    await settle(fixture);
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '500.00' });
+  });
+
+  it('asks nothing about an amount it cannot read yet', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+    debtsService.previewPayment.mockClear();
+
+    // Mid-typing. A request the server would refuse would be reported as a failed preview.
+    type(root, '#payment-amount', '4.');
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    await settle(fixture);
+
+    expect(debtsService.previewPayment).not.toHaveBeenCalled();
+    expect(root.querySelector('dialog')?.textContent).not.toContain('interest ·');
+  });
+
+  it('ignores an answer that arrives after a newer question was asked', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+
+    // The slow answer is about the old amount; the quick one is about what is in the field now.
+    const slow = new Subject<typeof PREVIEW>();
+    debtsService.previewPayment.mockReturnValueOnce(slow);
+    type(root, '#payment-amount', '900.00');
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    await settle(fixture);
+
+    debtsService.previewPayment.mockReturnValue(
+      of({ ...PREVIEW, interest: '1.0000', principal: '2.0000', balanceAfter: '3.0000' }),
+    );
+    buttonNamed(root, '£495.00').click();
+    await settle(fixture);
+
+    slow.next(PREVIEW);
+    slow.complete();
+    await settle(fixture);
+
+    const sheet = root.querySelector('dialog');
+    expect(sheet?.textContent).toContain('balance after £3.00');
+    expect(sheet?.textContent).not.toContain('£5,852.94');
+  });
+
+  it('lets the payment be recorded when the preview is refused, and never invents a split', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+    debtsService.previewPayment.mockReturnValue(throwError(() => ({ status: 500 })));
     debtsService.logPayment.mockReturnValue(of(LOGGED));
 
     buttonNamed(root, 'Log a payment').click();
     await settle(fixture);
 
-    // Before: a promise, not a figure. A second implementation of `balance × apr ÷ 1200` here is
-    // the one place the client and the server could disagree, so the sheet predicts nothing.
     const sheet = root.querySelector('dialog');
-    expect(sheet?.textContent).toContain('works out how much of this went on interest');
+    expect(sheet?.textContent).toContain('could not work out the split just now');
+    // Not even as a fallback: having two implementations of the formula is what this avoids.
     expect(sheet?.textContent).not.toContain('interest ·');
 
     buttonNamed(root, 'Record it').click();
     await settle(fixture);
 
-    // After: the server's own figures.
+    expect(debtsService.logPayment).toHaveBeenCalled();
+    // And the server's own figures, once it is recorded.
     expect(text(fixture)).toContain('£123.73 interest · £321.27 principal');
     expect(text(fixture)).toContain('Balance now £6,162.62');
+  });
+
+  it('treats a reply that is not a preview as no preview at all', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+    debtsService.previewPayment.mockReturnValue(of({ ok: true }));
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+
+    // A body merely shaped like JSON would otherwise render as a split with blanks in it.
+    const sheet = root.querySelector('dialog');
+    expect(sheet?.textContent).toContain('could not work out the split just now');
+    expect(sheet?.textContent).not.toContain('interest ·');
   });
 
   it('offers what is scheduled and fifty more, and submits neither on its own', async () => {
@@ -446,7 +564,7 @@ describe('DebtDetailPage', () => {
     buttonNamed(root, '£495.00').click();
     await settle(fixture);
 
-    expect(root.querySelector<HTMLInputElement>('#payment-amount')?.value).toBe('495.0000');
+    expect(root.querySelector<HTMLInputElement>('#payment-amount')?.value).toBe('495');
     // Filling a field is not recording a payment.
     expect(debtsService.logPayment).not.toHaveBeenCalled();
   });
@@ -590,10 +708,10 @@ describe('DebtDetailPage', () => {
 
   it('describes an estimate as rolled forward, not as one that only grows', async () => {
     // The estimate takes the minimum off as well as adding the interest, so it can be LOWER than
-    // the anchor — $1,196.63 against $1,240.00 — and wording that implied growth would be wrong.
+    // the anchor — $1,196.64 against $1,240.00 — and wording that implied growth would be wrong.
     const estimated: Debt = {
       ...VISA,
-      balance: '1196.6271',
+      balance: '1196.6400',
       balanceSource: 'ESTIMATED',
       estimatedMonths: 3,
       anchorBalance: '1240.0000',
@@ -603,7 +721,7 @@ describe('DebtDetailPage', () => {
     const fixture = await render({ detail: detailOf(estimated) });
 
     const shown = text(fixture);
-    expect(shown).toContain('£1,196.63');
+    expect(shown).toContain('£1,196.64');
     expect(shown).toContain('assuming the minimum was paid and the interest in between was added');
     expect(shown).not.toMatch(/grown|grows|added to/i);
   });

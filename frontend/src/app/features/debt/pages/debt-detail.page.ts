@@ -49,10 +49,12 @@ import {
   Debt,
   DebtDetail,
   DebtPayment,
+  PaymentPreview,
   SeriesPoint,
   TermSource,
   balanceSourceKey,
   debtKindKey,
+  isPaymentPreview,
   projectionReasonKey,
   provenanceKey,
 } from '../data/debt.models';
@@ -154,6 +156,18 @@ export class DebtDetailPage {
   protected readonly editing = signal(false);
   protected readonly logging = signal(false);
   protected readonly confirming = signal(false);
+  protected readonly preview = signal<PaymentPreview | null>(null);
+  protected readonly previewUnavailable = signal(false);
+
+  /**
+   * Which preview request is the current one.
+   *
+   * Typing produces a stream of questions and the answers can arrive in any order. Without this,
+   * a slow answer about `44` lands after a quick one about `445` and the sheet shows the split for
+   * an amount the field no longer holds — a figure that is true of nothing on screen.
+   */
+  private previewRequest = 0;
+
   protected readonly dialogBusy = signal(false);
   protected readonly dialogError = signal<ApiError | null>(null);
   protected readonly notice = signal<Said | null>(null);
@@ -630,6 +644,47 @@ export class DebtDetailPage {
     );
   }
 
+  /**
+   * Asks what an amount would record.
+   *
+   * **A convenience, never a gate.** If it fails or is refused the sheet says the split will come
+   * once the payment is recorded and goes on accepting it; nothing here computes a split, not
+   * even as a fallback, because having two implementations of the interest formula is the thing
+   * this request exists to avoid.
+   */
+  protected async askPreview(amount: string): Promise<void> {
+    const debt = this.debt();
+    const request = ++this.previewRequest;
+    if (!debt || amount === '') {
+      this.preview.set(null);
+      this.previewUnavailable.set(false);
+      return;
+    }
+    try {
+      const answer: unknown = await firstValueFrom(
+        this.debtsService.previewPayment(debt.id, { amount }),
+      );
+      if (request !== this.previewRequest) {
+        return;
+      }
+      // `unknown` plus a guard: this goes on screen beside the word "interest", and a body that
+      // is merely shaped like JSON would render as a split with blanks in it.
+      if (isPaymentPreview(answer)) {
+        this.preview.set(answer);
+        this.previewUnavailable.set(false);
+      } else {
+        this.preview.set(null);
+        this.previewUnavailable.set(true);
+      }
+    } catch {
+      if (request !== this.previewRequest) {
+        return;
+      }
+      this.preview.set(null);
+      this.previewUnavailable.set(true);
+    }
+  }
+
   protected async submitPayment(form: PaymentFormValue): Promise<void> {
     const debt = this.debt();
     if (!debt) {
@@ -699,6 +754,11 @@ export class DebtDetailPage {
     this.confirming.set(false);
     this.dialogBusy.set(false);
     this.dialogError.set(null);
+    // A preview belongs to the sheet that asked for it. Leaving it behind would show the next
+    // sheet a split for an amount nobody has typed yet.
+    this.previewRequest += 1;
+    this.preview.set(null);
+    this.previewUnavailable.set(false);
   }
 
   // ------------------------------------------------------------------------- what to show

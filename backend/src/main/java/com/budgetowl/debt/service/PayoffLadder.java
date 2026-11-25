@@ -20,8 +20,10 @@ import java.util.Objects;
  * the only place either name appears.
  *
  * <p>Every month of every rung is the same recurrence a single debt's projection uses, run by
- * {@link DebtTermsSolver#interestFor}: one rounding per debt per month, at scale 4 {@code
- * HALF_EVEN}, and the principal takes the remainder.
+ * {@link DebtTermsSolver#interestFor}: one rounding per debt per month, {@code HALF_EVEN} to the
+ * currency's minor unit, and the principal takes the remainder. That rounding is also why avalanche
+ * never costing more than snowball holds to within pennies rather than exactly (ADR-0036, {@code
+ * PayoffLadderTest}).
  *
  * <p><b>A plan never overpays a debt.</b> No rung is paid more than it owes; what a rung does not
  * need flows down to the next one <em>in the same month</em>, so the monthly amount is spent

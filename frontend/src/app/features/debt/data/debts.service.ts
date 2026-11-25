@@ -10,6 +10,8 @@ import {
   DebtPayment,
   DebtPaymentPage,
   LogPaymentRequest,
+  PaymentPreview,
+  PreviewPaymentRequest,
   UpdateDebtRequest,
 } from './debt.models';
 
@@ -86,6 +88,20 @@ export class DebtsService {
     return this.http.get<DebtPaymentPage>(`${BASE}/${encodeURIComponent(id)}/payments`, {
       params: { page, size },
     });
+  }
+
+  /**
+   * What logging a payment would record, **without recording it**.
+   *
+   * A `POST` although it writes nothing: the amount is somebody's money, and a URL is the one part
+   * of a request every layer logs. It needs write access for the same reason — a `VIEWER` never
+   * sees the sheet it serves.
+   */
+  previewPayment(id: string, request: PreviewPaymentRequest): Observable<PaymentPreview> {
+    return this.http.post<PaymentPreview>(
+      `${BASE}/${encodeURIComponent(id)}/payments/preview`,
+      request,
+    );
   }
 
   /** Logs a payment. **Writes no transaction and moves no account balance** (ADR-0035). */

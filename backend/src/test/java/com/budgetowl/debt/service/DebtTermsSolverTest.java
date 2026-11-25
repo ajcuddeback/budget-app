@@ -42,50 +42,106 @@ class DebtTermsSolverTest {
         Projection projection =
                 solver.project(money("6180.00"), apr("22.900"), money("445.00"), DECEMBER);
 
+        // Month 1: 6180.00 × 22.9 ÷ 1200 = 117.935 → 117.94, closing 5852.94. Month 2: 5852.94 ×
+        // 22.9 ÷ 1200 = 111.6936… → 111.69, closing 5519.63. … Month 16 closes at 126.94; month
+        // 17 takes 2.42 of interest and closes at −315.64, the first close at or below zero. Every
+        // interest figure is a cent, so the total is the payments less the fall in the balance:
+        // 17 × 445.00 − (6180.00 − (−315.64)) = 7565.00 − 6495.64 = 1069.36.
         assertThat(projection).isInstanceOf(Projection.Cleared.class);
         Projection.Cleared cleared = (Projection.Cleared) projection;
         assertThat(cleared.monthsLeft()).isEqualTo(17);
         assertThat(cleared.payoffMonth()).isEqualTo(YearMonth.of(2028, 4));
-        assertThat(cleared.totalInterest()).isEqualTo(money("1069.37"));
+        assertThat(cleared.totalInterest()).isEqualTo(money("1069.36"));
         assertThat(cleared.months().getLast().clearsTheDebt()).isTrue();
     }
 
     @Test
     void interestIsTheNominalMonthlyRateAndNotTheEffectiveOne() {
-        // 6180 × 22.9 ÷ 100 ÷ 12 = 117.935. The effective rate, (1 + 0.229)^(1/12) − 1, would give
-        // about 107.05 — not what a card issuer quotes and not what the product promises.
-        assertThat(solver.interestFor(money("6180.00"), apr("22.900")))
-                .isEqualTo(money("117.9350"));
+        // 6180 × 22.9 ÷ 100 ÷ 12 = 117.935, which is 117.94 to the penny. The effective rate,
+        // (1 + 0.229)^(1/12) − 1, would give about 107.05 — not what a card issuer quotes and not
+        // what the product promises.
+        assertThat(solver.interestFor(money("6180.00"), apr("22.900"))).isEqualTo(money("117.94"));
     }
 
     @Test
-    void interestIsRoundedHalfEvenAtScaleFour() {
-        // 190.845 × 12 ÷ 1200 = 1.908450 exactly — a tie at the fourth decimal, which HALF_EVEN
-        // takes down to the even digit and HALF_UP would take up to 1.9085. The one assertion in
-        // this file that can tell the two rounding modes apart.
-        assertThat(solver.interestFor(money("190.8450"), apr("12.000"))).isEqualTo(money("1.9084"));
+    void interestIsRoundedHalfEvenToTheMinorUnit() {
+        // Both are exact ties at the penny, so only the rounding mode decides them.
+        //   2412.00 × 12.5 ÷ 1200 = 25.125   → 25.12, down to the even penny (HALF_UP: 25.13)
+        //   6180.00 × 22.9 ÷ 1200 = 117.935  → 117.94, up to the even penny (HALF_DOWN: 117.93)
+        // Together they tell HALF_EVEN apart from every other mode that rounds to the nearest.
+        assertThat(solver.interestFor(money("2412.00"), apr("12.500"))).isEqualTo(money("25.12"));
+        assertThat(solver.interestFor(money("6180.00"), apr("22.900"))).isEqualTo(money("117.94"));
+    }
+
+    @Test
+    void interestOnAYenBalanceIsRoundedToTheWholeYen() {
+        // JPY has no minor unit: 618000 × 22.9 ÷ 1200 = 11793.5, a tie at the yen, which HALF_EVEN
+        // takes to the even yen, 11794. Rounded at scale 2 it would have been 11793.50.
+        Currency yen = Currency.getInstance("JPY");
+
+        Money interest = solver.interestFor(Money.of(new BigDecimal("618000"), yen), apr("22.900"));
+
+        assertThat(interest).isEqualTo(Money.of(new BigDecimal("11794"), yen));
+    }
+
+    @Test
+    void aCurrencyWithNoDefinedMinorUnitKeepsTheStorageScale() {
+        // XAU (gold) reports getDefaultFractionDigits() == -1. Rounding it to a whole unit on the
+        // strength of a missing lookup would be worse than carrying four places, so it keeps the
+        // storage scale: 190.845 × 12 ÷ 1200 = 1.90845, a tie at the fourth place, → 1.9084.
+        Currency gold = Currency.getInstance("XAU");
+
+        Money interest =
+                solver.interestFor(Money.of(new BigDecimal("190.8450"), gold), apr("12.000"));
+
+        assertThat(gold.getDefaultFractionDigits()).isNegative();
+        assertThat(interest).isEqualTo(Money.of(new BigDecimal("1.9084"), gold));
+    }
+
+    @Property(tries = 500)
+    void aPaymentInPenniesSplitsIntoPenniesThatAddUpExactly(
+            @ForAll("balances") BigDecimal balance,
+            @ForAll("rates") BigDecimal rate,
+            @ForAll("payments") BigDecimal paid) {
+        // The property interest is rounded to the minor unit for: a payment in pennies against a
+        // balance in pennies splits into an interest and a principal that are each whole pennies,
+        // sum to the payment exactly, and leave a balance in whole pennies — so both halves can be
+        // shown to the penny and still add up, and the next month starts on the grid too.
+        Money owed = Money.of(balance, GBP);
+        Money amount = Money.of(paid, GBP);
+
+        ProjectionMonth row =
+                ProjectionMonth.of(1, DECEMBER, owed, amount, solver.interestFor(owed, rate));
+
+        assertThat(row.interest().plus(row.principal())).isEqualTo(amount);
+        assertThat(pennies(row.interest())).as("interest %s", row.interest()).isTrue();
+        assertThat(pennies(row.principal())).as("principal %s", row.principal()).isTrue();
+        assertThat(pennies(row.balanceAfter())).as("balance %s", row.balanceAfter()).isTrue();
     }
 
     @Test
     void dividesByTwelveHundredInOneStepRatherThanRoundingTwice() {
         // The formula is one expression with one rounding. Rounding at ÷100 and again at ÷12 is a
-        // different number: 6168.6933 at 18.992% is 97.6299 one way and 97.6298 the other. A tenth
-        // of a penny, every month, in a chain of balances that has to reconcile exactly.
-        Money balance = money("6168.6933");
+        // different number, even on the penny grid: 6180.00 at 3.032% is
+        //   once:  18737.76 ÷ 1200 = 15.6148           → 15.61
+        //   twice: 18737.76 ÷ 100 = 187.3776 → 187.38; 187.38 ÷ 12 = 15.615 → 15.62 (half-even)
+        // A penny, every month, in a chain of balances that has to reconcile exactly.
+        Money balance = money("6180.00");
         BigDecimal roundedTwice =
                 balance.amount()
-                        .multiply(apr("18.992"))
-                        .divide(new BigDecimal("100"), Money.SCALE, RoundingMode.HALF_EVEN)
-                        .divide(new BigDecimal("12"), Money.SCALE, RoundingMode.HALF_EVEN);
+                        .multiply(apr("3.032"))
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_EVEN)
+                        .divide(new BigDecimal("12"), 2, RoundingMode.HALF_EVEN);
 
-        assertThat(solver.interestFor(balance, apr("18.992"))).isEqualTo(money("97.6299"));
-        assertThat(roundedTwice).isEqualByComparingTo(new BigDecimal("97.6298"));
+        assertThat(solver.interestFor(balance, apr("3.032"))).isEqualTo(money("15.61"));
+        assertThat(roundedTwice).isEqualByComparingTo(new BigDecimal("15.62"));
     }
 
     @Test
     void aPaymentThatDoesNotCoverTheFirstMonthsInterestNeverClears() {
         // The normal case for a card minimum read off last month's statement: 118.00 a month
-        // against 118.45 of interest. An answer, not an exception.
+        // against 6205.60 × 22.9 ÷ 1200 = 118.4235… → 118.42 of interest. An answer, not an
+        // exception.
         Projection projection =
                 solver.project(money("6205.60"), apr("22.900"), money("118.00"), DECEMBER);
 
@@ -228,7 +284,7 @@ class DebtTermsSolverTest {
         // The feature doc asks for "the same payment back". What comes back is the *smallest*
         // payment that clears in those months, which is the entered one only when the household
         // happened to enter the minimum for its own horizon — 445.00 a month clears this balance in
-        // 17 months with room to spare, and so does 408.95. What is required of the solver, and
+        // 17 months with room to spare, and so does 429.11. What is required of the solver, and
         // asserted here, is that the round trip lands on the same horizon and never asks for more
         // than the household already pays. See the report accompanying this change.
         Money entered = money("445.00");
@@ -510,6 +566,18 @@ class DebtTermsSolverTest {
                 .ofScale(3);
     }
 
+    @Provide
+    Arbitrary<BigDecimal> payments() {
+        return Arbitraries.bigDecimals()
+                .between(new BigDecimal("0.01"), new BigDecimal("50000.00"))
+                .ofScale(2);
+    }
+
+    /** No digit below the penny: what a lender's statement, and the screen, can show exactly. */
+    private static boolean pennies(Money money) {
+        return money.amount().stripTrailingZeros().scale() <= GBP.getDefaultFractionDigits();
+    }
+
     private Projection.Cleared longProjection() {
         // 107 months, which is the "over a hundred months" the testing notes ask for.
         return (Projection.Cleared)
@@ -542,11 +610,12 @@ class DebtTermsSolverTest {
     private int rowsALoggedHistoryWouldProduce(
             BigDecimal balance, BigDecimal rate, BigDecimal payment) {
         BigDecimal owed = balance.setScale(Money.SCALE, RoundingMode.UNNECESSARY);
+        int pennies = GBP.getDefaultFractionDigits();
         int rows = 0;
         while (owed.signum() > 0 && rows <= DebtTermsSolver.MAX_MONTHS) {
             BigDecimal interest =
                     owed.multiply(rate)
-                            .divide(new BigDecimal("1200"), Money.SCALE, RoundingMode.HALF_EVEN);
+                            .divide(new BigDecimal("1200"), pennies, RoundingMode.HALF_EVEN);
             owed = owed.subtract(payment.subtract(interest));
             rows++;
         }

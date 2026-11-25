@@ -274,6 +274,9 @@
     [today]="today()"
     [busy]="dialogBusy()"
     [error]="dialogError()"
+    [preview]="preview()"
+    [previewUnavailable]="previewUnavailable()"
+    (amountChanged)="askPreview($event)"
     (submitted)="submitPayment($event)"
     (closed)="closeDialogs()"
   />
