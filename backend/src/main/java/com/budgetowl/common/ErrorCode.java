@@ -164,6 +164,43 @@ public enum ErrorCode {
      */
     DEBT_PAID_OFF("debt-paid-off", 409, "This debt is paid off"),
 
+    /**
+     * A household is capped at {@code GoalService.MAXIMUM_PER_HOUSEHOLD} goals, and a goal at
+     * {@code GoalService.MAXIMUM_CONTRIBUTIONS_PER_GOAL} contributions.
+     *
+     * <p>A cost control, not a tidiness rule: every {@code GET /api/goals} and every period summary
+     * projects every goal, so unbounded cheap writes would become an expensive read
+     * (docs/features/goals.md, threat model attack 6).
+     */
+    GOAL_LIMIT_REACHED("goal-limit-reached", 409, "This household has too many goals"),
+
+    /**
+     * Two unarchived goals with the same name, compared case-insensitively. The check-in's "put the
+     * surplus in Holiday" and Owl's "Japan trip" name a goal, and could not tell two apart.
+     */
+    GOAL_NAME_TAKEN("goal-name-taken", 409, "A goal with this name already exists"),
+
+    /**
+     * An archived goal takes no new contributions and no plan changes. Its history still reads.
+     * Un-archiving it is the deliberate way back, as for an envelope.
+     */
+    GOAL_ARCHIVED("goal-archived", 409, "This goal is archived"),
+
+    /**
+     * The monthly plan changes from the current month forwards, never backwards. Setting a step in
+     * a past month would rewrite what that month's left-over figure already said; a correction to
+     * what happened then is a contribution, not a plan.
+     */
+    GOAL_PLAN_PERIOD_PAST(
+            "goal-plan-period-past", 422, "The plan can only change from the current month"),
+
+    /**
+     * A goal kept in an account is in that account's currency. Linking one in another currency
+     * would leave the goal page showing two figures in two units side by side as if comparable.
+     */
+    GOAL_CURRENCY_MISMATCH(
+            "goal-currency-mismatch", 422, "This account is in a different currency"),
+
     /** Optimistic lock conflict: somebody else saved first and the caller's copy is stale. */
     STALE_VERSION("stale-version", 409, "This record changed while you were editing it"),
 

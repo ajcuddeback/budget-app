@@ -9,6 +9,8 @@ import com.budgetowl.common.Money;
 import com.budgetowl.debt.service.DebtFigures;
 import com.budgetowl.debt.service.DebtService;
 import com.budgetowl.envelope.service.EnvelopeService;
+import com.budgetowl.goal.service.GoalService;
+import com.budgetowl.goal.service.GoalViews.SetAside;
 import com.budgetowl.income.service.IncomeForPeriod;
 import com.budgetowl.income.service.IncomeService;
 import java.time.YearMonth;
@@ -31,6 +33,12 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code docs/features/debt-plan.md}). The term is shown beside the other three so the subtraction
  * is visible rather than mysterious.
  *
+ * <p><b>Slice 11 added the fifth term</b>: what the month's goals set aside ({@code
+ * docs/features/goals.md}, decision 2). It is one object, read once, and the same object is both
+ * the figure reported and the figure subtracted — so the term on the page and the term taken off
+ * {@code left} cannot be two readings of two definitions, which is the defect slice 10 shipped and
+ * fixed ({@code docs/memory/gotchas.md}, "a figure composed from two services").
+ *
  * <p>Read-only throughout, and scoping is each service's own: this one holds no household id and
  * runs no query.
  */
@@ -41,13 +49,19 @@ public class PeriodSummaryService {
     private final BillService bills;
     private final EnvelopeService envelopes;
     private final DebtService debts;
+    private final GoalService goals;
 
     public PeriodSummaryService(
-            IncomeService income, BillService bills, EnvelopeService envelopes, DebtService debts) {
+            IncomeService income,
+            BillService bills,
+            EnvelopeService envelopes,
+            DebtService debts,
+            GoalService goals) {
         this.income = income;
         this.bills = bills;
         this.envelopes = envelopes;
         this.debts = debts;
+        this.goals = goals;
     }
 
     /**
@@ -92,6 +106,19 @@ public class PeriodSummaryService {
         BillsForPeriod due = bills.list(actorId, period, false);
         Money allocated = envelopes.allocatedFor(actorId, period);
         DebtFigures owed = debts.figuresFor(actorId, billsThisTermCarries(due));
+        SetAside goalsTerm = goals.setAsideFor(actorId, period);
+
+        // The fourth term is the minimums NOT already carried by a bill row. Subtracting
+        // `minimums` instead would count the car payment twice — once as its bill and once as its
+        // debt — and understate what is left by a figure that looks reasonable. The fifth is
+        // `goalsTerm.total()`, the same object reported below: there is no second reading of it.
+        Money left =
+                expected.total()
+                        .minus(due.total())
+                        .minus(allocated)
+                        .minus(owed.minimumsNotInBills())
+                        .minus(goalsTerm.total());
+        Money extra = owed.planExtra();
 
         return new PeriodSummary(
                 period,
@@ -104,12 +131,12 @@ public class PeriodSummaryService {
                 owed.count(),
                 owed.minimums(),
                 owed.minimumsNotInBills(),
-                // The fourth term is the minimums NOT already carried by a bill row. Subtracting
-                // `minimums` instead would count the car payment twice — once as its bill and once
-                // as its debt — and understate what is left by a figure that looks reasonable.
-                expected.total()
-                        .minus(due.total())
-                        .minus(allocated)
-                        .minus(owed.minimumsNotInBills()));
+                goalsTerm.total(),
+                goalsTerm.goalsCounted(),
+                extra,
+                // Reported, never subtracted (decision 3): the plan's extra is the household's own
+                // figure, and the page only says in words when it is more than what is left.
+                extra != null && extra.compareTo(left) > 0,
+                left);
     }
 }

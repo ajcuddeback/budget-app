@@ -134,7 +134,8 @@ public class DebtService {
         }
         // Three figures, not four: the split of the minimums depends on which bills a given
         // month's bills term carries, and this request names no month. See DebtsView.
-        DebtFigures figures = figures(facts, household.baseCurrency(), Set.of());
+        // No plan extra either: the list reports none, so it is not computed for it.
+        DebtFigures figures = figures(facts, household.baseCurrency(), Set.of(), null);
         return new DebtsView(
                 List.copyOf(views),
                 plans.selectedStrategyFor(household.id()),
@@ -173,10 +174,12 @@ public class DebtService {
     public DebtFigures figuresFor(UUID actorId, Set<UUID> billsAlreadyCounted) {
         HouseholdMember membership = memberships.requireMembership(actorId);
         Household household = membership.household();
+        List<DebtFacts> facts = balances.factsFor(household.id(), false);
         return figures(
-                balances.factsFor(household.id(), false),
+                facts,
                 household.baseCurrency(),
-                billsAlreadyCounted);
+                billsAlreadyCounted,
+                plans.extraFor(household, facts).orElse(null));
     }
 
     /**
@@ -730,7 +733,7 @@ public class DebtService {
     }
 
     private static DebtFigures figures(
-            List<DebtFacts> facts, Currency base, Set<UUID> billsAlreadyCounted) {
+            List<DebtFacts> facts, Currency base, Set<UUID> billsAlreadyCounted, Money planExtra) {
         Money owed = Money.zero(base);
         Money minimums = Money.zero(base);
         Money notInBills = Money.zero(base);
@@ -755,7 +758,7 @@ public class DebtService {
                 notInBills = notInBills.plus(debt.debt().minimumPayment());
             }
         }
-        return new DebtFigures(owed, count, minimums, notInBills);
+        return new DebtFigures(owed, count, minimums, notInBills, planExtra);
     }
 
     // ------------------------------------------------------------------------------- internals

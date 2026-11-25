@@ -36,13 +36,18 @@ public class PeriodController {
     }
 
     /**
-     * The four terms and the subtraction.
+     * The five terms and the subtraction.
      *
      * @param owed the total debt balance — the <b>Owed</b> card. <b>Not</b> part of the
      *     subtraction: it is a balance rather than a monthly commitment
      * @param debtMinimumsNotInBills the fourth term, and the only debt figure {@code left} loses.
      *     The minimums already carried by a bill row are excluded, so a card's minimum is counted
      *     once (docs/features/debt-plan.md)
+     * @param goalsSetAside the fifth term (slice 11): what the month's goals set aside, each the
+     *     greater of its plan and what was recorded (docs/features/goals.md)
+     * @param debtPlanExtra the payoff plan's amount beyond its minimums, or null. <b>Reported, not
+     *     subtracted</b>
+     * @param debtPlanExtraExceedsLeft compared on the server, so the client compares no amounts
      * @param left <b>goes negative</b>, and a client must render that rather than clamping it: "you
      *     are £180 short this month" is the information
      */
@@ -57,6 +62,10 @@ public class PeriodController {
             int debtCount,
             BigDecimal debtMinimums,
             BigDecimal debtMinimumsNotInBills,
+            BigDecimal goalsSetAside,
+            int goalsCounted,
+            BigDecimal debtPlanExtra,
+            boolean debtPlanExtraExceedsLeft,
             BigDecimal left,
             String currency) {
 
@@ -78,6 +87,10 @@ public class PeriodController {
                     summary.debtCount(),
                     summary.debtMinimums().amount(),
                     summary.debtMinimumsNotInBills().amount(),
+                    summary.goalsSetAside().amount(),
+                    summary.goalsCounted(),
+                    summary.debtPlanExtra() == null ? null : summary.debtPlanExtra().amount(),
+                    summary.debtPlanExtraExceedsLeft(),
                     summary.left().amount(),
                     summary.left().currency().getCurrencyCode());
         }
