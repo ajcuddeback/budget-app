@@ -1174,6 +1174,26 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       // a loud 501 instead.
       const strategy = url.searchParams.get('strategy');
       const monthlyAmount = url.searchParams.get('monthlyAmount');
+      // Under a household's own order the real server projects THAT order, so the what-if is
+      // keyed on it. Answering with the avalanche what-if put "debt-free February 2029 — 4 months
+      // sooner" under a plan that is not avalanche.
+      if (customOrder !== null && strategy === null && monthlyAmount !== null) {
+        const own = generated(
+          `GET /api/debt-plan/projection?monthlyAmount=${canonicalAmount(monthlyAmount)} CUSTOM ${customOrder}`,
+        );
+        return own === undefined
+          ? json(
+              route,
+              501,
+              {
+                title: 'Not mocked',
+                status: 501,
+                detail: `No generated what-if at ${monthlyAmount} for the custom order ${customOrder}. Add it to DemoFixtureIT and regenerate.`,
+              },
+              'application/problem+json',
+            )
+          : json(route, 200, own);
+      }
       if (monthlyAmount === '955.00' || monthlyAmount === '955.0000') {
         return json(route, 200, DEMO_DEBT_WHAT_IF_PLUS_FIFTY);
       }

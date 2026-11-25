@@ -1,11 +1,9 @@
 # Feature: Debt plan and debt detail
 
 - **Slice:** 10
-- **Status:** In progress — **API, services and schema shipped**, and so are the Angular data
-  layer, the shared chart, **`/debt-plan`**, **`/debt-plan/{id}`**, the **log a payment** and
-  **confirm the estimate** sheets, the Bills &amp; Income **Owed** card and the demo fixtures. The
-  user-guide page is the piece left (see
-  [What slice 10 has built](#what-slice-10-has-built))
+- **Status:** Done (slice 10). The API, schema, both screens, the log-a-payment and confirm sheets,
+  the **Owed** card, the demo fixtures and the user guide have all shipped. See
+  [What slice 10 has built](#what-slice-10-has-built) and [Known gaps](#known-gaps)
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-24
 - **Depends on:** accounts (3), transactions (5), bills & income (7)
@@ -982,6 +980,22 @@ bounded and these unbounded:
   paying".** None are designed.
 
 ## Known gaps
+
+- **Small rough edges from the slice-10 user-guide pass (2026-11-25), none blocking:**
+  - **Viewer wording:** a `VIEWER`'s *Order of attack* card still says *"so you can compare before
+    you choose"*, though a Viewer can't choose.
+  - **Lost arrangement:** switching from *Your own order* to Avalanche and back starts again from
+    the on-screen avalanche order, so the household's earlier arrangement is lost. Read from the
+    code, not confirmed on screen.
+  - **No visible confirmation after a move:** a move only redraws the table. The *"X is now rung 2
+    of 3"* announcement is a screen-reader live region.
+  - **Guide capture helper:** `tools/ui/helpers/doc-capture.ts` draws the highlight ring in the
+    wrong place when a capture is both cropped and highlighted.
+  - **Unreproducible guide captures:** they don't run on a fixed clock, so date fields show
+    today's date.
+  - **Recorded banner is hand-built:** the user-guide spec answers **Record it** with a response
+    built from the generated preview. `DemoFixtureIT` should generate a real logged-payment
+    response instead.
 
 - **A plan read retains a row per rung per month, and is not rate-limited.** `PayoffLadder.run`
   keeps a `ProjectionMonth` for every rung in every month, so a plan read at the 50-debt cap over

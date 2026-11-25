@@ -13,7 +13,7 @@ your next statement arrives, this is how you put the real number in.
 
 ## How to tell an estimate from a figure you gave
 
-![The Balance now card: $1,196.63 in large type, labelled estimated — not confirmed, with a Confirm the balance button.](../images/confirm-what-you-owe--balance.png)
+![The Balance now card: $1,196.64 in large type, labelled estimated — not confirmed, the line No starting balance recorded, and a Confirm the balance button.](../images/confirm-what-you-owe--balance.png)
 
 The label under the figure is the whole story. **owed now** means you confirmed it. **estimated —
 not confirmed** means Budget Owl rolled your last figure forward, and **last confirmed over a year
@@ -21,10 +21,10 @@ ago** means it stopped doing that.
 
 The sentence explaining the estimate sits at the foot of **Loan terms**:
 
-![The Loan terms card, ending with: An estimate — 3 months rolled forward from the $1,240.00 you confirmed on May 20, 2026, assuming the minimum was paid and the interest in between was added.](../images/confirm-what-you-owe--estimate-line.png)
+![The Loan terms card, with Balance now $1,196.64, and ending with: An estimate: 3 months rolled forward from the $1,240.00 you confirmed on May 20, 2026, assuming the minimum was paid and the interest in between was added.](../images/confirm-what-you-owe--estimate-line.png)
 
 **An estimate is usually lower than the figure it started from**, not higher. Budget Owl assumes the
-minimum was paid each month and adds the interest in between, so here $1,240.00 becomes $1,196.63.
+minimum was paid each month and adds the interest in between, so here $1,240.00 becomes $1,196.64.
 It's an assumption, which is exactly why it asks.
 
 ## Steps
@@ -41,12 +41,12 @@ It's an assumption, which is exactly why it asks.
 
 4. Read what the estimate assumed.
 
-   ![The Is this still right? window: $1,196.63 labelled my estimate of what is owed now, what it assumed, what was last confirmed, and the buttons Confirm $1,196.63, Correct it and Cancel.](../images/confirm-what-you-owe--sheet.png)
+   ![The Is this still right? window: $1,196.64 labelled my estimate of what is owed now, the 3 months of $45.00 payments it assumed, Last confirmed: $1,240.00 on May 20, 2026, and the buttons Confirm $1,196.64, Correct it and Cancel.](../images/confirm-what-you-owe--sheet.png)
 
    It tells you the months it assumed, the payment it assumed, and the figure and date you last
    confirmed.
 
-5. Select **Confirm $1,196.63** if your statement agrees.
+5. Select **Confirm $1,196.64** if your statement agrees.
 
    The button names the figure, so there's no doubt which one you're agreeing to. A message tells
    you the balance is confirmed, and the label under it changes to **owed now**.

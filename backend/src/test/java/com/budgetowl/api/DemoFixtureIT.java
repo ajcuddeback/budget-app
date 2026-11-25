@@ -266,6 +266,12 @@ class DemoFixtureIT extends ApiTestBase {
             generated.put("PUT /api/debt-plan CUSTOM " + key, custom.body());
             generated.put(
                     "GET /api/debts CUSTOM " + key, household.owner().get("/api/debts").body());
+            // The page's "+$50 a month" line under THIS order. The server projects the stored
+            // order, so the what-if for a household's own order is its own figure; serving the
+            // avalanche what-if put "4 months sooner" under a plan that was not avalanche.
+            generated.put(
+                    "GET /api/debt-plan/projection?monthlyAmount=955.00 CUSTOM " + key,
+                    household.owner().get("/api/debt-plan/projection?monthlyAmount=955.00").body());
         }
 
         String document = canonicalise(render(generated, "DEBT_API"), seeded);

@@ -1,6 +1,7 @@
 import { expect, test } from '../../helpers/doc-capture.js';
 import { mockApi } from '../../helpers/mock-api.js';
 import { DEMO_DEBT_PAYMENTS, DEMO_DEBT_STATES } from '../../fixtures/demo-data.js';
+import { DEBT_API } from '../../fixtures/debt-api.generated.js';
 import type { Page } from '@playwright/test';
 
 /**
@@ -262,35 +263,54 @@ test('@doc logging a debt payment', async ({ page, doc }) => {
 
   await page.getByRole('button', { name: 'Log a payment' }).click();
   const dialog = page.getByRole('dialog');
+  // The sheet opens with the scheduled figure in it and asks the server what that would record.
+  await expect(dialog.locator('.preview')).toContainText('principal');
   await doc.capture(
     'sheet',
-    'The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, Date paid, Paid from and Note.',
+    'The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, the split that amount would record, Date paid, Paid from and Note.',
     { step: 3 },
+  );
+
+  await doc.capture(
+    'preview',
+    'The line under Amount paid giving the interest, the principal and the balance after for the amount in the box.',
+    { highlight: dialog.locator('.preview'), step: 4 },
   );
 
   await doc.capture(
     'paid-from',
     'The Paid from box, with the note that nothing is recorded against that account and no transaction is created.',
-    { highlight: dialog.getByLabel('Paid from'), step: 5 },
+    { highlight: dialog.getByLabel('Paid from'), step: 6 },
   );
 
-  await doc.capture(
-    'split-note',
-    'The foot of the window: a Note box, and the line saying Budget Owl works out how much went on interest and how much came off the balance and shows both the moment it is recorded.',
-    { highlight: dialog.getByText('Budget Owl works out how much', { exact: false }) },
-  );
+  // The line that used to sit here — "Budget Owl works out how much went on interest…" — is shown
+  // only while there is no split to show, so with the preview answering it is not on screen.
+  await doc.capture('note', 'The Note box at the foot of the window, above Record it and Cancel.', {
+    highlight: dialog.getByLabel('Note'),
+    step: 7,
+  });
 
   // The banner reports the SERVER's split, and the shared mock answers every write with
   // `{ ok: true }` — which renders the banner with its figures missing. So this one request is
-  // answered with the generated response the real application gave for a $445.00 payment to this
-  // debt on this date (`gen-0002`), and the date in the form is set to match it. No figure here
-  // is written by hand.
+  // answered with a row whose four figures are the GENERATED preview for $445.00 against this
+  // debt. That is what the real application records: `DebtPaymentService.log` and `preview` both
+  // build the row through `draft`, and `DebtIT.the_preview_is_exactly_what_logging_then_records`
+  // pins it. Answering with the historical `gen-0002` instead, as this spec once did, put one
+  // split in the sheet and a different one in the banner a click later. No figure here is written
+  // by hand; the rest of the row's shape is `gen-0002`'s.
+  const previewed = DEBT_API['POST /api/debts/deb-0001/payments/preview 445.00'];
   await page.route(/\/api\/debts\/deb-0001\/payments$/, async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     return route.fulfill({
       status: 201,
       contentType: 'application/json',
-      body: JSON.stringify(DEMO_DEBT_PAYMENTS['deb-0001'].content[1]),
+      body: JSON.stringify({
+        ...DEMO_DEBT_PAYMENTS['deb-0001'].content[1],
+        amount: '445.0000',
+        interest: previewed.interest,
+        principal: previewed.principal,
+        balanceAfter: previewed.balanceAfter,
+      }),
     });
   });
   await dialog.getByLabel('Date paid').fill('2026-08-20');
@@ -300,6 +320,161 @@ test('@doc logging a debt payment', async ({ page, doc }) => {
     'recorded',
     'The banner after recording a payment, naming how much went on interest, how much came off the balance, and the balance now.',
     { focus: page.locator('.alert-success') },
+  );
+});
+
+test('@doc the split for a one-tap amount', async ({ page, doc }) => {
+  doc.guide('log-a-debt-payment');
+
+  await page.goto('/debt-plan/deb-0001');
+  await page.getByRole('button', { name: 'Log a payment' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('.preview')).toContainText('principal');
+
+  // The fifty-more button. Its answer is the generated preview for $495.00.
+  await dialog.getByRole('button', { name: /\$495\.00/ }).click();
+  await expect(dialog.locator('.preview')).toContainText('$377.06');
+  await doc.capture(
+    'preview-extra',
+    'Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.',
+    { focus: dialog, highlight: dialog.locator('.preview') },
+  );
+});
+
+test('@doc when the split cannot be shown', async ({ page, doc }) => {
+  doc.guide('log-a-debt-payment');
+
+  // The preview refused, the way a server that is briefly unreachable refuses it. Registered after
+  // the shared mock, so it wins. Nothing else changes: the sheet must still record payments.
+  await page.route(/\/api\/debts\/deb-0001\/payments\/preview$/, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ title: 'Service Unavailable', status: 503 }),
+    }),
+  );
+
+  await page.goto('/debt-plan/deb-0001');
+  await page.getByRole('button', { name: 'Log a payment' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('I could not work out the split', { exact: false })).toBeVisible();
+  await doc.capture(
+    'preview-unavailable',
+    'The Log a payment window with the note that the split could not be worked out just now, and Record it still there.',
+    {
+      focus: dialog,
+      highlight: dialog.getByText('I could not work out the split', { exact: false }),
+    },
+  );
+});
+
+test('@doc setting your own order', async ({ page, doc }) => {
+  doc.guide('choose-how-to-clear-your-debts');
+
+  await page.goto('/debt-plan');
+  await expect(page.getByRole('heading', { name: 'Debt plan', level: 1 })).toBeVisible();
+
+  const orders = page.getByRole('group', { name: 'Order of attack' });
+  await doc.capture(
+    'own-order-button',
+    'The Order of attack card with Your own order circled.',
+    { highlight: orders.getByRole('button', { name: /Your own order/ }), step: 1 },
+  );
+
+  await orders.getByRole('button', { name: /Your own order/ }).click();
+  await expect(page.getByRole('button', { name: /Your own order/, pressed: true })).toBeVisible();
+
+  await doc.capture(
+    'own-order-chosen',
+    'The top of the page after choosing Your own order: the saved message and the Order of attack card with Your own order in use.',
+    {},
+  );
+
+  await doc.capture(
+    'own-order-compare',
+    'The Avalanche or snowball card with a line above the two cards saying what your own order costs.',
+    { focus: card(page, 'Avalanche or snowball') },
+  );
+
+  await doc.capture(
+    'own-order-chart',
+    'The Balance to zero card under Your own order before anything is moved: one line keyed to all three orders.',
+    { focus: card(page, 'Balance to zero') },
+  );
+
+  const list = card(page, 'Your debts');
+  // Into view BEFORE the capture: the ring is drawn fixed to the viewport, and a focused shot that
+  // has to scroll to reach its element leaves the ring behind on whatever was there before.
+  await list.scrollIntoViewIfNeeded();
+  await doc.capture(
+    'own-order-moves',
+    'The Your debts table with Move up and Move down on each row, Move up on Car loan circled.',
+    {
+      focus: list,
+      highlight: list.getByRole('button', { name: 'Move up: Car loan' }),
+      step: 2,
+    },
+  );
+
+  // The what-if (+$50 a month) after the move is the generator's projection for THIS order
+  // (DemoFixtureIT, keyed "… CUSTOM <order>"), so the line the page shows is the server's.
+
+  // One move: the car loan to rung 1. Visa, Car, Student becomes Car, Visa, Student — an order the
+  // generator produced, so every figure after it is the server's for that order.
+  await list.getByRole('button', { name: 'Move up: Car loan' }).click();
+  await expect(card(page, 'Avalanche or snowball')).toContainText('$3,810.20');
+
+  await doc.capture(
+    'own-order-moved',
+    'The Your debts table after moving Car loan up: Car loan on rung 1 with the extra, Visa on rung 2, and new dates.',
+    { focus: list },
+  );
+
+  await doc.capture(
+    'own-order-moved-compare',
+    'The Avalanche or snowball card after the move: the line above the cards with the new debt-free month and interest, and the two cards unchanged.',
+    { focus: card(page, 'Avalanche or snowball') },
+  );
+
+  await doc.capture(
+    'own-order-moved-chart',
+    'The Balance to zero card after the move: your own order drawn as its own line beside avalanche and snowball.',
+    { focus: card(page, 'Balance to zero') },
+  );
+});
+
+test('@doc your own order as a viewer', async ({ page, doc }) => {
+  doc.guide('choose-how-to-clear-your-debts');
+  await mockApi(page, { session: 'viewer' });
+
+  // A viewer cannot choose an order, so the household's — set by an owner or member — is served
+  // straight from the generated responses for that order. On the path: the list carries a query.
+  const order = 'deb-0002,deb-0001,deb-0003';
+  await page.route(
+    (url) => url.pathname === '/api/debts',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(DEBT_API[`GET /api/debts CUSTOM ${order}`]),
+      }),
+  );
+  await page.route(
+    (url) => url.pathname === '/api/debt-plan',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(DEBT_API[`PUT /api/debt-plan CUSTOM ${order}`]),
+      }),
+  );
+
+  await page.goto('/debt-plan');
+  await expect(page.getByRole('heading', { name: 'Debt plan', level: 1 })).toBeVisible();
+  await doc.capture(
+    'viewer-own-order',
+    'The Your debts table as a viewer when the household uses its own order: the order in a sentence, and no Move up or Move down.',
+    { focus: card(page, 'Your debts') },
   );
 });
 

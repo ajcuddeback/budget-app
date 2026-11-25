@@ -95,7 +95,7 @@
     "guide": "add-a-debt",
     "caption": "The Your debts card with the Add a debt button beside its heading.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -104,7 +104,7 @@
     "guide": "add-a-debt",
     "caption": "Balance now filled in with 1240.00 and the date that balance was true set, with the hint that it comes off the statement.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -113,7 +113,7 @@
     "guide": "add-a-debt",
     "caption": "The bill that pays its minimum, set to Car payment, with the note that saying which bill means the minimum is counted once.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -122,7 +122,7 @@
     "guide": "add-a-debt",
     "caption": "The Edit terms window for a debt that already exists, with the Work the rate out for me tick box and its note above the annual rate.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -131,7 +131,7 @@
     "guide": "add-a-debt",
     "caption": "The Debt plan page with no debts: Nothing owed here yet, what a debt is, the note about a minimum that is already a bill, and an Add a debt button.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -140,7 +140,7 @@
     "guide": "add-a-debt",
     "caption": "The Add a debt window: What you call it, Kind, Who you owe it to, Balance now and the date that balance was true.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -149,7 +149,7 @@
     "guide": "add-a-debt",
     "caption": "Annual rate set to 29.9 and Minimum payment set to 45, each with its hint underneath.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -482,7 +482,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields: Issuer URL, Client ID, Client secret saying \"No secret set.\", and the account-creation box.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -491,7 +491,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields filled in, with the client secret hidden as dots.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -500,7 +500,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on box on the Signing in block, unticked, with no provider fields showing.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -527,7 +527,7 @@
     "guide": "choose-how-people-sign-in",
     "caption": "The saved Single sign-on settings: the client secret box empty again, with \"A secret is set.\" beneath it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -545,7 +545,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card: one line per order of attack, the assumption underneath, and the headline saying what is left to clear and the debt-free month.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -554,7 +554,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The strip at the top of the page: what is committed to debt each month and how much of it is strategic, with Change the monthly amount beside it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -563,7 +563,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card: two cards side by side, each with its reasoning, its debt-free month, when the first debt goes and the interest along the way, then the sentence that compares them.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -572,7 +572,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table: rung, debt, balance, rate, progress, when it clears and what it is paying, with Open and Edit terms on each row.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -581,7 +581,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The line at the foot of the page saying the minimums are each counted once in Bills and income.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -590,7 +590,79 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "Towards debt each month opened for editing, with the amount in a box, its hint, and Save and Cancel beside it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-button",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-button.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Order of attack card with Your own order circled.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-chart",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-chart.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Balance to zero card under Your own order before anything is moved: one line keyed to all three orders.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-chosen",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-chosen.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The top of the page after choosing Your own order: the saved message and the Order of attack card with Your own order in use.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-compare",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-compare.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Avalanche or snowball card with a line above the two cards saying what your own order costs.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-moved",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Your debts table after moving Car loan up: Car loan on rung 1 with the extra, Visa on rung 2, and new dates.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-moved-chart",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-chart.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Balance to zero card after the move: your own order drawn as its own line beside avalanche and snowball.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-moved-compare",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-compare.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Avalanche or snowball card after the move: the line above the cards with the new debt-free month and interest, and the two cards unchanged.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--own-order-moves",
+    "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moves.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Your debts table with Move up and Move down on each row, Move up on Car loan circled.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -599,7 +671,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page: the monthly commitment, the order of attack, the balance-to-zero chart, the two orders compared, and the table of debts.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -608,7 +680,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Order of attack card with Avalanche, Snowball and Your own order as three buttons, Avalanche in use.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -617,7 +689,16 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page for someone whose role is Viewer: every figure and every date, and nothing to click.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "choose-how-to-clear-your-debts--viewer-own-order",
+    "file": "userguide/images/choose-how-to-clear-your-debts--viewer-own-order.png",
+    "guide": "choose-how-to-clear-your-debts",
+    "caption": "The Your debts table as a viewer when the household uses its own order: the order in a sentence, and no Move up or Move down.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -626,7 +707,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The Balance now card for an estimated balance: the figure, the words estimated — not confirmed, and a Confirm the balance button.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -635,7 +716,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The buttons under the debt name, with Confirm the balance beside Log a payment and Edit terms.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -644,7 +725,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The same window after Correct it: What the statement says filled in, the date it was true, and the note that a disagreement is recorded as a correction.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -653,7 +734,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The foot of the Loan terms card, saying the balance is an estimate rolled forward from the figure last confirmed, with the minimum assumed paid and the interest added.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -662,7 +743,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The Balance over time card with no chart, saying there is no line to draw because the payment is less than the interest the balance builds up.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -671,7 +752,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The Is this still right? window: the estimate, what it assumed, what was last confirmed, and the buttons Confirm, Correct it and Cancel.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -680,7 +761,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The Balance now card for a balance estimated for over a year: the last confirmed figure, the words last confirmed over a year ago, and the sentence asking for a statement.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -689,7 +770,7 @@
     "guide": "confirm-what-you-owe",
     "caption": "The Time for a statement window: the last figure confirmed, how many months it has been, and the buttons underneath.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -887,7 +968,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Balance now card: the figure, when it was confirmed, and how much has been paid off so far.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -896,7 +977,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Payment history table: date, paid, interest, principal, balance after and how each row got here, with the compounding rule underneath.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -905,7 +986,16 @@
     "guide": "log-a-debt-payment",
     "caption": "The two buttons under the debt name: Log a payment and Edit terms.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-a-debt-payment--note",
+    "file": "userguide/images/log-a-debt-payment--note.png",
+    "guide": "log-a-debt-payment",
+    "caption": "The Note box at the foot of the window, above Record it and Cancel.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -914,7 +1004,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Balance over time card: what you are paying against the at-the-minimum comparison line, with the sentence saying what the extra is buying.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -923,7 +1013,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The page for one debt: its name, the loan terms, the balance now, the balance over time and the payment history.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -932,7 +1022,34 @@
     "guide": "log-a-debt-payment",
     "caption": "The Paid from box, with the note that nothing is recorded against that account and no transaction is created.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-a-debt-payment--preview",
+    "file": "userguide/images/log-a-debt-payment--preview.png",
+    "guide": "log-a-debt-payment",
+    "caption": "The line under Amount paid giving the interest, the principal and the balance after for the amount in the box.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-a-debt-payment--preview-extra",
+    "file": "userguide/images/log-a-debt-payment--preview-extra.png",
+    "guide": "log-a-debt-payment",
+    "caption": "Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "log-a-debt-payment--preview-unavailable",
+    "file": "userguide/images/log-a-debt-payment--preview-unavailable.png",
+    "guide": "log-a-debt-payment",
+    "caption": "The Log a payment window with the note that the split could not be worked out just now, and Record it still there.",
+    "capturedAt": "2026-11-25",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -941,25 +1058,16 @@
     "guide": "log-a-debt-payment",
     "caption": "The banner after recording a payment, naming how much went on interest, how much came off the balance, and the balance now.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
     "name": "log-a-debt-payment--sheet",
     "file": "userguide/images/log-a-debt-payment--sheet.png",
     "guide": "log-a-debt-payment",
-    "caption": "The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, Date paid, Paid from and Note.",
+    "caption": "The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, the split that amount would record, Date paid, Paid from and Note.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
-    "viewport": "1280x720"
-  },
-  {
-    "name": "log-a-debt-payment--split-note",
-    "file": "userguide/images/log-a-debt-payment--split-note.png",
-    "guide": "log-a-debt-payment",
-    "caption": "The foot of the window: a Note box, and the line saying Budget Owl works out how much went on interest and how much came off the balance and shows both the moment it is recorded.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -968,7 +1076,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Loan terms card: what it started at, the balance now, the annual rate, the minimum payment, what you are paying, months left, when it is gone and the interest still to come, with Solved and From your plan tags.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1202,7 +1310,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Amount that left holding 250.00, with the hint underneath saying it is in USD, the currency of the account it leaves, and that there is no minus sign.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1247,7 +1355,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Into set to Emergency Fund (USD), with the Into list circled, below Out of set to Everyday Checking (USD).",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1256,7 +1364,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with the Move money button, beside Record a transaction, circled.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1265,7 +1373,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with a Money moved. banner above the list.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1283,7 +1391,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The lower half of the window, reached by scrolling inside it: Date, then Note with a hint saying it is optional and both halves of the transfer get it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1301,7 +1409,7 @@
     "guide": "move-money-between-accounts",
     "caption": "Out of set to Everyday Checking (USD), with the Out of list circled. Every account in the list is followed by its currency.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1319,7 +1427,7 @@
     "guide": "move-money-between-accounts",
     "caption": "The Move money between your accounts window as it opens: a note saying a transfer has no category and nobody to pay, then Out of, Into, Amount that left, Date and Note.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1418,7 +1526,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Envelopes card at the foot of the page: what is set aside this month, and an Open envelopes button.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1427,7 +1535,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The month picker at the top of the page, with Previous month and Next month either side of the month name.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1436,7 +1544,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Owed card: owed in all, the minimums a month, how many debts, and the note saying which part of the minimums comes off what is left.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1445,7 +1553,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Bills & income page: the month picker, what is left this month, income, bills and envelopes.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1454,7 +1562,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The same card showing a negative figure labelled short this month, with a note under it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1463,7 +1571,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The page for someone whose role is Viewer: every figure and every bill, and nothing to click.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {
@@ -1472,7 +1580,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The What’s left this month card: one figure, with income expected, bills this month, set aside in envelopes and still to pay beneath it.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "a3694a7",
     "viewport": "1280x720"
   },
   {

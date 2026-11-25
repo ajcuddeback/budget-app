@@ -796,7 +796,7 @@
   "bills.owed.none": "No debts recorded, so nothing here comes off what is left.",
   "bills.owed.open": "Open the debt plan",
   "bills.owed.asOfToday": "These two totals and the count are as they stand today, not as they stood in the month shown — a balance as at a past month would need a day-by-day ledger Budget Owl does not keep.",
-  "debt.chart.coincide": "{lines} are one line here — over this plan these orders stay closer together than the chart can draw. The cards below give each one's own figures.",
+  "debt.chart.coincide": "One line here stands for all of these orders: {lines}. Over this plan they stay closer together than the chart can draw. The cards below give each one's own figures.",
   "title.debtDetail": "Debt",
   "debt.monthlyAmount": "Towards debt each month",
   "debt.monthlyAmountHint": "What you put against your debts in all, minimums included. Every date on this page is worked out from it.",

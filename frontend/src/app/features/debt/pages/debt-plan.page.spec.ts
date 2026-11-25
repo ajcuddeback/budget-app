@@ -578,7 +578,7 @@ describe('DebtPlanPage', () => {
     expect(root.querySelectorAll('polyline')).toHaveLength(1);
     // One key naming both, and the explanation as prose beside it.
     expect(root.querySelector('.chart-legend')?.textContent?.trim()).toBe('Avalanche · Snowball');
-    expect(text(fixture)).toContain('are one line here');
+    expect(text(fixture)).toContain('One line here stands for all of these orders');
     // And each strategy's own figures are still on the cards and in the text alternative.
     expect(text(fixture)).toContain('£3,120.00');
     expect(text(fixture)).toContain('£3,900.00');
@@ -605,7 +605,7 @@ describe('DebtPlanPage', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     expect(root.querySelectorAll('polyline')).toHaveLength(2);
-    expect(text(fixture)).not.toContain('are one line here');
+    expect(text(fixture)).not.toContain('One line here stands for all of these orders');
   });
 
   it('shows progress only when there is a starting balance to measure it against', async () => {

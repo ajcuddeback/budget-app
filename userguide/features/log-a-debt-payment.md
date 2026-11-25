@@ -1,8 +1,8 @@
 # Log a payment against a debt
 
 When you've paid a lender, write it down here. Budget Owl works out how much of it went on interest
-and how much actually came off the balance, and keeps a row for every payment so the balance has a
-history rather than being a figure somebody typed.
+and how much actually came off the balance, and shows you that before you record it. It keeps a row
+for every payment, so the balance has a history rather than being a figure somebody typed.
 
 **Logging a payment doesn't touch your accounts.** It moves no money and creates no transaction —
 Budget Owl never claims money moved on your behalf. If you want the payment in your own records as
@@ -24,39 +24,64 @@ well, [record it as a transaction](record-a-transaction.md).
 
 3. Check **Amount paid**.
 
-   ![The Log a payment to Visa window: Amount paid filled in with 445, two one-tap alternatives beneath it, then Date paid and Paid from.](../images/log-a-debt-payment--sheet.png)
+   ![The Log a payment to Visa window: Amount paid filled in with 445, the buttons $445.00 — what is scheduled and $495.00 beneath it, then Date paid and Paid from.](../images/log-a-debt-payment--sheet.png)
 
    It's filled in with what your plan puts against this debt. Change it if you paid something else.
    The two buttons underneath fill the box for you: **$445.00 — what is scheduled**, and **$495.00**
    — fifty more, for a month you can put a bit extra at it.
 
-4. Change **Date paid** if it wasn't today.
+4. Read the split, the line just under the two buttons.
 
-5. Choose the account the money left, in **Paid from**.
+   ![The Log a payment window with 445 in Amount paid, and the line $117.94 interest · $327.06 principal · balance after $5,852.94 circled, just under the two buttons.](../images/log-a-debt-payment--preview.png)
 
-   ![The Paid from box circled, with the note that nothing is recorded against that account and no transaction is created.](../images/log-a-debt-payment--paid-from.png)
+   Before you record anything, Budget Owl shows what this amount would do: how much goes on
+   interest, how much comes off the balance, and what the balance will be afterwards. For $445.00
+   against this card it reads **$117.94 interest · $327.06 principal · balance after $5,852.94**.
+   Interest and principal always add up to exactly the amount in the box.
+
+   The split follows the amount. If you type a different figure, it updates once you stop typing.
+   If you select one of the buttons, it updates straight away:
+
+   ![The same window after selecting $495.00: Amount paid now 495, and the line underneath reading $117.94 interest · $377.06 principal · balance after $5,802.94.](../images/log-a-debt-payment--preview-extra.png)
+
+   The interest stays at $117.94, because it's worked out on the balance you owe now. All of the
+   extra $50.00 comes off the balance.
+
+5. Change **Date paid** if it wasn't today.
+
+6. Choose the account the money left, in **Paid from**.
+
+   ![The Paid from box circled, set to Somewhere I do not track, with the note that nothing is recorded against that account and no transaction is created.](../images/log-a-debt-payment--paid-from.png)
 
    **Nothing is written to that account.** Its balance does not move, and no transaction appears in
    your ledger. All this does is remember where the money came from, so that a real charge can be
    matched to this payment later. **Somewhere I do not track** is a perfectly good answer.
 
-6. Add a **Note** if you want one.
+7. Add a **Note** if you want one.
 
-   ![The foot of the window: a Note box, and the line saying Budget Owl works out how much went on interest and how much came off the balance.](../images/log-a-debt-payment--split-note.png)
+   ![The Note box circled, with the split line underneath it and Record it and Cancel at the foot of the window.](../images/log-a-debt-payment--note.png)
 
-7. Select **Record it**.
+8. Select **Record it**.
 
-   ![A banner reading Payment recorded: $123.73 interest, $321.27 principal. Balance now $6,162.62.](../images/log-a-debt-payment--recorded.png)
+   ![A banner reading Payment recorded: $117.94 interest · $327.06 principal. Balance now $5,852.94.](../images/log-a-debt-payment--recorded.png)
 
-   The banner tells you the split Budget Owl worked out and what the balance is now. The payment
-   appears at the top of **Payment history**, and the balance on the page has already changed to
-   match.
+   The banner gives you the same split you saw in step 4, and the balance now. The payment appears
+   at the top of **Payment history**, and the balance on the page has already changed to match.
 
 ## What you'll see
 
-**The split is the server's arithmetic, not a guess in your browser.** Budget Owl doesn't show you
-an interest figure before the payment is recorded — it tells you what it's going to do, then reports
-what it did. That way there is only ever one version of the sum.
+**The split you see before recording is the split that gets recorded.** Both come from the same sum,
+worked out by Budget Owl on your server, so the figures in the window and in the banner afterwards
+are always the same.
+
+**If the split can't be shown, you can still record the payment.** Sometimes Budget Owl can't work
+the split out in time — for example, if the connection to your server drops for a moment. The
+window then says so in place of the figures:
+
+![The Log a payment window with the note I could not work out the split just now. You can still record the payment — the interest and the principal will be shown on it once it is., circled, and Record it below it.](../images/log-a-debt-payment--preview-unavailable.png)
+
+Select **Record it** as usual. The split is worked out when the payment is recorded, and you'll see
+it in the banner and in **Payment history**.
 
 ![The Payment history table: date, paid, interest, principal, balance after, and how each row got here — six You logged it rows and one Statement correction.](../images/log-a-debt-payment--history.png)
 
@@ -126,9 +151,18 @@ balance, [record a transaction](record-a-transaction.md).
 The rest went on interest. The **Interest** and **Principal** columns in the history show the split
 for every payment, and the two always add up to exactly what you paid.
 
+**"I can't see the split."**
+It's the line just under **Amount paid** and its two buttons. If the box is empty or holds something that isn't an amount yet, such as `4.`,
+there's no split to show until you finish typing.
+
+**"It says it could not work out the split."**
+Record the payment anyway. The split is worked out when it's recorded, and you'll see it in the
+banner and in **Payment history**.
+
 **"The interest figure isn't what my lender charged."**
-It won't be, to the penny. Budget Owl uses the balance times the annual rate divided by twelve,
-which is simple enough to check with a calculator; real lenders work it out daily and bill on
+It may be close, but don't expect it to match exactly. Budget Owl uses the balance times the annual
+rate divided by twelve, rounded to the cent as a statement is. That's simple enough to check with a
+calculator; real lenders work it out daily and bill on
 statement cycles. When a statement disagrees, the statement wins —
 [Confirm what you owe](confirm-what-you-owe.md).
 
