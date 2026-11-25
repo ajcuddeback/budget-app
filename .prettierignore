@@ -4,3 +4,14 @@
 # bytes to something fuzzier. Regenerate it; never edit or reformat it.
 tools/ui/fixtures/debt-api.generated.ts
 tools/ui/fixtures/debt-states.generated.ts
+
+# Prose, not code. The .claude/hooks/format-changed.sh hook runs `prettier --write` on every .md
+# the Write/Edit tools touch, and on these trees it did damage rather than tidying:
+#  - it rewrote every *italic* to _italic_ and re-padded every table, so a one-line edit to a
+#    feature doc became a 490-line diff nobody could review;
+#  - it CORRUPTED content — a wrapped line beginning "+ $260 extra" was read as a list bullet and
+#    rewritten to "- $260 extra", splitting a sentence into a list item.
+# The gate's format check covers frontend/src only, and the house style of these docs is the one
+# prettier rewrites. Remove these two lines only after reconciling the two styles, not before.
+docs/
+userguide/
