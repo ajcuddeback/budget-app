@@ -1,3 +1,5 @@
+import { Transaction } from './transaction.models';
+
 /**
  * A transfer: money moving between two of the household's own accounts.
  *
@@ -25,8 +27,15 @@ export interface Transfer {
   fromAccountName: string;
   toAccountId: string;
   toAccountName: string;
-  /** A calendar date, `YYYY-MM-DD`. Both legs carry it. */
-  date: string;
+  /**
+   * The outgoing leg's date, `YYYY-MM-DD`, and {@link toDate} the incoming leg's.
+   *
+   * **Each leg keeps its own** (file-import.md rule 12). A transfer made with *Move money* has the
+   * same date on both; two statement rows paired into a transfer usually cleared on different
+   * days, and each bank's date is the true one, so nothing rewrites either.
+   */
+  fromDate: string;
+  toDate: string;
   /** What left, unsigned, in {@link sentCurrency}. */
   sent: string;
   sentCurrency: string;
@@ -42,7 +51,9 @@ export interface Transfer {
    * had a fee inside it, which is exactly why the household supplies both figures instead.
    */
   impliedRate: string | null;
-  note: string | null;
+  /** The outgoing leg's note, and {@link toNote} the incoming leg's — the same, unless paired. */
+  fromNote: string | null;
+  toNote: string | null;
   createdAt: string;
   updatedAt: string;
   /**
@@ -79,10 +90,23 @@ export interface CreateTransferRequest {
 export interface UpdateTransferRequest {
   /** Required: optimistic locking only works if the caller says which version it read. */
   version: number;
+  /** Absent leaves each leg's date alone; a value moves both legs to it. */
   date?: string;
   amount?: string;
   /** Carried on **every** write to a cross-currency pair, changed or not — see the patch builder. */
   amountReceived?: string;
-  /** Absent leaves it alone, `null` clears it, a value sets it. */
+  /** Absent leaves both legs' notes alone, `null` clears both, a value sets both. */
   note?: string | null;
+}
+
+/** Pairs the row in the path with `withTransactionId`. Both versions are the ones the caller read. */
+export interface PairTransactionRequest {
+  withTransactionId: string;
+  version: number;
+  withVersion: number;
+}
+
+/** The two rows a split leaves behind, as the ledger sends them. */
+export interface SplitTransferResponse {
+  transactions: Transaction[];
 }

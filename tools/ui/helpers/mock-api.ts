@@ -787,13 +787,15 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         fromAccountName: from?.name ?? DEMO_TRANSFER.fromAccountName,
         toAccountId: to?.id ?? DEMO_TRANSFER.toAccountId,
         toAccountName: to?.name ?? DEMO_TRANSFER.toAccountName,
-        date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+        fromDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.fromDate,
+        toDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.toDate,
         sent,
         sentCurrency: from?.currency ?? 'USD',
         received,
         receivedCurrency: to?.currency ?? 'USD',
         crossCurrency: (from?.currency ?? 'USD') !== (to?.currency ?? 'USD'),
-        note: (field('note') as string | undefined) ?? null,
+        fromNote: (field('note') as string | undefined) ?? null,
+        toNote: (field('note') as string | undefined) ?? null,
       });
     }
     const transfer = /^\/api\/transfers\/([^/]+)$/.exec(url.pathname);
@@ -805,11 +807,16 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         const sent = (field('amount') as string | undefined) ?? DEMO_TRANSFER.sent;
         return json(route, 200, {
           ...DEMO_TRANSFER,
-          date: (field('date') as string | undefined) ?? DEMO_TRANSFER.date,
+          // Only what was sent is written: an absent date leaves each leg's own alone.
+          fromDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.fromDate,
+          toDate: (field('date') as string | undefined) ?? DEMO_TRANSFER.toDate,
           sent,
           // Within one currency the legs are equal, and the real API refuses a second figure here.
           received: (field('amountReceived') as string | undefined) ?? sent,
-          note: field('note') === undefined ? DEMO_TRANSFER.note : (field('note') as string | null),
+          fromNote:
+            field('note') === undefined ? DEMO_TRANSFER.fromNote : (field('note') as string | null),
+          toNote:
+            field('note') === undefined ? DEMO_TRANSFER.toNote : (field('note') as string | null),
           // The pair's version moves by two: both legs are written together.
           version: DEMO_TRANSFER.version + 2,
         });

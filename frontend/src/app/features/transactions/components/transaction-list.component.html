@@ -9,7 +9,9 @@
                    reads as data somebody forgot to enter. -->
               {{ transferDirectionKey(transaction) | t }}
             } @else if (transaction.payeeName) {
-              {{ transaction.payeeName }}
+              <!-- Isolated: an imported payee can carry right-to-left overrides, and they must not
+                   reorder the amount beside it. -->
+              <bdi dir="auto">{{ transaction.payeeName }}</bdi>
             } @else {
               <span class="unnamed">{{ 'transactions.noPayee' | t }}</span>
             }
@@ -87,6 +89,16 @@
               >
                 {{ 'common.edit' | t }}
               </button>
+              <!-- Undoes a pair, however it was made: nothing records whether it came from
+                   Move money or from two statement rows (file-import.md rule 12). -->
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="splitRequested.emit(transaction)"
+              >
+                {{ 'transactions.split' | t }}
+              </button>
               <button
                 type="button"
                 class="btn btn-danger btn-small"
@@ -118,6 +130,14 @@
               (click)="editRequested.emit(transaction)"
             >
               {{ 'common.edit' | t }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              [disabled]="busyId() === transaction.id"
+              (click)="pairRequested.emit(transaction)"
+            >
+              {{ 'transactions.pair' | t }}
             </button>
             <button
               type="button"

@@ -16,7 +16,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ApiError } from '../../../core/api-error';
-import { RatePipe } from '../../../core/i18n/format.pipes';
+import { DateOnlyPipe, RatePipe } from '../../../core/i18n/format.pipes';
 import { MessageKey } from '../../../core/i18n/messages';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { ErrorAlertComponent } from '../../../shared/components/error-alert.component';
@@ -62,6 +62,7 @@ const NOTE_MAX_LENGTH = 500;
     ReactiveFormsModule,
     TranslatePipe,
     RatePipe,
+    DateOnlyPipe,
     ModalDirective,
     FieldErrorComponent,
     ErrorAlertComponent,
@@ -88,6 +89,21 @@ export class TransferDialogComponent {
   readonly closed = output<void>();
 
   protected readonly editing = computed(() => this.transfer() !== null);
+
+  /**
+   * The two legs' dates and notes, when they differ — a pair made from two statement rows. The
+   * sheet edits one date and one note for both, so it says what each leg holds now rather than
+   * showing only the outgoing one and letting a save silently align them.
+   */
+  protected readonly legsDiffer = computed(() => {
+    const existing = this.transfer();
+    if (!existing) {
+      return null;
+    }
+    const dates = existing.fromDate !== existing.toDate;
+    const notes = (existing.fromNote ?? '') !== (existing.toNote ?? '');
+    return dates || notes ? { dates, notes, transfer: existing } : null;
+  });
   protected readonly titleKey = computed<MessageKey>(() =>
     this.editing() ? 'transfers.editTitle' : 'transfers.addTitle',
   );

@@ -39,6 +39,9 @@
                 {{ 'transfers.move' | t }}
               </button>
             }
+            <a class="btn btn-secondary" routerLink="/import">
+              {{ 'transactions.importStatement' | t }}
+            </a>
           </div>
         }
       </div>
@@ -170,6 +173,8 @@
             (deleteRequested)="askToDelete($event)"
             (transferEditRequested)="openTransferEdit($event)"
             (transferDeleteRequested)="askToDeleteTransfer($event)"
+            (pairRequested)="openPair($event)"
+            (splitRequested)="askToSplit($event)"
           />
 
           <div class="cluster ledger-foot">
@@ -243,6 +248,35 @@
     [error]="transferError()"
     (submitted)="submitTransfer($event)"
     (closed)="closeTransferDialog()"
+  />
+}
+
+@if (pairTarget(); as row) {
+  <app-pair-dialog
+    [row]="row"
+    [accounts]="accounts()"
+    [candidates]="pairCandidates()"
+    [filter]="pairFilter()"
+    [loading]="pairLoading()"
+    [busy]="pairBusy()"
+    [error]="pairError()"
+    [hasPrevious]="pairHasPrevious()"
+    [hasNext]="pairHasNext()"
+    (filterChanged)="changePairFilter($event)"
+    (pageRequested)="pagePair($event)"
+    (paired)="confirmPair($event)"
+    (closed)="closePair()"
+  />
+}
+
+@if (splitConfirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmSplit()"
+    (cancelled)="cancelSplit()"
   />
 }
 

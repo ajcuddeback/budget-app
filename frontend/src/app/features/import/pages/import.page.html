@@ -1,0 +1,332 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'import.title' | t }}</h1>
+    <p class="page-lede">{{ 'import.lede' | t }}</p>
+  </div>
+
+  <!-- Announces the preview being worked out and finished, for anybody who cannot see the button
+       go quiet. Always in the DOM, so the change is what gets read out. -->
+  <p class="visually-hidden" role="status" aria-live="polite">
+    @if (status(); as said) {
+      {{ said | t }}
+    }
+  </p>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (!canWrite()) {
+    <!-- Not a form that will be refused: a viewer is told plainly. The server's 403 is the
+         control; this is the courtesy. -->
+    <section class="card" aria-labelledby="import-viewer-heading" data-testid="import-viewer">
+      <h2 class="card-title" id="import-viewer-heading">{{ 'import.viewerHeading' | t }}</h2>
+      <p class="card-note">{{ 'import.viewerBody' | t }}</p>
+    </section>
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else if (openAccounts().length === 0) {
+    <section class="card">
+      <p class="card-note">{{ 'import.noAccountsBody' | t }}</p>
+      <div>
+        <a class="btn btn-primary" routerLink="/accounts">{{ 'import.goToAccounts' | t }}</a>
+      </div>
+    </section>
+  } @else if (done(); as batch) {
+    <section class="card" aria-labelledby="import-done-heading" data-testid="import-done">
+      <div class="alert alert-success" role="status">
+        <p id="import-done-heading">
+          <strong>
+            {{
+              'import.done'
+                | t: { count: batch.imported, account: accountLabel() || batch.accountName }
+            }}
+          </strong>
+        </p>
+        <p>{{ 'import.doneDetail' | t }}</p>
+      </div>
+      <div class="cluster">
+        <a
+          class="btn btn-primary"
+          routerLink="/transactions"
+          [queryParams]="{ accountId: batch.accountId }"
+        >
+          {{ 'import.viewLedger' | t }}
+        </a>
+        <button type="button" class="btn btn-secondary" (click)="startOver()">
+          {{ 'import.another' | t }}
+        </button>
+        @if (batch.removable > 0) {
+          <button type="button" class="btn btn-danger" (click)="askToUndo(batch)">
+            {{ 'import.undo' | t }}
+          </button>
+        }
+      </div>
+      <app-error-alert [error]="undoError()" />
+    </section>
+  } @else {
+    @if (undone() !== null) {
+      <div class="alert alert-success" role="status">
+        <p>{{ 'import.undone' | t: { count: undone() ?? 0 } }}</p>
+      </div>
+    }
+
+    <section class="card" aria-labelledby="import-step-file">
+      <h2 class="card-title" id="import-step-file">
+        <span class="step-number" aria-hidden="true">1</span>
+        {{ 'import.stepFile' | t }}
+      </h2>
+
+      <div class="stack">
+        <div class="field">
+          <label for="import-account">{{ 'import.account' | t }}</label>
+          <select
+            id="import-account"
+            class="input"
+            [value]="selectedAccountId()"
+            (change)="chooseAccount($any($event.target).value)"
+          >
+            <option value="">{{ 'import.chooseAccount' | t }}</option>
+            @for (account of openAccounts(); track account.id) {
+              <option [value]="account.id" [selected]="account.id === selectedAccountId()">
+                {{ labelOf(account) }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <!-- The native input is the way in; the drop zone is an enhancement around it, never the
+             only door. -->
+        <div
+          class="dropzone"
+          [class.is-dragging]="dragging()"
+          (dragover)="dragOver($event)"
+          (dragleave)="dragLeave()"
+          (drop)="dropped($event)"
+        >
+          <div class="field">
+            <label for="import-file">{{ 'import.file' | t }}</label>
+            <input
+              id="import-file"
+              class="input"
+              type="file"
+              accept=".csv,.ofx,.qfx,.qif"
+              aria-describedby="import-file-hint"
+              (change)="fileChosen($event)"
+            />
+            <p class="field-hint" id="import-file-hint">
+              {{ 'import.fileHint' | t }} {{ 'import.dropHint' | t }}
+            </p>
+            @if (file()) {
+              <p class="field-hint">{{ 'import.chosenFile' | t: { size: fileSize() } }}</p>
+            }
+            @if (fileProblem(); as problem) {
+              <p class="field-error" role="alert">{{ problem | t }}</p>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="import-format">{{ 'import.format' | t }}</label>
+          <select
+            id="import-format"
+            class="input"
+            aria-describedby="import-format-hint"
+            [value]="format()"
+            (change)="chooseFormat($any($event.target).value)"
+          >
+            <option value="">{{ 'import.chooseFormat' | t }}</option>
+            @for (option of formats; track option) {
+              <option [value]="option" [selected]="option === format()">
+                {{ formatLabels[option] | t }}
+              </option>
+            }
+          </select>
+          <p class="field-hint" id="import-format-hint">{{ 'import.formatHint' | t }}</p>
+        </div>
+
+        @if (!preview()) {
+          <app-error-alert [error]="error()" />
+          <div class="cluster">
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="!canPreview()"
+              (click)="runPreview()"
+            >
+              {{ (busy() === 'preview' ? 'import.working' : 'import.preview') | t }}
+            </button>
+            <p class="field-hint">{{ 'import.nothingWritten' | t }}</p>
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (preview(); as current) {
+      @if (showsMapping()) {
+        <section class="card" aria-labelledby="import-step-mapping" data-testid="import-mapping">
+          <h2 class="card-title" id="import-step-mapping">
+            <span class="step-number" aria-hidden="true">2</span>
+            {{ 'import.stepMapping' | t }}
+          </h2>
+          <app-import-mapping
+            [preview]="current"
+            [format]="current.format"
+            [settings]="settings()"
+            [fromSaved]="fromSaved()"
+            [busy]="busy() !== null"
+            (settingsChange)="settingsChanged($event)"
+            (updateRequested)="updatePreview()"
+          />
+          @if (!current.counts) {
+            <app-error-alert [error]="error()" />
+          }
+        </section>
+      }
+
+      @if (current.counts) {
+        <section class="card" aria-labelledby="import-step-preview" data-testid="import-preview">
+          <h2 class="card-title" id="import-step-preview">
+            <span class="step-number" aria-hidden="true">{{ showsMapping() ? 3 : 2 }}</span>
+            {{ 'import.stepPreview' | t }}
+          </h2>
+
+          @if (stale(); as notice) {
+            <div class="alert" role="alert" data-testid="import-stale">
+              <p>{{ 'import.stale' | t }}</p>
+              @if (notice.newlyDuplicate > 0) {
+                <p>{{ 'import.staleDuplicates' | t: { count: notice.newlyDuplicate } }}</p>
+              }
+            </div>
+          }
+
+          <div [class.is-out-of-date]="outOfDate()">
+            <app-import-preview
+              [preview]="current"
+              [included]="included()"
+              [accountLabel]="accountLabel()"
+              (toggled)="toggle($event)"
+              (includeAllRequested)="includeAll()"
+              (excludeAllRequested)="excludeAll()"
+            />
+          </div>
+
+          <div class="stack confirm">
+            <app-error-alert [error]="error()" />
+
+            @if (current.format === 'CSV' && !outOfDate()) {
+              <label class="checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="saveMapping()"
+                  (change)="saveMapping.set($any($event.target).checked)"
+                  aria-describedby="import-save-mapping-hint"
+                />
+                {{ 'import.saveMapping' | t }}
+              </label>
+              <p class="field-hint" id="import-save-mapping-hint">
+                {{ 'import.saveMappingHint' | t }}
+              </p>
+            }
+
+            @if (outOfDate()) {
+              <p class="field-hint">{{ 'import.outOfDate' | t }}</p>
+            }
+
+            <div class="cluster">
+              <!-- The preview is the confirmation: the button says what it does, to which account,
+                   and there is no second dialog. -->
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-testid="import-confirm"
+                [disabled]="!ready() || toImport() === 0 || busy() !== null"
+                (click)="commit()"
+              >
+                @if (busy() === 'commit') {
+                  {{ 'import.committing' | t }}
+                } @else {
+                  {{ 'import.confirm' | t: { count: toImport(), account: accountLabel() } }}
+                }
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="startOver()">
+                {{ 'import.startOver' | t }}
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+    }
+
+    <section class="card" aria-labelledby="import-history-heading">
+      <h2 class="card-title" id="import-history-heading">{{ 'import.history' | t }}</h2>
+      <app-error-alert [error]="undoError()" />
+      @if (history().length === 0) {
+        <p class="card-note">{{ 'import.historyEmpty' | t }}</p>
+      } @else {
+        <ul class="rows">
+          @for (batch of history(); track batch.id) {
+            <li class="row">
+              <div class="row-main">
+                <span class="row-title">
+                  {{
+                    'import.historyRow'
+                      | t
+                        : {
+                            account: batch.accountName,
+                            format: (formatLabels[batch.format] | t),
+                            date: (batch.createdAt | dateTime),
+                          }
+                  }}
+                </span>
+                <span class="row-sub">
+                  {{
+                    'import.historyCounts'
+                      | t
+                        : {
+                            imported: batch.imported,
+                            duplicate: batch.duplicate,
+                            excluded: batch.excluded,
+                            unreadable: batch.unreadable,
+                          }
+                  }}
+                </span>
+              </div>
+              <div class="row-actions">
+                @if (batch.removable > 0) {
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    (click)="askToUndo(batch)"
+                  >
+                    {{ 'import.historyUndo' | t }}
+                    <span class="visually-hidden">{{ batch.accountName }}</span>
+                  </button>
+                } @else {
+                  <span class="small muted">{{ 'import.historyNothingLeft' | t }}</span>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</div>
+
+@if (undoText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    tone="destructive"
+    [busy]="undoBusy()"
+    (confirmed)="confirmUndo()"
+    (cancelled)="cancelUndo()"
+  />
+}

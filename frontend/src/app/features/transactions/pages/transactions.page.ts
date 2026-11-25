@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ApiError, asApiError } from '../../../core/api-error';
 import { AuthService } from '../../../core/auth.service';
@@ -17,6 +17,7 @@ import { CategoriesService } from '../../categories/data/categories.service';
 import { pickableCategories } from '../../categories/data/category-tree';
 import { TransactionDialogComponent } from '../components/transaction-dialog.component';
 import { TransactionListComponent } from '../components/transaction-list.component';
+import { PairDialogComponent, PairFilter } from '../components/pair-dialog.component';
 import { TransferDialogComponent } from '../components/transfer-dialog.component';
 import {
   TransactionFormValue,
@@ -90,6 +91,7 @@ interface PendingTransferDelete {
     TransactionListComponent,
     TransactionDialogComponent,
     TransferDialogComponent,
+    PairDialogComponent,
     ConfirmDialogComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -216,7 +218,15 @@ export class TransactionsPage {
     };
   });
 
+  /**
+   * `?accountId=`, from the import page's "See them in the ledger", is only a starting filter: the
+   * server scopes the query to the caller's household whatever id it is given.
+   */
   constructor() {
+    const wanted = inject(ActivatedRoute).snapshot.queryParamMap.get('accountId');
+    if (wanted) {
+      this.filterAccountId.set(wanted);
+    }
     void this.load();
   }
 
@@ -524,6 +534,150 @@ export class TransactionsPage {
       target.leg,
       () => this.transfersService.remove(target.transferGroupId),
       'transfers.deleted',
+    );
+  }
+
+  // ------------------------------------------------------------------ pairing (rule 12)
+
+  protected readonly pairTarget = signal<Transaction | null>(null);
+  protected readonly pairFilter = signal<PairFilter>({ accountId: '', from: '', to: '' });
+  protected readonly pairCandidates = signal<readonly Transaction[]>([]);
+  protected readonly pairLoading = signal(false);
+  protected readonly pairBusy = signal(false);
+  protected readonly pairError = signal<ApiError | null>(null);
+  private readonly pairPageIndex = signal(0);
+  private readonly pairTotalPages = signal(0);
+  protected readonly pairHasPrevious = computed(() => this.pairPageIndex() > 0);
+  protected readonly pairHasNext = computed(() => this.pairPageIndex() + 1 < this.pairTotalPages());
+
+  /** A transfer somebody asked to split, fetched so the split carries the pair's own version. */
+  protected readonly pendingSplit = signal<{ transfer: Transfer; leg: Transaction } | null>(null);
+
+  protected readonly splitConfirmText = computed(() => {
+    if (!this.pendingSplit()) {
+      return null;
+    }
+    return {
+      heading: this.i18n.t('pairing.splitHeading'),
+      // Says the rows come back with no category, before anything is changed.
+      message: this.i18n.t('pairing.splitMessage'),
+      action: this.i18n.t('pairing.split'),
+    };
+  });
+
+  /**
+   * Opens "This is a transfer…" for a row. The list starts unfiltered, in ledger order; nothing
+   * is suggested or preselected (rule 12).
+   */
+  protected async openPair(row: Transaction): Promise<void> {
+    this.resetTransferState();
+    this.dialog.set(null);
+    this.transferDialog.set(null);
+    this.pairError.set(null);
+    this.pairFilter.set({ accountId: '', from: '', to: '' });
+    this.pairPageIndex.set(0);
+    this.pairTarget.set(row);
+    await this.loadPairCandidates();
+  }
+
+  protected closePair(): void {
+    this.pairTarget.set(null);
+    this.pairCandidates.set([]);
+    this.pairError.set(null);
+  }
+
+  protected async changePairFilter(filter: PairFilter): Promise<void> {
+    this.pairFilter.set(filter);
+    this.pairPageIndex.set(0);
+    await this.loadPairCandidates();
+  }
+
+  protected async pagePair(step: 1 | -1): Promise<void> {
+    this.pairPageIndex.update((index) => Math.max(0, index + step));
+    await this.loadPairCandidates();
+  }
+
+  private async loadPairCandidates(): Promise<void> {
+    const filter = this.pairFilter();
+    this.pairLoading.set(true);
+    try {
+      const ledger = await firstValueFrom(
+        this.service.list({
+          accountId: filter.accountId || undefined,
+          from: filter.from || undefined,
+          to: filter.to || undefined,
+          page: this.pairPageIndex(),
+        }),
+      );
+      this.pairCandidates.set(ledger.content);
+      this.pairTotalPages.set(ledger.totalPages);
+    } catch (thrown) {
+      this.pairCandidates.set([]);
+      this.pairError.set(asApiError(thrown));
+    } finally {
+      this.pairLoading.set(false);
+    }
+  }
+
+  protected async confirmPair(other: Transaction): Promise<void> {
+    const row = this.pairTarget();
+    if (!row) {
+      return;
+    }
+    this.pairBusy.set(true);
+    this.pairError.set(null);
+    try {
+      // Both versions as read: a row edited elsewhere since is a 409, not a silent overwrite.
+      await firstValueFrom(
+        this.transfersService.pair(row.id, {
+          withTransactionId: other.id,
+          version: row.version,
+          withVersion: other.version,
+        }),
+      );
+      this.closePair();
+      this.notice.set('pairing.paired');
+      await this.reloadLedger();
+    } catch (thrown) {
+      this.pairError.set(asApiError(thrown));
+    } finally {
+      this.pairBusy.set(false);
+    }
+  }
+
+  /** Fetches the transfer a leg belongs to, for its version, then asks before splitting it. */
+  protected async askToSplit(leg: Transaction): Promise<void> {
+    const transferGroupId = transferGroupIdOf(leg);
+    if (!transferGroupId) {
+      return;
+    }
+    this.resetTransferState();
+    this.busyId.set(leg.id);
+    try {
+      const transfer = await firstValueFrom(this.transfersService.get(transferGroupId));
+      this.pendingSplit.set({ transfer, leg });
+    } catch (thrown) {
+      this.actionError.set(asApiError(thrown));
+      this.actionErrorSubject.set(leg.accountName);
+    } finally {
+      this.busyId.set(null);
+    }
+  }
+
+  protected cancelSplit(): void {
+    this.pendingSplit.set(null);
+  }
+
+  protected async confirmSplit(): Promise<void> {
+    const target = this.pendingSplit();
+    if (!target) {
+      return;
+    }
+    this.pendingSplit.set(null);
+    await this.run(
+      target.leg,
+      () => this.transfersService.split(target.transfer.id, target.transfer.version),
+      'pairing.splitDone',
     );
   }
 
