@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -58,6 +59,27 @@ class DemoFixtureIT extends ApiTestBase {
      * uses. Mid-month and mid-day so no boundary rounding is load-bearing.
      */
     private static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
+
+    /**
+     * The amounts the log-a-payment sheet offers without typing: the plan's allocation for each
+     * debt, and that plus the sheet's one-tap fifty. Anything else the mock answers with a loud
+     * 501, so a capture can never show a split nobody generated.
+     */
+    private static final Map<String, List<String>> PREVIEW_AMOUNTS =
+            Map.of(
+                    "deb-0001", List.of("445.00", "495.00"),
+                    "deb-0002", List.of("342.00", "392.00"),
+                    "deb-0003", List.of("118.00", "168.00"));
+
+    /** Every order the three demo debts can take under "Your own order", rung 1 first. */
+    private static final List<List<String>> CUSTOM_ORDERS =
+            List.of(
+                    List.of("deb-0001", "deb-0002", "deb-0003"),
+                    List.of("deb-0001", "deb-0003", "deb-0002"),
+                    List.of("deb-0002", "deb-0001", "deb-0003"),
+                    List.of("deb-0002", "deb-0003", "deb-0001"),
+                    List.of("deb-0003", "deb-0001", "deb-0002"),
+                    List.of("deb-0003", "deb-0002", "deb-0001"));
 
     /** The day the statements the demo balances come from were true. */
     private static final LocalDate DEMO_STATEMENT_DATE = LocalDate.of(2026, 8, 20);
@@ -184,6 +206,66 @@ class DemoFixtureIT extends ApiTestBase {
             generated.put(
                     "GET /api/debts/" + debt.getKey() + "/payments",
                     household.owner().get("/api/debts/" + debt.getValue() + "/payments").body());
+        }
+
+        // What the log-a-payment sheet asks before anything is recorded: each debt at the amount
+        // the plan gives it, and at that plus the sheet's one-tap fifty. Generated rather than
+        // written, because these are the interest/principal splits the sheet will show — a
+        // hand-written one would be the browser-side arithmetic the preview endpoint exists to
+        // avoid, moved into a fixture.
+        for (Map.Entry<String, UUID> debt : seeded.debts().entrySet()) {
+            for (String amount : PREVIEW_AMOUNTS.get(debt.getKey())) {
+                generated.put(
+                        "POST /api/debts/" + debt.getKey() + "/payments/preview " + amount,
+                        household
+                                .owner()
+                                .post(
+                                        "/api/debts/" + debt.getValue() + "/payments/preview",
+                                        "{\"amount\":\"" + amount + "\"}")
+                                .body());
+            }
+        }
+
+        // LAST, because it changes every rung and every date the reads above captured: the
+        // household's own order, in EVERY order three debts can take. The page sends whatever
+        // order the household's moves produce — the avalanche order when Custom is first chosen,
+        // then each intermediate order one move at a time — and a fixture holding only one of
+        // them would leave the mock either refusing the rest or answering them with figures for
+        // an order nobody chose. Six is few enough to generate outright.
+        int change = 0;
+        for (List<String> order : CUSTOM_ORDERS) {
+            // A second later each time. Every real plan change writes a snapshot, and
+            // ux_payoff_plan_snapshots_household_taken_at_currency is unique on the instant it was
+            // taken — so with the clock frozen, the second change collided with the first and came
+            // back a 409. In production taken_at is the system clock at microsecond precision, and
+            // a second change that fast would be refused as stale-version first. Seconds move no
+            // date the plan depends on; only the month does.
+            clock.moveTo(DEMO_TODAY.plusSeconds(++change));
+            long version = household.owner().get("/api/debt-plan").numberField("version");
+            StringBuilder ids = new StringBuilder();
+            for (String name : order) {
+                ids.append(ids.isEmpty() ? "" : ",")
+                        .append('"')
+                        .append(seeded.debts().get(name))
+                        .append('"');
+            }
+            ApiResponse custom =
+                    household
+                            .owner()
+                            .put(
+                                    "/api/debt-plan",
+                                    "{\"strategy\":\"CUSTOM\",\"customOrder\":["
+                                            + ids
+                                            + "],\"version\":"
+                                            + version
+                                            + "}");
+            if (custom.status() != 200) {
+                throw new AssertionError("could not set a demo custom order: " + custom.body());
+            }
+            String key = String.join(",", order);
+            generated.put("PUT /api/debt-plan CUSTOM " + key, custom.body());
+            generated.put(
+                    "GET /api/debts CUSTOM " + key, household.owner().get("/api/debts").body());
         }
 
         String document = canonicalise(render(generated, "DEBT_API"), seeded);

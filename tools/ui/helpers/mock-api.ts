@@ -37,6 +37,19 @@ import {
   DEMO_INSTANCE,
   DEMO_INSTANCE_SETTINGS,
 } from '../fixtures/demo-data.js';
+import { DEBT_API } from '../fixtures/debt-api.generated.js';
+
+/** A generated response by its key, or undefined. The keys are built at run time from a request. */
+const generated = (key: string): unknown => (DEBT_API as Record<string, unknown>)[key];
+
+/**
+ * An amount as the generator keyed it: two decimal places, by string surgery rather than a parse,
+ * so "445", "445.0" and "445.0000" all find the same generated preview.
+ */
+const canonicalAmount = (amount: string): string => {
+  const [whole, fraction = ''] = amount.trim().split('.');
+  return `${whole}.${(fraction + '00').slice(0, 2)}`;
+};
 
 /**
  * Serve the whole API from fixtures, in-process.
@@ -297,6 +310,12 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
   // A member's own display preferences are the one write the mock remembers, so that saving a
   // language and reading the profile back shows the language applying. Per page, never shared.
   let ownPreferences: { displayCurrency: unknown; locale: unknown } | null = null;
+
+  // The household's own debt order, once a PUT has chosen one — the ids rung 1 first, joined. The
+  // plan and the debt list are then served for THAT order, from the six the generator produced,
+  // so a move on screen shows the figures the real application computes for the order it sent.
+  // Per page, never shared.
+  let customOrder: string | null = null;
 
   const me = () => {
     const base =
@@ -1087,10 +1106,65 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     // solver arithmetic would be a second implementation, and the guide would document whichever
     // of the two happened to be wrong.
     if (at === 'GET /api/debts') {
-      return json(route, 200, DEMO_DEBTS);
+      return json(
+        route,
+        200,
+        customOrder ? generated(`GET /api/debts CUSTOM ${customOrder}`) : DEMO_DEBTS,
+      );
     }
     if (at === 'GET /api/debt-plan') {
-      return json(route, 200, DEMO_DEBT_PLAN);
+      return json(
+        route,
+        200,
+        customOrder ? generated(`PUT /api/debt-plan CUSTOM ${customOrder}`) : DEMO_DEBT_PLAN,
+      );
+    }
+    if (at === 'PUT /api/debt-plan' && field('strategy') === 'CUSTOM') {
+      // The household's own order. Answered only for an order the generator produced — all six a
+      // three-debt household can choose — and loudly refused otherwise, never answered with a
+      // plan for some other order. A PUT that keeps CUSTOM without naming an order (changing the
+      // monthly amount, say) keeps the order already chosen.
+      const sent = field('customOrder');
+      const order = Array.isArray(sent) ? sent.join(',') : customOrder;
+      const answer = order ? generated(`PUT /api/debt-plan CUSTOM ${order}`) : undefined;
+      if (answer === undefined) {
+        return json(
+          route,
+          501,
+          {
+            title: 'Not mocked',
+            status: 501,
+            detail: `No generated plan for the custom order "${order ?? ''}". Add it to DemoFixtureIT and regenerate.`,
+          },
+          'application/problem+json',
+        );
+      }
+      customOrder = order;
+      return json(route, 200, answer);
+    }
+    if (at === 'PUT /api/debt-plan') {
+      // Leaving "Your own order" returns the plan to the generated avalanche one.
+      customOrder = null;
+    }
+    const preview = url.pathname.match(/^\/api\/debts\/([^/]+)\/payments\/preview$/);
+    if (method === 'POST' && preview) {
+      // What logging an amount WOULD record. Keyed on the debt and the amount actually sent, for
+      // the same reason the what-if is: answering an amount nobody generated with a plausible
+      // split is a screenshot of arithmetic the application never did.
+      const amount = canonicalAmount(String(field('amount') ?? ''));
+      const answer = generated(`POST /api/debts/${preview[1]}/payments/preview ${amount}`);
+      return answer === undefined
+        ? json(
+            route,
+            501,
+            {
+              title: 'Not mocked',
+              status: 501,
+              detail: `No generated preview for ${preview[1]} at ${amount}. Add it to DemoFixtureIT's PREVIEW_AMOUNTS and regenerate.`,
+            },
+            'application/problem+json',
+          )
+        : json(route, 200, answer);
     }
     if (at === 'GET /api/debt-plan/projection') {
       // Keyed on what was ASKED. Returning the stored plan for an unrecognised question is how
