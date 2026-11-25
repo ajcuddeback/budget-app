@@ -81,6 +81,23 @@ class ImportLimitsIT extends ImportApiTestBase {
     }
 
     @Test
+    void aStrangerStreamingAnUndeclaredBodyIsRefusedByAuthenticationWithoutItBeingRead()
+            throws Exception {
+        seedHousehold();
+        byte[] body = oversizedBody(UUID.randomUUID());
+
+        HttpResponse<String> refused =
+                raw(
+                        browser(),
+                        HttpRequest.BodyPublishers.ofInputStream(
+                                () -> new java.io.ByteArrayInputStream(body)));
+
+        // Nothing reads the body of a request Spring Security refused, so the counting stream is
+        // never consulted and nothing of the upload is held.
+        assertThat(refused.statusCode()).isEqualTo(401);
+    }
+
+    @Test
     void aFileOverFiveMebibytesInsideAnAcceptableBodyIsRefusedAfterDecoding() {
         Household household = seedHousehold();
         UUID account = createAccount(household.owner(), "Current", null);

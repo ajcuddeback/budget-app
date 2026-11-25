@@ -169,6 +169,17 @@ public class ApiExceptionHandler {
     ResponseEntity<Map<String, Object>> handleUnreadableBody(
             HttpMessageNotReadableException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
+        if (BodyTooLargeException.isIn(exception)) {
+            // A body stopped at the import cap while Jackson was reading it (file-import.md rule
+            // 3): too large, not malformed — the same 413 nginx and the declared-length check give.
+            log(ErrorCode.IMPORT_FILE_TOO_LARGE, correlationId, null);
+            return problem(
+                    ApiProblem.of(
+                            ErrorCode.IMPORT_FILE_TOO_LARGE,
+                            ApiProblem.instanceOf(request),
+                            Map.of(),
+                            correlationId));
+        }
         log(ErrorCode.MALFORMED_REQUEST, correlationId, null);
         return problem(
                 ApiProblem.of(
