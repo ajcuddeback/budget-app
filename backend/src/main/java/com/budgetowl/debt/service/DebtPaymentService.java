@@ -135,16 +135,7 @@ public class DebtPaymentService {
                 AmountText.parse(requested.amount(), currency, AmountText.Sign.POSITIVE, "amount");
         LocalDate paidDate = requireNotInTheFuture(requested.paidDate(), "paidDate");
 
-        DebtFacts facts = balances.factsFor(debt);
-        Money balanceBefore = facts.balance();
-        DebtPayment payment =
-                DebtPayment.of(
-                        debt,
-                        paidDate,
-                        amount,
-                        interestOn(balanceBefore, facts),
-                        balanceBefore,
-                        PaymentProvenance.USER_LOGGED);
+        DebtPayment payment = draft(debt, paidDate, amount);
         payment.annotate(requested.note());
         if (requested.transactionId() != null) {
             payment.settledBy(link(requested.transactionId(), household.id(), payment.id()));
@@ -255,7 +246,68 @@ public class DebtPaymentService {
                 actorId);
     }
 
+    /**
+     * What logging this payment would record, <b>without recording it</b>.
+     *
+     * <p>The log-a-payment sheet shows the split and the resulting balance before the household
+     * commits (docs/features/debt-plan.md, Payment actions). The alternative was computing it in
+     * the browser, which means a second implementation of {@code round(balance × apr ÷ 1200)} — the
+     * one formula this whole feature turns on, in the one place it could drift from this one. A few
+     * cents of disagreement there, compounded, is a payoff date a month out.
+     *
+     * <p><b>It cannot disagree with {@link #log}</b>, and that is by construction rather than by
+     * testing: both build the row through {@link #draft}. {@code log} saves it; this reads four
+     * figures off it and lets it go. {@code
+     * DebtIT.the_preview_is_exactly_what_logging_then_records} also asserts the two agree, so that
+     * a future edit routing one of them around {@code draft} fails rather than drifts.
+     *
+     * <p><b>Write access, although it writes nothing.</b> It is served as a {@code POST}, to keep
+     * the amount out of URLs that every layer logs, and this repository treats a non-{@code GET} as
+     * a write a {@code VIEWER} is refused. It exists only to serve the log-a-payment sheet, which a
+     * {@code VIEWER} never sees, so least privilege costs nobody anything. The split is taken
+     * against today's balance whatever date the payment will carry, exactly as {@code log} does (a
+     * known gap, recorded in the feature doc).
+     *
+     * @throws com.budgetowl.common.ForbiddenException for a {@code VIEWER}
+     * @throws NotFoundException if the debt is not this household's
+     * @throws ConflictException {@code debt-paid-off}, as logging would be
+     */
+    @Transactional(readOnly = true)
+    public PaymentPreview preview(UUID actorId, UUID debtId, String amountText) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        Debt debt = require(debtId, membership.household().id());
+        requireNotSettled(debt);
+
+        Currency currency = debt.currency();
+        Money amount = AmountText.parse(amountText, currency, AmountText.Sign.POSITIVE, "amount");
+        DebtPayment unsaved = draft(debt, balances.today(), amount);
+        return new PaymentPreview(
+                Money.of(unsaved.interest(), currency),
+                Money.of(unsaved.principal(), currency),
+                Money.of(unsaved.balanceBefore(), currency),
+                Money.of(unsaved.balanceAfter(), currency));
+    }
+
     // ------------------------------------------------------------------------------- internals
+
+    /**
+     * The row logging {@code amount} against this debt right now would write — built, never saved.
+     *
+     * <p>The single place a payment's split is decided. {@link #log} saves what this returns and
+     * {@link #preview} reads it and discards it, so the figure a household is shown before it
+     * commits is the figure it gets after.
+     */
+    private DebtPayment draft(Debt debt, LocalDate paidDate, Money amount) {
+        DebtFacts facts = balances.factsFor(debt);
+        Money balanceBefore = facts.balance();
+        return DebtPayment.of(
+                debt,
+                paidDate,
+                amount,
+                interestOn(balanceBefore, facts),
+                balanceBefore,
+                PaymentProvenance.USER_LOGGED);
+    }
 
     /**
      * What a settled or overpaid balance accrues: nothing.

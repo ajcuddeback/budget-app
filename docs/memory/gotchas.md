@@ -1071,3 +1071,68 @@ check would fail on a difference that was not a difference.
 
 **Where.** `DebtPaymentRepository.findForDebt`,
 `DebtIT.two_rows_on_the_same_day_come_back_in_the_order_they_were_written`.
+
+---
+
+## `@Validated` on a controller turns a 400 into a 500
+
+**Symptom.** `GET /api/debt-plan/projection?monthlyAmount=abc` returned `500 internal-error` with a
+stack trace at `ERROR`. So did `DELETE /api/auth/devices/not-a-handle`, and — worst —
+`POST /api/invitations/{300 characters}/accept` from an **anonymous** caller.
+
+**What it is.** Spring Framework 6.1+ validates a constrained `@RequestParam` or `@PathVariable`
+**natively**, and throws `HandlerMethodValidationException`, which `ApiExceptionHandler` answers as
+a `400` naming the field. Mark the controller class `@Validated` and Spring instead wraps it in the
+AOP method-validation proxy, which throws `jakarta.validation.ConstraintViolationException` —
+**which nothing handles**. So the annotation that reads as "make my constraints work" is the one
+thing that breaks them.
+
+**How it was found.** By accident, adding a new endpoint: I put `@Validated` on `DebtController`
+believing a `@Pattern` on a query parameter needed it, wrote a test sending `1e999`, and got a 500.
+Removing the annotation gave a clean 400. That was enough to suspect every other `@Validated`
+controller, and all four had it:
+
+| Controller | Route | Who could reach it |
+|---|---|---|
+| `InvitationController` | `POST /api/invitations/{token}/accept`, token over 256 chars | **anyone, unauthenticated** |
+| `DeviceController` | `DELETE /api/auth/devices/{id}`, malformed handle | any signed-in user |
+| `DebtPlanController` | `GET /api/debt-plan/projection?monthlyAmount=` | any member, **a `VIEWER` too** |
+| `DebtController` | the new payment preview | caught before commit |
+
+The invitation route is the one that matters: it is public, so an anonymous caller could write a
+full stack trace to the log at `ERROR` on every request, in a loop — and the constraint fires
+*before* the service, so the auth rate limiter inside `InvitationService` never saw the request. A
+slice-10 security review read all of this code and missed it, because nothing about `@Validated`
+looks wrong.
+
+**Be precise about what that was.** It was a log *flood*, not log *injection*. The logged text was
+fixed — `accept.token: size must be between 0 and 256` and stack frames that do not vary with the
+input — because the AOP proxy builds its exception message from the property path and the
+constraint message only, and Hibernate Validator 9.1's `ConstraintViolation.toString` carries no
+invalid value. The attacker controlled how often, not what. That makes it Medium on the public route
+(audit burial, disk fill) rather than anything worse. This entry first said "attacker-chosen stack
+trace"; the follow-up security review corrected it.
+
+`DeviceController`'s own javadoc said *"a malformed one is a `400` naming the parameter."* It had
+never been a 400. Nothing had ever sent a malformed handle.
+
+**The control.** `ArchitectureTest.nothing_is_validated_at_class_level` fails the build if **any**
+class is `@Validated`, directly or through a meta-annotation. Its first version only checked
+`@RestController` classes for a direct annotation, and Spring's own lookup is wider than that — it
+searches superclasses and meta-annotations — so a `@Validated abstract class ScopedController`, a
+composed `@ApiController`, or a `@Validated` *service* would each have put the 500 back while the
+rule stayed green. Each route also has an HTTP test sending one malformed value. Fixing four and
+waiting for the fifth was not the answer.
+
+**A second-order effect worth knowing.** Removing the annotation is not free on a route that has a
+constrained parameter *and* a `@Valid` body. `POST /api/invitations/{token}/accept` has both, so
+Spring now validates the body inside method validation, and it reaches `ApiExceptionHandler` as one
+`ParameterErrors` rather than a `MethodArgumentNotValidException`. Mapped per parameter, a long
+display name came back as `{"field":"body"}` where it had always said `{"field":"displayName"}`, and
+the existing test asserted only the status, so nothing noticed. The handler now unpacks a body's own
+field errors — field name and message, never the rejected value, since on that route the body holds
+a password.
+
+**The general lesson.** A constraint is only proven by sending something that violates it and
+reading the status code. A green suite full of *valid* requests says nothing about what an invalid
+one does — and the invalid one is the one an attacker sends.

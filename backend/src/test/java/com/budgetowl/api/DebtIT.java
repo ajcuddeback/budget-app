@@ -739,6 +739,116 @@ class DebtIT extends ApiTestBase {
         assertThat(history.body()).contains("\"balanceAfter\":\"5800.0000\"");
     }
 
+    /** Asks what logging {@code amount} would record. A POST so the amount stays out of URLs. */
+    private static ApiResponse preview(ApiClient client, UUID debt, String amount) {
+        return client.post(
+                "/api/debts/" + debt + "/payments/preview", "{\"amount\":\"" + amount + "\"}");
+    }
+
+    @Test
+    void the_preview_is_exactly_what_logging_then_records() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        ApiResponse preview = preview(household.owner(), debt, "445.00");
+        ApiResponse logged =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments",
+                                """
+                                {"paidDate":"%s","amount":"445.00"}
+                                """
+                                        .formatted(TODAY));
+
+        // The whole reason the preview is a server call rather than arithmetic in the browser:
+        // the figure the household is shown before committing must be the figure it gets after.
+        // Both come off DebtPaymentService.draft, and this is what fails if an edit ever routes
+        // one of them around it.
+        assertThat(preview.status()).isEqualTo(200);
+        assertThat(logged.status()).isEqualTo(201);
+        assertThat(preview.stringField("interest")).isEqualTo(logged.stringField("interest"));
+        assertThat(preview.stringField("principal")).isEqualTo(logged.stringField("principal"));
+        assertThat(preview.stringField("balanceAfter"))
+                .isEqualTo(logged.stringField("balanceAfter"));
+        // 6180 × 22.9 ÷ 1200 = 117.9350, rounded half-even at scale 4, in ONE division.
+        assertThat(preview.stringField("interest")).isEqualTo("117.9350");
+        assertThat(preview.stringField("balanceBefore")).isEqualTo("6180.0000");
+    }
+
+    @Test
+    void the_preview_writes_nothing() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        for (int asked = 0; asked < 3; asked++) {
+            assertThat(preview(household.owner(), debt, "445.00").status()).isEqualTo(200);
+        }
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM debt_payments", Long.class)).isZero();
+        assertThat(household.owner().get("/api/debts/" + debt).stringField("balance"))
+                .as("asking what a payment would do must not do it")
+                .isEqualTo("6180.0000");
+    }
+
+    @Test
+    void a_viewer_cannot_preview_because_only_a_writer_logs_payments() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        // It writes nothing, and it would disclose nothing a VIEWER cannot already work out. But it
+        // is a POST — the amount belongs in a body, not a URL every layer logs — and this
+        // repository
+        // treats a non-GET as a write a VIEWER is refused. It serves only the log-a-payment sheet,
+        // which a VIEWER never sees, so refusing it costs them nothing.
+        ApiResponse refused = preview(household.viewer(), debt, "445.00");
+
+        assertThat(refused.status()).isEqualTo(403);
+        assertThat(refused.stringField("code")).isEqualTo("read-only-role");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1e999", "-445.00", "445.123456", "abc", "0"})
+    void a_preview_amount_that_is_not_a_positive_decimal_is_refused(String amount) {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        ApiResponse refused = preview(household.owner(), debt, amount);
+
+        // The @Pattern on the body field refuses the first four at the edge. "1e999" matters: the
+        // parser behind it would have accepted it. "0" passes the pattern and is refused by the
+        // parser instead, because a payment of nothing previews nothing. All five are 400s and none
+        // is a 500 — which is the thing @Validated would have broken.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"abc", "1e999", "-905.00", "905.123456"})
+    void a_what_if_amount_that_is_not_a_decimal_is_refused_rather_than_failing(String amount) {
+        Household household = seedHousehold();
+        createDebt(household.owner(), "Visa", "6180.00", "22.900", "118.00", null);
+
+        // The viewer, deliberately: this was reachable by every member including a read-only one,
+        // on an unmetered GET. DebtPlanController was @Validated, so "?monthlyAmount=abc" went
+        // through the AOP proxy and came back a 500 with a stack trace at ERROR. It shipped in the
+        // first slice-10 commit and the security review did not catch it.
+        ApiResponse refused =
+                household.viewer().get("/api/debt-plan/projection?monthlyAmount=" + amount);
+
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+    }
+
+    @Test
+    void another_households_debt_cannot_be_previewed() {
+        Household household = seedHousehold();
+
+        ApiResponse refused = preview(household.owner(), UUID.randomUUID(), "445.00");
+
+        assertThat(refused.status()).isEqualTo(404);
+    }
+
     @Test
     void a_transaction_cannot_settle_two_debt_payments() {
         Household household = seedHousehold();
@@ -1226,6 +1336,11 @@ class DebtIT extends ApiTestBase {
                         "POST",
                         "/api/debts/{id}/payments",
                         "{\"paidDate\":\"" + today + "\",\"amount\":\"10.0000\"}"),
+                // Writes nothing, but it is a POST and a VIEWER is refused it, so it belongs in the
+                // list every authorization test sweeps: 401 anonymous, 403 without a CSRF token,
+                // 403 for a VIEWER, 404 for another household's debt, on both transports.
+                new Endpoint(
+                        "POST", "/api/debts/{id}/payments/preview", "{\"amount\":\"10.0000\"}"),
                 new Endpoint(
                         "PATCH",
                         "/api/debts/{id}/payments/" + UUID.randomUUID(),
@@ -1367,6 +1482,15 @@ class DebtIT extends ApiTestBase {
                                                 .formatted(TODAY))
                                 .status())
                 .as("neither transport may skip a check the other applies (ADR-0018)")
+                .isEqualTo(403);
+
+        // The preview, on the bearer transport: it works for a writer's phone and is refused to a
+        // viewer's, exactly as it is for a browser — the same check, not a second one.
+        assertThat(preview(phone, debt, "445.00").status())
+                .as("a writer's phone may preview a payment")
+                .isEqualTo(200);
+        assertThat(preview(viewersPhone, debt, "445.00").status())
+                .as("a viewer's phone may not, on either transport")
                 .isEqualTo(403);
     }
 

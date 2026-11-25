@@ -244,6 +244,37 @@ class InvitationIT extends ApiTestBase {
 
         assertThat(response.status()).isEqualTo(400);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Long.class)).isEqualTo(3L);
+        // The field is NAMED, not "body". This route has a constrained path variable as well as a
+        // @Valid body, so Spring validates the body inside method validation; mapped per parameter,
+        // the error came back as {"field":"body"} with only the first message. This test asserted
+        // the status alone, so the regression was invisible to it. And the value is never echoed:
+        // on this route the same body carries a password.
+        assertThat(response.body()).contains("\"field\":\"displayName\"");
+        assertThat(response.body()).doesNotContain("\"field\":\"body\"");
+        assertThat(response.body()).doesNotContain("C".repeat(101));
+    }
+
+    @Test
+    void refusesAnOverLongTokenAsABadRequestRatherThanFailing() {
+        // Anonymous: this is the public route, and that is what made it the worst of the four.
+        ApiResponse refused =
+                browser()
+                        .post(
+                                "/api/invitations/" + "a".repeat(300) + "/accept",
+                                """
+                                {"displayName":"Eve","password":"eve-example-passphrase"}
+                                """);
+
+        // It was a 500. The controller was @Validated, which routes the @Size on the token through
+        // the AOP proxy, and nothing handles the ConstraintViolationException that throws — so an
+        // anonymous caller could write a stack trace to the log at ERROR, in a loop, and it fired
+        // BEFORE the service, so the auth rate limiter inside it never saw a thing.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+        // The controller promises a token is never echoed into an error, because a token in a
+        // response is a working invitation in whatever logged it.
+        assertThat(refused.body()).doesNotContain("a".repeat(300));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Long.class)).isZero();
     }
 
     @Test

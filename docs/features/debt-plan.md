@@ -489,6 +489,7 @@ existed:
 | `POST` | `/api/debts/{id}/archive` · `/unarchive` | Retire without deleting, as accounts do |
 | `GET` | `/api/debts/{id}/payments` | The history, **paginated** (page envelope, `api-style.md`) |
 | `POST` | `/api/debts/{id}/payments` | Log one. Accepts an optional `transactionId` |
+| `POST` | `/api/debts/{id}/payments/preview` | What logging `{"amount"}` **would** record — the split and the resulting balance — writing nothing. Built through the same code path as logging, so it cannot disagree with it. A `POST` to keep the amount out of URLs; a `VIEWER` is refused it, as for any non-`GET` |
 | `PATCH` · `DELETE` | `/api/debts/{id}/payments/{paymentId}` | Correct · remove |
 | `POST` | `/api/debts/{id}/balance` | Confirm or correct the balance. Writes the anchor, and a `STATEMENT_CORRECTION` row when it disagrees with the arithmetic |
 | `GET` | `/api/debt-plan` | Strategy, amount, order, **both** projections and the comparison |
@@ -698,6 +699,31 @@ API rather than in the client:
    own split and resulting balance the moment it is recorded. **The fix is a preview that writes
    nothing** — `POST /api/debts/{id}/payments?dryRun=true`, or its own sub-resource — returning
    the split the server would store.
+
+   **The preview now exists; the sheet does not call it yet.** `POST
+   /api/debts/{id}/payments/preview` with `{"amount": "445.00"}` returns the interest, the
+   principal, the balance the split is taken against and the balance it would leave. It **cannot
+   disagree** with logging: `DebtPaymentService.preview` and `.log` both build the row through one
+   private `draft` method — `log` saves it, `preview` reads four figures off it and discards it —
+   and `DebtIT.the_preview_is_exactly_what_logging_then_records` asserts the two match, so an edit
+   that routes either around `draft` fails rather than drifts.
+
+   **A `POST` that writes nothing, and a `VIEWER` is refused it.** It began as `GET
+   ?amount=`, and a URL is the one part of a request every layer logs — a reverse proxy's access
+   log by default, and Spring's `DispatcherServlet` line at `DEBUG`, which masks the decoded
+   parameters but prints the raw query string anyway. The security review flagged it. Moving the
+   amount into a body made the route a `POST`, and this repository treats a non-`GET` as a write a
+   `VIEWER` is refused; the preview serves only the log-a-payment sheet, which a `VIEWER` never
+   sees, so least privilege costs nobody anything. It sits in `DebtIT.everyRoute()` with every
+   other route, so the 401, CSRF, `VIEWER` and cross-household sweeps cover it on both
+   transports. Wiring it into the sheet is held until the user guide is captured, so the guide's
+   screenshots of the sheet do not go stale mid-capture.
+
+   **The plan's what-if still takes its amount in the query string**
+   (`GET /api/debt-plan/projection?monthlyAmount=`), and that is an accepted risk rather than an
+   oversight: it is the household's monthly figure, already shown on the page, and moving a
+   shipped read to a `POST` would refuse it to the `VIEWER` who may currently run it.
+
 2. **"Stop estimating" re-anchors on the last confirmed figure.** There is no endpoint that turns
    estimation off, and inventing one in the client would mean storing a figure the app extrapolated
    as though the household had asserted it. So the action confirms `anchorBalance` at today's date:
@@ -749,8 +775,10 @@ Debts are the most disclosing records this app holds, and more disclosing than t
 
 ### Entry points
 
-The sixteen endpoints in [API](#api), plus the four new fields on
-`GET /api/periods/{period}/summary`. Every one is authenticated and household-scoped by default;
+The seventeen endpoints in [API](#api) — the sixteen the threat model was written against, plus the
+payment preview added after it, which writes nothing and is covered by the same route sweeps —
+plus the four new fields on `GET /api/periods/{period}/summary`. Every one is authenticated and
+household-scoped by default;
 public routes remain the explicit, reviewed exception they are everywhere else.
 
 ### Attacks considered

@@ -12,10 +12,12 @@ import com.budgetowl.debt.web.DebtRequests.ConfirmBalanceRequest;
 import com.budgetowl.debt.web.DebtRequests.CorrectPaymentRequest;
 import com.budgetowl.debt.web.DebtRequests.CreateDebtRequest;
 import com.budgetowl.debt.web.DebtRequests.LogPaymentRequest;
+import com.budgetowl.debt.web.DebtRequests.PreviewPaymentRequest;
 import com.budgetowl.debt.web.DebtRequests.UpdateDebtRequest;
 import com.budgetowl.debt.web.DebtResponses.DebtDetailResponse;
 import com.budgetowl.debt.web.DebtResponses.DebtsResponse;
 import com.budgetowl.debt.web.DebtResponses.PaymentPageResponse;
+import com.budgetowl.debt.web.DebtResponses.PaymentPreviewResponse;
 import com.budgetowl.debt.web.DebtResponses.PaymentResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -53,6 +55,9 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/debts")
+// Deliberately NOT @Validated — see DebtPlanController and ArchitectureTest, which refuses it.
+// Spring MVC validates constrained handler parameters and @Valid bodies natively and answers 400;
+// @Validated would swap that for an unhandled ConstraintViolationException and a 500.
 public class DebtController {
 
     private final DebtService debts;
@@ -190,6 +195,30 @@ public class DebtController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return PaymentPageResponse.of(payments.list(caller.userId(), id, page, size));
+    }
+
+    /**
+     * What logging a payment would record, without recording it.
+     *
+     * <p>Writes nothing. The log-a-payment sheet calls it so the household sees the split and the
+     * resulting balance <b>before</b> committing — the server's own figures, so the browser holds
+     * no second copy of the interest formula to drift from this one.
+     *
+     * <p><b>A {@code POST} with a body, although it writes nothing.</b> It began as a {@code GET}
+     * with {@code ?amount=}, and a URL is the one part of a request every layer logs: a reverse
+     * proxy's access log by default, and Spring's own {@code DispatcherServlet} line at {@code
+     * DEBUG}, which masks the decoded parameters and prints the raw query string anyway. It is also
+     * why it needs write access rather than membership: this repository's convention is that a
+     * non-{@code GET} is a write a {@code VIEWER} is refused, and the preview exists only to serve
+     * the log-a-payment sheet, which a {@code VIEWER} never sees. Least privilege costs nobody
+     * anything here.
+     */
+    @PostMapping("/{id}/payments/preview")
+    PaymentPreviewResponse previewPayment(
+            TransportAuthentication caller,
+            @PathVariable UUID id,
+            @Valid @RequestBody PreviewPaymentRequest body) {
+        return PaymentPreviewResponse.of(payments.preview(caller.userId(), id, body.amount()));
     }
 
     /**

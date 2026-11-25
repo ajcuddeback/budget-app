@@ -5,6 +5,7 @@ import com.budgetowl.debt.service.DebtDetailView;
 import com.budgetowl.debt.service.DebtPaymentView;
 import com.budgetowl.debt.service.DebtView;
 import com.budgetowl.debt.service.DebtsView;
+import com.budgetowl.debt.service.PaymentPreview;
 import com.budgetowl.debt.service.PlanView;
 import com.budgetowl.debt.service.SolvedTermsView;
 import java.math.BigDecimal;
@@ -239,6 +240,35 @@ public final class DebtResponses {
         @Override
         public String toString() {
             return "PaymentResponse[id=" + id + ", paidDate=" + paidDate + "]";
+        }
+    }
+
+    /**
+     * What logging a payment would record, before it is recorded. Strings on the wire (ADR-0006).
+     *
+     * <p>The same split and closing balance the household gets once it commits, because both come
+     * off the one row {@code DebtPaymentService} builds — see {@code PaymentPreview}.
+     */
+    public record PaymentPreviewResponse(
+            String currency,
+            BigDecimal interest,
+            BigDecimal principal,
+            BigDecimal balanceBefore,
+            BigDecimal balanceAfter) {
+
+        static PaymentPreviewResponse of(PaymentPreview preview) {
+            return new PaymentPreviewResponse(
+                    preview.interest().currency().getCurrencyCode(),
+                    plainAmount(preview.interest()),
+                    plainAmount(preview.principal()),
+                    plainAmount(preview.balanceBefore()),
+                    plainAmount(preview.balanceAfter()));
+        }
+
+        /** Redacted: four amounts, two of them what this household owes. */
+        @Override
+        public String toString() {
+            return "PaymentPreviewResponse[currency=" + currency + "]";
         }
     }
 

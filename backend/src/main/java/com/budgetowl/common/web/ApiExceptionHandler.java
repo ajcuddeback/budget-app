@@ -119,25 +119,46 @@ public class ApiExceptionHandler {
                 ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
     }
 
+    /**
+     * A constrained handler parameter, or a {@code @Valid} body validated alongside one.
+     *
+     * <p><b>A body is expanded into its fields.</b> When a handler has a constrained parameter
+     * <em>and</em> a {@code @Valid} body — {@code POST /api/invitations/{token}/accept} has both —
+     * Spring validates the body inside method validation, and it arrives here as a single {@code
+     * ParameterErrors} rather than as a {@code MethodArgumentNotValidException}. Mapped by
+     * parameter, the response named the field {@code "body"} and carried only the first message,
+     * where it had always named {@code "displayName"}. So a body's own field errors are unpacked,
+     * exactly as {@link #handleInvalidBody} does: the field name and the message, and <b>never the
+     * rejected value</b> — on that route the body holds a password.
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     ResponseEntity<Map<String, Object>> handleInvalidParameter(
             HandlerMethodValidationException exception, HttpServletRequest request) {
         List<ApiProblem.FieldProblem> errors =
                 exception.getParameterValidationResults().stream()
-                        .map(
-                                result ->
-                                        new ApiProblem.FieldProblem(
-                                                result.getMethodParameter().getParameterName(),
-                                                result.getResolvableErrors().isEmpty()
-                                                        ? "is invalid"
-                                                        : result.getResolvableErrors()
-                                                                .get(0)
-                                                                .getDefaultMessage()))
+                        .flatMap(ApiExceptionHandler::fieldProblemsOf)
                         .toList();
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.VALIDATION_FAILED, correlationId, null);
         return problem(
                 ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
+    }
+
+    private static java.util.stream.Stream<ApiProblem.FieldProblem> fieldProblemsOf(
+            org.springframework.validation.method.ParameterValidationResult result) {
+        if (result instanceof org.springframework.validation.method.ParameterErrors body) {
+            return body.getFieldErrors().stream()
+                    .map(
+                            error ->
+                                    new ApiProblem.FieldProblem(
+                                            error.getField(), error.getDefaultMessage()));
+        }
+        return java.util.stream.Stream.of(
+                new ApiProblem.FieldProblem(
+                        result.getMethodParameter().getParameterName(),
+                        result.getResolvableErrors().isEmpty()
+                                ? "is invalid"
+                                : result.getResolvableErrors().get(0).getDefaultMessage()));
     }
 
     /**

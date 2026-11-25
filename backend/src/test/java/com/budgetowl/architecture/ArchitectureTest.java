@@ -87,6 +87,48 @@ class ArchitectureTest {
                                     + " overview puts entities in ..domain.. with their JPA"
                                     + " mapping annotations");
 
+    /**
+     * Nothing in the application is {@code @Validated} — not a controller, and not anything else.
+     *
+     * <p>It reads as the thing that makes a constraint on a {@code @RequestParam} or
+     * {@code @PathVariable} work, and it does the opposite. Spring MVC validates a constrained
+     * handler parameter <b>natively</b> and throws {@code HandlerMethodValidationException}, which
+     * {@code ApiExceptionHandler} answers as a {@code 400} naming the field. A {@code @Validated}
+     * class swaps that for the AOP method-validation proxy, which throws {@code
+     * ConstraintViolationException} — and nothing handles that, so it is a {@code 500} with a stack
+     * trace at {@code ERROR}.
+     *
+     * <p>Four controllers had it, and every one was a latent {@code 500}. The worst was {@code POST
+     * /api/invitations/{token}/accept}: a public route, so an anonymous caller could write a full
+     * stack trace to the log at {@code ERROR} on every request, in a loop — and the constraint
+     * fired before the service, so the auth rate limiter inside it never saw the request. The
+     * logged text itself was fixed ({@code accept.token: size must be between 0 and 256}); what the
+     * caller controlled was how often, which is a log flood rather than log injection. The device
+     * route's own javadoc promised a {@code 400}. Each was found by sending one malformed value,
+     * which no test had ever done.
+     *
+     * <p><b>Why every class and not only controllers, and why meta-annotations.</b> The first
+     * version of this rule checked {@code @RestController} classes for a <em>direct</em>
+     * {@code @Validated}. Spring's own lookup is wider than that: it searches superclasses and
+     * meta-annotations. So a {@code @Validated abstract class ScopedController}, or a composed
+     * {@code @ApiController} carrying it, put the {@code 500} straight back while this rule stayed
+     * green — and a {@code @Validated} <em>service</em> throws the same unhandled exception on
+     * whatever route calls it. Refusing it on every class, directly or through a meta-annotation,
+     * covers all three: a base class that carries it is itself a class, and fails here. The
+     * security review after the first version found the gap.
+     */
+    @ArchTest
+    static final ArchRule nothing_is_validated_at_class_level =
+            noClasses()
+                    .should()
+                    .beMetaAnnotatedWith(org.springframework.validation.annotation.Validated.class)
+                    .because(
+                            "Spring MVC already validates constrained handler parameters and"
+                                    + " answers 400; @Validated replaces that with an AOP proxy"
+                                    + " whose ConstraintViolationException nothing handles, so a"
+                                    + " malformed parameter becomes a 500 with a stack trace."
+                                    + " Remove it — the constraints keep working without it");
+
     @ArchTest
     static final ArchRule transactional_only_in_service =
             methods()

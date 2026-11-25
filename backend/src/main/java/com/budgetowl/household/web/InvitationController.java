@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,7 +34,12 @@ import org.springframework.web.bind.annotation.RestController;
  * line is a working invitation in a log line.
  */
 @RestController
-@Validated
+// Deliberately NOT @Validated. Spring MVC validates the constrained @PathVariable below natively,
+// throwing HandlerMethodValidationException, which ApiExceptionHandler answers as a 400. Marking
+// the class @Validated switched that to the AOP path, which throws ConstraintViolationException —
+// unhandled — so an over-long token on THIS PUBLIC route was a 500 with a full stack trace at
+// ERROR on every request from an anonymous caller, and it fired before the service's rate limiter
+// ever saw the request. See docs/memory/gotchas.md; ArchitectureTest now refuses the annotation.
 public class InvitationController {
 
     private final InvitationService invitations;

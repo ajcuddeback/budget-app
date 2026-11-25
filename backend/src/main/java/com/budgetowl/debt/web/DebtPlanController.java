@@ -7,7 +7,6 @@ import com.budgetowl.debt.web.DebtRequests.UpdatePlanRequest;
 import com.budgetowl.debt.web.DebtResponses.PlanResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,7 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/debt-plan")
-@Validated
+// Deliberately NOT @Validated. Spring MVC validates a constrained @RequestParam natively and
+// throws HandlerMethodValidationException, which ApiExceptionHandler answers as 400. Marking the
+// class @Validated switches to the AOP path instead, which throws ConstraintViolationException —
+// unhandled — so "?monthlyAmount=abc" was a 500 with a stack trace at ERROR, reachable by any
+// member including a VIEWER, on an unmetered GET. See docs/memory/gotchas.md.
 public class DebtPlanController {
 
     private final PayoffPlanService plans;

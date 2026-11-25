@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/auth/devices")
-@Validated
+// Deliberately NOT @Validated — see InvitationController. With it, the @Pattern on the revoke
+// handle went through the AOP path, whose ConstraintViolationException nothing handles.
 public class DeviceController {
 
     private final DeviceService devices;
