@@ -36,6 +36,10 @@ account to seeing your first month's budget.
 | [Add a bill](features/add-a-bill.md)                                            | Something that leaves on a date, the five kinds of schedule, and retiring one you've stopped paying              |
 | [Mark a bill paid](features/mark-a-bill-paid.md)                                | Tick a bill off, say you paid a different amount, skip it, or undo what was recorded                             |
 | [Move money between your own accounts](features/move-money-between-accounts.md) | Record a transfer, why it shows up as two rows, and what to do when the two accounts are in different currencies |
+| [Add a debt](features/add-a-debt.md)                                            | Put a card or a loan in from your statement, and link its minimum to the bill that pays it                       |
+| [Choose how to clear your debts](features/choose-how-to-clear-your-debts.md)    | The order of attack, what you put in each month, and what the two comparison cards are telling you               |
+| [Log a payment against a debt](features/log-a-debt-payment.md)                  | Write down what you paid, read the interest and principal split, and why your account balance doesn't move       |
+| [Confirm what you owe](features/confirm-what-you-owe.md)                        | When a balance is an estimate, how to put the statement figure in, and what happens after a year                 |
 | _Recurring transactions_                                                        | Not written yet                                                                                                  |
 | _Reports_                                                                       | Not written yet                                                                                                  |
 

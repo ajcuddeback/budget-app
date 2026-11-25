@@ -129,7 +129,7 @@ A date that's gone by with nothing recorded against it is tagged **Overdue** and
 side. Those bills are added up for you above the list, beside **Bills this month** and **Still to
 pay**.
 
-![The three totals above the bills list: Bills this month $1,959.10, Still to pay $266.00, Overdue $186.00.](../images/mark-a-bill-paid--totals.png)
+![The three totals above the bills list: Bills this month $2,301.10, Still to pay $608.00, Overdue $186.00.](../images/mark-a-bill-paid--totals.png)
 
 Nothing happens to an overdue bill on its own — Budget Owl doesn't chase it, and doesn't assume
 you paid it.

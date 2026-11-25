@@ -1,7 +1,7 @@
 # Getting started
 
-> **Status: partly written.** Steps 1 to 7 below are written from the running app. Steps 8, 9 and
-> 10 are still outlines, and each gets written, with real screenshots, once somebody has run
+> **Status: partly written.** Steps 1 to 8 below are written from the running app. Steps 9 and 10
+> are still outlines, and each gets written, with real screenshots, once somebody has run
 > `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
 > order.
 >
@@ -251,7 +251,7 @@ appear in every month they fall in — and Budget Owl can tell you what's left.
 
    Each date gets its own row, so a weekly bill is ticked off a week at a time.
 
-![The What's left this month card: $980.90 left to spend, with income expected $3,640.00, bills this month $1,959.10, set aside in envelopes $700.00, and still to pay $266.00 of $1,959.10.](images/see-whats-left-this-month--whats-left.png)
+![The What's left this month card: $335.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, and $608.00 of $2,301.10 still to pay.](images/see-whats-left-this-month--whats-left.png)
 
 **A bill is a plan, not a payment.** Marking one paid records what your household says happened.
 It doesn't move money and doesn't create a transaction — only a transaction is ever money that
@@ -260,6 +260,11 @@ really went.
 **Bills count towards the month whether or not you've paid them.** Rent that has already gone is
 not money you still have, so ticking it off doesn't make **What's left this month** go up. The
 **Still to pay** line is the one that drops.
+
+**Four things come off, not three.** **Debt minimums** is the fourth: the minimum payments on your
+debts that aren't already one of your bills. If you used to see a larger figure here, that is why —
+the money was always committed, and the page now says so. The full explanation is in
+[See what's left this month](features/see-whats-left-this-month.md#what-changed-and-why).
 
 Full steps: [See what's left this month](features/see-whats-left-this-month.md),
 [Add your income](features/add-your-income.md), [Add a bill](features/add-a-bill.md) and
@@ -309,10 +314,45 @@ Full steps, correcting one, and deleting one:
 
 ## 8. Make a plan for what you owe
 
-_Awaiting slice 10._
+If you owe money on a card or a loan, put it in once and Budget Owl works out when it's gone and
+which one to attack first.
 
-Will cover: entering a debt's terms, choosing between paying the highest rate first or the
-smallest balance first, and seeing what each one does to the date you are finally clear.
+1. Select **Debt plan** in the menu across the top, then select **Add a debt**.
+
+2. Fill in the name, the **Balance now** and **The date that balance was true**, the **Annual rate**
+   and the **Minimum payment**.
+
+   All five come off your statement. Nothing here needs a bank connection.
+
+3. If the minimum already goes out as one of your bills, say which one in **The bill that pays its
+   minimum**.
+
+   This is the step people skip, and it's the one that stops the same money being counted twice.
+
+4. Select **Save**.
+
+   The debt joins the ladder, and the page works out when it clears.
+
+5. Choose an **Order of attack** — **Avalanche** or **Snowball**.
+
+   ![The Avalanche or snowball card: two cards side by side, each with its reasoning, debt-free month, when the first debt goes and the interest along the way.](images/choose-how-to-clear-your-debts--compare.png)
+
+**Budget Owl works both orders out and refuses to pick for you.** Avalanche goes at the highest rate
+first, snowball at the smallest balance first. For the household above they finish in the same
+month and differ by about $48 of interest, and the page says so: _"Either is a good answer."_ How
+much you put in moves the date far more than which order you put it in.
+
+**Logging a debt payment doesn't move money.** Like a bill, it records what you say happened — no
+transaction is created, and the account you name in **Paid from** is untouched.
+
+**A balance is yours, not Budget Owl's.** It comes off a statement, and between statements the app
+estimates and says plainly that it's estimating. After a year it stops guessing and asks you for a
+statement instead.
+
+Full steps: [Add a debt](features/add-a-debt.md),
+[Choose how to clear your debts](features/choose-how-to-clear-your-debts.md),
+[Log a payment against a debt](features/log-a-debt-payment.md) and
+[Confirm what you owe](features/confirm-what-you-owe.md).
 
 ## 9. See where your money went
 

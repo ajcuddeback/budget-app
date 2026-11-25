@@ -51,6 +51,14 @@ test('@doc the bills page, and the figure it leads with', async ({ page, doc }) 
     'The Envelopes card at the foot of the page: what is set aside this month, and an Open envelopes button.',
     { focus: page.locator('section').filter({ hasText: 'Set aside this month' }).first() },
   );
+
+  // Slice 10 added a fourth term to the subtraction and this card beside it. Captured here
+  // because the guide has to explain a figure that moved under a reader who saw it last month.
+  await doc.capture(
+    'owed',
+    'The Owed card: owed in all, the minimums a month, how many debts, and the note saying which part of the minimums comes off what is left.',
+    { focus: page.locator('section.card').filter({ hasText: 'Owed in all' }).first() },
+  );
 });
 
 test('@doc the bills page in a month that does not add up', async ({ page, doc }) => {
