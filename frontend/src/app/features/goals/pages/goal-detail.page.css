@@ -1,0 +1,63 @@
+.figure {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.said {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.said p {
+  margin: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.history-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+}
+
+.history-table th,
+.history-table td {
+  padding: var(--space-3) var(--space-2) var(--space-3) 0;
+  border-block-end: 1px solid var(--color-divider);
+  text-align: start;
+  vertical-align: top;
+}
+
+.history-table thead th {
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-table tbody th {
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.history-table tbody tr:last-child th,
+.history-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A withdrawal is said in words as well as with the colour: colour alone tells a screen reader
+   nothing. The colour is the one a negative "left" uses. */
+.amount.is-negative {
+  color: var(--color-accent-text);
+}
+
+.note {
+  overflow-wrap: anywhere;
+}

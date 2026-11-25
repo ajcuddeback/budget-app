@@ -1,0 +1,86 @@
+<dialog
+  appModal
+  class="dialog"
+  aria-labelledby="contribution-dialog-title"
+  (dismissed)="closed.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="contribution-dialog-title">
+      {{ title() | t: { name: goal().name } }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    @if (stillToCome(); as planned) {
+      <p class="card-note">
+        {{
+          'goals.contribute.prefilled'
+            | t
+              : {
+                  amount: planned | money: goal().currency,
+                  month: goal().thisPeriod.period | period,
+                }
+        }}
+      </p>
+    }
+
+    <div class="field">
+      <label for="contribution-amount">{{ 'goals.contribute.amount' | t }}</label>
+      <!-- type="text" with inputmode="decimal", never type="number" (ADR-0006). Unsigned: the
+           direction is the dialog, not a minus sign. -->
+      <input
+        id="contribution-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="amount"
+        aria-describedby="contribution-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.amount" errorId="contribution-amount-error" />
+    </div>
+
+    <div class="field">
+      <label for="contribution-date">{{ 'goals.contribute.date' | t }}</label>
+      <input
+        id="contribution-date"
+        class="input"
+        type="date"
+        formControlName="date"
+        aria-describedby="contribution-date-error"
+        [attr.aria-invalid]="
+          form.controls.date.invalid && form.controls.date.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.date" errorId="contribution-date-error" />
+    </div>
+
+    <div class="field">
+      <label for="contribution-note">{{ 'goals.contribute.note' | t }}</label>
+      <input
+        id="contribution-note"
+        class="input"
+        type="text"
+        maxlength="500"
+        autocomplete="off"
+        formControlName="note"
+      />
+    </div>
+
+    <!-- Said in the dialog because a household that expects its savings balance to move will
+         otherwise think the app is broken (ADR-0035). -->
+    <p class="card-note">{{ 'goals.contribute.noLedger' | t }}</p>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ submitLabel() | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

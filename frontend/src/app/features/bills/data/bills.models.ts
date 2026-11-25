@@ -219,7 +219,7 @@ export interface UpdateIncomeRequest {
 }
 
 /**
- * The **four** terms and the subtraction — the figure the page exists for.
+ * The **five** terms and the subtraction — the figure the page exists for.
  *
  * **`left` goes negative** and this client renders that rather than clamping it: "you are £180
  * short this month" is the information. The terms are shown beneath it so that a plan counted
@@ -228,6 +228,9 @@ export interface UpdateIncomeRequest {
  * **The fourth term is `debtMinimumsNotInBills`** (`debt-plan.md`, decision 2), which changed a
  * figure that had already shipped. Only the minimums *not* already carried by a bill row come off,
  * so a card's minimum is counted once; the rest is already inside `bills`.
+ *
+ * **The fifth term is `goalsSetAside`** (`goals.md`, decision 2), which changed the figure again in
+ * slice 11. A household with no goals has a fifth term of zero.
  *
  * **`owed` is never part of the subtraction.** It is a balance, not a monthly commitment, and
  * taking it off would tell a household owing £26,000 that it has nothing to spend this month.
@@ -255,6 +258,20 @@ export interface PeriodSummary {
   debtMinimums: string;
   /** The only debt figure `left` loses: the minimums no bill row already carries this month. */
   debtMinimumsNotInBills: string;
+  /**
+   * The fifth term (`goals.md`, decision 2): what the month's goals set aside — each unarchived,
+   * base-currency goal counting the greater of its plan and what was recorded. `left` loses it.
+   */
+  goalsSetAside: string;
+  /** How many goals that figure was summed over. */
+  goalsCounted: number;
+  /**
+   * What the debt plan puts towards debt beyond its minimums, or `null` with no plan or one below
+   * them. **Reported, never subtracted** (`goals.md`, decision 3).
+   */
+  debtPlanExtra: string | null;
+  /** Compared on the server, so this client compares no amounts to say it. */
+  debtPlanExtraExceedsLeft: boolean;
   /** Negative when the month does not add up. Never clamp it. */
   left: string;
   currency: string;

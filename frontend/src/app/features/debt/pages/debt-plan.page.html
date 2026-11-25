@@ -2,6 +2,9 @@
   <div>
     <h1 class="page-title">{{ 'debt.title' | t }}</h1>
     <p class="page-lede">{{ 'debt.lede' | t }}</p>
+    @if (extraExceedsLeft(); as said) {
+      <p class="card-note">{{ said.key | t: said.params }}</p>
+    }
   </div>
 
   @if (loading()) {

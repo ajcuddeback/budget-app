@@ -159,6 +159,10 @@ const SHORT: PeriodSummary = {
   debtCount: 3,
   debtMinimums: '645.0000',
   debtMinimumsNotInBills: '303.0000',
+  goalsSetAside: '0.0000',
+  goalsCounted: 0,
+  debtPlanExtra: null,
+  debtPlanExtraExceedsLeft: false,
   left: '-180.0000',
   currency: 'GBP',
 };
@@ -339,6 +343,31 @@ describe('BillsPage', () => {
     const owed = root(fixture).querySelector('section[aria-labelledby="owed-heading"]');
     expect(owed?.textContent).toContain('No debts recorded');
     expect(owed?.textContent).not.toContain('£0.00');
+  });
+
+  it('shows the goals as the fifth term of what is left, from the server and not summed here', async () => {
+    const fixture = await render({
+      summary: { ...SHORT, goalsSetAside: '275.0000', goalsCounted: 2 },
+    });
+
+    const left = root(fixture).querySelector('section[aria-labelledby="left-heading"]');
+    expect(left?.textContent).toContain('Goals');
+    expect(left?.textContent).toContain('£275.00');
+    // The headline is the server's own figure; nothing on the page recomputes it.
+    expect(left?.textContent).toContain('-£180.00');
+  });
+
+  it('says so when the debt plan’s extra is more than what is left, and only then', async () => {
+    const quiet = await render({ summary: { ...SHORT, debtPlanExtra: '50.0000' } });
+    expect(root(quiet).textContent).not.toContain('beyond the minimums');
+
+    const fixture = await render({
+      summary: { ...SHORT, debtPlanExtra: '260.0000', debtPlanExtraExceedsLeft: true },
+    });
+
+    expect(root(fixture).textContent).toContain(
+      'Your debt plan puts £260.00 a month towards debt beyond the minimums',
+    );
   });
 
   it('reports what is still to pay without leading with it', async () => {

@@ -1,0 +1,31 @@
+.goal-list {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal-item {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.goal-item + .goal-item {
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.goal-said {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.goal-said .card-note {
+  margin: 0;
+}
+
+/* Retired goals are kept for their history, not for the month's plan: muted, as on accounts. */
+.is-archived {
+  color: var(--color-muted);
+}

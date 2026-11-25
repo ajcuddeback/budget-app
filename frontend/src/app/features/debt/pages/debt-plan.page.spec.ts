@@ -18,6 +18,7 @@ import {
 } from '../../../testing/helpers';
 import { AccountsService } from '../../accounts/data/accounts.service';
 import { BillsService } from '../../bills/data/bills.service';
+import { PeriodSummaryService } from '../../bills/data/summary.service';
 import { CurrencyGroup, Debt, DebtList, Plan, Rung, StrategyProjection } from '../data/debt.models';
 import { DebtPlanService } from '../data/debt-plan.service';
 import { DebtsService } from '../data/debts.service';
@@ -215,6 +216,8 @@ describe('DebtPlanPage', () => {
   const plans = { get: vi.fn(), update: vi.fn(), projection: vi.fn() };
   const accountsService = { list: vi.fn() };
   const billsService = { list: vi.fn() };
+  /** This month's summary, for the one sentence comparing the plan's extra with what is left. */
+  const summaries = { get: vi.fn() };
 
   async function render(
     options: {
@@ -225,8 +228,19 @@ describe('DebtPlanPage', () => {
       projection?: Plan;
       /** The hypothetical is a separate request, and it is allowed to fail on its own. */
       projectionFails?: boolean;
+      /** Whether the server says the plan's extra is more than this month's left (slice 11). */
+      extraExceedsLeft?: boolean;
     } = {},
   ): Promise<ComponentFixture<DebtPlanPage>> {
+    summaries.get.mockReset();
+    summaries.get.mockReturnValue(
+      of({
+        left: '120.0000',
+        currency: 'GBP',
+        debtPlanExtra: options.extraExceedsLeft ? '400.0000' : null,
+        debtPlanExtraExceedsLeft: options.extraExceedsLeft ?? false,
+      }),
+    );
     auth = fakeAuth({
       ...OWNER,
       household: { ...OWNER_MEMBERSHIP, baseCurrency: 'GBP', role: options.role ?? 'OWNER' },
@@ -275,6 +289,7 @@ describe('DebtPlanPage', () => {
         { provide: DebtPlanService, useValue: plans },
         { provide: AccountsService, useValue: accountsService },
         { provide: BillsService, useValue: billsService },
+        { provide: PeriodSummaryService, useValue: summaries },
       ],
     });
     await TestBed.inject(I18nService).use('en-GB');
@@ -285,6 +300,19 @@ describe('DebtPlanPage', () => {
 
   const text = (fixture: ComponentFixture<DebtPlanPage>): string =>
     (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+  it('says in words when the plan’s extra is more than what is left after goals, and changes nothing', async () => {
+    const quiet = await render();
+    expect(text(quiet)).not.toContain('is more than the');
+
+    const fixture = await render({ extraExceedsLeft: true });
+
+    // The comparison is the server's (goals.md, decision 3): the page states both figures and
+    // computes neither.
+    expect(text(fixture)).toContain(
+      "This plan's extra of £400.00 a month is more than the £120.00 left this month",
+    );
+  });
 
   it('shows both strategies whichever one is selected', async () => {
     const fixture = await render({ plan: planOf({ strategy: 'SNOWBALL' }) });

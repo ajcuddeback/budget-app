@@ -21,6 +21,7 @@ import { Account } from '../../accounts/data/account.models';
 import { AccountsService } from '../../accounts/data/accounts.service';
 import { Bill } from '../../bills/data/bills.models';
 import { BillsService } from '../../bills/data/bills.service';
+import { PeriodSummaryService } from '../../bills/data/summary.service';
 import { currentPeriod } from '../../../core/period';
 import { DebtDialogComponent } from '../components/debt-dialog.component';
 import {
@@ -159,6 +160,7 @@ export class DebtPlanPage {
   private readonly plans = inject(DebtPlanService);
   private readonly accountsService = inject(AccountsService);
   private readonly billsService = inject(BillsService);
+  private readonly summaries = inject(PeriodSummaryService);
   private readonly auth = inject(AuthService);
   private readonly i18n = inject(I18nService);
 
@@ -177,6 +179,15 @@ export class DebtPlanPage {
   protected readonly dialogError = signal<ApiError | null>(null);
   protected readonly actionError = signal<ApiError | null>(null);
   protected readonly notice = signal<MessageKey | null>(null);
+
+  /**
+   * *"This plan's extra is more than what is left this month"* (`goals.md`, decision 3), or `null`.
+   *
+   * Goals and the plan are not coupled by arithmetic: the plan's monthly amount stays the
+   * household's own figure. The only interaction is this sentence, and the comparison behind it
+   * is the server's — the summary reports both figures and whether one exceeds the other.
+   */
+  protected readonly extraExceedsLeft = signal<Said | null>(null);
   protected readonly savingStrategy = signal(false);
   protected readonly savingAmount = signal(false);
   protected readonly editingAmount = signal(false);
@@ -385,6 +396,32 @@ export class DebtPlanPage {
     this.accounts.set(accounts.content);
     this.bills.set(bills.content);
     await this.readWhatIf(plan);
+    // Not awaited: one sentence must never hold the plan page's load up.
+    void this.readSummary();
+  }
+
+  /**
+   * This month's summary, for the one sentence that compares the plan's extra with what is left.
+   * Failure-tolerant for the reason {@link readWhatIf} is: a missing sentence is a smaller loss
+   * than a plan page that will not load.
+   */
+  private async readSummary(): Promise<void> {
+    try {
+      const summary = await firstValueFrom(this.summaries.get(currentPeriod()));
+      this.extraExceedsLeft.set(
+        summary.debtPlanExtraExceedsLeft && summary.debtPlanExtra !== null
+          ? {
+              key: 'debt.extraExceedsLeft',
+              params: {
+                extra: this.i18n.formatMoney(summary.debtPlanExtra, summary.currency),
+                left: this.i18n.formatMoney(summary.left, summary.currency),
+              },
+            }
+          : null,
+      );
+    } catch {
+      this.extraExceedsLeft.set(null);
+    }
   }
 
   /**

@@ -1,0 +1,294 @@
+<div class="stack">
+  <div>
+    <a class="btn btn-ghost btn-small" routerLink="/goals">{{ 'goals.back' | t }}</a>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else if (goal(); as goal) {
+    <!-- 1. The header: the name, the month, where it is kept, and the actions. -->
+    <div class="stack-tight">
+      <h1 class="page-title">{{ goal.name }}</h1>
+      <p class="page-lede">
+        @if (goal.targetMonth; as month) {
+          {{ 'goals.detail.by' | t: { month: month | period } }}
+        } @else {
+          {{ 'goals.detail.noMonth' | t }}
+        }
+        @if (account(); as kept) {
+          · {{ 'goals.detail.keptIn' | t: { account: kept.name } }}
+        }
+      </p>
+      @if (goal.archived) {
+        <p>
+          <span class="tag tag-neutral">{{ 'goals.archivedTag' | t }}</span>
+        </p>
+      } @else if (goal.reached) {
+        <p>
+          <span class="tag">{{ 'goals.reachedTag' | t }}</span>
+        </p>
+      } @else if (goal.overdue) {
+        <p>
+          <span class="tag">{{ 'goals.overdueTag' | t }}</span>
+        </p>
+      }
+    </div>
+
+    @if (canWrite()) {
+      <div class="cluster">
+        @if (!goal.archived) {
+          <button type="button" class="btn btn-primary" (click)="openContribute('in')">
+            {{ 'goals.setAside' | t }}
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="openContribute('out')">
+            {{ 'goals.takeOut' | t }}
+          </button>
+        }
+        <button type="button" class="btn btn-secondary" (click)="openEdit()">
+          {{ 'common.edit' | t }}
+        </button>
+      </div>
+    }
+
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said.key | t: said.params }}</p>
+      </div>
+    }
+
+    <!-- 2. Progress: the goal row, larger, and the account's balance labelled as the account's. -->
+    <section class="card" aria-labelledby="goal-progress-heading">
+      <h2 class="card-title" id="goal-progress-heading">{{ 'goals.detail.progress' | t }}</h2>
+      <app-goal-progress
+        [name]="goal.name"
+        [targetMonth]="goal.targetMonth"
+        [saved]="goal.saved"
+        [target]="goal.targetAmount"
+        [currency]="goal.currency"
+        [large]="true"
+      />
+      @if (remainingSaid(); as said) {
+        <p class="figure">{{ said.key | t: said.params }}</p>
+      }
+      @if (account(); as kept) {
+        <!-- Two different things, said as two different things. Nothing reconciles them: one
+             account often holds several goals. -->
+        <p class="card-note">
+          {{
+            'goals.detail.accountBalance'
+              | t: { account: kept.name, amount: kept.balance | money: kept.currency }
+          }}
+        </p>
+      }
+    </section>
+
+    <!-- 3. The plan: what is in force, anything scheduled, and what it would take. -->
+    <section class="card" aria-labelledby="goal-plan-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="goal-plan-heading">{{ 'goals.detail.plan' | t }}</h2>
+        @if (canWrite() && !goal.archived) {
+          <button type="button" class="btn btn-secondary btn-small" (click)="openPlan()">
+            {{ 'goals.plan.change' | t }}
+          </button>
+        }
+      </div>
+      <p class="figure">
+        {{
+          'goals.detail.monthly'
+            | t
+              : {
+                  amount: goal.monthlyContribution | money: goal.currency,
+                  month: goal.thisPeriod.period | period,
+                }
+        }}
+      </p>
+      @for (step of futureSteps(); track step.fromPeriod) {
+        <p class="card-note">
+          {{
+            'goals.detail.step'
+              | t
+                : {
+                    amount: step.monthlyAmount | money: step.currency,
+                    month: step.fromPeriod | period,
+                  }
+          }}
+        </p>
+      }
+      <div class="said">
+        @for (said of projection(); track $index) {
+          <p>{{ said.key | t: said.params }}</p>
+        }
+        @if (requiredAbsent(); as said) {
+          <p class="card-note">{{ said.key | t: said.params }}</p>
+        }
+      </div>
+      <p class="card-note">
+        {{
+          'goals.detail.thisMonth'
+            | t
+              : {
+                  month: goal.thisPeriod.period | period,
+                  planned: goal.thisPeriod.planned | money: goal.currency,
+                  recorded: goal.thisPeriod.recorded | money: goal.currency,
+                }
+        }}
+      </p>
+      <p class="card-note">{{ 'goals.countsTowardsLeft' | t }}</p>
+      <p class="card-note">{{ 'goals.noInterest' | t }}</p>
+    </section>
+
+    <!-- 4. History, in the server's order. The starting amount is its first line and is not a
+            contribution row. -->
+    <section class="card" aria-labelledby="goal-history-heading">
+      <h2 class="card-title" id="goal-history-heading">{{ 'goals.detail.history' | t }}</h2>
+      @if (hasStart()) {
+        <p class="figure">
+          {{
+            'goals.detail.alreadySaved' | t: { amount: goal.startingAmount | money: goal.currency }
+          }}
+        </p>
+      }
+      @if (contributions().length === 0) {
+        <p class="card-note">{{ 'goals.detail.noHistory' | t }}</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="history-table">
+            <caption class="visually-hidden">
+              {{
+                'goals.detail.historyCaption' | t
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">{{ 'goals.detail.date' | t }}</th>
+                <th scope="col">{{ 'goals.detail.amount' | t }}</th>
+                <th scope="col">{{ 'goals.detail.note' | t }}</th>
+                @if (canWrite()) {
+                  <th scope="col">
+                    <span class="visually-hidden">{{ 'goals.detail.actions' | t }}</span>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of contributions(); track row.id) {
+                <tr>
+                  <th scope="row">{{ row.date | dateOnly }}</th>
+                  <td class="amount" [class.is-negative]="isWithdrawal(row)">
+                    {{ row.amount | money: row.currency }}
+                    @if (isWithdrawal(row)) {
+                      <span class="tag tag-neutral">{{ 'goals.detail.withdrawal' | t }}</span>
+                    }
+                  </td>
+                  <td class="note">{{ row.note ?? '' }}</td>
+                  @if (canWrite()) {
+                    <td>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-small"
+                        (click)="openConfirm({ kind: 'remove', contribution: row })"
+                      >
+                        {{ 'goals.detail.remove' | t }}
+                        <span class="visually-hidden">{{ row.date | dateOnly }}</span>
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (morePages()) {
+          <div>
+            <button type="button" class="btn btn-secondary btn-small" (click)="showMore()">
+              {{ 'goals.detail.showMore' | t }}
+            </button>
+          </div>
+        }
+      }
+    </section>
+
+    @if (canWrite()) {
+      <div class="cluster">
+        @if (goal.archived) {
+          <button type="button" class="btn btn-secondary" (click)="unarchive()">
+            {{ 'goals.unarchive' | t }}
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="openConfirm({ kind: 'archive' })"
+          >
+            {{ 'goals.archive.action' | t }}
+          </button>
+        }
+        <button type="button" class="btn btn-danger" (click)="openConfirm({ kind: 'delete' })">
+          {{ 'goals.delete.action' | t }}
+        </button>
+      </div>
+    }
+
+    @if (contributing(); as direction) {
+      <app-contribution-dialog
+        [goal]="goal"
+        [direction]="direction"
+        [today]="today()"
+        [busy]="dialogBusy()"
+        [error]="dialogError()"
+        (submitted)="submitContribution($event)"
+        (closed)="closeDialogs()"
+      />
+    }
+    @if (editing()) {
+      <app-goal-dialog
+        [goal]="goal"
+        [accounts]="accounts()"
+        [baseCurrency]="baseCurrency()"
+        [busy]="dialogBusy()"
+        [error]="dialogError()"
+        [previewSaid]="previewSaid()"
+        [previewUnavailable]="previewUnavailable()"
+        [resetKey]="editReset()"
+        (previewRequested)="previewEdit($event)"
+        (submitted)="submitEdit($event)"
+        (closed)="closeDialogs()"
+      />
+    }
+    @if (planning()) {
+      <app-plan-dialog
+        [goal]="goal"
+        [busy]="dialogBusy()"
+        [error]="dialogError()"
+        [previewSaid]="previewSaid()"
+        [previewUnavailable]="previewUnavailable()"
+        (previewRequested)="previewPlan($event)"
+        (submitted)="submitPlan($event)"
+        (closed)="closeDialogs()"
+      />
+    }
+    @if (confirmText(); as text) {
+      <app-confirm-dialog
+        [heading]="text.heading | t: { name: goal.name }"
+        [message]="text.message | t"
+        [confirmLabel]="text.action | t"
+        [tone]="text.tone"
+        [busy]="dialogBusy()"
+        (confirmed)="confirm()"
+        (cancelled)="closeDialogs()"
+      />
+    }
+    @if (confirmText() && dialogError(); as failure) {
+      <app-error-alert [error]="failure" />
+    }
+  }
+</div>
