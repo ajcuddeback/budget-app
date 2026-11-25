@@ -39,35 +39,37 @@
     </section>
   } @else if (done(); as batch) {
     <section class="card" aria-labelledby="import-done-heading" data-testid="import-done">
-      <div class="alert alert-success" role="status">
-        <p id="import-done-heading">
-          <strong>
-            {{
-              'import.done'
-                | t: { count: batch.imported, account: accountLabel() || batch.accountName }
-            }}
-          </strong>
-        </p>
-        <p>{{ 'import.doneDetail' | t }}</p>
-      </div>
-      <div class="cluster">
-        <a
-          class="btn btn-primary"
-          routerLink="/transactions"
-          [queryParams]="{ accountId: batch.accountId }"
-        >
-          {{ 'import.viewLedger' | t }}
-        </a>
-        <button type="button" class="btn btn-secondary" (click)="startOver()">
-          {{ 'import.another' | t }}
-        </button>
-        @if (batch.removable > 0) {
-          <button type="button" class="btn btn-danger" (click)="askToUndo(batch)">
-            {{ 'import.undo' | t }}
+      <div class="stack">
+        <div class="alert alert-success" role="status">
+          <p id="import-done-heading">
+            <strong>
+              {{
+                'import.done'
+                  | t: { count: batch.imported, account: accountLabel() || batch.accountName }
+              }}
+            </strong>
+          </p>
+          <p>{{ 'import.doneDetail' | t }}</p>
+        </div>
+        <div class="cluster">
+          <a
+            class="btn btn-primary"
+            routerLink="/transactions"
+            [queryParams]="{ accountId: batch.accountId }"
+          >
+            {{ 'import.viewLedger' | t }}
+          </a>
+          <button type="button" class="btn btn-secondary" (click)="startOver()">
+            {{ 'import.another' | t }}
           </button>
-        }
+          @if (batch.removable > 0) {
+            <button type="button" class="btn btn-danger" (click)="askToUndo(batch)">
+              {{ 'import.undo' | t }}
+            </button>
+          }
+        </div>
+        <app-error-alert [error]="undoError()" />
       </div>
-      <app-error-alert [error]="undoError()" />
     </section>
   } @else {
     @if (undone() !== null) {

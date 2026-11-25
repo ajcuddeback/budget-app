@@ -9,7 +9,7 @@
 .counts,
 .figures {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: var(--space-3);
   margin: 0;
 }
@@ -122,8 +122,9 @@
   font-weight: 600;
 }
 
+/* Text roles, not ramp steps: the ledger's fixed -700 steps fail contrast on the dark ground. */
 .incoming {
-  color: var(--color-accent-700);
+  color: var(--color-accent-text);
 }
 
 .row-secondary {
@@ -136,7 +137,7 @@
 }
 
 .needs-category {
-  color: var(--color-accent-2-700);
+  color: var(--color-text);
   font-weight: 600;
 }
 
