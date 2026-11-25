@@ -579,8 +579,11 @@ wrong.
 Nothing else changes: account, amount, status, `external_id` and `import_batch_id` stay as they
 were. Keeping `external_id` means a later overlapping statement still sees each row as an exact
 duplicate. Keeping `import_batch_id` is harmless, because undoing an import removes only rows that
-are not transfer legs (decision 5). Links from a bill occurrence, envelope entry, debt payment or
-goal contribution to either row are not touched.
+are not transfer legs (decision 5). Links from a bill occurrence, debt payment or goal
+contribution to either row are not touched. **A row logged against an envelope cannot be paired**
+(`409 transfer-leg-in-envelope`): a transfer is not spending, and the envelope would go on
+counting it. Take it out of the envelope first. This was changed after the slice-12 security
+audit.
 
 **Undo is a split.** `POST /api/transfers/{id}/split` turns a pair back into two ordinary rows:
 `transfer_group_id` is cleared on both, versions move forward, and nothing else changes. It needs the
@@ -1428,8 +1431,56 @@ and **Split into two rows**, and accepts `?accountId=` so the success state can 
   http://localhost:4312` and `tools/userguide-capture.sh --url http://localhost:4312` ran against
   this branch's own dev server instead.
 
+### After the slice-12 security audit
+
+The audit found the parsers sound (XXE, entities, quote bombs, amount and date lexers, charsets,
+no disk, no logged content, digest, scoping, V19). It found one high and two medium problems,
+all fixed before the slice was pushed:
+
+- **High: the suspected-duplicate match was quadratic.** It listed every (row, candidate) pair
+  within ±3 days and sorted them, so a member who committed 10,000 rows of one amount on one date
+  and then previewed a second such file built 100 million pairs, and the instance ran out of
+  memory. `ImportClassifier` now makes the same greedy choice in O(rows + candidates): one pass
+  per distance (0–3 days), with candidates indexed by (amount, date) and a pointer per index.
+  `ImportClassifierTest` runs the 10,000 × 10,000 case in well under a second. It also checks,
+  over 300 random inputs, that the choice matches the old pairwise one exactly, because the
+  preview digest is built from it. Reversing the tie-break fails that check.
+- **Medium: a body was parsed before admission.** Jackson read the whole base64 field before the
+  role check, the rate limiter and the concurrency gate, and a `VIEWER` was never rate-limited.
+  `ImportAdmissionInterceptor` now checks the role and takes the throttle's permit in `preHandle`,
+  before argument resolution reads the body, and releases it in `afterCompletion`.
+  `ImportLimitsIT` proves the order with bodies that are not JSON: a viewer gets `403`, a refused
+  caller gets `429`, and neither gets the `400` that parsing would cause. "A refused caller costs
+  no parsing" (rule 3) is now true for JSON as well.
+- **Medium: pairing could turn an envelope entry into a transfer leg.** That undid the envelope
+  rule that a transfer is not spending. Pairing now refuses either row if it is logged against an
+  envelope (`409 transfer-leg-in-envelope`), and the person takes the row out of the envelope
+  first. This replaces rule 12's "links … are not touched" for envelopes. Bills, debts and goals
+  only reference a transaction as evidence, and stay as the rule says.
+
+The import and pairing routes also joined `AuthorizationIT`'s central 401 sweep, taken from
+`ImportAuthorizationIT.everyRoute()`. The static analysis the interrupted gate never reached is
+clean: four SpotBugs findings and two PMD violations were fixed, and one SpotBugs exclusion for
+`ImportPayees`' injected `JdbcTemplate` is argued in `spotbugs-exclude.xml`.
+
 ### Known gaps
 
+- **From the slice-12 audit, left open (low):**
+  - **A saved CSV mapping can hold cell values.** Its labels and header hash come from whichever
+    row the person chose as the header row (1–20). If that row is a data row, its date, payee and
+    amount are stored, cut to 32 characters, along with a hash of the row. That bends ADR-0038's
+    "never a cell value, never a hash of the file". The fix is to store labels only for a row
+    confirmed as a header, or role → index only.
+  - **Charset candidates return whole lines**, cut to 64 characters, rather than cells. In OFX 1.x
+    a line can hold `<ACCTID>`. They only ever go back to the person who uploaded the file. The fix
+    is to sample text from allowed fields only.
+  - **nginx allows 7 MiB and the API's body cap is about 7.03 MiB.** A file at the 5 MiB cap with a
+    very large override list gets nginx's `413`, which is well-formed but comes from the wrong
+    layer.
+- **The UI fixtures for import are hand-written**, unlike the debt, goal and report fixtures,
+  which are generated from the real server. The preview arithmetic in the screenshots and the
+  user guide was checked by hand, not produced by the application. Generating it through
+  `DemoFixtureIT`, by posting a real OFX file, would bring import in line.
 - **`AmountText.parse` still accepts exponent notation** (see Implementation notes and
   `gotchas.md`). Import does not use it.
 - **The ledger's own "Needs a category" and money-in colours use fixed `-700` ramp steps** that

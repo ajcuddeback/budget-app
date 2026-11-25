@@ -1315,6 +1315,7 @@
   "error.import-file-too-complex": "That file took too long to read. Export a shorter date range and try again.",
   "error.import-preview-stale": "Your ledger changed since the preview, so nothing was imported. Preview the file again.",
   "error.transfer-pair-mismatch": "Those two rows can't be one transfer.",
+  "error.transfer-leg-in-envelope": "One of these rows is logged against an envelope. Moving money between your own accounts isn't spending, so take it out of the envelope first, then pair the rows.",
   "error.transfer-pair-mismatch.same-account": "Both rows are in the same account. A transfer moves money between two different accounts.",
   "error.transfer-pair-mismatch.same-sign": "Both rows went the same way. A transfer needs money leaving one account and arriving in the other.",
   "error.transfer-pair-mismatch.amounts-differ": "The two amounts aren't equal. In one currency, what left one account has to be what arrived in the other."

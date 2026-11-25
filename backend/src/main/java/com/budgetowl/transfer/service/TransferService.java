@@ -10,6 +10,7 @@ import com.budgetowl.common.ForbiddenException;
 import com.budgetowl.common.InvalidRequestException;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.NotFoundException;
+import com.budgetowl.envelope.persistence.EnvelopeEntryRepository;
 import com.budgetowl.household.domain.Household;
 import com.budgetowl.household.domain.HouseholdMember;
 import com.budgetowl.household.service.MembershipService;
@@ -77,16 +78,19 @@ public class TransferService {
     private final AccountRepository accounts;
     private final MembershipService memberships;
     private final TransactionService ledger;
+    private final EnvelopeEntryRepository envelopeEntries;
 
     public TransferService(
             TransactionRepository transactions,
             AccountRepository accounts,
             MembershipService memberships,
-            TransactionService ledger) {
+            TransactionService ledger,
+            EnvelopeEntryRepository envelopeEntries) {
         this.transactions = transactions;
         this.accounts = accounts;
         this.memberships = memberships;
         this.ledger = ledger;
+        this.envelopeEntries = envelopeEntries;
     }
 
     @Transactional(readOnly = true)
@@ -274,6 +278,17 @@ public class TransferService {
             // Within one currency a transfer is equal and opposite. A fee taken on the way is its
             // own transaction, and the person edits one row first.
             throw mismatch("amounts-differ");
+        }
+        // A TRANSFER IS NOT SPENDING (EnvelopeService refuses to file a transfer leg). Pairing a
+        // row already filed in an envelope would turn it into a leg after the fact, and the
+        // envelope would go on counting money that never left the household — then outlive the
+        // transfer as a phantom entry if the pair were deleted. Slice-12 security audit, medium 3.
+        for (Transaction leg : List.of(one, other)) {
+            if (envelopeEntries.findByTransaction(householdId, leg.id()).isPresent()) {
+                throw new ConflictException(
+                        ErrorCode.TRANSFER_LEG_IN_ENVELOPE,
+                        "one of these rows is logged against an envelope");
+            }
         }
         if (one.version() != request.version() || other.version() != request.withVersion()) {
             throw new ConflictException(

@@ -90,6 +90,10 @@ differ — each keeps its own figure.
 **"This is one half of a transfer…"**
 One of the rows is already part of a transfer. Split that transfer first.
 
+**"One of these rows is logged against an envelope…"**
+Moving money between your own accounts isn't spending, so a transfer can't count against an
+envelope. Open the envelope, remove that entry, then pair the two rows again.
+
 **"That account is archived…"**
 One of the rows is in an account you've archived. Restore it on the **Accounts** screen first.
 

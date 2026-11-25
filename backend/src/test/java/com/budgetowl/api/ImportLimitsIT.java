@@ -237,6 +237,38 @@ class ImportLimitsIT extends ImportApiTestBase {
         }
     }
 
+    /**
+     * Slice-12 security audit, medium 2: admission comes before the body is read. A body that is
+     * not even JSON proves it — had anything parsed it, the answer would be a 400.
+     */
+    @Test
+    void aViewerIsRefusedBeforeTheirBodyIsRead() {
+        Household household = seedHousehold();
+
+        for (String path : new String[] {"/api/imports/preview", "/api/imports"}) {
+            ApiResponse refused = household.viewer().post(path, "this is not JSON");
+
+            assertThat(refused.status()).as(path).isEqualTo(403);
+            assertThat(refused.stringField("code")).as(path).isEqualTo("read-only-role");
+        }
+    }
+
+    @Test
+    void aCallerTheGateRefusesIsRefusedBeforeTheirBodyIsRead() {
+        Household household = seedHousehold();
+
+        try (ImportGate.Permit running = gate.enter(userIdOf(OWNER_EMAIL))) {
+            ApiResponse refused = household.owner().post("/api/imports/preview", "not JSON");
+
+            assertThat(refused.status()).isEqualTo(429);
+            assertThat(refused.header("Retry-After")).isPresent();
+        }
+        assertThat(household.owner().post("/api/imports/preview", "not JSON").status())
+                .as(
+                        "the permit went back when that request ended, so this one is read — and is a 400")
+                .isEqualTo(400);
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     /** A syntactically ordinary preview whose body is one byte over the cap. */

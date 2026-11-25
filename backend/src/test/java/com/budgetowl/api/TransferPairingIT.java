@@ -127,6 +127,39 @@ class TransferPairingIT extends ImportApiTestBase {
                 "same-account");
     }
 
+    /**
+     * Slice-12 security audit, medium 3: a transfer is not spending, so a row logged against an
+     * envelope must not become a leg — the envelope would go on counting money that never left the
+     * household. Either side of the pair, and nothing written.
+     */
+    @Test
+    void a_row_logged_against_an_envelope_cannot_be_paired_from_either_side() {
+        Household household = seedHousehold();
+        UUID current = createAccount(household.owner(), "Current", null);
+        UUID savings = createAccount(household.owner(), "Savings", null);
+        UUID out = createTransaction(household.owner(), current, "2026-08-03", "-250.00", null);
+        UUID in = createTransaction(household.owner(), savings, "2026-08-03", "250.00", null);
+        ApiResponse envelope =
+                household
+                        .owner()
+                        .post(
+                                "/api/envelopes",
+                                "{\"name\":\"Groceries\",\"period\":\"2026-08\",\"amount\":\"400.00\"}");
+        ApiResponse logged =
+                household
+                        .owner()
+                        .post(
+                                "/api/envelopes/" + envelope.stringField("id") + "/entries",
+                                "{\"transactionId\":\"" + out + "\"}");
+        assertThat(logged.status()).isEqualTo(201);
+
+        assertRefused(
+                pair(household.owner(), out, 0, in, 0), 409, "transfer-leg-in-envelope", null);
+        assertRefused(
+                pair(household.owner(), in, 0, out, 0), 409, "transfer-leg-in-envelope", null);
+        assertUnchanged(out, in);
+    }
+
     @Test
     void two_rows_with_the_same_sign_are_refused() {
         Household household = seedHousehold();

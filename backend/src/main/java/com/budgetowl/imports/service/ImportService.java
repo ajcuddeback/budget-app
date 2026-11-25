@@ -72,11 +72,10 @@ public class ImportService {
     private final ImportClassifier classifier;
     private final ImportWriter writer;
     private final ImportMappingService mappings;
-    private final ImportThrottle throttle;
     private final ImportHistoryService history;
 
     /**
-     * Eight collaborators, above the style guide's "about five". Each is one step of the pipeline
+     * Seven collaborators, above the style guide's "about five". Each is one step of the pipeline
      * the class Javadoc lists, and splitting the orchestration across two classes would hide the
      * order of those steps, which is the part a reviewer most needs to see in one place.
      */
@@ -87,7 +86,6 @@ public class ImportService {
             ImportClassifier classifier,
             ImportWriter writer,
             ImportMappingService mappings,
-            ImportThrottle throttle,
             ImportHistoryService history) {
         this.memberships = memberships;
         this.accounts = accounts;
@@ -95,7 +93,6 @@ public class ImportService {
         this.classifier = classifier;
         this.writer = writer;
         this.mappings = mappings;
-        this.throttle = throttle;
         this.history = history;
     }
 
@@ -134,38 +131,36 @@ public class ImportService {
             HouseholdMember membership = memberships.requireWriteAccess(actorId);
             UUID householdId = membership.household().id();
             outcome.householdId = householdId;
-            try (ImportThrottle.Permit permit = throttle.enter(actorId)) {
-                Account account = requireOpenAccount(request.accountId(), householdId);
-                byte[] bytes = decode(request.file());
-                outcome.bytes = bytes.length;
-                ReadOptions options =
-                        ImportSettingsReader.read(
-                                request.format(),
-                                request.settings(),
-                                account.lastFour().orElse(null));
-                FileReading reading =
-                        reader.read(bytes, request.format(), account.currency(), options);
-                outcome.charset = reading.charset();
-                Boolean matchesSaved =
-                        reading.csv() == null
-                                ? null
-                                : mappings.matchesSaved(
-                                        householdId, account.id(), reading.csv().headerLabels());
-                if (!reading.needs().isEmpty()) {
-                    outcome.code = "needs-answer";
-                    return asking(account, reading, matchesSaved);
-                }
-                ImportClassifier.Result result = classifier.classify(householdId, account, reading);
-                ImportPreview preview =
-                        preview(
-                                account,
-                                reading,
-                                result,
-                                classifier.balanceOf(householdId, account),
-                                matchesSaved);
-                outcome.counts = preview.counts();
-                return preview;
+            // The role, rate limit and concurrency gate were applied before the body was read
+            // (ImportAdmissionInterceptor); the role is checked again above for any other caller.
+            Account account = requireOpenAccount(request.accountId(), householdId);
+            byte[] bytes = decode(request.file());
+            outcome.bytes = bytes.length;
+            ReadOptions options =
+                    ImportSettingsReader.read(
+                            request.format(), request.settings(), account.lastFour().orElse(null));
+            FileReading reading = reader.read(bytes, request.format(), account.currency(), options);
+            outcome.charset = reading.charset();
+            Boolean matchesSaved =
+                    reading.csv() == null
+                            ? null
+                            : mappings.matchesSaved(
+                                            householdId, account.id(), reading.csv().headerLabels())
+                                    .orElse(null);
+            if (!reading.needs().isEmpty()) {
+                outcome.code = "needs-answer";
+                return asking(account, reading, matchesSaved);
             }
+            ImportClassifier.Result result = classifier.classify(householdId, account, reading);
+            ImportPreview preview =
+                    preview(
+                            account,
+                            reading,
+                            result,
+                            classifier.balanceOf(householdId, account),
+                            matchesSaved);
+            outcome.counts = preview.counts();
+            return preview;
         } catch (DomainException refused) {
             outcome.code = refused.errorCode().code();
             throw refused;
@@ -193,55 +188,51 @@ public class ImportService {
                     || !DIGEST.matcher(choices.previewDigest()).matches()) {
                 throw ImportSettingsReader.invalid("previewDigest", "must be 64 lowercase hex");
             }
-            try (ImportThrottle.Permit permit = throttle.enter(actorId)) {
-                Account account = requireAccount(request.accountId(), householdId);
-                java.util.Optional<ImportBatchView> already =
-                        history.alreadyWritten(householdId, account, choices.previewDigest());
-                if (already.isPresent()) {
-                    outcome.code = "already-imported";
-                    outcome.batchId = already.get().id();
-                    return already.get();
-                }
-                requireOpen(account);
-                byte[] bytes = decode(request.file());
-                outcome.bytes = bytes.length;
-                ReadOptions options =
-                        ImportSettingsReader.read(
-                                request.format(),
-                                request.settings(),
-                                account.lastFour().orElse(null));
-                FileReading reading =
-                        reader.read(bytes, request.format(), account.currency(), options);
-                outcome.charset = reading.charset();
-                requireNothingToAsk(reading);
-
-                boolean saveMapping =
-                        request.format() == ImportFormat.CSV
-                                && request.settings() != null
-                                && request.settings().saves();
-                ImportWriter.Written written =
-                        writer.write(
-                                actorId,
-                                householdId,
-                                account.id(),
-                                reading,
-                                new ImportWriter.Decisions(
-                                        choices.previewDigest(),
-                                        choices.includeSuspected(),
-                                        choices.overrides(),
-                                        saveMapping
-                                                ? options.mapping()
-                                                        .withDateFormat(reading.dateFormat())
-                                                : null,
-                                        reading.charset(),
-                                        options.invertSign(),
-                                        reading.csv() == null
-                                                ? List.of()
-                                                : reading.csv().headerLabels()));
-                outcome.batchId = written.batch().id();
-                outcome.counts = counts(written.classification().rows());
-                return history.view(written.batch(), account, true);
+            // The role, rate limit and concurrency gate were applied before the body was read
+            // (ImportAdmissionInterceptor); the role is checked again above for any other caller.
+            Account account = requireAccount(request.accountId(), householdId);
+            java.util.Optional<ImportBatchView> already =
+                    history.alreadyWritten(householdId, account, choices.previewDigest());
+            if (already.isPresent()) {
+                outcome.code = "already-imported";
+                outcome.batchId = already.get().id();
+                return already.get();
             }
+            requireOpen(account);
+            byte[] bytes = decode(request.file());
+            outcome.bytes = bytes.length;
+            ReadOptions options =
+                    ImportSettingsReader.read(
+                            request.format(), request.settings(), account.lastFour().orElse(null));
+            FileReading reading = reader.read(bytes, request.format(), account.currency(), options);
+            outcome.charset = reading.charset();
+            requireNothingToAsk(reading);
+
+            boolean saveMapping =
+                    request.format() == ImportFormat.CSV
+                            && request.settings() != null
+                            && request.settings().saves();
+            ImportWriter.Written written =
+                    writer.write(
+                            actorId,
+                            householdId,
+                            account.id(),
+                            reading,
+                            new ImportWriter.Decisions(
+                                    choices.previewDigest(),
+                                    choices.includeSuspected(),
+                                    choices.overrides(),
+                                    saveMapping
+                                            ? options.mapping().withDateFormat(reading.dateFormat())
+                                            : null,
+                                    reading.charset(),
+                                    options.invertSign(),
+                                    reading.csv() == null
+                                            ? List.of()
+                                            : reading.csv().headerLabels()));
+            outcome.batchId = written.batch().id();
+            outcome.counts = counts(written.classification().rows());
+            return history.view(written.batch(), account, true);
         } catch (DomainException refused) {
             outcome.code = refused.errorCode().code();
             throw refused;

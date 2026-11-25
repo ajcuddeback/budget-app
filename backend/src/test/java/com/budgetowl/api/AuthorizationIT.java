@@ -38,7 +38,25 @@ class AuthorizationIT extends ApiTestBase {
                                                 route.path().replace("{id}", any.toString()),
                                                 route.body()))
                         .toList();
-        return Stream.concat(fixedEndpoints(any).stream(), goals.stream()).toList();
+        // Import and pairing routes likewise, from ImportAuthorizationIT's list (slice-12 audit).
+        // Its placeholders — {account}, {batch}, {transaction}, {other}, {transfer}, {file} — all
+        // become the same unknown id: a 401 must come before any of them is looked at.
+        List<Endpoint> imports =
+                ImportAuthorizationIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path()
+                                                        .replaceAll("\\{[a-z]+\\}", any.toString()),
+                                                route.bodyTemplate() == null
+                                                        ? null
+                                                        : route.bodyTemplate()
+                                                                .replaceAll(
+                                                                        "\\{[a-z]+\\}",
+                                                                        any.toString())))
+                        .toList();
+        return Stream.of(fixedEndpoints(any), goals, imports).flatMap(List::stream).toList();
     }
 
     private static List<Endpoint> fixedEndpoints(UUID any) {

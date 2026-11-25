@@ -298,6 +298,14 @@ public enum ErrorCode {
      */
     TRANSFER_PAIR_MISMATCH("transfer-pair-mismatch", 422, "These two rows cannot be one transfer"),
 
+    /**
+     * One of two rows being paired is logged against an envelope. A transfer is not spending, so a
+     * leg may not be in one (EnvelopeService refuses the other way round); the person takes the row
+     * out of the envelope first. Slice-12 security audit, medium 3.
+     */
+    TRANSFER_LEG_IN_ENVELOPE(
+            "transfer-leg-in-envelope", 409, "One of these rows is logged against an envelope"),
+
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
     INTERNAL_ERROR("internal-error", 500, "Internal error");
 

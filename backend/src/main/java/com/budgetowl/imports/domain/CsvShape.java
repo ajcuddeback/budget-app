@@ -22,7 +22,7 @@ public record CsvShape(
 
     public CsvShape {
         headerLabels = List.copyOf(headerLabels);
-        firstRecords = firstRecords.stream().map(List::copyOf).toList();
+        firstRecords = List.copyOf(firstRecords.stream().map(List::copyOf).toList());
     }
 
     @Override

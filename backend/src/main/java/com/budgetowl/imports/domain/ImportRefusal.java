@@ -39,9 +39,13 @@ public final class ImportRefusal extends DomainException {
         return new ImportRefusal(Objects.requireNonNull(code), Map.of("field", field));
     }
 
-    /** No stack: a refusal is an answer, not a bug, and the frames say nothing useful. */
+    /**
+     * No stack: a refusal is an answer, not a bug, and the frames say nothing useful. Not {@code
+     * synchronized}: it touches no state, and a lock on a class whose instances are shared through
+     * static factories is one SpotBugs rightly refuses.
+     */
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return this;
     }
 }

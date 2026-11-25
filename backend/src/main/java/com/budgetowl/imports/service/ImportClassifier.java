@@ -11,7 +11,6 @@ import com.budgetowl.imports.persistence.LedgerRow;
 import com.budgetowl.imports.service.Classified.Classification;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -176,51 +175,82 @@ public class ImportClassifier {
             return;
         }
 
-        Map<BigDecimal, List<Integer>> byAmount = new HashMap<>();
+        // Slice-12 security audit, high: this used to build every (row, candidate) pair within the
+        // window and sort them — 100 million pairs for two 10,000-row files of one amount on one
+        // date, and an OutOfMemoryError. The choice below is the same greedy one (closest in days,
+        // then the earlier row, then the earlier candidate), made without listing pairs: there are
+        // only RESEMBLANCE_DAYS + 1 distances, and within one (amount, date) list the candidate
+        // taken is always the lowest one not yet taken, so a pointer per list replaces the search.
+        // O(rows + candidates) lookups, and the digest the preview binds is unchanged.
+        Map<BigDecimal, Map<LocalDate, Lane>> lanes = new HashMap<>();
         for (int position = 0; position < candidates.size(); position++) {
             LedgerRow candidate = candidates.get(position);
             if (!claimed.contains(candidate.transactionId())) {
-                byAmount.computeIfAbsent(
-                                candidate.amount().stripTrailingZeros(), key -> new ArrayList<>())
+                lanes.computeIfAbsent(
+                                candidate.amount().stripTrailingZeros(), key -> new HashMap<>())
+                        .computeIfAbsent(candidate.date(), key -> new Lane())
+                        .positions
                         .add(position);
             }
         }
 
-        List<long[]> pairs = new ArrayList<>();
-        for (int index : fresh) {
-            ReadRow row = rows.get(index);
-            List<Integer> sameAmount = byAmount.get(row.amount().stripTrailingZeros());
-            if (sameAmount == null) {
-                continue;
-            }
-            for (int position : sameAmount) {
-                long days =
-                        Math.abs(
-                                ChronoUnit.DAYS.between(
-                                        candidates.get(position).date(), row.date()));
-                if (days <= RESEMBLANCE_DAYS) {
-                    pairs.add(new long[] {days, index, position});
+        List<Integer> inOrder = new ArrayList<>(fresh);
+        inOrder.sort(Comparator.naturalOrder());
+        Set<Integer> rowsTaken = new HashSet<>();
+        for (int days = 0; days <= RESEMBLANCE_DAYS; days++) {
+            for (int index : inOrder) {
+                if (rowsTaken.contains(index)) {
+                    continue;
                 }
+                ReadRow row = rows.get(index);
+                Map<LocalDate, Lane> byDate = lanes.get(row.amount().stripTrailingZeros());
+                if (byDate == null) {
+                    continue;
+                }
+                Lane before = byDate.get(row.date().minusDays(days));
+                Lane after = days == 0 ? null : byDate.get(row.date().plusDays(days));
+                Lane lane = Lane.lower(before, after);
+                if (lane == null) {
+                    continue;
+                }
+                int position = lane.take();
+                rowsTaken.add(index);
+                kinds[index] = Classification.SUSPECTED;
+                resembles[index] = candidates.get(position).transactionId();
+                resemblesDate[index] = candidates.get(position).date();
             }
         }
-        pairs.sort(
-                Comparator.<long[]>comparingLong(pair -> pair[0])
-                        .thenComparingLong(pair -> pair[1])
-                        .thenComparingLong(pair -> pair[2]));
+    }
 
-        Set<Integer> rowsTaken = new HashSet<>();
-        Set<Integer> candidatesTaken = new HashSet<>();
-        for (long[] pair : pairs) {
-            int index = (int) pair[1];
-            int position = (int) pair[2];
-            if (rowsTaken.contains(index) || candidatesTaken.contains(position)) {
-                continue;
+    /** One amount on one date: candidate positions, ascending, and how many are taken. */
+    private static final class Lane {
+
+        private final List<Integer> positions = new ArrayList<>();
+        private int next;
+
+        boolean exhausted() {
+            return next >= positions.size();
+        }
+
+        int head() {
+            return positions.get(next);
+        }
+
+        int take() {
+            return positions.get(next++);
+        }
+
+        /** The lane whose next candidate comes first, or null when neither has one. */
+        static Lane lower(Lane first, Lane second) {
+            Lane a = first == null || first.exhausted() ? null : first;
+            Lane b = second == null || second.exhausted() ? null : second;
+            if (a == null) {
+                return b;
             }
-            rowsTaken.add(index);
-            candidatesTaken.add(position);
-            kinds[index] = Classification.SUSPECTED;
-            resembles[index] = candidates.get(position).transactionId();
-            resemblesDate[index] = candidates.get(position).date();
+            if (b == null) {
+                return a;
+            }
+            return a.head() <= b.head() ? a : b;
         }
     }
 }

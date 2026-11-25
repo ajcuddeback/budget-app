@@ -153,22 +153,23 @@ public class ImportMappingService {
     }
 
     /**
-     * Whether a file's header matches the one the saved mapping was made against: {@code null} when
-     * there is no saved mapping, or no header to compare.
+     * Whether a file's header matches the one the saved mapping was made against: empty when there
+     * is no saved mapping, or no header to compare.
      */
     @Transactional(readOnly = true)
-    public Boolean matchesSaved(UUID householdId, UUID accountId, List<String> headerLabels) {
+    public Optional<Boolean> matchesSaved(
+            UUID householdId, UUID accountId, List<String> headerLabels) {
         Optional<ImportMapping> saved =
                 mappings.findByAccountIdAndHouseholdId(accountId, householdId);
         if (saved.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
         String signature = MappingColumns.decode(json, saved.get().columnsJson()).headerSignature();
         String current = MappingColumns.signature(headerLabels);
         if (signature == null || current == null) {
-            return null;
+            return Optional.empty();
         }
-        return signature.equals(current);
+        return Optional.of(signature.equals(current));
     }
 
     private ImportMapping save(
