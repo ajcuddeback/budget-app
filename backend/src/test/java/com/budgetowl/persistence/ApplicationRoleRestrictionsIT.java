@@ -291,6 +291,110 @@ class ApplicationRoleRestrictionsIT {
                 });
     }
 
+    /**
+     * File import's three tables and the payee upsert, as the restricted role (slice 12). V19 adds
+     * no grant, relying on V10's default privileges; this is what proves that was enough — and the
+     * import path's {@code INSERT … ON CONFLICT DO NOTHING} against an expression index is the
+     * statement most likely to need something unusual.
+     */
+    @Test
+    void canWriteTheImportTables() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        UUID user = UUID.randomUUID();
+        UUID household = UUID.randomUUID();
+        UUID account = UUID.randomUUID();
+        UUID batch = UUID.randomUUID();
+
+        assertThatCode(
+                        () ->
+                                transaction.executeWithoutResult(
+                                        status -> {
+                                            jdbc.update(
+                                                    "INSERT INTO users (id, email, display_name)"
+                                                            + " VALUES (?, ?, 'Ada')",
+                                                    user,
+                                                    "ada-import@example.com");
+                                            jdbc.update(
+                                                    "INSERT INTO households (id, name,"
+                                                            + " base_currency) VALUES (?, 'Home',"
+                                                            + " 'GBP')",
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO household_members (id,"
+                                                            + " household_id, user_id, role)"
+                                                            + " VALUES (?, ?, ?, 'OWNER')",
+                                                    UUID.randomUUID(),
+                                                    household,
+                                                    user);
+                                            jdbc.update(
+                                                    "INSERT INTO accounts (id, household_id, name,"
+                                                            + " type, currency, opening_balance)"
+                                                            + " VALUES (?, ?, 'Current',"
+                                                            + " 'CHECKING', 'GBP', 0)",
+                                                    account,
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO import_batches (id, household_id,"
+                                                            + " account_id, imported_by, format,"
+                                                            + " imported_count, duplicate_count,"
+                                                            + " excluded_count, unreadable_count,"
+                                                            + " zero_count, preview_digest)"
+                                                            + " VALUES (?, ?, ?, ?, 'OFX', 1, 0, 0,"
+                                                            + " 0, 0, ?)",
+                                                    batch,
+                                                    household,
+                                                    account,
+                                                    user,
+                                                    "a".repeat(64));
+                                            jdbc.update(
+                                                    "INSERT INTO payees (id, household_id, name)"
+                                                            + " VALUES (gen_random_uuid(), ?,"
+                                                            + " 'Corner shop') ON CONFLICT"
+                                                            + " (household_id, (lower(name))) DO"
+                                                            + " NOTHING",
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO transactions (id, household_id,"
+                                                            + " account_id, date, amount,"
+                                                            + " external_id, import_batch_id)"
+                                                            + " VALUES (?, ?, ?, DATE '2026-08-01',"
+                                                            + " -3.5000, ?, ?)",
+                                                    UUID.randomUUID(),
+                                                    household,
+                                                    account,
+                                                    "fp1:" + "b".repeat(64),
+                                                    batch);
+                                            jdbc.update(
+                                                    "INSERT INTO import_mappings (id,"
+                                                            + " household_id, account_id,"
+                                                            + " delimiter, date_format,"
+                                                            + " decimal_separator, header_row,"
+                                                            + " columns) VALUES (?, ?, ?, ',',"
+                                                            + " 'uuuu-MM-dd', '.', 1,"
+                                                            + " '{\"roles\":{}}'::jsonb)",
+                                                    UUID.randomUUID(),
+                                                    household,
+                                                    account);
+                                        }))
+                .doesNotThrowAnyException();
+
+        // Undo is a delete of the batch's rows and then of the batch.
+        assertThat(jdbc.update("DELETE FROM transactions WHERE import_batch_id = ?", batch))
+                .isEqualTo(1);
+        assertThat(jdbc.update("DELETE FROM import_batches WHERE id = ?", batch)).isEqualTo(1);
+
+        transaction.executeWithoutResult(
+                status -> {
+                    jdbc.update("DELETE FROM import_mappings WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM payees WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM accounts WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM household_members WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM households WHERE id = ?", household);
+                    jdbc.update("DELETE FROM users WHERE id = ?", user);
+                });
+    }
+
     @Test
     void andTheConstraintsItCannotDropStillRefuseBadData() {
         // The point of the whole arrangement, in one assertion: a CHECK the connection cannot drop

@@ -42,8 +42,16 @@ final class FormatSniffer {
             return Kind.OFX_SGML;
         }
         if (start.startsWith("<?xml") || start.startsWith("<?OFX")) {
-            String window = start.substring(0, Math.min(start.length(), HEADER_WINDOW));
-            return OFX_PI.matcher(window).find() ? Kind.OFX_XML : Kind.OTHER;
+            // The OFX processing instruction belongs in the prolog, before the root element. A
+            // DOCTYPE can push it any distance from the start — which is exactly the file that
+            // must reach the reader, so the reader can refuse it as a DTD rather than this
+            // calling it "not OFX".
+            int root = start.indexOf("<OFX");
+            while (root >= 0 && start.startsWith("<OFXHEADER", root)) {
+                root = start.indexOf("<OFX", root + 1);
+            }
+            String prolog = root < 0 ? start : start.substring(0, root);
+            return OFX_PI.matcher(prolog).find() ? Kind.OFX_XML : Kind.OTHER;
         }
         if (start.startsWith("!")) {
             int end = start.indexOf('\n');

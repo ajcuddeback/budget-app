@@ -220,7 +220,8 @@ final class CsvReader {
         List<ImportDateFormat> candidates = List.of();
         if (dateColumn != null) {
             roles.put(dateColumn, CsvColumnRole.DATE);
-            List<ImportDateFormat> readings = dates.readingsOfAll(column(data, dateColumn), false);
+            List<ImportDateFormat> readings =
+                    dates.readingsOfAll(datesAmong(column(data, dateColumn)), false);
             if (readings.size() == 1) {
                 dateFormat = readings.get(0);
             } else {
@@ -312,11 +313,23 @@ final class CsvReader {
         int width = data.get(0).size();
         for (int column = 0; column < width; column++) {
             List<String> cells = column(data, column);
-            if (!cells.isEmpty() && !dates.readingsOfAll(cells, false).isEmpty()) {
+            // Most, not all: one mistyped date in the sample must not hide the date column.
+            if (!cells.isEmpty() && datesAmong(cells).size() * 5 >= cells.size() * 4) {
                 return column;
             }
         }
         return null;
+    }
+
+    /** The cells that read as a date in at least one allowed format. */
+    private List<String> datesAmong(List<String> cells) {
+        List<String> readable = new ArrayList<>(cells.size());
+        for (String cell : cells) {
+            if (!dates.readingsOfAll(List.of(cell), false).isEmpty()) {
+                readable.add(cell);
+            }
+        }
+        return readable;
     }
 
     private static List<String> column(List<List<String>> data, int column) {
