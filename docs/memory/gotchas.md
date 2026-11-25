@@ -1136,3 +1136,56 @@ a password.
 **The general lesson.** A constraint is only proven by sending something that violates it and
 reading the status code. A green suite full of *valid* requests says nothing about what an invalid
 one does — and the invalid one is the one an attacker sends.
+
+---
+
+## Hibernate's `@CreationTimestamp` ignores the application's `Clock`
+
+**Symptom.** A generated fixture that read back goal responses differed on every run, although
+`DemoFixtureIT` fixes the clock before it reads.
+
+**Cause.** `@CreationTimestamp` and `@UpdateTimestamp` are stamped by Hibernate from the JVM's own
+clock. They do not use the `Clock` bean `CoreConfig` provides and the fixture test replaces. Every
+other date a response carries goes through that bean, so only `createdAt` and `updatedAt` move. The
+debt fixtures never saw this because their responses carry neither field.
+
+**Fix.** The goal scenario pins both to the demo instant before it compares
+(`DemoFixtureIT.pinTimestamps`). No figure depends on them. Do not order anything a fixture prints
+by them alone. The goal history orders by date first, then `createdAt`, then id, so ties fall to
+the id.
+
+*Added 2026-11-25 — slice 11.*
+
+---
+
+## `DemoFixtureIT.render` writes keys exactly as given, so a key may not contain a double quote
+
+**Symptom.** The first generated goal fixture was not valid TypeScript. A key such as
+`POST /api/goals/…/projection-preview {"monthlyAmount":"110"}` closed its own string literal.
+
+**Cause.** `render` writes `"` + key + `"` with no escaping, which was safe while every key was a
+method and a path.
+
+**Fix.** Key a request body by a quote-free label rather than by its JSON. The goal previews use
+`monthlyAmount=110&targetAmount=4000`, keys in alphabetical order, or `unchanged` for an empty body.
+`DemoFixtureIT.previewLabel` builds it on one side and `mock-api.ts`'s `previewLabel` on the other.
+`render` was left alone so the debt fixtures do not move.
+
+*Added 2026-11-25 — slice 11.*
+
+---
+
+## `git checkout -- file` cannot undo a sabotage proof on a file git has never seen
+
+**Symptom.** After proving two frontend tests could fail, the restore step reported nothing and
+the sabotaged code was still there.
+
+**Cause.** The files were new in this slice and not yet committed, so they were untracked. `git
+checkout -- path` restores from the index, which had no copy. With its error sent to `/dev/null`,
+it failed silently, and the shell went on as though the restore had worked.
+
+**Fix.** Commit, or at least `git add`, before breaking anything on purpose. Then confirm the
+restore by grepping for the sabotage, not by trusting the command's silence. This is the same class
+as the other entries here about a shell construct that reports success it did not have.
+
+*Added 2026-11-25 — slice 11.*

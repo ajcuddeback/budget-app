@@ -26,7 +26,7 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 8 | [Transfers](features/transfers.md) between accounts | 5 | **Done** |
 | 9 | **[Admin console](features/admin-console.md)** — the instance the operator runs | 2 | **Done** |
 | 10 | **[Debt plan & debt detail](features/debt-plan.md)** — terms solver, payments, strategies | 7 | **Done** |
-| 11 | [Goals](features/goals.md) | 5 | Planned |
+| 11 | [Goals](features/goals.md) | 5 | **Done** |
 | 12 | [File import](features/file-import.md) (CSV / OFX / QIF), plus the manual "these two rows are one transfer" ledger action | 5, 8 | Planned |
 | 13 | [Reporting & insights](features/reporting.md) | 5, 7 | Planned |
 | 14 | **Weekly check-in** — the four-step pass | 6, 7, 10 | Planned |

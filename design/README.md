@@ -71,6 +71,12 @@ These are recorded rather than fixed, because the frontend does not exist yet (s
 - **Dark mode is not in the token sheet.** `styles.css` carries only the light theme; the dark
   palette exists as inline styles inside the canvas's dark-mode artboards. The tokens need a dark
   block before any component is written against them, or every screen will re-invent it.
+- **No token carries a progress-bar track on a dark ground** (slice 11, goals). The canvas draws
+  the goal bar's track in the colour of `--color-neutral-300` on a light ground and has no dark
+  goal artboard. The app's `tokens.css` therefore carries a role alias, `--color-goal-track`, which
+  is `--color-neutral-300` in light and `--color-divider` in dark. It composes existing tokens and
+  invents no value. Settle a real track token in the design project, so a re-export keeps it, then
+  point the alias at it.
 - **Neither font covers a non-Latin script.** Caprasimo and Figtree ship `latin` and
   `latin-ext` only — no Cyrillic, Greek, Hebrew, Arabic, Devanagari, Thai or CJK. ADR-0023 asks
   for as many languages as possible, so `fonts/fonts.css` falls through to Noto and then the
