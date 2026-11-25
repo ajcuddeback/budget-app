@@ -53,12 +53,12 @@ derived from it, envelopes draw down against it, bills match to it, and reportin
    `docs/domain/model.md` is about corrections keeping a trail, which `updated_at` and `version`
    provide.
 9. **`RECONCILED` is not a status a caller may set.** It asserts that a statement period was
-   closed against the row, which is reconciliation's to say (slice 13). The request contract
-   refuses it, the same way it refuses an account change — rather than accepting it and
-   apologising later.
+   closed against the row, which is reconciliation's to say. Reconciliation has no slice yet
+   (`reporting.md`, decision 12). The request contract refuses it, the same way it refuses an
+   account change — rather than accepting it and apologising later.
 10. **Everything a person types starts `CLEARED`.** They watched it happen and are the authority on
    whether it did. `PENDING` is for something expected to settle; `RECONCILED` is set by
-   reconciliation (slice 13), never by a user toggling it.
+   reconciliation, which has no slice yet, never by a user toggling it.
 
 ## Data model
 

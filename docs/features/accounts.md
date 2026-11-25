@@ -375,7 +375,8 @@ value [98765]`. Both are pinned to `INFO` in `application.yml`. A root logger se
 
 ## Out of scope
 
-- **Reconciliation and statement matching.** Needs transactions (slice 5) and belongs with them.
+- **Reconciliation and statement matching.** Needs transactions (slice 5). It has no roadmap slice
+  yet: see `reporting.md`, decision 12.
 - **Transfers between accounts.** Slice 8. A transfer is a linked pair of transactions
   (`../domain/model.md`), so it cannot exist before transactions do.
 - **A cached or materialised balance.** Derived only. If a real performance problem appears, that
