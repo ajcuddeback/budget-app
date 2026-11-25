@@ -40,6 +40,7 @@ account to seeing your first month's budget.
 | [Choose how to clear your debts](features/choose-how-to-clear-your-debts.md)    | The order of attack, setting your own order, what you put in each month, and what the cards compare              |
 | [Log a payment against a debt](features/log-a-debt-payment.md)                  | Write down what you paid, see the split before you record it, and why your account balance doesn't move          |
 | [Confirm what you owe](features/confirm-what-you-owe.md)                        | When a balance is an estimate, how to put the statement figure in, and what happens after a year                 |
+| [See where your money went](features/see-where-your-money-went.md)             | Income against spending month by month, what you kept, where last month went by category, and downloading the figures |
 | _Recurring transactions_                                                        | Not written yet                                                                                                  |
 | _Reports_                                                                       | Not written yet                                                                                                  |
 

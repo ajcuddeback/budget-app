@@ -1584,6 +1584,87 @@
     "viewport": "1280x720"
   },
   {
+    "name": "see-where-your-money-went--children",
+    "file": "userguide/images/see-where-your-money-went--children.png",
+    "guide": "see-where-your-money-went",
+    "caption": "Bills opened to show Rent at $1,450.00, flat, and Utilities at $101.30, up 14%.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--currency",
+    "file": "userguide/images/see-where-your-money-went--currency.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The Currency buttons, USD and EUR, above the two cards, with the note that each currency is reported on its own.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--empty",
+    "file": "userguide/images/see-where-your-money-went--empty.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The Income vs spending card saying nothing was recorded between September 2025 and August 2026, that amounts logged straight into an envelope do not appear here, and a Record a transaction link.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--figures",
+    "file": "userguide/images/see-where-your-money-went--figures.png",
+    "guide": "see-where-your-money-went",
+    "caption": "Show the figures opened: a table with one row per month, from September 2025 to August 2026 (so far), giving income, spending, needs a category in and out, and kept.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--income",
+    "file": "userguide/images/see-where-your-money-went--income.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The Income vs spending card: 12 mo, 6 mo and 3 mo buttons, the average kept and best month, a solid income line and a dashed spending line from Sep 2025 to Aug 2026, and the line saying one transaction needs a category.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--page",
+    "file": "userguide/images/see-where-your-money-went--page.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The Insights page: the Income vs spending card on the left and the Where July 2026 went card on the right.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--range",
+    "file": "userguide/images/see-where-your-money-went--range.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The 12 mo, 6 mo and 3 mo buttons, with 12 mo selected.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--so-far",
+    "file": "userguide/images/see-where-your-money-went--so-far.png",
+    "guide": "see-where-your-money-went",
+    "caption": "Where August 2026 has gone so far, with the Next month button greyed out and a line saying $92.15 across 1 transaction needs a category.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "see-where-your-money-went--where",
+    "file": "userguide/images/see-where-your-money-went--where.png",
+    "guide": "see-where-your-money-went",
+    "caption": "The Where July 2026 went card: a bar split by category, $1,943.10 spent against $2,271.20 in June 2026, and a row for each category with its amount and how it moved.",
+    "capturedAt": "2026-11-25",
+    "commit": "180f058",
+    "viewport": "1280x720"
+  },
+  {
     "name": "see-who-can-sign-in--accounts",
     "file": "userguide/images/see-who-can-sign-in--accounts.png",
     "guide": "see-who-can-sign-in",
