@@ -48,6 +48,17 @@ class ReportCsvIT extends ReportTestBase {
         assertThat(response.header("X-Content-Type-Options")).contains("nosniff");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"income-and-spending", "spending-by-category"})
+    void theJsonRepresentationIsNeverCachedEither(String report) {
+        ApiResponse response =
+                household.owner().get("/api/reports/" + report + "?from=2025-09&to=2026-08");
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.header("Cache-Control")).get().asString().contains("no-store");
+        assertThat(response.header("Content-Disposition")).isEmpty();
+    }
+
     @Test
     void neverPutsAHouseholdOrCategoryNameInAHeader() {
         createCategory(household.owner(), "Therapy", "EXPENSE", null);
