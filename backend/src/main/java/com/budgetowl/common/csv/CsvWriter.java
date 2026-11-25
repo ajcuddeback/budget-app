@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -64,8 +65,20 @@ import java.util.regex.Pattern;
  */
 public final class CsvWriter {
 
-    /** The leading characters a spreadsheet may treat as the start of a formula. */
-    private static final String FORMULA_TRIGGERS = "=+-@\t\r＝＋－＠";
+    /**
+     * The characters a spreadsheet may treat as the start of a formula: the ASCII four, tab, CR and
+     * LF, their full-width forms, their small forms ({@code U+FE62 U+FE63 U+FE66 U+FE6B}), and the
+     * minus sign {@code U+2212}. The formatter writes them as literals (see gotchas.md); the test
+     * lists each by its escape, so dropping one fails {@code CsvWriterTest}.
+     */
+    private static final String FORMULA_TRIGGERS = "=+-@\t\r\n＝＋－＠﹢﹣﹦﹫−";
+
+    /**
+     * Leading characters a reader may not show or may trim before parsing — whitespace, separators,
+     * control and format characters (NBSP, zero-width space, BOM). A trigger behind any run of
+     * these is still a trigger: LibreOffice's import can trim spaces and then evaluate.
+     */
+    private static final Pattern INVISIBLE_LEAD = Pattern.compile("^[\\s\\p{Z}\\p{Cc}\\p{Cf}]+");
 
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
 
@@ -230,7 +243,8 @@ public final class CsvWriter {
 
     /**
      * The formula-injection escape alone, without quoting: {@code value} with a leading {@code '}
-     * when it begins with a trigger character, and unchanged otherwise.
+     * when its first visible character is a trigger, and unchanged otherwise. The value itself is
+     * never trimmed or altered; only the decision looks past the invisible lead.
      *
      * <p>Public so that a later export with its own framing can apply exactly the same rule rather
      * than a second copy of the list. Apply it to <b>text</b> only — see the class note on why the
@@ -238,7 +252,16 @@ public final class CsvWriter {
      */
     public static String escapeFormula(String value) {
         Objects.requireNonNull(value, "value");
-        if (!value.isEmpty() && FORMULA_TRIGGERS.indexOf(value.charAt(0)) >= 0) {
+        if (value.isEmpty()) {
+            return value;
+        }
+        if (FORMULA_TRIGGERS.indexOf(value.charAt(0)) >= 0) {
+            return "'" + value;
+        }
+        Matcher lead = INVISIBLE_LEAD.matcher(value);
+        if (lead.find()
+                && lead.end() < value.length()
+                && FORMULA_TRIGGERS.indexOf(value.charAt(lead.end())) >= 0) {
             return "'" + value;
         }
         return value;

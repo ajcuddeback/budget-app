@@ -1092,6 +1092,10 @@ background job, because parsing happens inside the request.
   today:** no CSV writer exists in `backend/src/main` or `frontend/src` as of 2026-11-25. **Control,
   recorded for whoever builds the first export:** every exported **text** cell that begins with `=`
   `+` `-` `@`, tab, CR or their full-width forms is prefixed with `'`, and every field is quoted.
+  (Slice 13 built this as `com.budgetowl.common.csv.CsvWriter`. Its list also covers LF, the small
+  forms and `U+2212`, and it looks past leading whitespace, control and format characters, so a
+  bank descriptor like `" =HYPERLINK(…)"` is escaped too. Use `CsvWriter.escapeFormula`;
+  never write a second list.)
   Amount columns are written as plain decimals in their own column and are not prefixed, because
   their leading `-` is meaningful. **Import stores the text as it is**, for two reasons. A payee typed
   into the transaction form can carry the same payload, so stripping at import would not close the

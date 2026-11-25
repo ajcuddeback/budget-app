@@ -9,6 +9,8 @@ import com.budgetowl.report.service.SpendingByCategoryReport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,24 +83,63 @@ class ReportHouseholdScopingIT extends PersistenceTestBase {
     void restoreEveryGuard() {
         // Households first: neither the index nor the foreign keys can be rebuilt over rows that
         // violate them, and if this ever failed to restore them every later test in the JVM would
-        // run without ADR-0026's guarantee or ADR-0017's keys.
-        jdbc.update("DELETE FROM households");
-        jdbc.execute("ALTER TABLE categories ENABLE TRIGGER trg_categories_two_levels");
-        jdbc.execute("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS fk_transactions_account");
-        jdbc.execute("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS fk_transactions_category");
-        jdbc.execute(
-                """
-                ALTER TABLE transactions ADD CONSTRAINT fk_transactions_account
-                    FOREIGN KEY (account_id, household_id) REFERENCES accounts (id, household_id)
-                    ON DELETE RESTRICT
-                """);
-        jdbc.execute(
-                """
-                ALTER TABLE transactions ADD CONSTRAINT fk_transactions_category
-                    FOREIGN KEY (category_id, household_id) REFERENCES categories (id, household_id)
-                    ON DELETE SET NULL (category_id)
-                """);
-        jdbc.execute("CREATE UNIQUE INDEX uq_households_singleton ON households ((true))");
+        // run without ADR-0026's guarantee or ADR-0017's keys. So every step is attempted even
+        // when an earlier one fails, each is idempotent, and any failure is rethrown at the end:
+        // a guard is never left off silently because the step before it threw.
+        List<RuntimeException> failures = new ArrayList<>();
+        attempt(failures, () -> jdbc.update("DELETE FROM households"));
+        attempt(
+                failures,
+                () ->
+                        jdbc.execute(
+                                "ALTER TABLE categories ENABLE TRIGGER trg_categories_two_levels"));
+        attempt(
+                failures,
+                () ->
+                        jdbc.execute(
+                                """
+                                ALTER TABLE transactions
+                                    DROP CONSTRAINT IF EXISTS fk_transactions_account,
+                                    ADD CONSTRAINT fk_transactions_account
+                                    FOREIGN KEY (account_id, household_id)
+                                    REFERENCES accounts (id, household_id)
+                                    ON DELETE RESTRICT
+                                """));
+        attempt(
+                failures,
+                () ->
+                        jdbc.execute(
+                                """
+                                ALTER TABLE transactions
+                                    DROP CONSTRAINT IF EXISTS fk_transactions_category,
+                                    ADD CONSTRAINT fk_transactions_category
+                                    FOREIGN KEY (category_id, household_id)
+                                    REFERENCES categories (id, household_id)
+                                    ON DELETE SET NULL (category_id)
+                                """));
+        attempt(
+                failures,
+                () ->
+                        jdbc.execute(
+                                "CREATE UNIQUE INDEX IF NOT EXISTS uq_households_singleton"
+                                        + " ON households ((true))"));
+        if (!failures.isEmpty()) {
+            IllegalStateException failed =
+                    new IllegalStateException(
+                            "Could not restore every database guard after a scoping test; later"
+                                    + " tests in this JVM would run without them",
+                            failures.get(0));
+            failures.stream().skip(1).forEach(failed::addSuppressed);
+            throw failed;
+        }
+    }
+
+    private static void attempt(List<RuntimeException> failures, Runnable step) {
+        try {
+            step.run();
+        } catch (RuntimeException e) {
+            failures.add(e);
+        }
     }
 
     @Test

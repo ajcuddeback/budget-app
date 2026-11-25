@@ -293,7 +293,11 @@ It ships in the first cut (*decision 8*). This is the shape:
   **bank files**, which means third parties control them. A cell whose first character is `=`,
   `+`, `-`, `@`, a tab (`0x09`) or a carriage return (`0x0D`), **or the full-width forms `＝` `＋`
   `－` `＠`** (which some spreadsheets fold to their ASCII equivalents), is prefixed with a single
-  quote `'` before quoting, following OWASP's guidance. This is the same list as
+  quote `'` before quoting, following OWASP's guidance. After the slice-13 security audit the
+  list also covers a line feed, the small forms `﹦` `﹢` `﹣` `﹫` and the minus sign `−`
+  (`U+2212`), and the test looks **past any leading whitespace, control or format characters**
+  (NBSP, zero-width space, BOM): `" =HYPERLINK(…)"` is escaped, because a reader may trim the
+  blank and then evaluate. The value itself is never trimmed. This is the same list as
   `file-import.md`, and one shared escaper serves both. Amount, period and currency cells are produced by
   the server from typed values and must match `^-?\d+\.\d{4}$`, `^\d{4}-\d{2}$` or `^[A-Z]{3}$`.
   They are exempt, so a negative amount stays a number. The exemption is by **column type**, never

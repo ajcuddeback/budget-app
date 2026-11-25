@@ -22,12 +22,32 @@ class CsvWriterTest {
     private static final int BOM_LENGTH = 3;
 
     @ParameterizedTest(name = "a text cell starting with U+{0} is escaped")
-    @ValueSource(strings = {"=", "+", "-", "@", "\t", "\r", "＝", "＋", "－", "＠"})
+    @ValueSource(
+            strings = {
+                "=", "+", "-", "@", "\t", "\r", "\n", "＝", "＋", "－", "＠", "﹦", "﹢", "﹣", "﹫", "−"
+            })
     void escapesATextCellThatStartsWithAnyFormulaTrigger(String trigger) {
         String written = singleTextCell(trigger + "HYPERLINK(\"https://attacker.example/\")");
 
         assertThat(written)
                 .isEqualTo("\"'" + trigger + "HYPERLINK(\"\"https://attacker.example/\"\")\"");
+    }
+
+    @ParameterizedTest(name = "a trigger behind leading U+{0} is still escaped")
+    @ValueSource(strings = {" ", "  ", " ", "​", "﻿", " ", "　", "\u0001", "\u000B", " ​ "})
+    void escapesATriggerHiddenBehindInvisibleOrBlankLeadingCharacters(String lead) {
+        // A reader may trim these before parsing, so "=" behind them is still a formula. The value
+        // is written exactly as given, with the ' in front of all of it.
+        assertThat(CsvWriter.escapeFormula(lead + "=HYPERLINK(\"x\")"))
+                .isEqualTo("'" + lead + "=HYPERLINK(\"x\")");
+        assertThat(CsvWriter.escapeFormula(lead + "＋1")).isEqualTo("'" + lead + "＋1");
+    }
+
+    @Test
+    void leavesLeadingBlanksBeforeAnOrdinaryCharacterAlone() {
+        assertThat(CsvWriter.escapeFormula(" Groceries")).isEqualTo(" Groceries");
+        assertThat(CsvWriter.escapeFormula(" Bills - utilities")).isEqualTo(" Bills - utilities");
+        assertThat(CsvWriter.escapeFormula("   ")).isEqualTo("   ");
     }
 
     @Test
