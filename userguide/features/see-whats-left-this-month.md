@@ -1,12 +1,12 @@
 # See what's left this month
 
 Budget Owl takes the money you expect this month, subtracts the bills that fall in it, the money
-you've set aside in envelopes and the debt minimums you owe, and shows you what's left. That one
-figure is what the **Bills & income** page is for.
+you've set aside in envelopes, the debt minimums you owe and what you plan to put towards your
+goals, and shows you what's left. That one figure is what the **Bills & income** page is for.
 
 > **This figure got smaller, and no money went missing.** Budget Owl used to leave your debt
-> minimums out of the sum, so the card showed more left than you really had. It now counts them —
-> see [What changed, and why](#what-changed-and-why) below.
+> minimums out of the sum, and then your goals, so the card showed more left than you really had.
+> It now counts both. See [What changed, and why](#what-changed-and-why) below.
 
 ## Before you start
 
@@ -33,18 +33,51 @@ Everyone in your household can read this page, whatever their role.
 
 3. Read the figure under **What's left this month**.
 
-   ![The What's left this month card: $335.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, and $608.00 of $2,301.10 still to pay.](../images/see-whats-left-this-month--whats-left.png)
+   ![The What's left this month card: $25.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, goals $310.00, a note on what goals count, a sentence saying the debt plan's extra $260.00 is more than what's left, and $608.00 of $2,301.10 still to pay.](../images/see-whats-left-this-month--whats-left.png)
 
-   The four smaller figures underneath are the sum it came from:
+   The five smaller figures underneath are the sum it came from:
 
    - **Income expected** — everything your income sources add up to this month.
    - **Bills this month** — every bill date that falls in the month, paid or not.
    - **Set aside in envelopes** — what your envelopes hold for the month.
    - **Debt minimums** — the minimum payments on your debts that aren't already one of your bills.
+   - **Goals** — what you plan to put towards your [goals](save-towards-a-goal.md) this month, or
+     what you've actually set aside if that's more.
 
-   $3,640.00 − $2,301.10 − $700.00 − $303.00 leaves **$335.90 left to spend**.
+   $3,640.00 − $2,301.10 − $700.00 − $303.00 − $310.00 leaves **$25.90 left to spend**.
 
 ## What changed, and why
+
+### Goals are the fifth figure
+
+**What's left now takes off what you plan to put towards your goals.** Before goals existed, money
+you meant to save looked like money you could spend. Now each goal's monthly amount comes off, in
+full, from the start of the month, whether or not you've set it aside yet. If you set aside more
+than the plan in a month, the larger figure comes off.
+
+**Money you'd already saved before you started tracking a goal never comes off.** It was saved in
+an earlier month, so it isn't part of this one.
+
+**If you haven't added any goals, your figure hasn't changed.** An archived goal takes nothing off.
+A goal that was already reached when the month began, or is paused at **0** a month, takes off only
+what you actually set aside in it this month.
+
+For the example household, two goals have a plan this month: **Japan** at $110.00 and **Emergency
+fund** at $200.00. That's **Goals $310.00**. **New laptop** is already reached, so it takes nothing
+off. The figure went from $335.90 to **$25.90**.
+
+### When your debt plan puts in more than is left
+
+If your [debt plan](choose-how-to-clear-your-debts.md) puts money towards debt beyond the minimums,
+and that extra is more than what's left after your goals, the card says so. For the example
+household: _"Your debt plan puts $260.00 a month towards debt beyond the minimums, which is more
+than the $25.90 left this month after your goals. Nothing has been changed — adjust the plan or a
+goal if you need to."_
+
+That extra is **not** taken off the figure, because it's a choice you can change, not a payment
+that's due. Budget Owl tells you the two don't fit and leaves the decision to you.
+
+### Debt minimums are the fourth
 
 **What's left now takes off your debt minimums too.** It used to be income, less bills, less what's
 in your envelopes. Now it also takes off the minimum payment on each debt you've added to the
@@ -65,7 +98,7 @@ $645.00 a month in all. The $342.00 car loan is paid by a **Car payment** bill, 
 linked the two when it added the debt.
 
 - The car loan's **$342.00 is already in Bills this month**, so it isn't counted again.
-- The other two, **$185.00 + $118.00 = $303.00**, are the new fourth figure on the card: **Debt
+- The other two, **$185.00 + $118.00 = $303.00**, are the fourth figure on the card: **Debt
   minimums $303.00**. That's what comes off.
 
 That link is what keeps a minimum from being counted twice, and it's yours to make — when you add
@@ -102,16 +135,15 @@ $2,301.10 in this month's bills hasn't gone yet.
 
 ## When the month is short
 
-![The same card showing -$1,504.10, picked out in a warning colour and labelled short this month, with a note underneath.](../images/see-whats-left-this-month--short.png)
+![The same card with income expected $1,800.00, showing -$1,814.10, picked out in a warning colour and labelled short this month, with a note underneath.](../images/see-whats-left-this-month--short.png)
 
-When the bills, envelopes and debt minimums come to more than the income, the figure goes
-**negative** and the
-label changes to **short this month**. Budget Owl doesn't round it up to zero or hide it, and it
+When the bills, envelopes, debt minimums and goals come to more than the income, the figure goes
+**negative** and the label changes to **short this month**. Budget Owl doesn't round it up to zero or hide it, and it
 says so in words: _"Your income this month does not cover the bills and what you have set aside.
 Nothing is wrong with the figures — they are telling you something."_
 
-It's a number to act on, not an error. You can set less aside in an envelope, move a bill you
-control to another month, or skip one that doesn't apply.
+It's a number to act on, not an error. You can set less aside in an envelope or for a goal, move a
+bill you control to another month, or skip one that doesn't apply.
 
 ## Envelopes are the other half
 
@@ -138,13 +170,22 @@ that's the one that drops when you tick something off.
 **"Something looks counted twice."**
 It can be. If you've set rent up as a bill _and_ given it an envelope, it is subtracted twice —
 once as a bill, once as money set aside. Budget Owl can't tell the two apart, which is why it
-shows you all four terms. Pick one home for anything with a fixed date, and let envelopes handle
+shows you all five terms. Pick one home for anything with a fixed date, and let envelopes handle
 the rest.
 
 A **debt minimum** is the one case Budget Owl does keep straight, and only because you tell it how:
 name the bill that pays the minimum when you [add the debt](add-a-debt.md), and the figure is
 subtracted once. Leave that blank and it is counted in both **Bills this month** and **Debt
 minimums**.
+
+**"I set money aside for a goal and the figure didn't move."**
+That's how it's meant to work, as with bills. The goal's monthly amount came off at the start of
+the month. It only goes down if you set aside **more** than the plan, and then by the difference.
+
+**"One of my goals isn't counted."**
+Only goals in your household's currency come off what's left. A goal in another currency, such as
+a trip saved for in yen, can't be added to a figure in dollars without an exchange rate Budget Owl
+doesn't have, so it is left out. Its own page still shows its progress and its plan.
 
 **"Next month shows the same bills."**
 It should. A bill repeats on its schedule, so it appears in every month it falls in, waiting to be
@@ -158,3 +199,4 @@ ticked off. A yearly bill in a month it doesn't fall in says **Nothing due this 
 - [Set up an envelope](set-up-an-envelope.md)
 - [Add a debt](add-a-debt.md)
 - [Choose how to clear your debts](choose-how-to-clear-your-debts.md)
+- [Save towards a goal](save-towards-a-goal.md)

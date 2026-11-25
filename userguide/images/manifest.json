@@ -257,7 +257,7 @@
     "guide": "add-your-income",
     "caption": "The Weekend work income source, showing how many arrivals the month has and what that comes to.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -266,7 +266,7 @@
     "guide": "add-your-income",
     "caption": "The Add an income source window with a name, an amount each time, when it arrives and the account it lands in.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -275,7 +275,7 @@
     "guide": "add-your-income",
     "caption": "The Income card: what is expected this month, each source, and the Add an income source button.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -284,7 +284,7 @@
     "guide": "add-your-income",
     "caption": "The Retired income sources list, with a Restore button beside the one that is retired.",
     "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -366,6 +366,42 @@
     "caption": "The Accounts screen after deleting: \"That account has been deleted.\" and the row gone.",
     "capturedAt": "2026-11-25",
     "commit": "97eca58",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "change-what-you-set-aside--change-button",
+    "file": "userguide/images/change-what-you-set-aside--change-button.png",
+    "guide": "change-what-you-set-aside",
+    "caption": "The Change button on the plan card.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "change-what-you-set-aside--dialog",
+    "file": "userguide/images/change-what-you-set-aside--dialog.png",
+    "guide": "change-what-you-set-aside",
+    "caption": "The Change the plan window with $165 a month starting this month, and the answer underneath saying when that reaches the target.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "change-what-you-set-aside--next-month",
+    "file": "userguide/images/change-what-you-set-aside--next-month.png",
+    "guide": "change-what-you-set-aside",
+    "caption": "The same window with Next month, September 2026, chosen, and the sentence saying August stays as it is.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "change-what-you-set-aside--plan",
+    "file": "userguide/images/change-what-you-set-aside--plan.png",
+    "guide": "change-what-you-set-aside",
+    "caption": "The plan card for Japan: $110.00 a month in August 2026, $165.00 a month from September 2026, when that reaches the target, and $163.13 a month to make November 2027.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1521,12 +1557,120 @@
     "viewport": "1280x720"
   },
   {
+    "name": "save-towards-a-goal--add-button",
+    "file": "userguide/images/save-towards-a-goal--add-button.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Add a goal button at the top right of the Goals page.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--add-dialog",
+    "file": "userguide/images/save-towards-a-goal--add-dialog.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Add a goal window filled in for a new bike: $900 by June 2027 at $75 a month, with the answer underneath saying when that gets there and what it would take to make June.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--archived",
+    "file": "userguide/images/save-towards-a-goal--archived.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Archived goals section, shown under the list, with the Wedding gift goal and the note that an archived goal is no longer part of the month’s plan.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--detail",
+    "file": "userguide/images/save-towards-a-goal--detail.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Emergency fund page: how far along it is, the account it is kept in, the plan, and the history with a withdrawal for a vet bill.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--history",
+    "file": "userguide/images/save-towards-a-goal--history.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The History card: what was already saved when tracking started, then each amount set aside or taken out, with the vet bill marked Withdrawal.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--list",
+    "file": "userguide/images/save-towards-a-goal--list.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Goals page: New laptop, Japan and Emergency fund, each with a bar, how much is saved of the target, and a sentence saying when it gets there.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--progress",
+    "file": "userguide/images/save-towards-a-goal--progress.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The How far along card: $2,340.00 of $6,000.00 with its bar, $3,660.00 to go, and the Emergency Fund account’s own balance labelled as the account’s.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--set-aside-button",
+    "file": "userguide/images/save-towards-a-goal--set-aside-button.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Set money aside button under the goal’s name.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--set-aside-dialog",
+    "file": "userguide/images/save-towards-a-goal--set-aside-dialog.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Set money aside window, filled in with the $100.00 still to come for August 2026, today’s date, and a note saying no account is touched.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--set-aside-done",
+    "file": "userguide/images/save-towards-a-goal--set-aside-done.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The message Money set aside. at the top of the goal page.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--take-out-dialog",
+    "file": "userguide/images/save-towards-a-goal--take-out-dialog.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Take money out window with $250 and the note New tyres.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "save-towards-a-goal--viewer",
+    "file": "userguide/images/save-towards-a-goal--viewer.png",
+    "guide": "save-towards-a-goal",
+    "caption": "The Japan goal as a viewer: every figure, the plan and the history, and no buttons to change anything.",
+    "capturedAt": "2026-11-25",
+    "commit": "e7089a0",
+    "viewport": "1280x720"
+  },
+  {
     "name": "see-whats-left-this-month--envelopes",
     "file": "userguide/images/see-whats-left-this-month--envelopes.png",
     "guide": "see-whats-left-this-month",
     "caption": "The Envelopes card at the foot of the page: what is set aside this month, and an Open envelopes button.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1535,7 +1679,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The month picker at the top of the page, with Previous month and Next month either side of the month name.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1544,7 +1688,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Owed card: owed in all, the minimums a month, how many debts, and the note saying which part of the minimums comes off what is left.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1553,7 +1697,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The Bills & income page: the month picker, what is left this month, income, bills and envelopes.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1562,7 +1706,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The same card showing a negative figure labelled short this month, with a note under it.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1571,7 +1715,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The page for someone whose role is Viewer: every figure and every bill, and nothing to click.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {
@@ -1580,7 +1724,7 @@
     "guide": "see-whats-left-this-month",
     "caption": "The What’s left this month card: one figure, with income expected, bills this month, set aside in envelopes and still to pay beneath it.",
     "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "commit": "e7089a0",
     "viewport": "1280x720"
   },
   {

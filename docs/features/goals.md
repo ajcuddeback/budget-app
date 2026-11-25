@@ -787,6 +787,10 @@ upload**. Path parameters are two UUIDs and one `YearMonth`. Query parameters ar
   *"Keeping to its plan, you reach it in…"* for every goal, because the list response carries no
   steps. A `planChangesLater` flag on the goal response would restore *"At $200.00 a month…"* for
   the goals with one amount.
+- **The Bills & Income card does not say that a goal in another currency is left out of the fifth
+  term.** Only base-currency goals can be summed into a base-currency `left`, and `goalsCounted`
+  carries how many were. The user guide says it in words. A line on the card, in the style of the
+  Owed card's every-currency note, is a contained follow-up.
 - **The set-money-aside date defaults to the browser's today.** In the guide captures, the demo
   fixtures stand in August 2026 while the browser's clock does not, so the date field shows the
   machine's real date beside an August "still to come". Against a real server, the two agree.
@@ -897,8 +901,10 @@ answer. Each is the smallest change that fixed it, and each is tested.
 16. **A transaction already attached to a contribution is `409 conflict`**, the code debt
     payments use for the same case. The spec says it is refused and names no code.
 17. **The summary carries `goalsCounted` and `debtPlanExtraExceedsLeft`** beside the two fields the
-    spec names. The first is the card's own line. The second keeps the comparison on the server, so
-    the browser compares no amounts to decide whether to say the sentence.
+    spec names. The first is how many goals the fifth term covers: unarchived goals in the
+    household's base currency, the only ones a base-currency sum can hold. The card does not show it
+    yet (Known gaps). The second keeps the comparison on the server, so the browser compares no
+    amounts to decide whether to say the sentence.
 18. **A `POST /api/goals` Location names the id**, and the body is the created goal, as for every
     other create. That is how "id only" is read: the name, the most disclosing field, never appears
     in a URL.
