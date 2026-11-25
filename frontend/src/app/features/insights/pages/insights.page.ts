@@ -504,8 +504,13 @@ export class InsightsPage {
       const link = document.createElement('a');
       link.href = url;
       link.download = csvFileName(report, period.from, period.to);
+      link.hidden = true;
+      // Attached, and revoked on the next task: Safari and older Firefox can cancel a download
+      // from a detached link, or one whose URL is revoked in the same task as the click.
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(url);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (thrown) {
       this.actionError.set(asApiError(thrown));
     } finally {

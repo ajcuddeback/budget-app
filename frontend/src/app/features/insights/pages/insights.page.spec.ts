@@ -450,16 +450,22 @@ describe('InsightsPage', () => {
       'URL',
       Object.assign(URL, { createObjectURL: created, revokeObjectURL: revoked }),
     );
-    const click = vi
-      .spyOn(HTMLAnchorElement.prototype, 'click')
-      .mockImplementation(() => undefined);
+    let attachedWhenClicked: boolean | undefined;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      attachedWhenClicked = this.isConnected;
+    });
 
     buttonNamed(root(fixture), /Download CSV of income and spending/).click();
     await settle(fixture);
 
     expect(reports.csv).toHaveBeenCalledWith('income-and-spending', '2026-06', '2026-08');
     expect(click).toHaveBeenCalled();
-    expect(revoked).toHaveBeenCalledWith('blob:report');
+    // Clicked while attached, then gone; the URL is revoked after the click's task, not in it.
+    expect(attachedWhenClicked).toBe(true);
+    expect(document.querySelector('a[download]')).toBeNull();
+    await vi.waitFor(() => expect(revoked).toHaveBeenCalledWith('blob:report'));
     click.mockRestore();
     vi.unstubAllGlobals();
   });

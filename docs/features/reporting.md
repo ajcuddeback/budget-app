@@ -823,6 +823,21 @@ the real application. The guide is `userguide/features/see-where-your-money-went
 | Disclosure test levels | `INFO` and `DEBUG` | `INFO`, `DEBUG`, **and the web layer at `TRACE`**. `DEBUG` also lowers `com.budgetowl`, which `application.yml` pins to `INFO` | At `DEBUG`, Spring MVC truncates a logged body to 100 characters, so a report's figures never reach that line and a missing redaction cannot fail the test. At `TRACE` the whole body is printed. See `docs/memory/gotchas.md` |
 | Demo fixtures | "about 12 months of categorised transactions … adding" to `demo-data.ts` | The history lives in the **generated** ledger (`REPORT_LEDGER`), which `demo-data.ts` imports and checks `DEMO_TRANSACTIONS` against at load | The history is generated from the same table the backend seeds, so a hand edit cannot drift. The ledger mock still serves August only, and `DEMO_ACCOUNTS`' balances are not recomputed from the history |
 
+### Known gaps (after the slice-13 security audit)
+
+The audit found nothing at critical, high or medium. Its low findings L1 (the formula escaper
+looked only at the first character), L2 (the scoping test's restore could stop at the first
+failure) and L3 (the CSV download revoked its URL in the same task as a detached click) are fixed.
+Still open:
+
+- **A failed CSV download shows a generic error (audit L4).** With `responseType: 'blob'`, a
+  `problem+json` body arrives as a `Blob`, so `asApiError` cannot read its code. No security
+  impact.
+- **The "Show the figures" table on a phone** scrolls sideways inside the card, and at 412 px the
+  Spending column is cut at the card's edge with no visible hint that more columns follow. The
+  scroller is labelled and the user guide says to scroll. A fade or a stacked layout would be
+  better.
+
 ### How the scoping test proves each predicate
 
 **With the database's guards in place, no single predicate's removal is observable.** The
