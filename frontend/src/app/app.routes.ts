@@ -40,6 +40,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/debt/debt.routes').then((m) => m.DEBT_ROUTES),
       },
       {
+        path: 'goals',
+        title: 'title.goals',
+        loadChildren: () => import('./features/goals/goals.routes').then((m) => m.GOALS_ROUTES),
+      },
+      {
         path: 'envelopes',
         title: 'title.envelopes',
         loadChildren: () =>

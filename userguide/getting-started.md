@@ -251,7 +251,7 @@ appear in every month they fall in — and Budget Owl can tell you what's left.
 
    Each date gets its own row, so a weekly bill is ticked off a week at a time.
 
-![The What's left this month card: $335.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, and $608.00 of $2,301.10 still to pay.](images/see-whats-left-this-month--whats-left.png)
+![The What's left this month card: $25.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, goals $310.00, and $608.00 of $2,301.10 still to pay.](images/see-whats-left-this-month--whats-left.png)
 
 **A bill is a plan, not a payment.** Marking one paid records what your household says happened.
 It doesn't move money and doesn't create a transaction — only a transaction is ever money that
@@ -261,9 +261,10 @@ really went.
 not money you still have, so ticking it off doesn't make **What's left this month** go up. The
 **Still to pay** line is the one that drops.
 
-**Four things come off, not three.** **Debt minimums** is the fourth: the minimum payments on your
-debts that aren't already one of your bills. If you used to see a larger figure here, that is why —
-the money was always committed, and the page now says so. The full explanation is in
+**Five things come off.** **Debt minimums** is the fourth: the minimum payments on your debts that
+aren't already one of your bills. **Goals** is the fifth: what you plan to put towards your goals
+this month. If you used to see a larger figure here, that is why. The money was always committed,
+and the page now says so. The full explanation is in
 [See what's left this month](features/see-whats-left-this-month.md#what-changed-and-why).
 
 Full steps: [See what's left this month](features/see-whats-left-this-month.md),
@@ -354,6 +355,32 @@ Full steps: [Add a debt](features/add-a-debt.md),
 [Choose how to clear your debts](features/choose-how-to-clear-your-debts.md),
 [Log a payment against a debt](features/log-a-debt-payment.md) and
 [Confirm what you owe](features/confirm-what-you-owe.md).
+
+## 8b. Save towards a goal
+
+A trip, a new laptop, an emergency fund: a goal is money you're putting aside for something.
+
+1. Select **Goals** in the menu across the top, then select **Add a goal**.
+
+2. Fill in **What it is for** and **How much it needs**, and a **Month you want it by** if you have
+   one.
+
+3. Enter what you plan to put aside in **Each month**.
+
+   As you type, the window works out when that gets you there.
+
+4. Select **Add a goal**.
+
+   ![The Goals page: New laptop, Japan and Emergency fund, each with a bar, how much is saved of the target, and a sentence saying when it gets there.](images/save-towards-a-goal--list.png)
+
+**A goal's monthly amount comes off what's left to spend**, in full, from the start of the month.
+Money you mean to save isn't money you can spend.
+
+**Setting money aside doesn't move money.** Like marking a bill paid, it records what you did at
+your bank. A goal's figure is what you record against it, not an account's balance.
+
+Full steps: [Save towards a goal](features/save-towards-a-goal.md) and
+[Change what you set aside each month](features/change-what-you-set-aside.md).
 
 ## 9. See where your money went
 

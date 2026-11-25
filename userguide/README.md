@@ -41,6 +41,8 @@ account to seeing your first month's budget.
 | [Log a payment against a debt](features/log-a-debt-payment.md)                  | Write down what you paid, see the split before you record it, and why your account balance doesn't move          |
 | [Confirm what you owe](features/confirm-what-you-owe.md)                        | When a balance is an estimate, how to put the statement figure in, and what happens after a year                 |
 | [See where your money went](features/see-where-your-money-went.md)             | Income against spending month by month, what you kept, where last month went by category, and downloading the figures |
+| [Save towards a goal](features/save-towards-a-goal.md)                          | Add a goal, set money aside or take it out, and why your savings account and the goal can differ                 |
+| [Change what you set aside each month](features/change-what-you-set-aside.md)   | Put more or less towards a goal from this month or next, and what that does to what's left                       |
 | _Recurring transactions_                                                        | Not written yet                                                                                                  |
 | _Reports_                                                                       | Not written yet                                                                                                  |
 

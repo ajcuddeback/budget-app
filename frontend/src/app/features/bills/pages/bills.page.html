@@ -70,7 +70,29 @@
             <dt>{{ 'bills.termDebtMinimums' | t }}</dt>
             <dd>{{ sums.debtMinimumsNotInBills | money: sums.currency }}</dd>
           </div>
+          <!-- The fifth term (goals.md, decision 2): each goal counts the greater of its plan and
+               what was recorded for the month, so setting money aside never makes this go up. -->
+          <div>
+            <dt>{{ 'bills.termGoals' | t }}</dt>
+            <dd>{{ sums.goalsSetAside | money: sums.currency }}</dd>
+          </div>
         </dl>
+        <p class="card-note">{{ 'bills.goalsNote' | t }}</p>
+        <!-- Decision 3: the debt plan's extra is the household's own figure and is never taken off
+             here. When it is more than what is left, the page says so in words and changes
+             nothing. The comparison is the server's. -->
+        @if (sums.debtPlanExtraExceedsLeft && sums.debtPlanExtra; as extra) {
+          <p class="card-note">
+            {{
+              'bills.debtExtraExceedsLeft'
+                | t
+                  : {
+                      extra: extra | money: sums.currency,
+                      left: sums.left | money: sums.currency,
+                    }
+            }}
+          </p>
+        }
 
         <!-- Secondary, deliberately: bills count whether or not they are paid, so this is not the
              figure the page leads with. -->

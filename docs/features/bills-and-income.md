@@ -1,11 +1,12 @@
 # Feature: Bills and income
 
 - **Slice:** 7
-- **Status:** Shipped. **Amended by slice 10** — `left` lost a fourth term; see
-  [What is left to spend](#what-is-left-to-spend)
+- **Status:** Shipped. **Amended by slice 10** — `left` lost a fourth term — and **by slice 11**,
+  which took a fifth, the goals; see [What is left to spend](#what-is-left-to-spend)
 - **Depends on:** categories (4), transactions (5), envelopes (6)
 - **Related:** ADR-0025 (bills are occurrences), ADR-0032 (occurrences are projected), ADR-0006,
-  `debt-plan.md` (slice 10, which changed this page's headline figure)
+  `debt-plan.md` (slice 10) and `goals.md` (slice 11), which each changed this page's headline
+  figure
 - **Designs:** `design/canvas/` — the Bills & Income page, bills and income blocks with envelopes
   beneath them
 
@@ -18,11 +19,16 @@ the only question the page exists for:
 > **What is left to spend this month?**
 
 That figure is income, minus the month's bills, minus what is set aside in envelopes, minus the
-debt minimums that are not already a bill row. It is one subtraction and the page leads with it.
+debt minimums that are not already a bill row, minus what the month's goals set aside. It is one
+subtraction and the page leads with it.
 
 **Slice 10 added the fourth term**, which changed a figure that had already shipped — the owner's
 decision, recorded in `debt-plan.md`. See [What is left to spend](#what-is-left-to-spend) for why
 it is the *not-already-a-bill* minimums and not all of them.
+
+**Slice 11 added the fifth**, the goals (`goals.md`, decision 2), and changed the figure again. Each
+goal counts the greater of what its plan asks of the month and what was recorded against it, so
+setting money aside never makes the figure go up.
 
 **Bills count whether or not they are paid.** Rent that has already gone is not money still
 available, so subtracting only the unpaid ones would make "what's left" _rise_ every time somebody
@@ -45,8 +51,40 @@ skipped one contributes nothing. The outstanding figure is reported alongside, s
 ### What is left to spend
 
 ```
-left = income − bills − envelopesAllocated − debtMinimumsNotInBills
+left = income − bills − envelopesAllocated − debtMinimumsNotInBills − goalsSetAside
 ```
+
+**The fifth term arrived with slice 11** (`goals.md`, decision 2):
+
+```
+goalsSetAside(P) = Σ max(planned(g, P), recorded(g, P))   over unarchived, base-currency goals
+```
+
+- **Planned £110 and recorded £50 still counts £110.** The month is not over and the other £60 is
+  spoken for. This is the same reason bills count whether or not they are paid.
+- **A £200 top-up above a £110 plan counts £200.** Money moved towards a goal is not free to spend.
+- **A withdrawal never raises it.** `max(110, −500)` is 110. The spending a withdrawal pays for is
+  not in this figure either, so raising `left` by it would report money as free that has gone.
+- **A goal's starting amount is in no month**, because it was set aside before tracking began.
+- **A goal that began the month already reached** counts only what was recorded, from the month
+  after the one it was reached in.
+- **Archived goals and goals in another currency count nothing**, the rules envelopes and `owed`
+  already follow. Archiving a goal therefore makes `left` rise, and the goals page says so.
+- **A household with no goals has a fifth term of zero**, so every figure from before slice 11 is
+  unchanged for it. That is the property that made this a safe change to a shipped figure, as it was
+  for slice 10.
+
+The two halves read one object. `PeriodSummaryService` asks `GoalService.setAsideFor` once, and the
+`goalsSetAside` it reports is the same `Money` it subtracts. `GoalService` computes each goal's
+share with `GoalLedger.monthContribution`, which is also what `/goals` reads for "this month". So
+the term on this page, the term taken off `left`, and the line on the goal's own page cannot be
+three readings of two definitions. That is the `docs/memory/gotchas.md` lesson slice 10 paid for.
+
+**The debt plan's extra is reported beside `left` and never subtracted** (`goals.md`, decision 3):
+`debtPlanExtra` is `monthlyAmount − Σ minimums` for the plan's own debts in the base currency, or
+`null` with no plan or one below its minimums. `debtPlanExtraExceedsLeft` says whether it is more
+than `left`. The comparison is the server's, so the client compares no amounts. When it is, this
+page and `/debt-plan` both say so in words, and nothing changes automatically.
 
 The fourth term arrived with slice 10 (`debt-plan.md`, decision 2) and is the part of the debt
 minimums **not already carried by a bill row**. A card's or a car loan's minimum is frequently also
@@ -211,6 +249,10 @@ picker (previous / next) that every block follows at once:
    visible rather than mysterious. The card and the headline both come from
    `GET /api/periods/{period}/summary`, which composes them from the debt service — so the page
    cannot show an Owed card its own headline disagrees with.
+6. **Goals** — slice 11 adds no block, only the fifth term. The **What's left** card shows
+   `goalsSetAside` as **Goals** beside the other four, with a one-line note on how a goal counts.
+   When `debtPlanExtraExceedsLeft` is set, the card says so in a sentence. The goals themselves
+   are on `/goals`.
 
 A bill that is overdue says so. A bill paid for other than its expected amount shows both figures,
 labelled, and is tagged as not what was budgeted — and **one** figure when they agree, because the
@@ -271,6 +313,11 @@ Retiring a bill or a source is `PATCH active: false` and is offered as **Retire*
   own 185 / 342 / 118, that `left` subtracts 303 and **not** 645, and that deleting the linked bill
   makes it 645. `PeriodSummaryIT`'s own cases stay green because a household with no debts has a
   fourth term of zero, which is the property that made this a safe change to a shipped figure.
+- `GoalPeriodSummaryIT` (slice 11) — the fifth term, asserted as numbers: a plan of 110 with 0, 50
+  and 200 recorded gives 110, 110 and 200; a withdrawal never raises it; a month that began reached
+  counts only what was recorded; archived, foreign-currency and starting amounts count nothing; a
+  plan step set for next month leaves this month unmoved; and `debtPlanExtra` is reported and not
+  subtracted. `PeriodSummaryIT` and `DebtPeriodSummaryIT` stay green unchanged.
 - `bills-data.spec.ts` — the request builders: a schedule sends only its own parameters, a kind
   change clears and re-requires them, `amountVaries` and `tolerance` travel together, an amount
   stays a string, and recording a status is a `PUT` to a date with no version.

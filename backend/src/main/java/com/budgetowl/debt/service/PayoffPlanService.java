@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -244,6 +245,35 @@ public class PayoffPlanService {
             }
         }
         return Map.copyOf(allocations);
+    }
+
+    /**
+     * What the plan puts towards debt beyond the minimums, in the base currency: {@code
+     * monthlyAmount − Σ minimums}, with the minimums of exactly the debts the plan ranks.
+     *
+     * <p>For the Bills &amp; Income summary, which <b>reports it beside {@code left} and never
+     * subtracts it</b> (docs/features/goals.md, decision 3): goals and the plan are not coupled by
+     * arithmetic, and the only interaction is a sentence when the extra exceeds what is left. No
+     * projection is computed, for the reason {@link #selectedStrategyFor} gives.
+     *
+     * @return empty with no plan row, or with a plan below its minimums — there is no extra then,
+     *     and a negative one would read as money coming back
+     */
+    @Transactional(readOnly = true)
+    public Optional<Money> extraFor(Household household, List<DebtFacts> facts) {
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        if (plan == null) {
+            return Optional.empty();
+        }
+        Currency base = household.baseCurrency();
+        Money minimums = Money.zero(base);
+        for (DebtFacts debt : facts) {
+            if (debt.isInThePlan() && debt.debt().currency().equals(base)) {
+                minimums = minimums.plus(debt.debt().minimumPayment());
+            }
+        }
+        Money extra = plan.monthlyAmount(base).minus(minimums);
+        return extra.isNegative() ? Optional.empty() : Optional.of(extra);
     }
 
     /**

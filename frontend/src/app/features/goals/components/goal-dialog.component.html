@@ -1,0 +1,148 @@
+<dialog appModal class="dialog" aria-labelledby="goal-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="goal-dialog-title">
+      {{ (adding() ? 'goals.dialog.addTitle' : 'goals.dialog.editTitle') | t }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="goal-name">{{ 'goals.field.name' | t }}</label>
+      <input
+        id="goal-name"
+        class="input"
+        type="text"
+        maxlength="80"
+        autocomplete="off"
+        formControlName="name"
+        aria-describedby="goal-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.name" errorId="goal-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="goal-target">{{ 'goals.field.target' | t }}</label>
+      <!-- type="text" with inputmode="decimal", never type="number" (ADR-0006). -->
+      <input
+        id="goal-target"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="targetAmount"
+        aria-describedby="goal-target-error"
+        [attr.aria-invalid]="
+          form.controls.targetAmount.invalid && form.controls.targetAmount.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.targetAmount" errorId="goal-target-error" />
+    </div>
+
+    <div class="field">
+      <label for="goal-month">{{ 'goals.field.month' | t }}</label>
+      <input
+        id="goal-month"
+        class="input"
+        type="month"
+        formControlName="targetMonth"
+        aria-describedby="goal-month-hint"
+      />
+      <p class="field-hint" id="goal-month-hint">{{ 'goals.field.monthHint' | t }}</p>
+    </div>
+
+    <div class="field">
+      <label for="goal-start">{{ 'goals.field.alreadySaved' | t }}</label>
+      <input
+        id="goal-start"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="startingAmount"
+        aria-describedby="goal-start-hint goal-start-error"
+        [attr.aria-invalid]="
+          form.controls.startingAmount.invalid && form.controls.startingAmount.touched
+            ? 'true'
+            : null
+        "
+      />
+      <!-- The one thing people get wrong: money already put by goes here, never as a contribution
+           dated today, which would take the whole sum off this month's left-over figure. -->
+      <p class="field-hint" id="goal-start-hint">{{ 'goals.field.alreadySavedHint' | t }}</p>
+      <app-field-error [control]="form.controls.startingAmount" errorId="goal-start-error" />
+    </div>
+
+    @if (adding()) {
+      <div class="field">
+        <label for="goal-monthly">{{ 'goals.field.monthly' | t }}</label>
+        <input
+          id="goal-monthly"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="monthlyContribution"
+          aria-describedby="goal-monthly-hint goal-monthly-error"
+          [attr.aria-invalid]="
+            form.controls.monthlyContribution.invalid && form.controls.monthlyContribution.touched
+              ? 'true'
+              : null
+          "
+        />
+        <p class="field-hint" id="goal-monthly-hint">{{ 'goals.field.monthlyHint' | t }}</p>
+        <app-field-error
+          [control]="form.controls.monthlyContribution"
+          errorId="goal-monthly-error"
+        />
+      </div>
+    }
+
+    <div class="field">
+      <label for="goal-account">{{ 'goals.field.account' | t }}</label>
+      <select id="goal-account" class="input" formControlName="accountId">
+        <option value="">{{ 'goals.field.noAccount' | t }}</option>
+        @for (account of choosableAccounts(); track account.id) {
+          <option [value]="account.id">{{ account.name }}</option>
+        }
+      </select>
+      <!-- Informational only: the goal's figure comes from what is recorded against it, because
+           one account often holds several goals. -->
+      <p class="field-hint">{{ 'goals.field.accountHint' | t }}</p>
+    </div>
+
+    @if (adding() && form.controls.accountId.value === '') {
+      <!-- Offered only when no account is named: a linked goal's currency IS the account's. -->
+      <app-currency-field
+        [control]="form.controls.currency"
+        fieldId="goal-currency"
+        [label]="'goals.field.currency' | t"
+        [hint]="'goals.field.currencyHint' | t"
+        [emptyLabel]="'goals.field.currencyDefault' | t: { currency: baseCurrency() }"
+      />
+    }
+
+    <!-- What the server says this goal would report. role="status" so the sentence is announced
+         as it changes; kept in the document while empty, so the first answer is heard. -->
+    <div class="stack-tight" role="status">
+      @for (said of previewSaid(); track $index) {
+        <p class="preview">{{ said.key | t: said.params }}</p>
+      }
+    </div>
+    @if (previewUnavailable()) {
+      <p class="card-note">{{ 'goals.previewUnavailable' | t }}</p>
+    }
+    <p class="card-note">{{ 'goals.noInterest' | t }}</p>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ submitLabel() | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

@@ -63,6 +63,19 @@ export class MonthNamePipe implements PipeTransform {
   }
 }
 
+/**
+ * `{{ '2027-11' | period }}` — "November 2027". A month label is not a date, so it never gains a
+ * day it does not have; anything that is not a period renders as nothing rather than as itself.
+ */
+@Pipe({ name: 'period', pure: false })
+export class PeriodPipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(period: string | null | undefined): string {
+    return this.i18n.formatMonth(period);
+  }
+}
+
 /** `{{ 3 | weekdayName }}` — "Wednesday", from the ISO weekday number, Monday first. */
 @Pipe({ name: 'weekdayName', pure: false })
 export class WeekdayNamePipe implements PipeTransform {

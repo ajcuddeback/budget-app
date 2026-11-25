@@ -280,9 +280,29 @@ Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" 
 one payee, which makes reporting and auto-categorization possible.
 
 ### Goal
-A savings target: `name`, `targetAmount`, `targetDate`, linked `accountId`, `monthlyContribution`,
-computed progress. The designs show goals absorbing surplus from the weekly check-in and being
-adjusted by the assistant ("Japan trip: $110 → $165 per month, starting Sep 1").
+Money a household is putting aside for something (`docs/features/goals.md`, slice 11): a `name`, a
+`targetAmount`, an optional `targetMonth` (a month, not a day), a `startingAmount` already saved
+when tracking began, a currency fixed at creation, and an optional `accountId` that is
+**informational only**. One account often holds several goals, so its balance is never the source
+of progress.
+
+Progress comes from **contributions**: dated, signed, non-zero plan records the household logs. A
+negative one is a withdrawal. Like a debt payment (ADR-0035), a contribution writes no transaction
+and moves no account balance; a nullable `transactionId` attaches the real movement as evidence.
+`saved = startingAmount + Σ contributions`, and `remaining` and `reached` follow from it; all three
+are derived and never stored.
+
+The **monthly contribution is an effective-dated plan** of `(fromPeriod, monthlyAmount)` steps,
+changed only from the current month forwards, so raising it in September never rewrites August.
+A goal takes `max(planned, recorded)` out of a month's left-over figure. That is the fifth term of
+**Left over**, and it is zero for a month that began with the goal reached.
+
+The projection walks forward from `saved` at the plan in force, capped at 600 months, with no
+interest or growth. It gives the projected month and the smallest monthly amount, rounded up at the
+currency's minor unit, that reaches the target by `targetMonth`. Goals are not ranked against debts
+and never enter the payoff ladder. The weekly check-in (slice 14) will record a contribution when
+surplus goes to a goal, and the assistant's *"Japan trip: $110 → $165 per month, starting Sep 1"*
+(slice 17) is a proposal that reaches the same plan endpoint a person uses.
 
 ## Derived figures
 

@@ -25,8 +25,13 @@ import com.budgetowl.common.Money;
  *
  * @param owed the total balance, in the household's base currency only (ADR-0022)
  * @param count how many debts are active, across every currency
+ * @param planExtra what the payoff plan puts towards debt beyond the minimums, in the base
+ *     currency, or null with no plan or one below its minimums. <b>Reported, never subtracted</b>:
+ *     slice 11's decision 3 keeps goals and the plan uncoupled, and the summary only says so in
+ *     words when this exceeds what is left (docs/features/goals.md)
  */
-public record DebtFigures(Money owed, int count, Money minimums, Money minimumsNotInBills) {
+public record DebtFigures(
+        Money owed, int count, Money minimums, Money minimumsNotInBills, Money planExtra) {
 
     /** Redacted: four amounts, and one of them is everything the household owes. */
     @Override

@@ -1,8 +1,12 @@
 # Feature: Goals
 
 - **Slice:** 11
-- **Status:** Planned — ready to build. Nothing is built yet. The open questions were answered on
-  2026-11-25; see [Decisions](#decisions).
+- **Status:** Done (slice 11). The schema (`V18__goals.sql`), the fifteen endpoints, the fifth
+  term and `debtPlanExtra` on the period summary, both screens, the dialogs, the generated demo
+  fixtures and the user guide have shipped. See
+  [What slice 11 has built](#what-slice-11-has-built), the implementation decisions at the end of
+  [Decisions](#decisions), and [Known gaps](#known-gaps). The open questions were answered on
+  2026-11-25.
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-25
 - **Depends on:** transactions (5) for the optional link from a contribution to a ledger row.
@@ -763,6 +767,33 @@ upload**. Path parameters are two UUIDs and one `YearMonth`. Query parameters ar
 - **The linked account's balance and the goal's `saved` can disagree**, and the page shows both
   rather than reconciling them. This is the same latitude ADR-0035 gives debt and account
   balances.
+- **The UI corrects a contribution by removing it and recording it again.** `PATCH
+  /api/goals/{id}/contributions/{contributionId}` is built and tested, three-way on `note` and
+  `transactionId`, but the history has a **Remove** action and no **Edit** one. The UI section asks
+  for no per-row edit, and a correction dialog is a contained follow-up.
+- **There is no UI for attaching a transaction to a contribution.** The API accepts and resolves
+  `transactionId`, scoped and unique, as the debt payment API does. The picker arrives with
+  matching, as it will for debt payments and envelope entries.
+- **"Use this £110 for another goal" is not built.** The doc already calls it optional and says it
+  can ship later without any API change. A reached goal shows **Reached.** and the Archive action.
+- **The same linked-account currency hole the debt plan has** (see [Edge cases](#edge-cases)) is
+  still open, as the doc recommended: an empty account linked to a goal can change currency
+  underneath it. Not changed silently here.
+- **The dark-mode track of the progress bar is a role alias, not a design-system value.** No token
+  carried a track on a dark ground, so `--color-goal-track` is `--color-neutral-300` in light and
+  `--color-divider` in dark. It composes existing tokens and invents no value. It still belongs in
+  the design project (`design/README.md`, Known gaps).
+- **A list row never names the monthly amount in its projection sentence** (decision 20). It says
+  *"Keeping to its plan, you reach it in…"* for every goal, because the list response carries no
+  steps. A `planChangesLater` flag on the goal response would restore *"At $200.00 a month…"* for
+  the goals with one amount.
+- **The Bills & Income card does not say that a goal in another currency is left out of the fifth
+  term.** Only base-currency goals can be summed into a base-currency `left`, and `goalsCounted`
+  carries how many were. The user guide says it in words. A line on the card, in the style of the
+  Owed card's every-currency note, is a contained follow-up.
+- **The set-money-aside date defaults to the browser's today.** In the guide captures, the demo
+  fixtures stand in August 2026 while the browser's clock does not, so the date field shows the
+  machine's real date beside an August "still to come". Against a real server, the two agree.
 
 ## Where the designs and the docs disagree
 
@@ -829,6 +860,144 @@ Decided 2026-11-25 by the product owner. Each one took the doc's recommendation.
 8. **Where is Goals on a phone?** The web app's narrow-viewport nav carries Goals as it carries
    Debt plan. The Flutter tab bar (slice 15) decides separately.
    *Reason:* a screen a phone user cannot reach fails rule 1 of `design/README.md`.
+
+### Implementation decisions (slice 11)
+
+Made while building, where the spec left a gap or where following it literally gave a wrong
+answer. Each is the smallest change that fixed it, and each is tested.
+
+9. **A net withdrawal counts as nothing towards this month's plan in `stillToCome`.** The spec
+   reads `stillToCome = max(planned − recorded, 0)`. Taken literally, a £500 withdrawal against a
+   £110 plan makes £610 "still to come", so the projection would assume the withdrawal is put back
+   this month while `goalsSetAside` reserves only £110. The two halves of one page would disagree
+   about one month. It is now `max(planned − max(recorded, 0), 0)`, which gives the spec's own
+   110 / 60 / 0 / 0 for recorded 0 / 50 / 110 / 200, and 110 for −500. The closed-form candidate for
+   `requiredMonthly` uses the same rule. Found by `GoalProjectionTest`, which still tests the spec's
+   four cases and now a fifth.
+10. **A new reason code, `not-reachable-by-target-month`.** When the target month is this month,
+    the month began with the goal reached, and a withdrawal has since taken it below, this month's
+    plan does not count, so no monthly amount reaches the target by the month named. The spec's
+    reason codes have no word for that, and leaving it `null` would break "never a blank". It has
+    its own sentence: record the rest directly.
+11. **`requiredMonthly` answers `beyond-horizon` for a target month more than 600 months away.**
+    The search uses the same capped walk, so it cannot verify an answer past the cap. The spec
+    names the code and does not assign it to this case.
+12. **A target month must fall in 1900–9999** (`400 validation-failed`, naming the field), as must
+    a plan's `fromPeriod`, and a contribution may not be dated before 1900. The spec bounds none of
+    them. An unbounded `YearMonth` reaches the database's date range and the month arithmetic, and
+    `Horizon`'s overflow in slice 10 was exactly this.
+13. **The goal-bound preview also takes `targetAmount`, `startingAmount` and `targetMonth`**
+    (three-way), each optional, beside `monthlyAmount`. The spec gives it `monthlyAmount` only, but
+    says the **Edit** dialog shows the server's preview, and an edit changes those three. Absent
+    fields keep the goal's own values, so `{"monthlyAmount": …}` behaves exactly as specified.
+14. **The plan is changed from this month or next month, not from an arbitrary month**, in the UI.
+    The API accepts any month from the current one on. The plan dialog's live preview projects a
+    plan from this month, which is what the goal-bound preview computes, and says in words that
+    this month is unchanged when "from next month" is chosen.
+15. **A plan `PUT` that changes nothing writes nothing** and does not bump the goal's `version`. A
+    step equal to the amount already in force is not stored either. Replaying the same instruction
+    with the current version is then a no-op, which is what "idempotent" can mean for a request
+    guarded by an optimistic lock.
+16. **A transaction already attached to a contribution is `409 conflict`**, the code debt
+    payments use for the same case. The spec says it is refused and names no code.
+17. **The summary carries `goalsCounted` and `debtPlanExtraExceedsLeft`** beside the two fields the
+    spec names. The first is how many goals the fifth term covers: unarchived goals in the
+    household's base currency, the only ones a base-currency sum can hold. The card does not show it
+    yet (Known gaps). The second keeps the comparison on the server, so the browser compares no
+    amounts to decide whether to say the sentence.
+18. **A `POST /api/goals` Location names the id**, and the body is the created goal, as for every
+    other create. That is how "id only" is read: the name, the most disclosing field, never appears
+    in a URL.
+19. **The cap counts archived goals**, as the debt cap counts archived debts: the rows are still
+    there to be projected the moment anything un-archives them.
+20. **The projection names this month's amount only when no later step changes it.** The UI
+    section's example, *"At $110 a month you reach it in Jul 2028"*, assumes one amount
+    throughout. The walk uses every step, so with $165 from September, Japan reaches its target in
+    December 2027 on $110 and then $165, and *"At $110.00 a month you reach it in December 2027"*
+    was false. The first capture for the user guide showed exactly that sentence. Where a later step
+    exists, the sentence is *"Keeping to its plan, you reach it in December 2027 — 1 month after
+    November 2027."* The detail page and the edit preview know the steps and choose. The add and
+    change-the-plan previews are always one amount, because a plan change replaces every later step.
+    **A list row always uses the plan wording**, because `GET /api/goals` does not return the steps.
+    A boolean on the goal response would let the list name the amount again. It was left out to keep
+    the API as the spec states it; see Known gaps.
+
+## What slice 11 has built
+
+**Schema.** `V18__goals.sql`: `goals`, `goal_contribution_steps` and `goal_contributions`, with
+every foreign key composite on `(id, household_id)`, `UNIQUE (id, household_id)` on `goals` in the
+same migration, the `SET NULL (column)` form for the account and the transaction, every `CHECK` the
+data model lists, the partial unique index behind `goal-name-taken`, and the
+`(household_id, goal_id, period)` index.
+
+**Backend**, `com.budgetowl.goal`:
+
+- `GoalLedger` — one goal's target, starting amount, plan and per-month totals, and **the one
+  definition** of `planned`, `stillToCome` and `monthContribution`. The list, the detail page, both
+  previews and the period summary all read it.
+- `GoalProjection` — the walk, capped at 600 months, and the required-monthly search. The closed
+  form proposes a candidate, and the walk accepts it only if it arrives on time and one minor unit
+  less does not. Otherwise a bisection over the walk decides. The walk is authoritative:
+  `HALF_EVEN` in the candidate is caught by the walk, not shipped.
+- `GoalService` — every write checks the role **before** the goal is looked up. Every read is
+  membership-scoped. Accounts and transactions are resolved through the household. Caps are 50
+  goals per household and 2,000 contributions per goal. Amounts are refused when more precise than
+  the currency's minor unit.
+- `GoalController` — the fifteen routes, not `@Validated`. Both previews are `POST`s.
+- `PeriodSummaryService` — `goalsSetAside` is one `SetAside` object, both reported and subtracted.
+  `debtPlanExtra` comes from `PayoffPlanService.extraFor`, computed from the facts the debt
+  figures already read, over the plan's own debts.
+- Five error codes in `ErrorCode`, each with an English sentence in `en.json`.
+
+**Frontend**, `features/goals` plus the shared `GoalProgressComponent` (the home card's row, built
+to be reused):
+
+- `/goals` — grouped by currency only when there are several, never totalled. Each row has its
+  projection in words. There is an empty state, and an archived section behind a toggle.
+- `/goals/{id}` — header, progress (with the linked account's balance labelled as the
+  account's), the plan with scheduled steps and the required figure, and the history. The starting
+  amount is its first line and not a row, and a withdrawal says so in words.
+- Dialogs: add and edit (live server preview), change the plan (this month or next, live preview),
+  set money aside (prefilled with `stillToCome`), take money out (its own dialog, sent negative).
+  Archive, restore and delete use the shared confirm dialog, whose text says what happens to
+  "left".
+- Bills & Income shows **Goals** as the fifth term with a note, and both it and `/debt-plan` say
+  in words when the plan's extra exceeds `left`.
+- Nav: **Goals**, between Debt plan and Envelopes, at both viewports. A `period` pipe was added to
+  the core formatters.
+
+**Tests.** `GoalProjectionTest` (33), `GoalTest` (10), `GoalIT` (87, including the fifteen-route
+sweep), `GoalPeriodSummaryIT` (16), `GoalLimitsIT` (6), `GoalDisclosureIT` (3), the goal block of
+`MoneyCrossHouseholdIT` (27 more), and `DemoFixtureIT`'s third scenario. Frontend:
+`goal-data.spec.ts`, `goals.page.spec.ts` and `goal-detail.page.spec.ts` (40), plus new cases in
+`bills.page.spec.ts` and `debt-plan.page.spec.ts`. In the browser: `tools/ui/specs/app/goals.spec.ts`,
+at both viewports and in the dark theme. `PeriodSummaryIT` and `DebtPeriodSummaryIT` pass unchanged.
+
+**Proved to fail.** Each of these was broken on purpose, the named test failed, and the code was
+restored:
+
+| Broken | Caught by |
+|---|---|
+| The 600-month cap raised to 10^8 | `GoalProjectionTest` — both timed horizon tests time out |
+| The required candidate returned unverified, rounded `HALF_EVEN` | `GoalProjectionTest` — the 163.13, yen and boundary cases |
+| `contribute` looked the goal up before checking the role | `GoalIT.a_viewer_gets_403_for_an_id_that_does_not_exist_too` |
+| `left` reported the fifth term and did not subtract it | Five `GoalPeriodSummaryIT` cases |
+| `CreateGoalRequest` printed every component | `GoalDisclosureIT` at `DEBUG` |
+| The goal-bound preview built its ledger without the contributions | `GoalIT.the_goal_preview_is_exactly_what_setting_that_plan_then_reports` |
+| `contribute` trusted `transactionId` instead of resolving it in the household | `MoneyCrossHouseholdIT.cannotBindOneOfOurGoalsToAnotherHouseholdsAccountOrTransaction` |
+| A contribution was found by household alone, not by its goal | `GoalIT.a_contribution_of_the_right_household_but_another_goal_is_not_found` |
+| The bar was not clamped | `goals.page.spec.ts` — over 100% |
+| A late preview answer was not dropped | `goals.page.spec.ts` — the late-answer case |
+| The detail page named this month's amount even with a later step | `goal-detail.page.spec.ts` — names the amount only when no later step changes it |
+
+**Demo fixtures.** `DemoFixtureIT.the_committed_goal_fixtures_are_what_the_application_returns`
+seeds four goals, with the demo debts, through the real endpoints, with the clock at 2026-08-20,
+and writes `tools/ui/fixtures/goal-api.generated.ts`. That file holds every goal, plan and history,
+every preview the dialogs ask, and August's summary. `demo-data.ts` takes `goalsSetAside`,
+`goalsCounted` and `debtPlanExtra` from it and subtracts the fifth term from its own `left`. The
+canvas's figures do not reconcile, so the goals keep its shape and the arithmetic is the
+application's: Japan, $890 of $3,500 by November 2027 at $110 and then $165 from September,
+reaches it in December 2027 and needs $163.13 a month.
 
 ## Testing notes
 

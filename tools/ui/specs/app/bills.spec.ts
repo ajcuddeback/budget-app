@@ -80,7 +80,8 @@ test.describe('bills and income, as an owner', () => {
     // the bills term and not here, and nothing is counted twice. Every figure derives from the
     // same fixtures the blocks below render, so a headline disagreeing with them is a real defect.
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('$335.90');
+    // Slice 11 took a fifth term, the goals' $310.00 (goals.md, decision 2): 335.90 − 310 = 25.90.
+    await expect(whatsLeft).toContainText('$25.90');
 
     await expect(whatsLeft).toContainText('$3,640.00');
     await expect(whatsLeft).toContainText('$2,301.10');
@@ -101,7 +102,7 @@ test.describe('bills and income, as an owner', () => {
     await page.goto('/bills');
 
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('-$1,504.10');
+    await expect(whatsLeft).toContainText('-$1,814.10');
     await expect(whatsLeft).toContainText(/short/i);
 
     await ui.shot('bills-short-month');
@@ -250,7 +251,7 @@ test.describe('bills and income, as a viewer', () => {
     await page.goto('/bills');
 
     // A VIEWER reads a household's whole financial plan. It must not be able to alter one figure.
-    await expect(page.locator('body')).toContainText('$335.90');
+    await expect(page.locator('body')).toContainText('$25.90');
     await expect(page.getByRole('button', { name: /Mark paid/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add a bill/ })).toHaveCount(0);
     // Owed is a balance and reads the same for everybody; it is not part of the subtraction.
@@ -294,7 +295,8 @@ test.describe('bills and income, in the dark theme', () => {
     await page.goto('/bills');
 
     const whatsLeft = page.getByRole('region', { name: /What's left/ });
-    await expect(whatsLeft).toContainText('-$1,504.10');
+    // -$1,814.10 since slice 11: the goals' $310.00 is the fifth term (goals.md, decision 2).
+    await expect(whatsLeft).toContainText('-$1,814.10');
 
     await ui.shot('bills-short-month-dark');
     expect(await ui.a11y('bills and income, a short month in dark')).toBe(0);

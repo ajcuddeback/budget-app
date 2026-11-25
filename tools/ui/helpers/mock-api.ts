@@ -28,6 +28,10 @@ import {
   DEMO_DEBT_DETAIL,
   DEMO_DEBT_STATE_DETAIL,
   DEMO_DEBT_PAYMENTS,
+  DEMO_GOALS,
+  DEMO_GOAL_DETAIL,
+  DEMO_GOAL_PLANS,
+  DEMO_GOAL_CONTRIBUTIONS,
   DEMO_PERIOD_SUMMARY,
   DEMO_PROBLEMS,
   DEMO_TOKENS,
@@ -40,9 +44,28 @@ import {
   DEMO_REPORT_STATES,
 } from '../fixtures/demo-data.js';
 import { DEBT_API } from '../fixtures/debt-api.generated.js';
+import { GOAL_API } from '../fixtures/goal-api.generated.js';
 
 /** A generated response by its key, or undefined. The keys are built at run time from a request. */
 const generated = (key: string): unknown => (DEBT_API as Record<string, unknown>)[key];
+
+/** A generated goal response by its key, or undefined. */
+const generatedGoal = (key: string): unknown => (GOAL_API as Record<string, unknown>)[key];
+
+/**
+ * A goal preview body as `DemoFixtureIT.previewLabel` keys it: `monthlyAmount=75&targetAmount=900`,
+ * keys in alphabetical order, or `unchanged` for an empty body. Built from what the page sent.
+ */
+const previewLabel = (body: unknown): string => {
+  if (typeof body !== 'object' || body === null) {
+    return 'unchanged';
+  }
+  const label = Object.entries(body as Record<string, unknown>)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join('&');
+  return label === '' ? 'unchanged' : label;
+};
 
 /**
  * An amount as the generator keyed it: two decimal places, by string surgery rather than a parse,
@@ -1298,6 +1321,47 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return json(route, 200, answer);
     }
 
+    // ---- goals (slice 11) -----------------------------------------------------------------
+    // Served from goal-api.generated.ts, which `DemoFixtureIT` GENERATES from the real application
+    // and guards against drift. Nothing here computes a projection or a saved figure: a preview is
+    // answered with what the real server said for exactly that body, or refused loudly.
+    if (at === 'GET /api/goals') {
+      return json(route, 200, DEMO_GOALS);
+    }
+    const goalPreview = url.pathname.match(/^\/api\/goals(?:\/([^/]+))?\/projection-preview$/);
+    if (method === 'POST' && goalPreview) {
+      const key = goalPreview[1]
+        ? `POST /api/goals/${goalPreview[1]}/projection-preview ${previewLabel(body)}`
+        : `POST /api/goals/projection-preview ${previewLabel(body)}`;
+      const answer = generatedGoal(key);
+      return answer === undefined
+        ? json(
+            route,
+            501,
+            {
+              title: 'Not generated',
+              status: 501,
+              detail: `No generated goal preview for "${key}". Add it to DemoFixtureIT's GOAL_PREVIEWS or DRAFT_PREVIEWS and regenerate.`,
+            },
+            'application/problem+json',
+          )
+        : json(route, 200, answer);
+    }
+    const goalPart = url.pathname.match(
+      /^\/api\/goals\/([^/]+)(\/contribution-plan|\/contributions)?$/,
+    );
+    if (method === 'GET' && goalPart) {
+      const id = goalPart[1] as keyof typeof DEMO_GOAL_DETAIL;
+      const found =
+        goalPart[2] === '/contribution-plan'
+          ? DEMO_GOAL_PLANS[id]
+          : goalPart[2] === '/contributions'
+            ? DEMO_GOAL_CONTRIBUTIONS[id]
+            : DEMO_GOAL_DETAIL[id];
+      return found === undefined
+        ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
+        : json(route, 200, found);
+    }
     // ---- everything else ------------------------------------------------------------------
     // Writes succeed without persisting: a guide screenshot shows the confirmation, and the
     // next navigation re-reads the unchanged fixtures. Deterministic by construction.

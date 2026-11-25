@@ -348,6 +348,269 @@ class DemoFixtureIT extends ApiTestBase {
                 REGENERATED_STATES);
     }
 
+    // ---------------------------------------------------------------------------- goals (slice 11)
+
+    private static final Path COMMITTED_GOALS =
+            Path.of("..", "tools", "ui", "fixtures", "goal-api.generated.ts");
+
+    private static final Path REGENERATED_GOALS = Path.of("target", "goal-api.generated.ts");
+
+    /**
+     * The preview bodies the goal dialogs send, per goal, in the canonical form the mock keys them
+     * by (keys in alphabetical order). The plan dialog opens with the plan in force and the guide
+     * types one other figure; the edit dialog asks once on opening with nothing changed, and once
+     * more for the target the guide types. Anything else the mock answers with a loud 501, so a
+     * capture can never show a projection nobody generated.
+     */
+    private static final Map<String, List<String>> GOAL_PREVIEWS =
+            Map.of(
+                    "gol-0001",
+                    List.of(
+                            "{}",
+                            "{\"monthlyAmount\":\"110\"}",
+                            "{\"monthlyAmount\":\"165\"}",
+                            "{\"targetAmount\":\"4000\"}"),
+                    "gol-0002",
+                    List.of("{}", "{\"monthlyAmount\":\"200\"}", "{\"monthlyAmount\":\"250\"}"),
+                    "gol-0003",
+                    List.of("{}", "{\"monthlyAmount\":\"0\"}"));
+
+    /**
+     * What the add dialog asks as the guide fills it in — the target, then the month, then the
+     * monthly amount — each state it can settle in on the way.
+     */
+    private static final List<String> DRAFT_PREVIEWS =
+            List.of(
+                    "{\"targetAmount\":\"900\"}",
+                    "{\"targetAmount\":\"900\",\"targetMonth\":\"2027-06\"}",
+                    "{\"monthlyAmount\":\"75\",\"targetAmount\":\"900\",\"targetMonth\":\"2027-06\"}");
+
+    /**
+     * The demo household's goals, <b>from the real application</b>: every saved figure, every
+     * projected month, every required monthly amount and the fifth term of the period summary.
+     *
+     * <p>The canvas's own figures do not reconcile ({@code docs/features/goals.md}, "Where the
+     * designs and the docs disagree"), so the goals are seeded from its <em>shape</em> — Japan,
+     * $890 of $3,500 by November 2027 at $110 a month, with Owl's $165 from September; an emergency
+     * fund part-funded on day one — and the arithmetic is the application's.
+     *
+     * <p><b>The clock moves to the demo instant before the goals are seeded</b>, unlike the debts:
+     * a plan step cannot be set in a month that has already passed, which is the property decision
+     * 4 exists for, so August's plan has to be written in August. The demo debts are seeded first,
+     * at real time as the debt scenario does, because the period summary's plan extra reads them.
+     */
+    @Test
+    void the_committed_goal_fixtures_are_what_the_application_returns() throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+        Fixture debts = seedTheDemoDebts(household);
+        UUID savings =
+                UUID.fromString(
+                        household
+                                .owner()
+                                .post(
+                                        "/api/accounts",
+                                        """
+                                        {"name":"Emergency Fund","type":"SAVINGS","currency":"USD",
+                                         "openingBalance":"0.00"}
+                                        """)
+                                .stringField("id"));
+
+        clock.moveTo(DEMO_TODAY);
+        Map<UUID, String> stable = new LinkedHashMap<>(debts.stableIds());
+        stable.put(savings, "acc-0002");
+        Map<String, UUID> goals = seedTheDemoGoals(household, savings, stable);
+
+        Map<String, String> generated = new LinkedHashMap<>();
+        generated.put(
+                "GET /api/goals", household.owner().get("/api/goals?includeArchived=true").body());
+        for (Map.Entry<String, UUID> goal : goals.entrySet()) {
+            String path = "/api/goals/" + goal.getValue();
+            generated.put("GET /api/goals/" + goal.getKey(), household.owner().get(path).body());
+            generated.put(
+                    "GET /api/goals/" + goal.getKey() + "/contribution-plan",
+                    household.owner().get(path + "/contribution-plan").body());
+            generated.put(
+                    "GET /api/goals/" + goal.getKey() + "/contributions",
+                    household.owner().get(path + "/contributions").body());
+        }
+        for (Map.Entry<String, List<String>> previews : new TreeMap<>(GOAL_PREVIEWS).entrySet()) {
+            for (String body : previews.getValue()) {
+                generated.put(
+                        "POST /api/goals/"
+                                + previews.getKey()
+                                + "/projection-preview "
+                                + previewLabel(body),
+                        household
+                                .owner()
+                                .post(
+                                        "/api/goals/"
+                                                + goals.get(previews.getKey())
+                                                + "/projection-preview",
+                                        body)
+                                .body());
+            }
+        }
+        for (String body : DRAFT_PREVIEWS) {
+            generated.put(
+                    "POST /api/goals/projection-preview " + previewLabel(body),
+                    household.owner().post("/api/goals/projection-preview", body).body());
+        }
+        // The goal terms of August's summary, which demo-data.ts folds into the bills fixtures'
+        // own summary. Only goalsSetAside, goalsCounted and debtPlanExtra are read from it: the
+        // income, bills and envelopes of this household are not the demo household's.
+        generated.put(
+                "GET /api/periods/2026-08/summary",
+                household.owner().get("/api/periods/2026-08/summary").body());
+
+        String document =
+                pinTimestamps(
+                        canonicalise(
+                                render(generated, "GOAL_API"),
+                                new Fixture(Map.of(), null, stable)));
+        compareOrWrite(document, COMMITTED_GOALS, REGENERATED_GOALS);
+    }
+
+    /**
+     * Four goals: three active, one archived.
+     *
+     * <ul>
+     *   <li><b>Japan</b> — the designs' goal: $3,500 by November 2027, $890 saved over seven
+     *       months, $110 a month from August and Owl's $165 from September, so the page shows a
+     *       scheduled step and the plan's effective months.
+     *   <li><b>Emergency fund</b> — no month, $2,000 already saved on day one, kept in the savings
+     *       account, with a withdrawal for a vet bill so the history shows one.
+     *   <li><b>New laptop</b> — reached and over-funded: the bar is full and the figure says the
+     *       real amount.
+     *   <li><b>Wedding gift</b> — archived, so the list's archived section has something in it.
+     * </ul>
+     */
+    private Map<String, UUID> seedTheDemoGoals(
+            Household household, UUID savings, Map<UUID, String> stable) {
+        Map<String, UUID> goals = new LinkedHashMap<>();
+        UUID japan =
+                createDemoGoal(
+                        household,
+                        """
+                        {"name":"Japan","targetAmount":"3500.00","targetMonth":"2027-11",
+                         "monthlyContribution":"110.00"}
+                        """);
+        String[][] japanMonths = {
+            {"2026-01-15", "120.00"},
+            {"2026-02-15", "120.00"},
+            {"2026-03-15", "130.00"},
+            {"2026-04-15", "130.00"},
+            {"2026-05-15", "130.00"},
+            {"2026-06-15", "130.00"},
+            {"2026-07-15", "130.00"}
+        };
+        for (String[] month : japanMonths) {
+            contributeToDemoGoal(household, japan, month[0], month[1], null);
+        }
+        long version = household.owner().get("/api/goals/" + japan).numberField("version");
+        ApiResponse raised =
+                household
+                        .owner()
+                        .put(
+                                "/api/goals/" + japan + "/contribution-plan/2026-09",
+                                "{\"monthlyAmount\":\"165.00\",\"version\":" + version + "}");
+        if (raised.status() != 200) {
+            throw new AssertionError("could not raise the demo plan: " + raised.body());
+        }
+
+        UUID fund =
+                createDemoGoal(
+                        household,
+                        """
+                        {"name":"Emergency fund","targetAmount":"6000.00","startingAmount":"2000.00",
+                         "monthlyContribution":"200.00","accountId":"%s"}
+                        """
+                                .formatted(savings));
+        contributeToDemoGoal(household, fund, "2026-06-01", "200.00", null);
+        contributeToDemoGoal(household, fund, "2026-07-01", "200.00", null);
+        contributeToDemoGoal(household, fund, "2026-07-18", "-160.00", "Vet bill");
+        contributeToDemoGoal(household, fund, "2026-08-03", "100.00", null);
+
+        UUID laptop =
+                createDemoGoal(
+                        household,
+                        """
+                        {"name":"New laptop","targetAmount":"1200.00","targetMonth":"2026-10"}
+                        """);
+        for (int month = 3; month <= 7; month++) {
+            contributeToDemoGoal(
+                    household, laptop, LocalDate.of(2026, month, 10).toString(), "250.00", null);
+        }
+
+        UUID gift =
+                createDemoGoal(
+                        household,
+                        """
+                        {"name":"Wedding gift","targetAmount":"300.00","startingAmount":"300.00"}
+                        """);
+        ApiResponse archived = household.owner().post("/api/goals/" + gift + "/archive", null);
+        if (archived.status() != 200) {
+            throw new AssertionError("could not archive the demo goal: " + archived.body());
+        }
+
+        goals.put("gol-0001", japan);
+        goals.put("gol-0002", fund);
+        goals.put("gol-0003", laptop);
+        goals.put("gol-0004", gift);
+        for (Map.Entry<String, UUID> goal : goals.entrySet()) {
+            stable.put(goal.getValue(), goal.getKey());
+        }
+        return goals;
+    }
+
+    private UUID createDemoGoal(Household household, String body) {
+        ApiResponse created = household.owner().post("/api/goals", body);
+        if (created.status() != 201) {
+            throw new AssertionError("could not seed a demo goal: " + created.body());
+        }
+        return UUID.fromString(created.stringField("id"));
+    }
+
+    private void contributeToDemoGoal(
+            Household household, UUID goal, String date, String amount, String note) {
+        ApiResponse recorded =
+                household
+                        .owner()
+                        .post(
+                                "/api/goals/" + goal + "/contributions",
+                                "{\"amount\":\"%s\",\"date\":\"%s\"%s}"
+                                        .formatted(
+                                                amount,
+                                                date,
+                                                note == null ? "" : ",\"note\":\"" + note + "\""));
+        if (recorded.status() != 201) {
+            throw new AssertionError("could not seed a demo contribution: " + recorded.body());
+        }
+    }
+
+    /**
+     * Pins every {@code createdAt} and {@code updatedAt} to the demo instant.
+     *
+     * <p>Hibernate stamps those from the JVM's own clock rather than the application's, so they are
+     * the one part of a goal response the settable clock cannot fix, and leaving them would make
+     * the drift check fail on every run for a difference that is not one. No figure depends on
+     * them; the history's order is by date first.
+     */
+    /**
+     * A preview body as the fixture key names it: {@code monthlyAmount=75&targetAmount=900}, or
+     * {@code unchanged} for an empty one. Quote-free, because {@link #render} writes keys as they
+     * are, and the mock builds the same label from the body it receives.
+     */
+    private static String previewLabel(String body) {
+        String label = body.replaceAll("[{}\"]", "").replace(':', '=').replace(',', '&');
+        return label.isEmpty() ? "unchanged" : label;
+    }
+
+    private static String pinTimestamps(String document) {
+        return document.replaceAll(
+                "\"(createdAt|updatedAt)\":\"[^\"]+\"", "\"$1\":\"" + DEMO_TODAY + "\"");
+    }
+
     /**
      * Writes the fixture, or fails because the committed one no longer matches.
      *
