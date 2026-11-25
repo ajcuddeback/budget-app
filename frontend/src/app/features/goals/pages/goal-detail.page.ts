@@ -43,6 +43,7 @@ import {
   buildGoalPatch,
   patchIsEmpty,
   projectionSaid,
+  type PlanShape,
 } from '../data/goal-patch';
 import { GoalsService } from '../data/goals.service';
 
@@ -169,7 +170,7 @@ export class GoalDetailPage {
 
   protected readonly projection = computed<readonly Said[]>(() => {
     const goal = this.goal();
-    return goal ? projectionSaid(goal, this.formatters) : [];
+    return goal ? projectionSaid(goal, this.formatters, this.planShape()) : [];
   });
 
   /** The required figure's own sentence when it is absent — beside the plan, never a blank. */
@@ -190,6 +191,11 @@ export class GoalDetailPage {
     const goal = this.goal();
     return goal ? this.steps().filter((step) => step.fromPeriod > goal.thisPeriod.period) : [];
   });
+
+  /** One amount throughout, or a later step the walk also uses. See `PlanShape`. */
+  private readonly planShape = computed<PlanShape>(() =>
+    this.futureSteps().length === 0 ? 'one-amount' : 'may-change',
+  );
 
   protected readonly hasStart = computed(() => {
     const goal = this.goal();
@@ -413,12 +419,22 @@ export class GoalDetailPage {
   /** The edit dialog's preview: the goal with the typed target, month and start substituted. */
   protected async previewEdit(form: GoalFormValue): Promise<void> {
     const goal = this.goal();
-    await this.ask(goal === null ? null : buildEditPreview(goal, form), form.targetMonth || null);
+    // An edit keeps the plan's steps, so the sentence is the stored plan's shape.
+    await this.ask(
+      goal === null ? null : buildEditPreview(goal, form),
+      form.targetMonth || null,
+      this.planShape(),
+    );
   }
 
   /** The plan dialog's preview: the goal with this plan from this month. */
   protected async previewPlan(amount: string): Promise<void> {
-    await this.ask(amount === '' ? null : { monthlyAmount: amount }, this.goal()?.targetMonth);
+    // From this month, the new amount replaces every later step: one amount throughout.
+    await this.ask(
+      amount === '' ? null : { monthlyAmount: amount },
+      this.goal()?.targetMonth,
+      'one-amount',
+    );
   }
 
   /**
@@ -428,6 +444,7 @@ export class GoalDetailPage {
   private async ask(
     body: Parameters<GoalsService['preview']>[1] | null,
     targetMonth: string | null | undefined,
+    plan: PlanShape,
   ): Promise<void> {
     const goal = this.goal();
     const request = ++this.previewRequest;
@@ -453,6 +470,7 @@ export class GoalDetailPage {
               projection: answer.projection,
             },
             this.formatters,
+            plan,
           ),
         );
         this.previewUnavailable.set(false);

@@ -783,6 +783,13 @@ upload**. Path parameters are two UUIDs and one `YearMonth`. Query parameters ar
   carried a track on a dark ground, so `--color-goal-track` is `--color-neutral-300` in light and
   `--color-divider` in dark. It composes existing tokens and invents no value. It still belongs in
   the design project (`design/README.md`, Known gaps).
+- **A list row never names the monthly amount in its projection sentence** (decision 20). It says
+  *"Keeping to its plan, you reach it in…"* for every goal, because the list response carries no
+  steps. A `planChangesLater` flag on the goal response would restore *"At $200.00 a month…"* for
+  the goals with one amount.
+- **The set-money-aside date defaults to the browser's today.** In the guide captures, the demo
+  fixtures stand in August 2026 while the browser's clock does not, so the date field shows the
+  machine's real date beside an August "still to come". Against a real server, the two agree.
 
 ## Where the designs and the docs disagree
 
@@ -897,6 +904,17 @@ answer. Each is the smallest change that fixed it, and each is tested.
     in a URL.
 19. **The cap counts archived goals**, as the debt cap counts archived debts: the rows are still
     there to be projected the moment anything un-archives them.
+20. **The projection names this month's amount only when no later step changes it.** The UI
+    section's example, *"At $110 a month you reach it in Jul 2028"*, assumes one amount
+    throughout. The walk uses every step, so with $165 from September, Japan reaches its target in
+    December 2027 on $110 and then $165, and *"At $110.00 a month you reach it in December 2027"*
+    was false. The first capture for the user guide showed exactly that sentence. Where a later step
+    exists, the sentence is *"Keeping to its plan, you reach it in December 2027 — 1 month after
+    November 2027."* The detail page and the edit preview know the steps and choose. The add and
+    change-the-plan previews are always one amount, because a plan change replaces every later step.
+    **A list row always uses the plan wording**, because `GET /api/goals` does not return the steps.
+    A boolean on the goal response would let the list name the amount again. It was left out to keep
+    the API as the spec states it; see Known gaps.
 
 ## What slice 11 has built
 
@@ -945,7 +963,7 @@ to be reused):
 **Tests.** `GoalProjectionTest` (33), `GoalTest` (10), `GoalIT` (87, including the fifteen-route
 sweep), `GoalPeriodSummaryIT` (16), `GoalLimitsIT` (6), `GoalDisclosureIT` (3), the goal block of
 `MoneyCrossHouseholdIT` (27 more), and `DemoFixtureIT`'s third scenario. Frontend:
-`goal-data.spec.ts`, `goals.page.spec.ts` and `goal-detail.page.spec.ts` (38), plus new cases in
+`goal-data.spec.ts`, `goals.page.spec.ts` and `goal-detail.page.spec.ts` (40), plus new cases in
 `bills.page.spec.ts` and `debt-plan.page.spec.ts`. In the browser: `tools/ui/specs/app/goals.spec.ts`,
 at both viewports and in the dark theme. `PeriodSummaryIT` and `DebtPeriodSummaryIT` pass unchanged.
 
@@ -964,6 +982,7 @@ restored:
 | A contribution was found by household alone, not by its goal | `GoalIT.a_contribution_of_the_right_household_but_another_goal_is_not_found` |
 | The bar was not clamped | `goals.page.spec.ts` — over 100% |
 | A late preview answer was not dropped | `goals.page.spec.ts` — the late-answer case |
+| The detail page named this month's amount even with a later step | `goal-detail.page.spec.ts` — names the amount only when no later step changes it |
 
 **Demo fixtures.** `DemoFixtureIT.the_committed_goal_fixtures_are_what_the_application_returns`
 seeds four goals, with the demo debts, through the real endpoints, with the clock at 2026-08-20,

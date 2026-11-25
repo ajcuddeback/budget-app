@@ -226,6 +226,17 @@ export interface Formatters {
 }
 
 /**
+ * Whether the projected month comes from one monthly amount throughout.
+ *
+ * - `one-amount`: the plan has no later step, so *"At $110 a month you reach it in…"* is true.
+ * - `may-change`: the plan has, or may have, a later step. The server's walk uses every step, so
+ *   naming this month's amount would misstate the arithmetic: Japan reaches its target in
+ *   December 2027 at $110 and then $165, not at $110. The sentence names the plan instead. A list
+ *   row cannot tell, because `GET /api/goals` does not return the steps, so it always says this.
+ */
+export type PlanShape = 'one-amount' | 'may-change';
+
+/**
  * The projection in words — *"At $110 a month you reach it in July 2028 — 8 months after
  * November 2027. $163.13 a month gets you there by November 2027."*
  *
@@ -233,27 +244,39 @@ export interface Formatters {
  * server's; the one thing worked out here is how many months late or early, which is date
  * arithmetic on two month labels and not a subtraction of money.
  */
-export function projectionSaid(goal: ProjectionFacts, format: Formatters): readonly Said[] {
+export function projectionSaid(
+  goal: ProjectionFacts,
+  format: Formatters,
+  plan: PlanShape,
+): readonly Said[] {
   const { projection } = goal;
   if (goal.reached) {
     return [{ key: 'goals.reason.reached' }];
   }
   const monthly = format.money(goal.monthlyContribution, goal.currency);
   const said: Said[] = [];
+  const steady = plan === 'one-amount';
 
   if (projection.projectedMonth !== null) {
     const reaches = format.month(projection.projectedMonth);
     if (goal.overdue && goal.targetMonth !== null) {
       said.push({
-        key: 'goals.projection.overdueReaches',
+        key: steady ? 'goals.projection.overdueReaches' : 'goals.projection.planOverdueReaches',
         params: { target: format.month(goal.targetMonth), monthly, month: reaches },
       });
     } else if (goal.targetMonth !== null) {
       const late = monthsBetween(goal.targetMonth, projection.projectedMonth) ?? 0;
+      const lateKey = steady
+        ? late === 1
+          ? 'goals.projection.lateOne'
+          : 'goals.projection.late'
+        : late === 1
+          ? 'goals.projection.planLateOne'
+          : 'goals.projection.planLate';
       said.push(
         late > 0
           ? {
-              key: late === 1 ? 'goals.projection.lateOne' : 'goals.projection.late',
+              key: lateKey,
               params: {
                 monthly,
                 month: reaches,
@@ -262,12 +285,15 @@ export function projectionSaid(goal: ProjectionFacts, format: Formatters): reado
               },
             }
           : {
-              key: 'goals.projection.onTime',
+              key: steady ? 'goals.projection.onTime' : 'goals.projection.planOnTime',
               params: { monthly, month: reaches, target: format.month(goal.targetMonth) },
             },
       );
     } else {
-      said.push({ key: 'goals.projection.reaches', params: { monthly, month: reaches } });
+      said.push({
+        key: steady ? 'goals.projection.reaches' : 'goals.projection.planReaches',
+        params: { monthly, month: reaches },
+      });
     }
   } else if (projection.projectedReason !== null) {
     if (goal.overdue && goal.targetMonth !== null) {

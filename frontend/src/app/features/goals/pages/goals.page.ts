@@ -190,6 +190,7 @@ export class GoalsPage {
               projection: answer.projection,
             },
             this.formatters,
+            'one-amount',
           ),
         );
         this.previewUnavailable.set(false);
@@ -238,6 +239,6 @@ export class GoalsPage {
   };
 
   private row(goal: Goal): GoalRow {
-    return { goal, said: projectionSaid(goal, this.formatters) };
+    return { goal, said: projectionSaid(goal, this.formatters, 'may-change') };
   }
 }

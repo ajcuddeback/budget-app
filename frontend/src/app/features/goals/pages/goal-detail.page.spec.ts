@@ -111,15 +111,21 @@ describe('GoalDetailPage', () => {
   const accountsService = { list: vi.fn() };
 
   async function render(
-    options: { goal?: Goal; role?: HouseholdRole; contributions?: Contribution[] } = {},
+    options: {
+      goal?: Goal;
+      role?: HouseholdRole;
+      contributions?: Contribution[];
+      steps?: PlanStep[];
+    } = {},
   ): Promise<ComponentFixture<GoalDetailPage>> {
     for (const fn of [...Object.values(goalsService), accountsService.list]) {
       fn.mockReset();
     }
     const rows = options.contributions ?? [IN, OUT];
+    const steps = options.steps ?? STEPS;
     goalsService.get.mockReturnValue(of(options.goal ?? FUND));
     goalsService.plan.mockReturnValue(
-      of({ content: STEPS, page: 0, size: 50, totalElements: 2, totalPages: 1 }),
+      of({ content: steps, page: 0, size: 50, totalElements: steps.length, totalPages: 1 }),
     );
     goalsService.contributions.mockReturnValue(
       of({ content: rows, page: 0, size: 50, totalElements: rows.length, totalPages: 1 }),
@@ -194,6 +200,16 @@ describe('GoalDetailPage', () => {
     expect(text(fixture)).toContain('£250.00 a month from September 2026.');
     // No month means no required figure, said in words rather than left blank.
     expect(text(fixture)).toContain('There is no target month, so there is no monthly figure');
+  });
+
+  // The walk uses the later step, so this month's amount alone did not get the goal there.
+  it('names the amount only when no later step changes it', async () => {
+    const stepped = await render();
+    expect(text(stepped)).toContain('Keeping to its plan, you reach it in March 2028.');
+    expect(text(stepped)).not.toContain('At £200.00 a month you reach it');
+
+    const steady = await render({ steps: [STEPS[0]] });
+    expect(text(steady)).toContain('At £200.00 a month you reach it in March 2028.');
   });
 
   it('gives a VIEWER every figure and region and not one control', async () => {

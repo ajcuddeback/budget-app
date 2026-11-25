@@ -50,7 +50,7 @@ test.describe('goals, as an owner', () => {
         await page.getByRole('button', { name: 'Show archived goals' }).click();
 
         await expect(page.getByRole('heading', { name: 'Archived goals' })).toBeVisible();
-        await expect(page.getByText('Wedding gift')).toBeVisible();
+        await expect(page.getByRole('link', { name: /Open.*Wedding gift/ })).toBeVisible();
         await ui.shot('goals-archived');
         expect(await ui.a11y('goals, archived shown')).toBe(0);
         ui.noErrors();
@@ -83,7 +83,7 @@ test.describe('goals, as an owner', () => {
         await page.goto('/goals/gol-0001');
 
         await expect(page.getByRole('heading', { level: 1, name: 'Japan' })).toBeVisible();
-        await expect(page.getByText('By November 2027')).toBeVisible();
+        await expect(page.getByText('By November 2027', { exact: true })).toBeVisible();
         await expect(page.getByText(/a month from September 2026\./)).toBeVisible();
         await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Set money aside' })).toBeVisible();

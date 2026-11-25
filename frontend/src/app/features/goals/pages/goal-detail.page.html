@@ -160,7 +160,13 @@
       @if (contributions().length === 0) {
         <p class="card-note">{{ 'goals.detail.noHistory' | t }}</p>
       } @else {
-        <div class="table-scroll">
+        <!-- Focusable and named, so a keyboard can scroll it when it is wider than a phone. -->
+        <div
+          class="table-scroll"
+          tabindex="0"
+          role="region"
+          [attr.aria-label]="'goals.detail.historyCaption' | t"
+        >
           <table class="history-table">
             <caption class="visually-hidden">
               {{
@@ -184,7 +190,7 @@
                 <tr>
                   <th scope="row">{{ row.date | dateOnly }}</th>
                   <td class="amount" [class.is-negative]="isWithdrawal(row)">
-                    {{ row.amount | money: row.currency }}
+                    <span class="amount-figure">{{ row.amount | money: row.currency }}</span>
                     @if (isWithdrawal(row)) {
                       <span class="tag tag-neutral">{{ 'goals.detail.withdrawal' | t }}</span>
                     }

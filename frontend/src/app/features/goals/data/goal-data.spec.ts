@@ -167,6 +167,7 @@ describe('the projection in words', () => {
         projection: { ...JAPAN.projection, requiredMonthly: '999.99' },
       },
       VERBATIM,
+      'one-amount',
     );
 
     expect(said).toEqual([
@@ -195,24 +196,57 @@ describe('the projection in words', () => {
           },
         },
         VERBATIM,
+        'one-amount',
       );
       expect(said.length).toBeGreaterThan(0);
     }
   });
 
   it('says reached and nothing else for a reached goal', () => {
-    expect(projectionSaid({ ...JAPAN, reached: true }, VERBATIM)).toEqual([
+    expect(projectionSaid({ ...JAPAN, reached: true }, VERBATIM, 'one-amount')).toEqual([
       { key: 'goals.reason.reached' },
     ]);
   });
 
   it('says how long it has been overdue and still when it will get there', () => {
-    const said = projectionSaid({ ...JAPAN, overdue: true, targetMonth: '2026-06' }, VERBATIM);
+    const said = projectionSaid(
+      { ...JAPAN, overdue: true, targetMonth: '2026-06' },
+      VERBATIM,
+      'one-amount',
+    );
 
     expect(said[0]).toEqual({
       key: 'goals.projection.overdueReaches',
       params: { target: '[2026-06]', monthly: 'USD 110.0000', month: '[2028-07]' },
     });
+  });
+
+  // The walk uses every step. With $165 from September, Japan's month is December 2027 at $110 and
+  // then $165, so "At $110 a month you reach it in December 2027" would be false. The capture for
+  // the user guide showed exactly that sentence before this.
+  it('does not name this month’s amount when a later step may change it', () => {
+    const late = projectionSaid({ ...JAPAN }, VERBATIM, 'may-change');
+    expect(late[0]).toEqual({
+      key: 'goals.projection.planLate',
+      params: { monthly: 'USD 110.0000', month: '[2028-07]', count: 8, target: '[2027-11]' },
+    });
+
+    const onTime = projectionSaid(
+      { ...JAPAN, projection: { ...JAPAN.projection, projectedMonth: '2027-10' } },
+      VERBATIM,
+      'may-change',
+    );
+    expect(onTime[0].key).toBe('goals.projection.planOnTime');
+
+    const noMonth = projectionSaid({ ...JAPAN, targetMonth: null }, VERBATIM, 'may-change');
+    expect(noMonth[0].key).toBe('goals.projection.planReaches');
+
+    const overdue = projectionSaid(
+      { ...JAPAN, overdue: true, targetMonth: '2026-06' },
+      VERBATIM,
+      'may-change',
+    );
+    expect(overdue[0].key).toBe('goals.projection.planOverdueReaches');
   });
 });
 

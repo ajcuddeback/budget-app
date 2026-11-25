@@ -13,8 +13,11 @@
   margin: 0;
 }
 
+/* min-inline-size: 0 lets the scroller shrink inside the card's grid, so a wide table scrolls
+   inside it instead of pushing the page wider at 390. */
 .table-scroll {
   overflow-x: auto;
+  min-inline-size: 0;
 }
 
 .history-table {
@@ -37,9 +40,10 @@
   white-space: nowrap;
 }
 
+/* The date may wrap: at 390 the four columns only fit if "Aug 3, 2026" can take two lines, and a
+   clipped Remove button reads as broken even inside a scroller. */
 .history-table tbody th {
   font-weight: 400;
-  white-space: nowrap;
 }
 
 .history-table tbody tr:last-child th,
@@ -49,7 +53,16 @@
 
 .amount {
   font-variant-numeric: tabular-nums;
+}
+
+.amount-figure {
   white-space: nowrap;
+}
+
+/* Under the figure rather than beside it, so the column stays as narrow as the figure. */
+.amount .tag {
+  display: inline-block;
+  margin-block-start: var(--space-1);
 }
 
 /* A withdrawal is said in words as well as with the colour: colour alone tells a screen reader

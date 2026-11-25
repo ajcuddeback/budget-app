@@ -149,9 +149,11 @@ describe('GoalsPage', () => {
   it('says the projection in words, in the server’s figures', async () => {
     const fixture = await render({ goals: [JAPAN] });
 
+    // The list cannot see the plan's steps, so it never claims one amount gets there.
     expect(text(fixture)).toContain(
-      'At £110.00 a month you reach it in July 2028 — 8 months after November 2027.',
+      'Keeping to its plan, you reach it in July 2028 — 8 months after November 2027.',
     );
+    expect(text(fixture)).not.toContain('At £110.00 a month you reach it');
     expect(text(fixture)).toContain('£163.13 a month gets you there by November 2027.');
   });
 
