@@ -210,9 +210,10 @@ export class GoalsPage {
     this.dialogBusy.set(true);
     this.dialogError.set(null);
     try {
-      const created = await firstValueFrom(this.goalsService.create(buildCreateGoal(form)));
+      const request = buildCreateGoal(form);
+      await firstValueFrom(this.goalsService.create(request));
       this.resetDialog();
-      this.notice.set({ key: 'goals.created', params: { name: created.name } });
+      this.notice.set({ key: 'goals.created', params: { name: request.name } });
       await this.read();
     } catch (thrown) {
       this.dialogError.set(asApiError(thrown));

@@ -20,6 +20,7 @@
 
 import { DEBT_API } from './debt-api.generated';
 import { DEBT_STATES } from './debt-states.generated';
+import { GOAL_API } from './goal-api.generated';
 
 export const DEMO_USER = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -1433,6 +1434,47 @@ const DEBT_MINIMUMS_NOT_IN_BILLS = sum(
     .map((debt) => debt.minimumPayment),
 );
 
+/**
+ * The goal responses, **generated from the real application** and not written by hand (slice 11).
+ *
+ * `DemoFixtureIT` seeds four goals through the real endpoints with the clock at 2026-08-20 and
+ * writes `goal-api.generated.ts`: every saved figure, projected month and required monthly amount
+ * is the server's. The canvas's own goal figures do not reconcile (`docs/features/goals.md`), so
+ * the goals keep its shape — Japan, $890 of $3,500 by November 2027 — and the arithmetic is the
+ * application's. Regenerate with the same command as the debt fixtures.
+ */
+export const DEMO_GOALS = GOAL_API['GET /api/goals'];
+export const DEMO_GOAL_DETAIL = {
+  'gol-0001': GOAL_API['GET /api/goals/gol-0001'],
+  'gol-0002': GOAL_API['GET /api/goals/gol-0002'],
+  'gol-0003': GOAL_API['GET /api/goals/gol-0003'],
+  'gol-0004': GOAL_API['GET /api/goals/gol-0004'],
+} as const;
+export const DEMO_GOAL_PLANS = {
+  'gol-0001': GOAL_API['GET /api/goals/gol-0001/contribution-plan'],
+  'gol-0002': GOAL_API['GET /api/goals/gol-0002/contribution-plan'],
+  'gol-0003': GOAL_API['GET /api/goals/gol-0003/contribution-plan'],
+  'gol-0004': GOAL_API['GET /api/goals/gol-0004/contribution-plan'],
+} as const;
+export const DEMO_GOAL_CONTRIBUTIONS = {
+  'gol-0001': GOAL_API['GET /api/goals/gol-0001/contributions'],
+  'gol-0002': GOAL_API['GET /api/goals/gol-0002/contributions'],
+  'gol-0003': GOAL_API['GET /api/goals/gol-0003/contributions'],
+  'gol-0004': GOAL_API['GET /api/goals/gol-0004/contributions'],
+} as const;
+
+/**
+ * The fifth term, and the debt plan's extra, from the same generated household. Only these come
+ * from its summary: its income, bills and envelopes are not this household's, so `left` below is
+ * still derived from the fixtures above — now with the goal term taken off, as the server does.
+ */
+const GOAL_SUMMARY = GOAL_API['GET /api/periods/2026-08/summary'];
+const GOALS_SET_ASIDE = Number(GOAL_SUMMARY.goalsSetAside);
+const LEFT =
+  INCOME_TOTAL - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS - GOALS_SET_ASIDE;
+const SHORT_LEFT =
+  1800 - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS - GOALS_SET_ASIDE;
+
 export const DEMO_PERIOD_SUMMARY = {
   period: '2026-08',
   income: INCOME_TOTAL.toFixed(4),
@@ -1444,7 +1486,11 @@ export const DEMO_PERIOD_SUMMARY = {
   debtCount: DEMO_DEBTS.debtCount,
   debtMinimums: DEBT_MINIMUMS.toFixed(4),
   debtMinimumsNotInBills: DEBT_MINIMUMS_NOT_IN_BILLS.toFixed(4),
-  left: (INCOME_TOTAL - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS).toFixed(4),
+  goalsSetAside: GOAL_SUMMARY.goalsSetAside,
+  goalsCounted: GOAL_SUMMARY.goalsCounted,
+  debtPlanExtra: GOAL_SUMMARY.debtPlanExtra,
+  debtPlanExtraExceedsLeft: Number(GOAL_SUMMARY.debtPlanExtra) > LEFT,
+  left: LEFT.toFixed(4),
   currency: 'USD',
 } as const;
 
@@ -1457,7 +1503,8 @@ export const DEMO_PERIOD_SUMMARY = {
 export const DEMO_PERIOD_SUMMARY_SHORT = {
   ...DEMO_PERIOD_SUMMARY,
   income: '1800.0000',
-  left: (1800 - BILLS_TOTAL - ENVELOPES_ALLOCATED - DEBT_MINIMUMS_NOT_IN_BILLS).toFixed(4),
+  debtPlanExtraExceedsLeft: Number(GOAL_SUMMARY.debtPlanExtra) > SHORT_LEFT,
+  left: SHORT_LEFT.toFixed(4),
 } as const;
 
 export const DEMO_BUDGET = {

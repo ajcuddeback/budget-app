@@ -4,6 +4,7 @@
 # bytes to something fuzzier. Regenerate it; never edit or reformat it.
 tools/ui/fixtures/debt-api.generated.ts
 tools/ui/fixtures/debt-states.generated.ts
+tools/ui/fixtures/goal-api.generated.ts
 
 # Prose, not code. The .claude/hooks/format-changed.sh hook runs `prettier --write` on every .md
 # the Write/Edit tools touch, and on these trees it did damage rather than tidying:
