@@ -415,9 +415,11 @@ public class EnvelopeService {
      * "synced" entry whose amount somebody could type would be a manual entry wearing a badge.
      */
     private EnvelopeEntry attach(Household household, Envelope envelope, NewEntry requested) {
+        // Locked, so a pairing racing this filing waits and then sees the entry, or this waits
+        // and then sees the row is a transfer leg (TransferService.pair takes the same lock).
         Transaction transaction =
                 transactions
-                        .findByIdAndHouseholdId(requested.transactionId(), household.id())
+                        .findByIdAndHouseholdIdForUpdate(requested.transactionId(), household.id())
                         .orElseThrow(() -> new NotFoundException("no such transaction"));
 
         // One message, not two. An earlier version said "already in this envelope" or "already in

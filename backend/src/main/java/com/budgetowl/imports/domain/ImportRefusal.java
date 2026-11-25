@@ -41,8 +41,7 @@ public final class ImportRefusal extends DomainException {
 
     /**
      * No stack: a refusal is an answer, not a bug, and the frames say nothing useful. Not {@code
-     * synchronized}: it touches no state, and a lock on a class whose instances are shared through
-     * static factories is one SpotBugs rightly refuses.
+     * synchronized} like {@code Throwable}'s: it touches no state, so there is nothing to guard.
      */
     @Override
     public Throwable fillInStackTrace() {

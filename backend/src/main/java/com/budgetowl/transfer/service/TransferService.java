@@ -256,8 +256,17 @@ public class TransferService {
         Household household = membership.household();
         UUID householdId = household.id();
 
+        // Both rows locked FOR UPDATE, in id order so two pairings of the same rows the other way
+        // round cannot deadlock. EnvelopeService takes the same lock before filing a row, so the
+        // envelope check below cannot be raced (slice-12 security re-audit).
+        requirePresent(request.withTransactionId());
+        boolean otherFirst = request.withTransactionId().compareTo(transactionId) < 0;
+        Transaction other =
+                otherFirst ? requireRow(request.withTransactionId(), householdId) : null;
         Transaction one = requireRow(transactionId, householdId);
-        Transaction other = requireRow(request.withTransactionId(), householdId);
+        if (!otherFirst) {
+            other = requireRow(request.withTransactionId(), householdId);
+        }
 
         if (one.isTransfer() || other.isTransfer()) {
             throw new ConflictException(
@@ -362,15 +371,20 @@ public class TransferService {
 
     // ------------------------------------------------------------------------------- internals
 
-    private Transaction requireRow(UUID transactionId, UUID householdId) {
+    private static void requirePresent(UUID transactionId) {
         if (transactionId == null) {
             throw new InvalidRequestException(
                     ErrorCode.VALIDATION_FAILED,
                     "a transaction is required",
                     Map.of("field", "withTransactionId"));
         }
+    }
+
+    /** Locked {@code FOR UPDATE}; see {@code TransactionRepository}. */
+    private Transaction requireRow(UUID transactionId, UUID householdId) {
+        requirePresent(transactionId);
         return transactions
-                .findByIdAndHouseholdId(transactionId, householdId)
+                .findByIdAndHouseholdIdForUpdate(transactionId, householdId)
                 .orElseThrow(() -> new NotFoundException("no such transaction"));
     }
 

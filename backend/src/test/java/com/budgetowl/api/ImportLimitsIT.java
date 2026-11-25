@@ -269,6 +269,75 @@ class ImportLimitsIT extends ImportApiTestBase {
                 .isEqualTo(400);
     }
 
+    /**
+     * Slice-12 security re-audit: a slow upload must hold only its sender's slot. With both
+     * instance slots taken, a caller is still admitted and their body is read — a body that is not
+     * JSON gets the {@code 400} that reading causes — and only the parse is refused.
+     */
+    @Test
+    void theInstanceSlotsAreTakenOnlyOnceTheBodyIsRead() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+
+        try (ImportGate.Permit one = gate.enterInstance();
+                ImportGate.Permit two = gate.enterInstance()) {
+            assertThat(household.owner().post("/api/imports/preview", "not JSON").status())
+                    .as("admitted and read: a held instance slot is not taken before the body")
+                    .isEqualTo(400);
+            ApiResponse parse =
+                    preview(household.owner(), account, "CSV", utf8("Date,Amount\n"), null);
+            assertThat(parse.status()).isEqualTo(429);
+            assertThat(parse.header("Retry-After")).isPresent();
+        }
+    }
+
+    @Test
+    void oneUsersSlowUploadDoesNotHoldUpAnotherUser() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+
+        try (ImportGate.Permit uploading = gate.enterUser(userIdOf(OWNER_EMAIL))) {
+            assertThat(
+                            preview(household.owner(), account, "CSV", utf8("Date,Amount\n"), null)
+                                    .status())
+                    .isEqualTo(429);
+            assertThat(
+                            preview(household.member(), account, "CSV", utf8("Date,Amount\n"), null)
+                                    .status())
+                    .isEqualTo(200);
+        }
+    }
+
+    @Test
+    void aRequestTheHandlerRefusesGivesItsPermitBack() {
+        Household household = seedHousehold();
+        UUID account = createAccount(household.owner(), "Current", null);
+
+        ApiResponse refused =
+                preview(household.owner(), UUID.randomUUID(), "CSV", utf8("Date,Amount\n"), null);
+        assertThat(refused.status()).isEqualTo(404);
+
+        assertThat(preview(household.owner(), account, "CSV", utf8("Date,Amount\n"), null).status())
+                .as("the user's slot went back when the refused request ended")
+                .isEqualTo(200);
+    }
+
+    /** ADR-0018: the same admission, in the same order, over a bearer token. */
+    @Test
+    void admissionComesBeforeTheBodyOverABearerTokenToo() {
+        seedHousehold();
+        ApiClient viewerPhone = mobile(VIEWER_EMAIL, VIEWER_SECRET, "Alan's phone");
+        ApiClient ownerPhone = mobile(OWNER_EMAIL, OWNER_SECRET, "Ada's phone");
+
+        ApiResponse viewer = viewerPhone.post("/api/imports/preview", "this is not JSON");
+        assertThat(viewer.status()).isEqualTo(403);
+        assertThat(viewer.stringField("code")).isEqualTo("read-only-role");
+
+        try (ImportGate.Permit running = gate.enterUser(userIdOf(OWNER_EMAIL))) {
+            assertThat(ownerPhone.post("/api/imports/preview", "not JSON").status()).isEqualTo(429);
+        }
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     /** A syntactically ordinary preview whose body is one byte over the cap. */

@@ -1447,16 +1447,28 @@ all fixed before the slice was pushed:
   preview digest is built from it. Reversing the tie-break fails that check.
 - **Medium: a body was parsed before admission.** Jackson read the whole base64 field before the
   role check, the rate limiter and the concurrency gate, and a `VIEWER` was never rate-limited.
-  `ImportAdmissionInterceptor` now checks the role and takes the throttle's permit in `preHandle`,
-  before argument resolution reads the body, and releases it in `afterCompletion`.
-  `ImportLimitsIT` proves the order with bodies that are not JSON: a viewer gets `403`, a refused
-  caller gets `429`, and neither gets the `400` that parsing would cause. "A refused caller costs
-  no parsing" (rule 3) is now true for JSON as well.
+  `ImportAdmissionInterceptor` now runs in `preHandle`, before argument resolution reads the body.
+  It checks the role, counts the rate limit and takes **this user's** slot: one upload in flight
+  per user. It releases the slot in `afterCompletion`. **The instance's two parse slots are taken
+  only after the body is read**, in `ImportService`. The first version of this fix took them in
+  the interceptor, and the security re-audit found that two writers dripping slow uploads could
+  then hold both and stop every household importing. `ImportLimitsIT` proves the order with
+  bodies that are not JSON, over both transports. A viewer gets `403` and a busy user gets `429`,
+  with neither body read. With both instance slots held, a caller is still admitted and read
+  (`400`) and only the parse gets `429`. A request the handler refuses gives its slot back.
+  "A refused caller costs no parsing" (rule 3) is now true for JSON as well. An interceptor that
+  finds no `TransportAuthentication` refuses with `401` rather than waving the request through.
 - **Medium: pairing could turn an envelope entry into a transfer leg.** That undid the envelope
   rule that a transfer is not spending. Pairing now refuses either row if it is logged against an
   envelope (`409 transfer-leg-in-envelope`), and the person takes the row out of the envelope
   first. This replaces rule 12's "links … are not touched" for envelopes. Bills, debts and goals
   only reference a transaction as evidence, and stay as the rule says.
+  The check cannot be raced. Filing a row in an envelope inserts an entry and never touches the
+  row, so the version check could not see it. Pairing and filing now both lock the row
+  (`TransactionRepository.findByIdAndHouseholdIdForUpdate`), and pairing takes its two locks in
+  id order, so whichever commits second sees the first. There is no database trigger behind
+  this. A deferred constraint tying `envelope_entries` to non-transfer rows would be the
+  backstop, and would need its own migration.
 
 The import and pairing routes also joined `AuthorizationIT`'s central 401 sweep, taken from
 `ImportAuthorizationIT.everyRoute()`. The static analysis the interrupted gate never reached is

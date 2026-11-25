@@ -1,6 +1,7 @@
 package com.budgetowl.transaction.persistence;
 
 import com.budgetowl.transaction.domain.Transaction;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -67,6 +69,24 @@ public interface TransactionRepository extends Repository<Transaction, UUID> {
     void delete(Transaction transaction);
 
     Optional<Transaction> findByIdAndHouseholdId(UUID id, UUID householdId);
+
+    /**
+     * The same row, locked {@code FOR UPDATE} until the transaction ends.
+     *
+     * <p>For decisions that read one thing and write another, where the version check cannot help:
+     * filing a row in an envelope inserts an entry and never touches the row, and pairing two rows
+     * into a transfer updates them without looking at entries. Both take this lock first, so
+     * whichever commits second sees the first (slice-12 security re-audit: "a transfer is not
+     * spending" must hold under concurrency, not only one request at a time).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select t from Transaction t
+            where t.id = :id and t.householdId = :householdId
+            """)
+    Optional<Transaction> findByIdAndHouseholdIdForUpdate(
+            @Param("id") UUID id, @Param("householdId") UUID householdId);
 
     /**
      * The ledger: one household's transactions, newest first, narrowed by whichever filters the

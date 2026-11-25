@@ -34,42 +34,76 @@ public class ImportGate {
     private final Set<UUID> parsing = ConcurrentHashMap.newKeySet();
 
     /**
+     * Both slots at once: this user's and one of the instance's. What a running parse holds; the
+     * tests use it to stand in for one.
+     *
      * @throws RateLimitedException when this user already has a parse running, or the instance has
      *     two
      */
     public Permit enter(UUID userId) {
+        Permit user = enterUser(userId);
+        if (!instance.tryAcquire()) {
+            user.close();
+            throw new RateLimitedException(RETRY_AFTER);
+        }
+        return new Permit(this, userId, true);
+    }
+
+    /**
+     * This user's slot alone, taken <b>before the body is read</b>: one upload in flight per user,
+     * so one person cannot hold many slow bodies in memory at once. A slow body holds only its
+     * sender's slot — never one of the instance's, which two slow writers could otherwise sit on
+     * and stop every household importing (slice-12 security re-audit, medium).
+     *
+     * @throws RateLimitedException when this user already has an import in flight
+     */
+    public Permit enterUser(UUID userId) {
         if (!parsing.add(userId)) {
             throw new RateLimitedException(RETRY_AFTER);
         }
+        return new Permit(this, userId, false);
+    }
+
+    /**
+     * One of the instance's slots alone, taken <b>after the body is read</b>, for the parse.
+     *
+     * @throws RateLimitedException when the instance already has two parses running
+     */
+    public Permit enterInstance() {
         if (!instance.tryAcquire()) {
-            parsing.remove(userId);
             throw new RateLimitedException(RETRY_AFTER);
         }
-        return new Permit(this, userId);
+        return new Permit(this, null, true);
     }
 
-    private void leave(UUID userId) {
-        instance.release();
-        parsing.remove(userId);
+    private void leave(UUID userId, boolean instanceSlot) {
+        if (instanceSlot) {
+            instance.release();
+        }
+        if (userId != null) {
+            parsing.remove(userId);
+        }
     }
 
-    /** Held for one parse; released exactly once, however the request ends. */
+    /** Held for one upload or one parse; released exactly once, however the request ends. */
     public static final class Permit implements AutoCloseable {
 
         private final ImportGate gate;
         private final UUID userId;
+        private final boolean instanceSlot;
         private boolean released;
 
-        private Permit(ImportGate gate, UUID userId) {
+        private Permit(ImportGate gate, UUID userId, boolean instanceSlot) {
             this.gate = gate;
             this.userId = userId;
+            this.instanceSlot = instanceSlot;
         }
 
         @Override
         public void close() {
             if (!released) {
                 released = true;
-                gate.leave(userId);
+                gate.leave(userId, instanceSlot);
             }
         }
     }

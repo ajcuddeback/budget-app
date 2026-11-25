@@ -4,8 +4,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The two bounds on how much parsing one caller can cause, applied together and in order: the rate
- * limit counts the request, then the concurrency gate admits it or refuses it (rule 3).
+ * The bounds on how much parsing one caller can cause (rule 3), in two steps. {@link #admit},
+ * before the body is read: the rate limit, then this user's slot. {@link #parse}, after: an
+ * instance slot.
  */
 @Component
 public class ImportThrottle {
@@ -19,11 +20,23 @@ public class ImportThrottle {
     }
 
     /**
+     * Before the body is read: counts the request against the rate limit, then takes this user's
+     * slot. The instance's slots are not touched, so a slow upload costs only its sender.
+     *
      * @throws com.budgetowl.common.RateLimitedException {@code 429} with {@code Retry-After}
      */
-    public Permit enter(UUID userId) {
+    public Permit admit(UUID userId) {
         rateLimiter.requireAllowed(userId);
-        return new Permit(gate.enter(userId));
+        return new Permit(gate.enterUser(userId));
+    }
+
+    /**
+     * After the body is read: one of the instance's two parse slots.
+     *
+     * @throws com.budgetowl.common.RateLimitedException {@code 429} with {@code Retry-After}
+     */
+    public Permit parse() {
+        return new Permit(gate.enterInstance());
     }
 
     /** Releases the gate when the request ends, however it ends. */

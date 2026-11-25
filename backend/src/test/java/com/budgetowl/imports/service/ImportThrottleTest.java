@@ -57,6 +57,35 @@ class ImportThrottleTest {
     }
 
     @Test
+    void aUserSlotHoldsNoInstanceSlot() {
+        ImportGate gate = new ImportGate();
+
+        // Slow uploads in flight for three users: the instance's two parse slots are still free.
+        try (ImportGate.Permit ada = gate.enterUser(ADA);
+                ImportGate.Permit grace = gate.enterUser(GRACE);
+                ImportGate.Permit third = gate.enterUser(UUID.randomUUID());
+                ImportGate.Permit parseOne = gate.enterInstance();
+                ImportGate.Permit parseTwo = gate.enterInstance()) {
+            assertThatThrownBy(gate::enterInstance).isInstanceOf(RateLimitedException.class);
+            assertThatThrownBy(() -> gate.enterUser(ADA)).isInstanceOf(RateLimitedException.class);
+        }
+        gate.enter(ADA).close();
+    }
+
+    @Test
+    void anInstanceSlotClosedTwiceIsReleasedOnce() {
+        ImportGate gate = new ImportGate();
+        ImportGate.Permit permit = gate.enterInstance();
+        permit.close();
+        permit.close();
+
+        try (ImportGate.Permit one = gate.enterInstance();
+                ImportGate.Permit two = gate.enterInstance()) {
+            assertThatThrownBy(gate::enterInstance).isInstanceOf(RateLimitedException.class);
+        }
+    }
+
+    @Test
     void closingTwiceReleasesOnce() {
         ImportGate gate = new ImportGate();
         ImportGate.Permit permit = gate.enter(ADA);
