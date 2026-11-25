@@ -1136,3 +1136,41 @@ a password.
 **The general lesson.** A constraint is only proven by sending something that violates it and
 reading the status code. A green suite full of *valid* requests says nothing about what an invalid
 one does — and the invalid one is the one an attacker sends.
+
+## At `DEBUG`, Spring MVC truncates the body it logs, so a redaction test there cannot fail
+
+**Symptom.** `ReportDisclosureIT` ran at `DEBUG` and passed. Then the redacted `toString` was
+deleted from the two outermost report response records, and it still passed.
+
+**What it is.** `AbstractMessageConverterMethodProcessor` logs `Writing [<body>]` through
+`LogFormatUtils.formatValue(body, !traceOn)`, which cuts the text to 100 characters unless the logger
+is at `TRACE`. A report's first 100 characters are its periods and its currency, so no figure ever
+reached that line, redacted or not. **At `TRACE`, the whole body is printed**, and a record that
+prints every component puts a household's income in the log.
+
+There is a second trap. `application.yml` pins `com.budgetowl` to `INFO`, so setting only the root
+logger to `DEBUG` never captures our own `log.debug` lines, and a figure logged by our code at
+`DEBUG` goes unnoticed. An operator chasing a bug turns both on, and the test has to as well.
+
+**The control.** `ReportDisclosureIT` captures at `INFO`, at `DEBUG` with `com.budgetowl` lowered
+too, and at `DEBUG` with `org.springframework.web` at `TRACE`. Both sabotages, a logged figure and
+the missing redaction, now fail it. Disclosure tests written before this one ran at `DEBUG` only,
+so they share the blind spot for any response whose first 100 characters hold no secret.
+
+**The general lesson.** Prove a disclosure test can fail by removing the control it guards, not by
+reading that it ran.
+
+*Added 2026-11-25 — slice 13 (reporting).*
+
+## Spotless rewrites `\uXXXX` escapes in Java source to the literal characters
+
+`CsvWriter`'s list of formula triggers was written `"=+-@\t\r＝＋－＠"`.
+`mvn spotless:apply` (google-java-format) rewrote it to the four literal full-width characters,
+`＝＋－＠`. Nothing broke, but a `sed` meant to sabotage the escaper by deleting `＠` then
+matched nothing. The file was unchanged, the test passed, and the run read as "the test cannot
+catch this" when it had never been tried.
+
+Search for and edit the character as it now appears, and check that a sabotage actually changed the
+file before reading anything into a green run.
+
+*Added 2026-11-25 — slice 13 (reporting).*

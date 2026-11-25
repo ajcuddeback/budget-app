@@ -15,3 +15,5 @@ tools/ui/fixtures/debt-states.generated.ts
 # prettier rewrites. Remove these two lines only after reconciling the two styles, not before.
 docs/
 userguide/
+tools/ui/fixtures/report-api.generated.ts
+tools/ui/fixtures/report-states.generated.ts

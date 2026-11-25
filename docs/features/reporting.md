@@ -1,8 +1,11 @@
 # Feature: Reporting and insights
 
 - **Slice:** 13
-- **Status:** Planned — ready to build. Nothing is built yet. The open questions were answered on
-  2026-11-25; see [Decisions](#decisions). Where a rule below follows from one, it says which.
+- **Status:** Done (slice 13). Both reports, their CSV representation, the `/insights` page, the
+  generated demo fixtures and the user guide have shipped. See
+  [What slice 13 has built](#what-slice-13-has-built), which lists every place the build departs
+  from the text below and why. The open questions were answered on 2026-11-25; see
+  [Decisions](#decisions).
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-25
 - **Depends on:** accounts (3), categories (4), transactions (5), bills & income (7), transfers (8)
@@ -240,8 +243,10 @@ reasons:
 1. **The volume is small and bounded.** One household per instance (ADR-0026). A busy household
    records perhaps a few thousand transactions a year. The 24-month cap means one report scans a
    small multiple of that. Report 2 scans up to twice the requested span, because of the
-   comparison range: at most 48 months. A grouped sum over that many rows, served by an index, is
-   milliseconds. That is an estimate, not a measurement; see [Testing notes](#testing-notes).
+   comparison range: at most 48 months. **Measured**, against 50,000 transactions over ten years:
+   10 ms for the 24-month report 1 scan and 19 ms for the 48-month report 2 scan, in the
+   database; 14 ms and 22 ms end to end through the service. See
+   [Query plans, measured](#query-plans-measured).
 2. **A cache would have many invalidation paths, and every one is a way to be wrong.** It would go
    stale on a transaction create, edit or delete; a transfer edit; a category delete (the `SET
    NULL` happens in the database, invisible to the application); a category move; an import
@@ -254,7 +259,7 @@ reasons:
    same kind of thing and would need the same ADR.
 
 **Indexes.** On a single-household instance `household_id` selects every row, so the **date range**
-is the selective predicate. `ix_transactions_household_date (household_id, date DESC, id DESC)`
+is the selective predicate. The plans below confirm the first cut needs no index. `ix_transactions_household_date (household_id, date DESC, id DESC)`
 serves it, with `household_id` as the leading equality column. Report 2's grouping can use
 `ix_transactions_household_category`, which is partial on `category_id IS NOT NULL`. The
 uncategorised bucket goes back to the date index. **The first cut adds no index.** The database
@@ -769,6 +774,148 @@ Decided 2026-11-25 by the product owner. Each one took the doc's recommendation.
 12. **Is reconciliation part of slice 13?** No. It has no slice yet, and gets a roadmap row when it
     has a design. `transactions.md`'s two references are corrected now.
     *Reason:* it writes to the ledger and has no artboard, and nothing in reporting depends on it.
+
+## What slice 13 has built
+
+Everything above, with the departures below. Each one is either additive to the API or a
+narrowing of the text, and each has a reason; none was taken silently.
+
+**Backend** (`com.budgetowl.report`): `ReportRepository` holds the two grouped JPQL queries, one
+per report, with no native SQL. `ReportService` assembles them per currency with `Money`, and
+`ReportController` serves `GET /api/reports/income-and-spending` and
+`GET /api/reports/spending-by-category` as JSON, or as CSV for `Accept: text/csv`. There is no
+migration (`V20` stayed unused) and no new index. The CSV writer is shared, in
+`com.budgetowl.common.csv.CsvWriter`, for slice 12 to reuse. ADR-0039 amends ADR-0022's follow-up
+note (decision 9).
+
+**Frontend**: `/insights`, a nav item **Insights** between Categories and Household, and the two
+cards described under [UI](#ui). The shared `LineChartComponent` gained an optional `tone` for two
+peer lines; `role` still decides weight and dash.
+
+**Fixtures and guide**: `DemoFixtureIT` generates `tools/ui/fixtures/report-api.generated.ts` (the
+demo household) and `report-states.generated.ts` (an empty household and a two-currency one) from
+the real application. The guide is `userguide/features/see-where-your-money-went.md`.
+
+### Departures from the text above
+
+| Where | The text says | What was built | Why |
+| ----- | ------------- | -------------- | --- |
+| Report 1, per currency | The fields in the example | **Added `transactionCount`** (non-transfer rows in the range) | The empty state needs "nothing recorded", and figures that net to zero are not that fact. Without it the client would have to guess |
+| Report 1, per currency | — | **Added `totals`** (`income`, `spending`, `uncategorisedIn`, `uncategorisedOut`, `kept` over the whole range, the month in progress included) | The "isn't counted as income or spending" sentence needs the range's uncategorised total, and the client does no money arithmetic, not even a sum of months |
+| Report 1, `uncategorisedCount` | Not defined beyond the example | **Every uncategorised non-transfer row in the range, in either direction** | The sentence names the inflow and the outflow separately when both exist |
+| Report 2 | No `complete` flag | **Added `complete`**, false when the range reaches the current month by the server's clock | The heading says "has gone so far" for the month in progress, and decision 10 puts that judgement on the server's clock |
+| Report 2, uncategorised `count` | "with its count" | **The count of uncategorised *outflow* rows in the range** | It sits beside the outflow figure and must describe the same rows |
+| Report 2, `share` denominator | "the currency's positive spending total" | **The sum of the positive top-level rows' spending** | So the positive rows' shares fill the bar. A child's share uses the same denominator |
+| Report 2, which categories appear | "non-zero spending in either range" | As stated, **and a parent with any shown child is shown** even if its own total nets to zero | Otherwise a child that moved would be unreachable |
+| Report 2, the scan | One grouped query | One grouped query **that also returns income-category groups**, which the service ignores | An income-only currency must still appear (Currencies, above). Filtering kinds in SQL would hide it |
+| Range validation | `from > to` is `report-range-invalid` | Also **a range, or report 2's comparison range, that reaches before year 1** is `422 report-range-invalid` | `0000-01` passes the four-digit pattern. Java has a year 0 and PostgreSQL does not, so it is refused rather than sent to the driver |
+| Missing `from`/`to` | `400 validation-failed` naming the field | As stated, by declaring both `@RequestParam(required = false) @NotNull` | A missing required parameter reaches the shared handler as a generic `request-rejected`. Optional-plus-`@NotNull` routes it through native method validation instead. The shared handler is unchanged |
+| The chart's peer lines | "renames the roles … or adds a peer pair" | **An optional `tone` on a series** that changes only the colour | Additive, so the debt plan and slice 11 are untouched. Weight and dash still come from `role`, and the greyscale capture confirms the lines are told apart |
+| The chart's stroke colours, light mode | `--color-accent-2-500` and `--color-accent` | **`--color-accent-2-600` and `--color-accent-600`**. Dark mode is the 400 tints, as specified | Measured against the card surface (`--color-surface`): 500 is about 2.1:1 and the accent about 2.7:1, under WCAG 1.4.11's 3:1 for graphics. The 600 steps are about 3.1:1 and 3.4:1 |
+| The envelope-only sentence | Shown when only envelope entries exist | **Shown in every empty state** | Telling "only envelope entries" apart needs a second feature's endpoint. The sentence is true in every empty state and is the likeliest explanation for one |
+| "Needs a category" link | Links to `/transactions` with the uncategorised filter | **`/transactions?filter=uncategorised`, and the ledger now reads that parameter** to open pressed | The ledger had no way to be opened pre-filtered. Additive, with its own spec |
+| CSV writer location | "One CSV writer in the reporting web layer" | **`com.budgetowl.common.csv.CsvWriter`**, with `ReportCsv` in the reporting web layer choosing which columns are text | Slice 12 reuses the writer (`file-import.md`). The escaping list and the column-type rule live once, in common |
+| Report 2 CSV columns | Not specified | `currency, from, to, comparedFrom, comparedTo, row, category, parent, archived, spending, comparedSpending, change, share, direct, count`. `row` is a code: `CATEGORY`, `SUBCATEGORY` or `UNCATEGORISED` | Codes, not prose (ADR-0023). Only `category` and `parent` are text |
+| Disclosure test levels | `INFO` and `DEBUG` | `INFO`, `DEBUG`, **and the web layer at `TRACE`**. `DEBUG` also lowers `com.budgetowl`, which `application.yml` pins to `INFO` | At `DEBUG`, Spring MVC truncates a logged body to 100 characters, so a report's figures never reach that line and a missing redaction cannot fail the test. At `TRACE` the whole body is printed. See `docs/memory/gotchas.md` |
+| Demo fixtures | "about 12 months of categorised transactions … adding" to `demo-data.ts` | The history lives in the **generated** ledger (`REPORT_LEDGER`), which `demo-data.ts` imports and checks `DEMO_TRANSACTIONS` against at load | The history is generated from the same table the backend seeds, so a hand edit cannot drift. The ledger mock still serves August only, and `DEMO_ACCOUNTS`' balances are not recomputed from the history |
+
+### How the scoping test proves each predicate
+
+**With the database's guards in place, no single predicate's removal is observable.** The
+composite foreign keys tie a transaction to an account and a category of its own household, and
+`trg_categories_two_levels` ties a child category to a parent of its own household. So every row
+joins only rows of its own household, and removing any *one* table's predicate changes no figure:
+the others still exclude the same rows. A realistic second household catches only the loss of
+every predicate on the query's path.
+
+`ReportHouseholdScopingIT` does both:
+
+1. `aSecondHouseholdWithTheSameNamesMonthsAndCurrencyChangesNoFigure` is the realistic test the
+   text asks for.
+2. `eachTablesOwnPredicateKeepsOutTheRowThatOnlyItCanStop` drops the two composite foreign keys
+   and disables the parent trigger, noisily, and restores all three afterwards, as
+   `AccountHouseholdScopingIT` does for the singleton index. It then seeds one row per predicate
+   that **only that predicate** can keep out: another household's transaction on this household's
+   account and category; this household's transaction on another household's account; one filed
+   under another household's category; and one under a category nested in another household's
+   parent (in the comparison month).
+
+**Sabotage, run 2026-11-25.** Each predicate was removed in turn from the committed query and the
+test run:
+
+| Removed | Result |
+| ------- | ------ |
+| Report 1, `t.householdId` | fails: the predicate test |
+| Report 1, `a.householdId` | fails: the predicate test |
+| Report 1, `c.householdId` | fails: the predicate test |
+| Report 1, every household predicate | fails: both the realistic test and the predicate test |
+| Report 2, `t.householdId` | fails: the predicate test |
+| Report 2, `a.householdId` | fails: the predicate test |
+| Report 2, `c.householdId` | fails: the predicate test |
+| Report 2, the parent's `p.householdId` | fails: the predicate test, and the other household's parent name appears in the tree |
+
+Other controls were sabotaged the same way and each failed its test. The transfer predicate fails
+the three transfer tests, by name, on the uncategorised fields. `HALF_DOWN` in place of `HALF_EVEN`
+fails the rounding tests. A tie going to the later month, the current month marked complete,
+negative spending clamped, and a query per month (N+1) each fail their test. In the formula
+escaper, dropping a full-width trigger or skipping typed-column validation fails `CsvWriterTest`.
+An HTTP client field, a `save` on the report repository, and a service method that is not
+read-only each fail `ReportingArchitectureTest`. A figure logged by our own code, and the response
+records printing every component, fail `ReportDisclosureIT`.
+
+### Query plans, measured
+
+PostgreSQL 16.16 (the Testcontainers image), one household, 4 accounts (one EUR), 30 categories
+(6 parents with 4 children each), and **50,000 transactions over ten years**: 49,000 ordinary rows
+(about 6% uncategorised, about 11% positive) plus 500 transfers (1,000 legs). `ANALYZE` was run
+first. The SQL is what Hibernate generated from the JPQL, run as `EXPLAIN (ANALYZE, BUFFERS)`.
+
+**Report 1, 24 months** (2024-09 to 2026-08), 9,793 rows in range:
+
+```
+HashAggregate  (actual time=9.957..10.021 rows=48)
+  Group Key: EXTRACT(year FROM date), EXTRACT(month FROM date), a.currency
+  ->  Hash Left Join  (rows=9793)   Filter: (t.category_id IS NULL OR c.household_id = $h)
+        ->  Hash Join  (t.account_id = a.id)
+              ->  Bitmap Heap Scan on transactions t  (rows=9793)
+                    Recheck Cond: household_id = $h AND date >= '2024-09-01' AND date < '2026-09-01'
+                    Filter: transfer_group_id IS NULL   Rows Removed by Filter: 202
+                    ->  Bitmap Index Scan on ix_transactions_household_date  (rows=9995)
+              ->  Seq Scan on accounts a   Filter: household_id = $h   (4 rows)
+        ->  Seq Scan on categories c   (30 rows)
+Planning Time: 0.369 ms   Execution Time: 10.210 ms   Buffers: shared hit=1024
+```
+
+**Report 2, 24 months against the 24 before** (48 scanned, 2022-09 to 2026-08), 19,601 rows:
+
+```
+HashAggregate  (actual time=18.748..18.775 rows=47)
+  Group Key: a.currency, c.id, p.id
+  ->  Hash Left Join  (c.parent_id = p.id)   Filter: (c.parent_id IS NULL OR p.household_id = $h)
+        ->  Hash Left Join  (t.category_id = c.id)   Filter: (t.category_id IS NULL OR c.household_id = $h)
+              ->  Hash Join  (t.account_id = a.id)
+                    ->  Seq Scan on transactions t  (rows=19601)
+                          Filter: transfer_group_id IS NULL AND date >= '2022-09-01'
+                                  AND date < '2026-09-01' AND household_id = $h
+                          Rows Removed by Filter: 30399
+Planning Time: 0.487 ms   Execution Time: 18.944 ms   Buffers: shared hit=913
+```
+
+**Report 2, one month against one** (2026-08 against 2026-07), 831 rows: a bitmap index scan on
+`ix_transactions_household_date`, then the same hash joins. **Execution 1.6 ms.**
+
+The 48-month scan reads 39% of the table, and the planner rightly prefers a sequential scan to an
+index for that. Every other range uses `ix_transactions_household_date`. Grouping by the category
+and parent ids lets PostgreSQL drop the functionally dependent name and archived columns from the
+group key.
+
+**End to end through `ReportService`** (warm, median of 21, p95 in brackets): report 1, 12 months
+9.1 ms (9.6); report 1, 24 months 14.4 ms (16.2); report 2, one month 6.0 ms (7.7); report 2,
+24 months against 24, 21.9 ms (23.5). Those times include the membership lookup.
+
+**No index is added.** Nothing in these plans is slow enough to justify the write cost of a
+covering index (`database-style.md`). The figures come from a probe test that was run once and
+not committed. Re-measure if a household ever approaches ten times this volume.
 
 ## Testing notes
 

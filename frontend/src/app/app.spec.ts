@@ -111,6 +111,7 @@ describe('App', () => {
       'Debt plan',
       'Envelopes',
       'Categories',
+      'Insights',
       'Household',
       'Devices',
       'Preferences',

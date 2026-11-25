@@ -105,7 +105,12 @@ test.describe('household settings, as an owner', () => {
         await dialog.getByRole('button', { name: 'Create link' }).click();
 
         const link = dialog.getByLabel('Invitation link');
-        await expect(link).toHaveValue('http://localhost:4200/join/DEMO-TOKEN-NOT-A-REAL-CREDENTIAL');
+        // This page's own origin, whatever port the harness was pointed at: a link built from any
+        // other origin is the defect this checks for, and a hard-coded :4200 failed it on a
+        // correct page served elsewhere.
+        await expect(link).toHaveValue(
+          `${new URL(page.url()).origin}/join/DEMO-TOKEN-NOT-A-REAL-CREDENTIAL`,
+        );
         await expect(dialog.getByText(/Treat this link like a password/)).toBeVisible();
         await ui.shot('invite-link');
         expect(await ui.a11y('invite, link')).toBe(0);

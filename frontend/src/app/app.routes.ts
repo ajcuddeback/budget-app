@@ -58,6 +58,12 @@ export const routes: Routes = [
           import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES),
       },
       {
+        path: 'insights',
+        title: 'title.insights',
+        loadChildren: () =>
+          import('./features/insights/insights.routes').then((m) => m.INSIGHTS_ROUTES),
+      },
+      {
         path: 'household',
         title: 'title.household',
         loadChildren: () =>

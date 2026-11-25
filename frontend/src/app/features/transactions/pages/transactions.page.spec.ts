@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { HouseholdRole } from '../../../core/auth.models';
 import { AuthService } from '../../../core/auth.service';
@@ -115,6 +115,8 @@ describe('TransactionsPage', () => {
       transactions?: readonly Transaction[];
       accounts?: readonly Account[];
       ledgerOverrides?: Partial<Ledger>;
+      /** The query string the page was opened with, for a link that arrives pre-filtered. */
+      query?: Record<string, string>;
     } = {},
   ): Promise<ComponentFixture<TransactionsPage>> {
     auth = fakeAuth({
@@ -151,6 +153,14 @@ describe('TransactionsPage', () => {
         { provide: TransactionsService, useValue: service },
         { provide: AccountsService, useValue: accountsService },
         { provide: CategoriesService, useValue: categoriesService },
+        ...(options.query
+          ? [
+              {
+                provide: ActivatedRoute,
+                useValue: { snapshot: { queryParamMap: convertToParamMap(options.query) } },
+              },
+            ]
+          : []),
       ],
     });
     await TestBed.inject(I18nService).use('en-GB');
@@ -203,6 +213,16 @@ describe('TransactionsPage', () => {
 
     expect(service.list).toHaveBeenLastCalledWith(
       expect.objectContaining({ uncategorised: true, page: 0 }),
+    );
+  });
+
+  it('opens on the "needs a category" queue when the link that brought it asked for it', async () => {
+    // Insights' "Give them a category" is /transactions?filter=uncategorised.
+    const fixture = await render({ query: { filter: 'uncategorised' } });
+
+    expect(service.list).toHaveBeenCalledWith(expect.objectContaining({ uncategorised: true }));
+    expect(buttonNamed(root(fixture), /Needs a category/).getAttribute('aria-pressed')).toBe(
+      'true',
     );
   });
 

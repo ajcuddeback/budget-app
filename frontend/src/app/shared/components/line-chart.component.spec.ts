@@ -327,4 +327,28 @@ describe('LineChartComponent', () => {
 
     expect(root.querySelector('figcaption')?.textContent).toContain('£560.00 a month');
   });
+
+  it('colours two peer lines by tone and still tells them apart by dash and weight', () => {
+    // Income and spending (docs/features/reporting.md): neither is the other's alternative, so
+    // each takes a tone, and the role still decides which one is dashed.
+    const root = render([
+      { ...avalanche, id: 'income', name: 'Income', tone: 'accent-2' },
+      { ...snowball, id: 'spending', name: 'Spending', tone: 'accent' },
+    ]);
+
+    const [income, spending] = Array.from(root.querySelectorAll('polyline'));
+    expect(income.classList).toContain('tone-accent-2');
+    expect(income.classList).not.toContain('is-compared');
+    expect(spending.classList).toContain('tone-accent');
+    expect(spending.classList).toContain('is-compared');
+    const swatches = Array.from(root.querySelectorAll('.chart-swatch'));
+    expect(swatches[0].classList).toContain('tone-accent-2');
+    expect(swatches[1].classList).toContain('is-compared');
+  });
+
+  it('applies no tone to a line that asks for none', () => {
+    const root = render([avalanche]);
+
+    expect(root.querySelector('polyline')?.getAttribute('class')).not.toContain('tone-');
+  });
 });

@@ -152,7 +152,11 @@ class AuthorizationIT extends ApiTestBase {
                 new Endpoint("GET", "/api/admin/instance", null),
                 new Endpoint("GET", "/api/admin/settings", null),
                 new Endpoint("PATCH", "/api/admin/settings", "{\"version\":0}"),
-                new Endpoint("GET", "/api/admin/users", null));
+                new Endpoint("GET", "/api/admin/users", null),
+                new Endpoint(
+                        "GET", "/api/reports/income-and-spending?from=2026-08&to=2026-08", null),
+                new Endpoint(
+                        "GET", "/api/reports/spending-by-category?from=2026-08&to=2026-08", null));
     }
 
     /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ApiError, asApiError } from '../../../core/api-error';
 import { AuthService } from '../../../core/auth.service';
@@ -115,7 +115,14 @@ export class TransactionsPage {
   /** The live filter. Every change re-queries from page 0: a filtered page 3 is meaningless. */
   protected readonly filterAccountId = signal('');
   protected readonly filterCategoryId = signal('');
-  protected readonly filterUncategorised = signal(false);
+  /**
+   * Opens pressed when the link that brought the member here asked for it —
+   * `/transactions?filter=uncategorised` from Insights' "Give them a category". The queue is how
+   * that figure gets smaller (docs/features/reporting.md, decision 4).
+   */
+  protected readonly filterUncategorised = signal(
+    inject(ActivatedRoute).snapshot.queryParamMap.get('filter') === 'uncategorised',
+  );
   protected readonly filterFrom = signal('');
   protected readonly filterTo = signal('');
   protected readonly filterSearch = signal('');

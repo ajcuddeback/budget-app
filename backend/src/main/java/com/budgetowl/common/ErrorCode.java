@@ -189,6 +189,20 @@ public enum ErrorCode {
      */
     TERMS_UNSOLVABLE("terms-unsolvable", 422, "These terms have no solution"),
 
+    /**
+     * A report's {@code from} is after its {@code to}, or the range (or the one before it, which
+     * spending by category compares against) reaches before year 1. Both ends were well-formed
+     * months, so this is a {@code 422} rather than a {@code 400}.
+     */
+    REPORT_RANGE_INVALID("report-range-invalid", 422, "This report range is not a range"),
+
+    /**
+     * A report range longer than {@code ReportRange.MAXIMUM_MONTHS}, which is in {@code params} as
+     * {@code maximumMonths}. A threat-model control, not a display preference: it bounds the scan
+     * and the response, which carry no pagination (docs/features/reporting.md, attack 4).
+     */
+    REPORT_RANGE_TOO_LONG("report-range-too-long", 422, "This report range is too long"),
+
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
     INTERNAL_ERROR("internal-error", 500, "Internal error");
 

@@ -228,6 +228,56 @@ export class I18nService {
     }
   }
 
+  /**
+   * A server-computed **ratio** — `"0.1600"` — as a whole percentage with no sign: "16%".
+   *
+   * The string is handed to `Intl` exactly as an amount is, and `Intl` does the multiplication by
+   * a hundred on the decimal, so nothing here parses the ratio. The sign is dropped on purpose
+   * (`signDisplay: 'never'`): the page says "up" or "down" in words, and "down −22%" would say it
+   * twice. An empty string for anything that is not a plain decimal.
+   */
+  formatPercent(ratio: string | null | undefined): string {
+    const value = (ratio ?? '').trim();
+    if (!isRate(value)) {
+      return '';
+    }
+    try {
+      return new Intl.NumberFormat(this.locale(), {
+        style: 'percent',
+        maximumFractionDigits: 0,
+        signDisplay: 'never',
+      }).format(value);
+    } catch {
+      return value;
+    }
+  }
+
+  /** `2026-08` → "Aug 2026": a chart's end label, where the long form does not fit. */
+  formatMonthShort(period: string | null | undefined): string {
+    if (!period || !isPeriod(period)) {
+      return '';
+    }
+    return new Intl.DateTimeFormat(this.locale(), { month: 'short', year: 'numeric' }).format(
+      periodAsDate(period),
+    );
+  }
+
+  /**
+   * Two periods as one range, "Sep 2025 – Aug 2026", in the locale's own range pattern.
+   *
+   * `formatRange` rather than two dates and a dash: the canvas's "Sep 25 → Aug 26" reads as two
+   * days of the month, and the separator and the order are the locale's to choose.
+   */
+  formatMonthRange(from: string | null | undefined, to: string | null | undefined): string {
+    if (!from || !to || !isPeriod(from) || !isPeriod(to)) {
+      return '';
+    }
+    return new Intl.DateTimeFormat(this.locale(), { month: 'short', year: 'numeric' }).formatRange(
+      periodAsDate(from),
+      periodAsDate(to),
+    );
+  }
+
   /** "US Dollar", "Dollar américain" — the currency's name in the active locale. */
   currencyName(code: string): string {
     try {
