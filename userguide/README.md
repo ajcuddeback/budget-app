@@ -36,6 +36,8 @@ account to seeing your first month's budget.
 | [Add a bill](features/add-a-bill.md)                                            | Something that leaves on a date, the five kinds of schedule, and retiring one you've stopped paying              |
 | [Mark a bill paid](features/mark-a-bill-paid.md)                                | Tick a bill off, say you paid a different amount, skip it, or undo what was recorded                             |
 | [Move money between your own accounts](features/move-money-between-accounts.md) | Record a transfer, why it shows up as two rows, and what to do when the two accounts are in different currencies |
+| [Import a bank statement](features/import-a-bank-statement.md) | Bring in an OFX, QFX, QIF or CSV file from your bank, see what will be added first, and undo it |
+| [Pair two rows into a transfer](features/pair-two-rows-into-a-transfer.md) | Tell Budget Owl that money out of one account and into another was one move, and split it again |
 | [Add a debt](features/add-a-debt.md)                                            | Put a card or a loan in from your statement, and link its minimum to the bill that pays it                       |
 | [Choose how to clear your debts](features/choose-how-to-clear-your-debts.md)    | The order of attack, setting your own order, what you put in each month, and what the cards compare              |
 | [Log a payment against a debt](features/log-a-debt-payment.md)                  | Write down what you paid, see the split before you record it, and why your account balance doesn't move          |

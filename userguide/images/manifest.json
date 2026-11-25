@@ -837,6 +837,114 @@
     "viewport": "1280x720"
   },
   {
+    "name": "import-a-bank-statement--account",
+    "file": "userguide/images/import-a-bank-statement--account.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The Import a statement screen: Account set to Everyday Checking •4417 and circled, then Statement file inside a dashed box, then Format.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--confirm",
+    "file": "userguide/images/import-a-bank-statement--confirm.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The button at the bottom of the preview, circled: Import 6 transactions into Everyday Checking •4417, beside Start over.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--csv-mapping",
+    "file": "userguide/images/import-a-bank-statement--csv-mapping.png",
+    "guide": "import-a-bank-statement",
+    "caption": "How to read it, for a CSV file: Budget Owl's guesses for date format (Month/day/year), separators, and Money out appears as A separate column; then each column with what it holds — Posted is Date, Description is Payee, Debit is Money out, Credit is Money in, Balance is Not used — above the first five rows of the file, and an Update preview button.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--done",
+    "file": "userguide/images/import-a-bank-statement--done.png",
+    "guide": "import-a-bank-statement",
+    "caption": "Imported 6 transactions into Everyday Checking •4417. They're in Needs a category, ready for you to sort. Below: See them in the ledger, Import another file and Undo this import.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--file",
+    "file": "userguide/images/import-a-bank-statement--file.png",
+    "guide": "import-a-bank-statement",
+    "caption": "Statement file holding checking-august.qfx, circled. Underneath: OFX, QFX, QIF or CSV, up to 5 MB, and Selected: 1 kB. Format has filled itself in as OFX or QFX.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--history",
+    "file": "userguide/images/import-a-bank-statement--history.png",
+    "guide": "import-a-bank-statement",
+    "caption": "Recent imports, listing Everyday Checking · OFX or QFX with nothing left to undo, and an earlier Travel Card · QIF import with an Undo button.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--ledger-button",
+    "file": "userguide/images/import-a-bank-statement--ledger-button.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The Transactions screen with the Import a statement button, beside Move money, circled.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--needs-a-look",
+    "file": "userguide/images/import-a-bank-statement--needs-a-look.png",
+    "guide": "import-a-bank-statement",
+    "caption": "Needs a look: an unticked box reading \"Include Aug 20, 2026, Greenfield Market, -$92.15\" with \"Looks like the one already in your ledger on Aug 20, 2026\" beneath, Include all and Leave all out buttons, two rows already in your ledger, and Line 10, \"The date can't be read\", saying 20260231.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--other-account",
+    "file": "userguide/images/import-a-bank-statement--other-account.png",
+    "guide": "import-a-bank-statement",
+    "caption": "A warning at the top of the preview: This file looks like it belongs to a different account from Everyday Checking •4417. Check you chose the right one before importing.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--sample",
+    "file": "userguide/images/import-a-bank-statement--sample.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The first rows to be added, laid out like the Transactions list: Greenfield Market -$54.30, City Transit -$2.75, Northwind Systems $2,150.00 and more, each marked Needs a category.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--summary",
+    "file": "userguide/images/import-a-bank-statement--summary.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The summary: 6 new, 2 already in your ledger, 1 looks like one you typed, 1 could not be read; statement dates Aug 18 to Aug 31, 2026; money in $2,150.00 and out -$181.05; $2,480.15 in Budget Owl now and $4,449.10 after this import; and \"Your bank says the balance is $4,449.10. After this import, Budget Owl will say $4,449.10. They match.\"",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "import-a-bank-statement--undo-confirm",
+    "file": "userguide/images/import-a-bank-statement--undo-confirm.png",
+    "guide": "import-a-bank-statement",
+    "caption": "The Undo this import? window: it removes the 6 transactions this import added to Everyday Checking, links to a bill, a debt payment or an envelope go with them, and rows paired into a transfer stay. Cancel and Undo this import buttons.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
     "name": "invite-someone--household",
     "file": "userguide/images/invite-someone--household.png",
     "guide": "invite-someone",
@@ -1482,6 +1590,60 @@
     "caption": "The Categories screen: Income and Spending groups, with sub-categories indented under their parent.",
     "capturedAt": "2026-11-25",
     "commit": "97eca58",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--chosen",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--chosen.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "The Emergency Fund row ticked; underneath, a box saying both rows will lose their category and payee and stop counting as income or spending; and Pair these two rows, circled, ready to select.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--paired",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--paired.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "The banner Paired into a transfer., as it appears above the list.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--row-button",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--row-button.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "Two rows at the top of the Transactions list: TRANSFER FROM CHK 4417, $300.00, Aug 19, 2026, Emergency Fund, and ONLINE TRANSFER TO SAVINGS, -$300.00, Aug 18, 2026, Everyday Checking, whose This is a transfer… button is circled.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--sheet",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--sheet.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "The Pair this with the other half of a transfer window: This row, Aug 18, 2026 · Everyday Checking · ONLINE TRANSFER TO SAVINGS · -$300.00; Other account, From and To; and Rows to choose from, with Aug 19, 2026 · Emergency Fund · TRANSFER FROM CHK 4417 · $300.00 not ticked. Pair these two rows is greyed out.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--split-button",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--split-button.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "A transfer row with Edit, Split into two rows (circled) and Delete.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "pair-two-rows-into-a-transfer--split-confirm",
+    "file": "userguide/images/pair-two-rows-into-a-transfer--split-confirm.png",
+    "guide": "pair-two-rows-into-a-transfer",
+    "caption": "The Split this transfer into two rows? window: both rows stay with their amounts and dates but come back with no category and no payee, and count as income and spending again. Cancel and Split buttons.",
+    "capturedAt": "2026-11-25",
+    "commit": "ee8f5f0",
     "viewport": "1280x720"
   },
   {
