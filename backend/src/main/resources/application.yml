@@ -40,6 +40,15 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      # OFF, and not only for import. With it on, DispatcherServlet parses any multipart request
+      # before a controller can refuse it, and Tomcat spools every part to java.io.tmpdir (the
+      # default file-size-threshold is 0 B) — so a statement POSTed as form-data to ANY route would
+      # land in the container's /tmp, where nothing reads it and nobody notices (ADR-0038). No
+      # endpoint takes multipart; a file travels as base64 in JSON. ImportLimitsIT proves a
+      # multipart upload is refused with 415 and leaves nothing on disk.
+      enabled: false
   jackson:
     deserialization:
       # A typo'd field is an error, not a silently ignored value (docs/guides/api-style.md), and
