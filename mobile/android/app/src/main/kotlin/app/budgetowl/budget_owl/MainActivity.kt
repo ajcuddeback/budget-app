@@ -26,10 +26,13 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // The certificate authorities the person installed on this phone (Settings, Security,
         // Encryption & credentials, Install a certificate, CA certificate), for Dart's TLS, which
-        // reads only the system store (ADR-0042). The app's network_security_config already trusts
-        // exactly these ("<certificates src="user" />"); this hands Dart the same set, read-only,
-        // as DER bytes. Nothing is written, and no verification is relaxed: Dart still checks the
-        // chain and the host name. lib/core/http/user_trust.dart is the other end.
+        // reads only the system store (ADR-0042). The app's network_security_config trusts these
+        // ("<certificates src="user" />"); this hands them to Dart, read-only, as DER bytes, and
+        // Dart trusts at most ONE of them per server: the one it was verified through when it was
+        // connected to (pinned by fingerprint), and none for a server the system roots verify.
+        // Nothing is written, and no verification is relaxed: Dart still checks the chain and the
+        // host name. Read again each time the app returns to the foreground.
+        // lib/core/http/user_trust.dart and http_adapter.dart are the other end.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TRUST_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method != USER_CA_CERTIFICATES) {
