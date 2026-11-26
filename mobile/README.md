@@ -170,10 +170,16 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
 - **Riverpod 3 retries a failed provider by default** (up to ten times with backoff). The app's
   `ProviderScope` passes `retry: noRetry`; a test container must too, or a 401 becomes a burst.
 - **`dart:io` on Android ignores user-installed CAs by itself**, whatever the network security
-  config says. `MainActivity`'s `app.budgetowl/trust` channel reads them and `user_trust.dart`
-  adds them to the system roots for the one transport, read once before the first request; any
-  failure means system roots only. Never add a `badCertificateCallback` instead. Needs checking on
-  a device.
+  config says. `MainActivity`'s `app.budgetowl/trust` channel reads them; **a server is trusted
+  through at most one**, pinned at connect (`PhoneTrustAdapter.checkAndPin`: none if the system
+  roots verify it) and stored with the address (`budget_owl.server_ca_pin`). Never trust the whole
+  user store — a device-management CA is in it — and never add a `badCertificateCallback`. The
+  store is re-read when the app returns to the foreground and the **inner** client swapped; the
+  shared adapter is still never closed. Any failure means system roots only. Needs checking on a
+  device.
+- **A write the person just asked for waits for the version check**: call
+  `ref.read(sessionProvider.notifier).ensureVersionConfirmed()` before a public write (sign-in,
+  setup and join do), or the first tap after a failed launch check is refused as offline.
 - **No write before this launch's version check.** A request that reached the server counts for
   writes (`Reachability.reached`) only once `/api/meta` has passed; until then it is
   `Reachability.unconfirmed`, `canWriteNow` is false, and `ApiClient` refuses any non-`GET`. Show

@@ -1351,16 +1351,32 @@ _Added 2026-11-26 — slice 15._
 the app as "certificate not trusted". `network_security_config.xml` governs the platform's Java
 networking; `dart:io` reads the system store only.
 
-**What to do.** Hand Dart the same set, never relax the check. `MainActivity` reads the
-user-installed CAs (`KeyStore.getInstance("AndroidCAStore")`, aliases starting `user:`) through
-the read-only `app.budgetowl/trust` channel, and `mobile/lib/core/http/user_trust.dart` adds them
-to a `SecurityContext(withTrustedRoots: true)` that the app's one transport is built with, once,
-before its first request. Any failure reading them means the system roots only (fails closed).
-It is only right because the app's `network_security_config.xml` already trusts
-`<certificates src="user" />` (a test pins it). Never add a `badCertificateCallback` to "fix" a
-certificate error — the guards refuse one. The channel needs checking on a device.
+**What to do.** Hand Dart the CAs, and trust **at most one per server**; never relax the check.
+`MainActivity` reads the user-installed CAs (`KeyStore.getInstance("AndroidCAStore")`, aliases
+starting `user:`) through the read-only `app.budgetowl/trust` channel. Trusting all of them was
+the first version and was wrong: the user store also holds whatever an employer's device
+management pushed, which can inspect TLS. So the server is pinned when it is connected to —
+nothing if the system roots verify it, else the SHA-256 of the one user CA that does — and the
+transport trusts the system roots plus that CA alone (`PhoneTrustAdapter` in
+`mobile/lib/core/http/http_adapter.dart`), re-reading the store on every return to the
+foreground. Any failure means the system roots only. Never add a `badCertificateCallback` to
+"fix" a certificate error — the guards refuse one. The channel needs checking on a device. Two
+residuals: a CA already intercepting at connect time is the one pinned, and a system CA disabled
+in Settings is still trusted (Dart reads the system directory itself).
 
-_Added 2026-11-26 — slice 15; updated the same day in phase 2, when the channel closed the gap._
+_Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
+2 (pinned to one CA per server)._
+
+## A TLS test that switches servers behind one origin must not use keep-alive
+
+**Symptom.** A pinning test that pointed one origin at a second server failed now and then as
+"unreachable": the client reused a keep-alive connection the test's front had just cut.
+
+**What to do.** Behind a switching front, have the server close each connection
+(`response.persistentConnection = false`); test keep-alive on its own, against a direct server.
+Run a socket test 20 times before believing it (`mobile/test/core/user_trust_test.dart`).
+
+_Added 2026-11-26 — slice 15 phase 2, round 2._
 
 ## Uri.parse is not a validator, and `Uri.origin` throws
 
