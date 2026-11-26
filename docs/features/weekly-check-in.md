@@ -1337,6 +1337,25 @@ restored from git and confirmed clean.
 
 Every restore was confirmed with `git diff --quiet` on the file.
 
+### After the slice-14 security audit
+
+An independent audit of the slice found no Critical or High issue. It found one Medium, now
+fixed, and three Lows: one fixed, two recorded below.
+
+- **Fixed (Medium): a debt in another currency was offered its bill's amount.** Bills are always
+  in the base currency, but a debt in any currency may name a bill. Marking the bill paid with
+  *"Also record this against …"* passed the bill's base-currency number to
+  `DebtPaymentService.log`, which reads it in the debt's own currency. So £25 paid a EUR loan
+  €25, silently. Now `CheckInPictures` offers the prompt only for a base-currency debt, so the
+  answer is refused (`400`, field `recordDebtPayment`) and an old draft completes as
+  `debt-paid-off`. As a second guard, completion calls a `log` overload that refuses a debt not in
+  the amount's currency. The test is `CheckInIT.a_debt_in_another_currency_is_never_offered_its_bills_amount`.
+  Removing the filter fails it.
+- **Fixed (Low): charge detection re-sorted a payee's history once per row.** With 200 outflows
+  from one payee and 10,000 rows of its history, every read did 200 sorts. The median is now
+  computed once per payee and account, and the recurring check's history is built only for the
+  pair's latest row.
+
 ### Known gaps
 
 - **A hand-logged debt payment made in the same month as the plan's payment is charged a second
@@ -1352,3 +1371,15 @@ Every restore was confirmed with `git diff --quiet` on the file.
   before it, so a capture that answers in another order gets a 501, never a wrong figure.
 - **No dark check-in artboard exists**; dark mode is the role tokens, checked with axe and read in
   the screenshots.
+- **A charge the check-in attached to a bill can still be filed into an envelope** (audit, low 3).
+  It then counts as a paid bill and as envelope spend. Goals and envelopes already did not exclude
+  each other before this slice. Paying a bill out of an envelope is ordinary envelope budgeting,
+  so refusing it is a product decision, not a fix, and it is left open.
+- **Deleting a category, goal, debt, bill or transaction removes the answers that named it,
+  completed check-ins included** (audit, low 4). V20's answer foreign keys are `ON DELETE
+  CASCADE`. For a draft that is intended. For a completed week, the record of where the surplus
+  went disappears, while the week's figures stay. Keeping it would need the outcome copied onto
+  the answer (kind, target, name) in a new migration.
+- **Other per-read work is bounded but not minimal** (audit, low 2, the remainder). `attachableFor`
+  scans the window's rows for each charge, and with no debt plan the allocation step projects up
+  to 50 debts. Both are capped (200 items per step, 50 debts); neither grows without bound.

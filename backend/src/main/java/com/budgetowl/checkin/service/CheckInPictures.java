@@ -64,6 +64,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.TreeSet;
@@ -222,7 +223,14 @@ public class CheckInPictures {
             }
             loadBills();
             for (DebtView debt : sources.debts(actorId)) {
-                if (debt.billId() != null && debt.paidOffAt() == null && !debt.archived()) {
+                // Only a debt in the base currency: the prompt's amount is the bill's, and bills
+                // are always in the base currency. A debt in another currency would read that
+                // number as its own currency (slice-14 security audit, medium 1), so it is never
+                // offered, and an old draft naming one completes as debt-paid-off.
+                if (debt.billId() != null
+                        && debt.paidOffAt() == null
+                        && !debt.archived()
+                        && code.equals(debt.currency())) {
                     debtByBill.put(debt.billId(), debt);
                 }
             }
@@ -460,6 +468,10 @@ public class CheckInPictures {
                 isLatest.put(row.id(), latestSeen.add(new PairKey(row.payeeId(), row.accountId())));
             }
 
+            // One median per pair, not one per row: the history before the window is the same for
+            // every row of a pair, and sorting it again for each of 200 rows was 200 sorts of up
+            // to 10,000 amounts on every read (slice-14 security audit, low 2).
+            Map<PairKey, Optional<BigDecimal>> medians = new HashMap<>();
             for (LedgerRow row : oldestFirst) {
                 PairKey pair = new PairKey(row.payeeId(), row.accountId());
                 BigDecimal magnitude = row.amount().negate();
@@ -468,15 +480,28 @@ public class CheckInPictures {
                 if (bill != null) {
                     chargeWithRule(row, magnitude, bill);
                 } else {
+                    List<HistoryRow> pairHistory = history.getOrDefault(pair, List.of());
                     chargeWithoutRule(
                             row,
                             magnitude,
                             rule == null,
-                            history.getOrDefault(pair, List.of()),
+                            pairHistory,
+                            medians.computeIfAbsent(pair, key -> medianBefore(pairHistory)),
                             Boolean.TRUE.equals(isLatest.get(row.id())),
                             mappedBills);
                 }
             }
+        }
+
+        /** The median magnitude of a pair's outflows before the window: the "usual" amount. */
+        private Optional<BigDecimal> medianBefore(List<HistoryRow> pairHistory) {
+            List<BigDecimal> before = new ArrayList<>();
+            for (HistoryRow past : pairHistory) {
+                if (past.date().isBefore(from)) {
+                    before.add(past.amount().negate());
+                }
+            }
+            return ChargeDetection.median(before);
         }
 
         private void chargeWithRule(LedgerRow row, BigDecimal magnitude, BillView bill) {
@@ -561,20 +586,9 @@ public class CheckInPictures {
                 BigDecimal magnitude,
                 boolean noRule,
                 List<HistoryRow> pairHistory,
+                Optional<BigDecimal> median,
                 boolean latest,
                 Set<UUID> mappedBills) {
-            List<BigDecimal> before = new ArrayList<>();
-            List<ChargeDetection.DatedAmount> earlier = new ArrayList<>();
-            for (HistoryRow past : pairHistory) {
-                if (past.date().isBefore(from)) {
-                    before.add(past.amount().negate());
-                }
-                if (!past.id().equals(row.id()) && past.date().isBefore(endMonth.atDay(1))) {
-                    earlier.add(
-                            new ChargeDetection.DatedAmount(past.date(), past.amount().negate()));
-                }
-            }
-            var median = ChargeDetection.median(before);
             if (median.isPresent() && ChargeDetection.isUnusual(magnitude, median.get())) {
                 add(
                         unusual,
@@ -599,9 +613,18 @@ public class CheckInPictures {
                                 false));
                 return;
             }
-            if (!noRule
-                    || !latest
-                    || !ChargeDetection.isRecurring(row.date(), magnitude, endMonth, earlier)) {
+            if (!noRule || !latest) {
+                return;
+            }
+            // Built only here, for a pair's latest row: once per pair, not once per row.
+            List<ChargeDetection.DatedAmount> earlier = new ArrayList<>();
+            for (HistoryRow past : pairHistory) {
+                if (!past.id().equals(row.id()) && past.date().isBefore(endMonth.atDay(1))) {
+                    earlier.add(
+                            new ChargeDetection.DatedAmount(past.date(), past.amount().negate()));
+                }
+            }
+            if (!ChargeDetection.isRecurring(row.date(), magnitude, endMonth, earlier)) {
                 return;
             }
             String key = ItemKeys.charge(row.id());

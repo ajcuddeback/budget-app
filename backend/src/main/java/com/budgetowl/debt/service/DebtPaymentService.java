@@ -124,9 +124,27 @@ public class DebtPaymentService {
      */
     @Transactional
     public DebtPaymentView log(UUID actorId, UUID debtId, NewDebtPayment requested) {
+        return log(actorId, debtId, requested, null);
+    }
+
+    /**
+     * Logs a payment whose amount the caller worked out in {@code expected}: refused, before
+     * anything is written, unless the debt is in that currency. A check-in's bill prompt carries a
+     * base-currency amount, and {@link #log(UUID, UUID, NewDebtPayment)} reads the number in the
+     * debt's currency, so without this a non-base debt would be paid the wrong amount without
+     * complaint (slice-14 security audit, medium 1).
+     *
+     * @throws IllegalArgumentException if the debt is not in {@code expected}
+     */
+    @Transactional
+    public DebtPaymentView log(
+            UUID actorId, UUID debtId, NewDebtPayment requested, Currency expected) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
         Debt debt = require(debtId, household.id());
+        if (expected != null && !expected.equals(debt.currency())) {
+            throw new IllegalArgumentException("the amount is not in the debt's currency");
+        }
         requireNotSettled(debt);
 
         requireRoomForAPayment(payments, household.id(), debt.id());

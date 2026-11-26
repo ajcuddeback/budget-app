@@ -435,7 +435,8 @@ public class CheckInCompletion {
                                                 null,
                                                 prompt.occurrenceId(),
                                                 null,
-                                                null)));
+                                                null),
+                                        prompt.amount().currency()));
             }
             // Step 4: the payment or the contribution.
             CheckInAnswer allocation = byKey.get(ItemKeys.ALLOCATION);

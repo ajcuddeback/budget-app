@@ -221,7 +221,7 @@ class CheckInIT extends CheckInTestBase {
 
         ApiResponse refused = complete(owner);
 
-        assertThat(refused.status()).isEqualTo(422);
+        assertThat(refused.status()).isEqualTo(400);
         assertThat(refused.stringField("code")).isEqualTo("check-in-incomplete");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM payee_rules", Long.class)).isZero();
     }
@@ -653,6 +653,62 @@ class CheckInIT extends CheckInTestBase {
 
         assertThat(bills.body()).contains("\"payeeName\":\"Mountain Strength Co\"");
         assertThat(bills.body()).contains("\"accountLastFour\":\"4412\"");
+    }
+
+    /**
+     * Slice-14 security audit, medium 1: a bill is always in the base currency, so a debt in
+     * another currency that names a bill must not be offered the bill's amount. Recorded, a £25
+     * occurrence would have paid the EUR loan 25.00 euros.
+     */
+    @Test
+    void a_debt_in_another_currency_is_never_offered_its_bills_amount() {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        UUID loanBill = bill(owner, "Euro loan", "25.00", 19, null);
+        UUID euroLoan =
+                UUID.fromString(
+                        ok(
+                                        owner.post(
+                                                "/api/debts",
+                                                """
+                                                {"name":"Euro loan","kind":"INSTALLMENT",
+                                                 "currency":"EUR","balance":"400.00",
+                                                 "balanceDate":"2026-08-16","apr":"5.00",
+                                                 "minimumPayment":"25.00","billId":"%s"}
+                                                """
+                                                        .formatted(loanBill)),
+                                        201)
+                                .stringField("id"));
+        String key = "bill." + loanBill + ".2026-08-19";
+        answerTheCanvas(canvas, owner);
+
+        JsonNode overdue = item(json(owner.get(W34)), key);
+        assertThat(
+                        overdue.path("debtPrompt").isNull()
+                                || overdue.path("debtPrompt").isMissingNode())
+                .as(
+                        "no prompt to record the bill's base-currency amount against a euro debt: "
+                                + overdue)
+                .isTrue();
+
+        ApiResponse refused =
+                owner.put(
+                        W34 + "/answers/" + key,
+                        "{\"choice\":\"MARK_PAID\",\"recordDebtPayment\":true}");
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.body()).contains("recordDebtPayment");
+
+        JsonNode marked = answer(owner, key, "{\"choice\":\"MARK_PAID\"}");
+        // The extra bill moves the surplus, so step 4 is answered again at the new figure.
+        String surplus = amount(figures(marked).get("surplus"));
+        answer(owner, "alloc", "{\"choice\":\"ROLL_OVER\",\"amount\":\"%s\"}".formatted(surplus));
+        ok(complete(owner), 200);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM debt_payments WHERE debt_id = ?",
+                                Long.class,
+                                euroLoan))
+                .isZero();
     }
 
     // ---------------------------------------------------------------------------- helpers
