@@ -2845,6 +2845,10 @@
   "@connect_continue": {
     "description": "Mobile only (l10n/mobile.en.json \"connect.continue\")."
   },
+  "connect_error_busy": "The server is busy. Try again in a minute.",
+  "@connect_error_busy": {
+    "description": "Mobile only (l10n/mobile.en.json \"connect.error.busy\")."
+  },
   "connect_error_certificateUntrusted": "This phone doesn't trust the server's certificate, so Budget Owl sends nothing to it. If your server uses its own certificate authority, install that authority on this phone, then try again.",
   "@connect_error_certificateUntrusted": {
     "description": "Mobile only (l10n/mobile.en.json \"connect.error.certificateUntrusted\")."

@@ -139,6 +139,7 @@ String connectFailureText(AppLocalizations l, ConnectFailure failure) => switch 
   ConnectProblem.certificateUntrusted => l.connect_error_certificateUntrusted,
   ConnectProblem.certificateWrongName => l.connect_error_certificateWrongName,
   ConnectProblem.notBudgetOwl => l.connect_error_notBudgetOwl,
+  ConnectProblem.busy => l.connect_error_busy,
   ConnectProblem.versionMismatch => l.connect_error_versionMismatch(
     '${failure.serverApiVersion ?? '?'}',
     '$clientApiVersion',

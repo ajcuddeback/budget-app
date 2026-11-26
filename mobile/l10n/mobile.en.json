@@ -24,6 +24,7 @@
   "connect.error.certificateUntrusted": "This phone doesn't trust the server's certificate, so Budget Owl sends nothing to it. If your server uses its own certificate authority, install that authority on this phone, then try again.",
   "connect.error.certificateWrongName": "The server's certificate is for a different name than the one you entered. Use the name on the certificate, or fix the certificate.",
   "connect.error.notBudgetOwl": "Something answered at that address, but it isn't a Budget Owl server.",
+  "connect.error.busy": "The server is busy. Try again in a minute.",
   "connect.error.versionMismatch": "This server's API is version {server}, and this app needs version {app}. Update whichever is older, then try again.",
   "connect.error.transport": "The connection to the server failed part-way. Try again.",
 

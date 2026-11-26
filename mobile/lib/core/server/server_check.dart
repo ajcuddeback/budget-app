@@ -14,6 +14,9 @@ enum ConnectProblem {
   certificateUntrusted,
   certificateWrongName,
   notBudgetOwl,
+
+  /// The server's rate limit (`429`): it is Budget Owl, asked too often. Not "not Budget Owl".
+  busy,
   versionMismatch,
   transport,
 }
@@ -79,6 +82,9 @@ final class ServerCheck {
       });
     }
 
+    if (response.statusCode == 429) {
+      throw const ConnectFailure(ConnectProblem.busy);
+    }
     if (response.statusCode != 200) {
       throw const ConnectFailure(ConnectProblem.notBudgetOwl);
     }

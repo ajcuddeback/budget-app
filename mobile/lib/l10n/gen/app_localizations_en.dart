@@ -1935,6 +1935,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connect_continue => 'Connect';
 
   @override
+  String get connect_error_busy => 'The server is busy. Try again in a minute.';
+
+  @override
   String get connect_error_certificateUntrusted =>
       'This phone doesn\'t trust the server\'s certificate, so Budget Owl sends nothing to it. If your server uses its own certificate authority, install that authority on this phone, then try again.';
 

@@ -3344,6 +3344,12 @@ abstract class AppLocalizations {
   /// **'Connect'**
   String get connect_continue;
 
+  /// Mobile only (l10n/mobile.en.json "connect.error.busy").
+  ///
+  /// In en, this message translates to:
+  /// **'The server is busy. Try again in a minute.'**
+  String get connect_error_busy;
+
   /// Mobile only (l10n/mobile.en.json "connect.error.certificateUntrusted").
   ///
   /// In en, this message translates to:

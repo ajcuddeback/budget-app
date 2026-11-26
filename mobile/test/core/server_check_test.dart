@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:budget_owl/core/http/transport_failure.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
+import 'package:budget_owl/features/connect/presentation/connect_screen.dart';
+import 'package:budget_owl/l10n/gen/app_localizations_en.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -70,6 +72,20 @@ void main() {
     );
 
     expect(await problemFor(adapter), ConnectProblem.notBudgetOwl);
+  });
+
+  test("the server's rate limit is \"busy\", in its own words — not \"not Budget Owl\"", () async {
+    final problem = await problemFor(
+      ScriptedAdapter(
+        (_) async => json(429, {'code': 'rate-limited'}, headers: {'Retry-After': '42'}),
+      ),
+    );
+
+    expect(problem, ConnectProblem.busy);
+    expect(
+      connectFailureText(AppLocalizationsEn(), const ConnectFailure(ConnectProblem.busy)),
+      'The server is busy. Try again in a minute.',
+    );
   });
 
   test('a 404 is not Budget Owl', () async {

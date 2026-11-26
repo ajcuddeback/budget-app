@@ -557,6 +557,7 @@ String? lookupMessage(
     'connect.connectedLede' => l.connect_connectedLede,
     'connect.connectedTo' => l.connect_connectedTo(a('host')),
     'connect.continue' => l.connect_continue,
+    'connect.error.busy' => l.connect_error_busy,
     'connect.error.certificateUntrusted' => l.connect_error_certificateUntrusted,
     'connect.error.certificateWrongName' => l.connect_error_certificateWrongName,
     'connect.error.hostNotFound' => l.connect_error_hostNotFound,

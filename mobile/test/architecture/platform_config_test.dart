@@ -66,7 +66,7 @@ void main() {
     test('Android 13+ takes no recents screenshot of the app (audit L6)', () {
       final activity = File('android/app/src/main/kotlin/app/budgetowl/budget_owl/MainActivity.kt')
           .readAsStringSync()
-          .replaceAll(RegExp(r'//.*'), '');
+          .replaceAll(RegExp('//.*'), '');
       expect(
         activity,
         matches(
