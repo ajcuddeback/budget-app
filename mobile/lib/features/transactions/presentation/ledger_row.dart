@@ -1,4 +1,3 @@
-
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
@@ -62,10 +61,7 @@ class LedgerRow extends StatelessWidget {
 
     const big = Radius.circular(RadiusTokens.md + 2);
     const small = Radius.circular(6);
-    final shape = BorderRadius.vertical(
-      top: first ? big : small,
-      bottom: last ? big : small,
-    );
+    final shape = BorderRadius.vertical(top: first ? big : small, bottom: last ? big : small);
 
     final avatar = Container(
       width: 36,
@@ -105,7 +101,8 @@ class LedgerRow extends StatelessWidget {
           onTap: onTap,
           child: Semantics(
             button: onTap != null,
-            label: '${rowTitle(context, t)}, $amount, $secondary, ${context.date(t.date)}'
+            label:
+                '${rowTitle(context, t)}, $amount, $secondary, ${context.date(t.date)}'
                 '${badges.isEmpty ? '' : ', ${badges.join(', ')}'}',
             excludeSemantics: true,
             child: ConstrainedBox(
@@ -115,55 +112,80 @@ class LedgerRow extends StatelessWidget {
                   horizontal: SpaceTokens.s4,
                   vertical: SpaceTokens.s3,
                 ),
-                child: Row(
-                  children: [
-                    avatar,
-                    const SizedBox(width: SpaceTokens.s3),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(rowTitle(context, t), style: text.titleMedium),
-                          Text(
-                            secondary,
-                            style: text.bodySmall?.copyWith(
-                              color: t.needsCategory ? palette.needsCategory : c.muted,
-                              fontWeight: t.needsCategory ? FontWeight.w600 : null,
-                            ),
-                          ),
-                          if (t.note != null)
-                            Text(
-                              t.note!,
-                              style: text.bodySmall?.copyWith(color: c.muted),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: SpaceTokens.s2),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          amount,
-                          style: text.titleMedium?.copyWith(
-                            color: incoming ? palette.incoming : c.text,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                child: _layout(
+                  // Large text: the amount moves under the payee rather than squeezing the
+                  // payee's name into a column one word wide (rows grow, never clip).
+                  stacked: MediaQuery.textScalerOf(context).scale(1) > 1.5,
+                  avatar: avatar,
+                  details: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(rowTitle(context, t), style: text.titleMedium),
+                      Text(
+                        secondary,
+                        style: text.bodySmall?.copyWith(
+                          color: t.needsCategory ? palette.needsCategory : c.muted,
+                          fontWeight: t.needsCategory ? FontWeight.w600 : null,
                         ),
-                        for (final badge in badges)
-                          Text(
-                            badge,
-                            style: text.labelSmall?.copyWith(color: c.accentText),
-                          ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      if (t.note != null)
+                        Text(t.note!, style: text.bodySmall?.copyWith(color: c.muted)),
+                    ],
+                  ),
+                  figure: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        amount,
+                        textDirection: context.amountDirection,
+                        style: text.titleMedium?.copyWith(
+                          color: incoming ? palette.incoming : c.text,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      for (final badge in badges)
+                        Text(badge, style: text.labelSmall?.copyWith(color: c.accentText)),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  static Widget _layout({
+    required bool stacked,
+    required Widget avatar,
+    required Widget details,
+    required Widget figure,
+  }) {
+    if (!stacked) {
+      return Row(
+        children: [
+          avatar,
+          const SizedBox(width: SpaceTokens.s3),
+          Expanded(child: details),
+          const SizedBox(width: SpaceTokens.s2),
+          figure,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            avatar,
+            const SizedBox(width: SpaceTokens.s3),
+            Expanded(child: details),
+          ],
+        ),
+        Align(alignment: AlignmentDirectional.centerEnd, child: figure),
+      ],
     );
   }
 }

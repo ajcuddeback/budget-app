@@ -38,8 +38,7 @@ final class AppError implements Exception {
 
   const AppError.noAnswer() : this(kind: AppErrorKind.noAnswer);
 
-  const AppError.unexpected({int? status})
-    : this(kind: AppErrorKind.unexpected, status: status);
+  const AppError.unexpected({int? status}) : this(kind: AppErrorKind.unexpected, status: status);
 
   /// A problem response, read as the web's `ApiError.from` reads one.
   factory AppError.fromProblem(int status, Object? body, {String? retryAfterHeader}) {
@@ -55,10 +54,8 @@ final class AppError implements Exception {
       },
       if (params['field'] case final String one) one,
       ...switch (problem['errors']) {
-        final List<Object?> errors => errors
-            .whereType<Map<String, Object?>>()
-            .map((e) => e['field'])
-            .whereType<String>(),
+        final List<Object?> errors =>
+          errors.whereType<Map<String, Object?>>().map((e) => e['field']).whereType<String>(),
         _ => const <String>[],
       },
     ];
@@ -94,6 +91,7 @@ final class AppError implements Exception {
   String? get reason => params['reason'] is String ? params['reason']! as String : null;
 
   @override
-  String toString() => 'AppError(${kind.name}${status == null ? '' : ' $status'}'
+  String toString() =>
+      'AppError(${kind.name}${status == null ? '' : ' $status'}'
       '${code == null ? '' : ' $code'})';
 }

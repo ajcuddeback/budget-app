@@ -132,12 +132,7 @@ class ErrorPanel extends StatelessWidget {
 /// The four states of a read, the same way on every screen (mobile-app.md, UI): loading, an error
 /// with no copy to show, data — and data with the stale label once a refresh has failed.
 class SnapshotView<T> extends StatelessWidget {
-  const SnapshotView({
-    required this.snapshot,
-    required this.builder,
-    this.onRetry,
-    super.key,
-  });
+  const SnapshotView({required this.snapshot, required this.builder, this.onRetry, super.key});
 
   final Snapshot<T> snapshot;
   final Widget Function(BuildContext context, T data, Widget? staleBanner) builder;
@@ -218,10 +213,7 @@ Future<bool> confirmAction(
             child: Text(action),
           )
         else
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(action),
-          ),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(action)),
       ],
     ),
   );

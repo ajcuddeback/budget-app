@@ -48,13 +48,74 @@ Future<void> main(List<String> args) async {
 String arbKey(String dotted) => dotted.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
 
 const Set<String> _reserved = {
-  'abstract', 'as', 'assert', 'async', 'await', 'base', 'break', 'case', 'catch', 'class', //
-  'const', 'continue', 'covariant', 'default', 'deferred', 'do', 'dynamic', 'else', 'enum',
-  'export', 'extends', 'extension', 'external', 'factory', 'false', 'final', 'finally', 'for',
-  'function', 'get', 'hide', 'if', 'implements', 'import', 'in', 'interface', 'is', 'late',
-  'library', 'mixin', 'new', 'null', 'of', 'on', 'operator', 'part', 'required', 'rethrow',
-  'return', 'sealed', 'set', 'show', 'static', 'super', 'switch', 'sync', 'this', 'throw',
-  'true', 'try', 'type', 'typedef', 'var', 'void', 'when', 'while', 'with', 'yield',
+  'abstract',
+  'as',
+  'assert',
+  'async',
+  'await',
+  'base',
+  'break',
+  'case',
+  'catch',
+  'class', //
+  'const',
+  'continue',
+  'covariant',
+  'default',
+  'deferred',
+  'do',
+  'dynamic',
+  'else',
+  'enum',
+  'export',
+  'extends',
+  'extension',
+  'external',
+  'factory',
+  'false',
+  'final',
+  'finally',
+  'for',
+  'function',
+  'get',
+  'hide',
+  'if',
+  'implements',
+  'import',
+  'in',
+  'interface',
+  'is',
+  'late',
+  'library',
+  'mixin',
+  'new',
+  'null',
+  'of',
+  'on',
+  'operator',
+  'part',
+  'required',
+  'rethrow',
+  'return',
+  'sealed',
+  'set',
+  'show',
+  'static',
+  'super',
+  'switch',
+  'sync',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'type',
+  'typedef',
+  'var',
+  'void',
+  'when',
+  'while',
+  'with',
+  'yield',
 };
 
 /// The parameter name gen-l10n is given for a web placeholder.
@@ -151,9 +212,7 @@ Map<String, String> generate(Map<String, String> web, Map<String, String> mobile
   for (final key in keys) {
     final names = placeholders(all[key]!);
     final name = arbKey(key);
-    final call = names.isEmpty
-        ? 'l.$name'
-        : 'l.$name(${names.map((n) => "a('$n')").join(', ')})';
+    final call = names.isEmpty ? 'l.$name' : 'l.$name(${names.map((n) => "a('$n')").join(', ')})';
     lookup.writeln("    '${key.replaceAll("'", r"\'")}' => $call,");
   }
   lookup

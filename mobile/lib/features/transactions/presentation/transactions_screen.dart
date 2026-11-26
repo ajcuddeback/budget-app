@@ -83,6 +83,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Future<void> _openFilters(List<Category> categories) async {
     final next = await showModalBottomSheet<LedgerQuery>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (_) => _FilterSheet(query: _query, categories: categories),
@@ -100,6 +101,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final writer = ref.read(transactionsWriterProvider);
     final online = canWriteNowFrom(ref);
     final choice = await showModalBottomSheet<_RowAction>(
+      useRootNavigator: true,
       context: context,
       builder: (sheetContext) => _RowActionsSheet(row: row, online: online),
     );
@@ -272,10 +274,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   label: Text(l.transactions_needsCategoryFilter),
                   selected: _query.uncategorised,
                   onSelected: (on) => _filter(
-                    _query.copyWith(
-                      uncategorised: on,
-                      categoryId: on ? () => null : null,
-                    ),
+                    _query.copyWith(uncategorised: on, categoryId: on ? () => null : null),
                   ),
                 ),
                 if (_query.filtered)
@@ -338,9 +337,8 @@ class _Chip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-        color: selected ? context.colors.bg : context.colors.text,
-      ),
+      labelStyle: Theme.of(context).textTheme.labelLarge
+          ?.copyWith(color: selected ? context.colors.bg : context.colors.text),
       onSelected: (_) => onTap(),
     ),
   );
@@ -373,7 +371,11 @@ class _BalanceCard extends StatelessWidget {
                   style: text.bodyMedium?.copyWith(color: context.colors.muted),
                 ),
               ),
-              Text(context.money(account.balance), style: text.titleLarge),
+              Text(
+                context.money(account.balance),
+                textDirection: context.amountDirection,
+                style: text.titleLarge,
+              ),
             ],
           ),
         ),
@@ -452,7 +454,10 @@ class _LedgerBody extends StatelessWidget {
                     style: text.bodyMedium,
                   )
                 else
-                  Text(l.transactions_mixedCurrencies, style: text.bodySmall?.copyWith(color: muted)),
+                  Text(
+                    l.transactions_mixedCurrencies,
+                    style: text.bodySmall?.copyWith(color: muted),
+                  ),
               ],
             ),
           ),
@@ -490,16 +495,12 @@ class _RowActionsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final transferId = row.actionableTransferId;
-    Widget action(_RowAction value, IconData icon, String label, {bool danger = false}) =>
-        ListTile(
-          enabled: online,
-          leading: Icon(icon, color: danger ? context.colors.accentText : null),
-          title: Text(
-            label,
-            style: danger ? TextStyle(color: context.colors.accentText) : null,
-          ),
-          onTap: () => Navigator.of(context).pop(value),
-        );
+    Widget action(_RowAction value, IconData icon, String label, {bool danger = false}) => ListTile(
+      enabled: online,
+      leading: Icon(icon, color: danger ? context.colors.accentText : null),
+      title: Text(label, style: danger ? TextStyle(color: context.colors.accentText) : null),
+      onTap: () => Navigator.of(context).pop(value),
+    );
 
     return SafeArea(
       child: Column(

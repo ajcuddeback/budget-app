@@ -16,9 +16,7 @@ final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 /// Where the encrypted cache file lives: the platform's cache directory, which iOS never backs up
 /// (Library/Caches) and Android's backup is switched off for anyway (`allowBackup="false"`).
-final cacheDirectoryProvider = FutureProvider<Directory>(
-  (ref) => getApplicationCacheDirectory(),
-);
+final cacheDirectoryProvider = FutureProvider<Directory>((ref) => getApplicationCacheDirectory());
 
 /// Which platform's wording the device label takes. Overridden in tests.
 final targetPlatformProvider = Provider<TargetPlatform>((ref) => defaultTargetPlatform);

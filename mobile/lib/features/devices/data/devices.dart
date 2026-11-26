@@ -65,5 +65,6 @@ Future<void> revokeDevice(WidgetRef ref, Device device) async {
   final api = ref.read(apiClientProvider);
   if (api == null) throw const AppError.unexpected();
   await api.write('DELETE', '/api/auth/devices/${Uri.encodeComponent(device.id)}');
-  ref.read(dataRevisionProvider.notifier).bump();
+  // Only the list changed: no household data moved, so nothing else is re-read.
+  await ref.read(devicesProvider.notifier).refresh();
 }

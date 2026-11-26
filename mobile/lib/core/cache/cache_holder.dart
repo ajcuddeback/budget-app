@@ -59,8 +59,6 @@ final class CacheHolder {
 }
 
 final cacheHolderProvider = Provider<CacheHolder>(
-  (ref) => CacheHolder(
-    ref.watch(cacheKeyStoreProvider),
-    () => ref.read(cacheDirectoryProvider.future),
-  ),
+  (ref) =>
+      CacheHolder(ref.watch(cacheKeyStoreProvider), () => ref.read(cacheDirectoryProvider.future)),
 );

@@ -2,6 +2,7 @@
 // frontend/src/styles/tokens.css. Do not edit by hand: change the design
 // project, re-extract the web sheet, and re-run the script.
 //
+// ignore_for_file: prefer_int_literals
 
 import 'package:flutter/painting.dart';
 
@@ -123,9 +124,9 @@ abstract final class SpaceTokens {
 
 /// Corner radii, in logical pixels.
 abstract final class RadiusTokens {
-  static const double sm = 8;
-  static const double md = 16;
-  static const double lg = 28;
+  static const double sm = 8.0;
+  static const double md = 16.0;
+  static const double lg = 28.0;
 }
 
 /// Font families: the first name in each web stack. Bundled, never fetched.
@@ -142,11 +143,11 @@ abstract final class FontTokens {
 /// once and kept here so no widget invents its own. Settle a real scale in the
 /// design project and this block becomes generated like the rest.
 abstract final class TypeScaleTokens {
-  static const double display = 26;
-  static const double title = 20;
-  static const double body = 15;
-  static const double label = 13;
-  static const double small = 12;
-  static const double overline = 11;
-  static const double nav = 10;
+  static const double display = 26.0;
+  static const double title = 20.0;
+  static const double body = 15.0;
+  static const double label = 13.0;
+  static const double small = 12.0;
+  static const double overline = 11.0;
+  static const double nav = 10.0;
 }

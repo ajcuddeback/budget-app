@@ -59,5 +59,6 @@ final class AccountsResource extends CachedResource<List<Account>> {
   ];
 }
 
-final accountsProvider =
-    NotifierProvider.autoDispose<AccountsResource, Snapshot<List<Account>>>(AccountsResource.new);
+final accountsProvider = NotifierProvider.autoDispose<AccountsResource, Snapshot<List<Account>>>(
+  AccountsResource.new,
+);

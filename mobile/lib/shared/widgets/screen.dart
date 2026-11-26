@@ -41,20 +41,30 @@ class Screen extends StatelessWidget {
         SpaceTokens.s4,
         SpaceTokens.s2,
       ),
-      child: Row(
+      // A Wrap, so at large text the actions move under the title instead of squeezing it into
+      // one letter-broken column.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: SpaceTokens.s1,
         children: [
-          ?leading,
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ?leading,
+              Flexible(
+                child: Semantics(
+                  header: true,
+                  child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
+                ),
+              ),
+            ],
           ),
-          ...actions,
+          if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
         ],
       ),
     );
-    final Widget content = scrollable
+    final content = scrollable
         ? ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             // Room for a floating button over the last row.
@@ -63,7 +73,10 @@ class Screen extends StatelessWidget {
           )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [heading, Expanded(child: body)],
+            children: [
+              heading,
+              Expanded(child: body),
+            ],
           );
     final refresh = onRefresh;
     return Scaffold(
@@ -138,8 +151,6 @@ class PlaceholderScreen extends StatelessWidget {
   final String title;
 
   @override
-  Widget build(BuildContext context) => Screen(
-    title: title,
-    body: Lede(context.l10n.placeholder_body),
-  );
+  Widget build(BuildContext context) =>
+      Screen(title: title, body: Lede(context.l10n.placeholder_body));
 }

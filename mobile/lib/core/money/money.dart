@@ -20,8 +20,7 @@ final class Money {
   /// Refuses exponents, a leading `+`, non-ASCII digits, more than 15 integer digits and more than
   /// 4 decimals — the server's `NUMERIC(19,4)` — rather than trusting `Decimal.parse`, which would
   /// accept `1e10000000` and spend seconds expanding it (docs/memory/gotchas.md, AmountText).
-  factory Money.fromWire(String wire, String currency) =>
-      Money(parseWireAmount(wire), currency);
+  factory Money.fromWire(String wire, String currency) => Money(parseWireAmount(wire), currency);
 
   final Decimal amount;
   final String currency;
@@ -49,6 +48,10 @@ Decimal parseWireAmount(String wire) {
   }
   return Decimal.parse(wire);
 }
+
+/// U+2212, the minus sign a formatted amount carries, then a word joiner (U+2060) so no line
+/// can break between the sign and the figure.
+const String minusSign = '\u2212\u2060';
 
 /// [money] for a person reading in [locale], in the amount's own currency.
 ///
@@ -85,6 +88,11 @@ String formatMoney(Money money, String locale) {
   } else {
     final asInt = whole.toInt();
     text = wholeFormat.format(negative ? -asInt : asInt);
+  }
+  if (negative && symbols.MINUS_SIGN == '-') {
+    // The typographic minus, as the artboards set it. A hyphen-minus is a line-break opportunity,
+    // and "−$128.30" split across two lines as "-" and "$128.30" is a different figure at a glance.
+    text = text.replaceFirst('-', minusSign);
   }
   if (digits == 0) return text;
 

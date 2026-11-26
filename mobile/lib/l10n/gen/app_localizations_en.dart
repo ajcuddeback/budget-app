@@ -40,8 +40,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accounts_archivedHeading => 'Archived';
 
   @override
-  String get accounts_archivedNote =>
-      'These keep their history and take no new transactions.';
+  String get accounts_archivedNote => 'These keep their history and take no new transactions.';
 
   @override
   String get accounts_archivedNoteWritable =>
@@ -257,8 +256,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get admin_field_oidcIssuerUri => 'Issuer URL';
 
   @override
-  String get admin_field_oidcProvisioningEnabled =>
-      'Account creation through the provider';
+  String get admin_field_oidcProvisioningEnabled => 'Account creation through the provider';
 
   @override
   String get admin_field_passwordLoginEnabled => 'Email and password sign-in';
@@ -282,15 +280,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Who can sign in to this server, and how. Everything else an operator does — backups, upgrades, the database — is done on the machine, because the machine is yours.';
 
   @override
-  String get admin_nothingChanged =>
-      'Nothing had changed, so nothing was saved.';
+  String get admin_nothingChanged => 'Nothing had changed, so nothing was saved.';
 
   @override
   String get admin_oidcClientId => 'Client ID';
 
   @override
-  String get admin_oidcClientIdHint =>
-      'The identifier your provider issued for Budget Owl.';
+  String get admin_oidcClientIdHint => 'The identifier your provider issued for Budget Owl.';
 
   @override
   String get admin_oidcIssuer => 'Issuer URL';
@@ -370,15 +366,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Nothing in the browser can help once the browser is the thing you cannot get in through.';
 
   @override
-  String get admin_passwordOffRecoveryCommand =>
-      'deploy/restore-password-login.sh';
+  String get admin_passwordOffRecoveryCommand => 'deploy/restore-password-login.sh';
 
   @override
   String get admin_passwordOn => 'Email and password sign-in is on.';
 
   @override
-  String get admin_passwordSwitch =>
-      'Offer sign-in with an email address and a password';
+  String get admin_passwordSwitch => 'Offer sign-in with an email address and a password';
 
   @override
   String get admin_registrationConsequence =>
@@ -523,8 +517,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'A bill is something that leaves on a date — rent, a phone contract, a season ticket. Set one up and it is listed before it is due, so nothing surprises you.';
 
   @override
-  String get bills_emptyReadOnly =>
-      'Ask an owner or member of your household to set some up.';
+  String get bills_emptyReadOnly => 'Ask an owner or member of your household to set some up.';
 
   @override
   String get bills_envelopes_allocated => 'Set aside this month';
@@ -633,8 +626,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bills_income_name => 'Name';
 
   @override
-  String get bills_income_nameHint =>
-      'What you would call it out loud — “Salary”, “Pension”.';
+  String get bills_income_nameHint => 'What you would call it out loud — “Salary”, “Pension”.';
 
   @override
   String get bills_income_noAccount => 'No account';
@@ -720,8 +712,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bills_name => 'Name';
 
   @override
-  String get bills_nameHint =>
-      'What you would call it out loud — “Rent”, “Phone”.';
+  String get bills_nameHint => 'What you would call it out loud — “Rent”, “Phone”.';
 
   @override
   String get bills_nextMonth => 'Next month';
@@ -779,8 +770,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get bills_owed_none =>
-      'No debts recorded, so nothing here comes off what is left.';
+  String get bills_owed_none => 'No debts recorded, so nothing here comes off what is left.';
 
   @override
   String bills_owed_notInBills(String amount) {
@@ -1034,8 +1024,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Categories let you see where your money goes. You started with a set — if you\'ve deleted them all, add the ones you want.';
 
   @override
-  String get categories_emptyReadOnly =>
-      'Ask an owner or member of your household to add some.';
+  String get categories_emptyReadOnly => 'Ask an owner or member of your household to add some.';
 
   @override
   String get categories_hasChildrenHint =>
@@ -1250,8 +1239,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get checkIn_charge_remember =>
-      'Remember: this payee in this account pays this bill';
+  String get checkIn_charge_remember => 'Remember: this payee in this account pays this bill';
 
   @override
   String get checkIn_charge_whichBill => 'Which bill';
@@ -1300,12 +1288,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String checkIn_choice_goalMoves(
-    String goal,
-    String from,
-    String to,
-    String target,
-  ) {
+  String checkIn_choice_goalMoves(String goal, String from, String to, String target) {
     return '$goal · $from → $to of $target';
   }
 
@@ -1620,8 +1603,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkIn_prompt_label => 'Weekly check-in';
 
   @override
-  String get checkIn_prompt_quiet =>
-      'A few minutes to see where the week went.';
+  String get checkIn_prompt_quiet => 'A few minutes to see where the week went.';
 
   @override
   String get checkIn_prompt_start => 'Start now';
@@ -1649,8 +1631,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get checkIn_rules_archived =>
-      'Archived: suggests nothing until you restore the category.';
+  String get checkIn_rules_archived => 'Archived: suggests nothing until you restore the category.';
 
   @override
   String checkIn_rules_files(String category) {
@@ -1717,20 +1698,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkIn_stale_goal_archived => 'That goal has been archived.';
 
   @override
-  String get checkIn_stale_limit_reached =>
-      'That goal or debt has as many records as it can hold.';
+  String get checkIn_stale_limit_reached => 'That goal or debt has as many records as it can hold.';
 
   @override
   String get checkIn_stale_subject_changed =>
       'This changed in the ledger after you answered. Check it and answer again.';
 
   @override
-  String get checkIn_stale_subject_gone =>
-      'This is no longer part of the week.';
+  String get checkIn_stale_subject_gone => 'This is no longer part of the week.';
 
   @override
-  String get checkIn_stale_surplus_changed =>
-      'This week\'s surplus changed. Choose again.';
+  String get checkIn_stale_surplus_changed => 'This week\'s surplus changed. Choose again.';
 
   @override
   String get checkIn_stale_target_archived =>
@@ -1946,8 +1924,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connect_checking => 'Checking the server…';
 
   @override
-  String get connect_connectedLede =>
-      'This is a Budget Owl server. What would you like to do?';
+  String get connect_connectedLede => 'This is a Budget Owl server. What would you like to do?';
 
   @override
   String connect_connectedTo(String host) {
@@ -1974,8 +1951,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something answered at that address, but it isn\'t a Budget Owl server.';
 
   @override
-  String get connect_error_transport =>
-      'The connection to the server failed part-way. Try again.';
+  String get connect_error_transport => 'The connection to the server failed part-way. Try again.';
 
   @override
   String get connect_error_unreachable =>
@@ -2009,16 +1985,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connect_problem_empty => 'Enter your server\'s address.';
 
   @override
-  String get connect_problem_invalid =>
-      'That doesn\'t look like a server address.';
+  String get connect_problem_invalid => 'That doesn\'t look like a server address.';
 
   @override
   String get connect_problem_path =>
       'Enter just the server\'s address, with nothing after its name — no /api and no other path.';
 
   @override
-  String get connect_problem_query =>
-      'Enter just the server\'s address, without a ? or # part.';
+  String get connect_problem_query => 'Enter just the server\'s address, without a ? or # part.';
 
   @override
   String get connect_setUp => 'Set up a new server';
@@ -2129,8 +2103,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get debt_card_noInterest =>
-      'No interest total, because this order has no end date yet.';
+  String get debt_card_noInterest => 'No interest total, because this order has no end date yet.';
 
   @override
   String debt_card_totalInterest(String amount) {
@@ -2153,12 +2126,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The comparison line assumes the minimum never changes. A card\'s real minimum falls as the balance falls, which stretches it out further still — so the comparison is kinder to the minimum than reality is.';
 
   @override
-  String debt_chart_buying(
-    String extra,
-    String months,
-    String soon,
-    String lateValue,
-  ) {
+  String debt_chart_buying(String extra, String months, String soon, String lateValue) {
     return 'Paying $extra extra is buying you $months months: gone by $soon instead of $lateValue.';
   }
 
@@ -2191,13 +2159,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_chart_pace => 'What you are paying';
 
   @override
-  String debt_chart_said(
-    String name,
-    String from,
-    String fromMonth,
-    String to,
-    String toMonth,
-  ) {
+  String debt_chart_said(String name, String from, String fromMonth, String to, String toMonth) {
     return '$name: $from in $fromMonth, down to $to in $toMonth.';
   }
 
@@ -2215,12 +2177,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_chartHeading => 'Balance to zero';
 
   @override
-  String get debt_clears_never =>
-      'Does not clear — the payment is under the interest';
+  String get debt_clears_never => 'Does not clear — the payment is under the interest';
 
   @override
-  String get debt_clears_noPlan =>
-      'No date — the monthly amount is under the minimums';
+  String get debt_clears_noPlan => 'No date — the monthly amount is under the minimums';
 
   @override
   String debt_clears_on(String month) {
@@ -2375,8 +2335,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_estimate_staleTitle => 'Time for a statement';
 
   @override
-  String get debt_estimate_stopEstimating =>
-      'Stop estimating — use the last figure I confirmed';
+  String get debt_estimate_stopEstimating => 'Stop estimating — use the last figure I confirmed';
 
   @override
   String get debt_estimate_title => 'Is this still right?';
@@ -2442,15 +2401,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get debt_field_currencyHint =>
-      'Totals are worked out per currency, never converted.';
+  String get debt_field_currencyHint => 'Totals are worked out per currency, never converted.';
 
   @override
   String get debt_field_kind => 'Kind';
 
   @override
-  String get debt_field_kindHint =>
-      'A card revolves; an installment loan has a term.';
+  String get debt_field_kindHint => 'A card revolves; an installment loan has a term.';
 
   @override
   String get debt_field_minimum => 'Minimum payment';
@@ -2463,8 +2420,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_field_name => 'What you call it';
 
   @override
-  String get debt_field_nameHint =>
-      'Whatever you would say out loud — “Visa”, “Car loan”.';
+  String get debt_field_nameHint => 'Whatever you would say out loud — “Visa”, “Car loan”.';
 
   @override
   String get debt_field_noAccount => 'Not an account I track';
@@ -2483,8 +2439,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_field_servicer => 'Who you owe it to';
 
   @override
-  String get debt_field_servicerHint =>
-      'Optional. The lender or servicer on the statement.';
+  String get debt_field_servicerHint => 'Optional. The lender or servicer on the statement.';
 
   @override
   String debt_footer(String minimums) {
@@ -2695,11 +2650,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Which of your accounts the money left. Nothing is recorded against that account and no transaction is created — this is only where a matching charge will be looked for later.';
 
   @override
-  String debt_payment_preview(
-    String interest,
-    String principal,
-    String balance,
-  ) {
+  String debt_payment_preview(String interest, String principal, String balance) {
     return '$interest interest · $principal principal · balance after $balance';
   }
 
@@ -2711,11 +2662,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_payment_record => 'Record it';
 
   @override
-  String debt_payment_recorded(
-    String interest,
-    String principal,
-    String balance,
-  ) {
+  String debt_payment_recorded(String interest, String principal, String balance) {
     return 'Payment recorded: $interest interest · $principal principal. Balance now $balance.';
   }
 
@@ -2779,8 +2726,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Smallest balance first, so the first debt is gone soonest — which some people need to keep going.';
 
   @override
-  String get debt_reason_belowMinimums =>
-      'the monthly amount is less than the minimums';
+  String get debt_reason_belowMinimums => 'the monthly amount is less than the minimums';
 
   @override
   String get debt_reason_neverClears =>
@@ -3112,8 +3058,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'An envelope is an amount you decide on and spend down — groceries, eating out, fuel. Set one up and you\'ll see what\'s left as you go.';
 
   @override
-  String get envelopes_emptyReadOnly =>
-      'Ask an owner or member of your household to set some up.';
+  String get envelopes_emptyReadOnly => 'Ask an owner or member of your household to set some up.';
 
   @override
   String get envelopes_entryDeleted => 'Entry removed.';
@@ -3258,8 +3203,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This account has transactions recorded against it, so it cannot be deleted. Archive it instead — it keeps its history and disappears from your lists.';
 
   @override
-  String get error_authentication_failed =>
-      'The email address or password is not right.';
+  String get error_authentication_failed => 'The email address or password is not right.';
 
   @override
   String get error_bill_inactive =>
@@ -3301,15 +3245,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your session could not be verified. Reload the page and try again.';
 
   @override
-  String get error_current_password_incorrect =>
-      'The current password is not right.';
+  String get error_current_password_incorrect => 'The current password is not right.';
 
   @override
   String get error_forbidden => 'You do not have permission to do that.';
 
   @override
-  String get error_generic =>
-      'Something went wrong on our side. Try again in a moment.';
+  String get error_generic => 'Something went wrong on our side. Try again in a moment.';
 
   @override
   String get error_goal_archived =>
@@ -3351,8 +3293,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get error_import_file_empty => 'That file is empty.';
 
   @override
-  String get error_import_file_malformed =>
-      'That file can\'t be read as a bank statement.';
+  String get error_import_file_malformed => 'That file can\'t be read as a bank statement.';
 
   @override
   String get error_import_file_malformed_binary =>
@@ -3427,12 +3368,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'That file has more than 10,000 transactions, the most Budget Owl reads at once. Export a shorter date range and import it in parts.';
 
   @override
-  String get error_income_name_taken =>
-      'You already have an income source with that name.';
+  String get error_income_name_taken => 'You already have an income source with that name.';
 
   @override
-  String get error_internal_error =>
-      'Something went wrong on our side. Try again in a moment.';
+  String get error_internal_error => 'Something went wrong on our side. Try again in a moment.';
 
   @override
   String get error_invitation_refused =>
@@ -3462,20 +3401,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get error_not_a_member => 'You are not a member of this household.';
 
   @override
-  String get error_not_authenticated =>
-      'You are not signed in. Sign in and try again.';
+  String get error_not_authenticated => 'You are not signed in. Sign in and try again.';
 
   @override
-  String get error_not_found =>
-      'That could not be found. It may have been removed.';
+  String get error_not_found => 'That could not be found. It may have been removed.';
 
   @override
   String get error_not_instance_admin =>
       'Only the person who administers this instance can do that. On a self-hosted Budget Owl that is whoever set it up.';
 
   @override
-  String get error_own_role_unchangeable =>
-      'Nobody can change their own role. Ask another owner.';
+  String get error_own_role_unchangeable => 'Nobody can change their own role. Ask another owner.';
 
   @override
   String get error_owner_only => 'Only an owner of the household can do that.';
@@ -3485,8 +3421,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Email and password sign-in cannot be turned off yet. An owner has to complete a sign-in through your provider first, which proves the new way in works before the old one is hidden.';
 
   @override
-  String get error_password_unacceptable =>
-      'That password cannot be used. Choose a different one.';
+  String get error_password_unacceptable => 'That password cannot be used. Choose a different one.';
 
   @override
   String get error_password_unacceptable_breached =>
@@ -3512,8 +3447,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get error_read_only_role =>
-      'Your role in this household is read-only.';
+  String get error_read_only_role => 'Your role in this household is read-only.';
 
   @override
   String error_reference(String id) {
@@ -3546,8 +3480,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This is one half of a transfer, and the two halves are always changed together. Edit or delete the transfer itself.';
 
   @override
-  String get error_transfer_pair_mismatch =>
-      'Those two rows can\'t be one transfer.';
+  String get error_transfer_pair_mismatch => 'Those two rows can\'t be one transfer.';
 
   @override
   String get error_transfer_pair_mismatch_amounts_differ =>
@@ -3836,8 +3769,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goals_listLabel => 'Your goals';
 
   @override
-  String get goals_noInterest =>
-      'This assumes no interest or growth: a goal is what you put in.';
+  String get goals_noInterest => 'This assumes no interest or growth: a goal is what you put in.';
 
   @override
   String get goals_open => 'Open →';
@@ -3890,12 +3822,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The figures could not be worked out just now. You can still save.';
 
   @override
-  String goals_projection_late(
-    String monthly,
-    String month,
-    String count,
-    String target,
-  ) {
+  String goals_projection_late(String monthly, String month, String count, String target) {
     return 'At $monthly a month you reach it in $month — $count months after $target.';
   }
 
@@ -3915,11 +3842,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String goals_projection_overdueReaches(
-    String target,
-    String monthly,
-    String month,
-  ) {
+  String goals_projection_overdueReaches(String target, String monthly, String month) {
     return 'Overdue since $target — at $monthly a month you reach it in $month.';
   }
 
@@ -3981,8 +3904,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goals_reason_reached => 'Reached.';
 
   @override
-  String get goals_reason_targetMonthPassed =>
-      'The month you picked has passed.';
+  String get goals_reason_targetMonthPassed => 'The month you picked has passed.';
 
   @override
   String get goals_removeContribution_body =>
@@ -4004,8 +3926,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The month you picked is more than fifty years away, so there is no monthly figure for it.';
 
   @override
-  String get goals_required_noContribution =>
-      'Set a monthly amount to see when you get there.';
+  String get goals_required_noContribution => 'Set a monthly amount to see when you get there.';
 
   @override
   String get goals_required_noTargetMonth =>
@@ -4038,8 +3959,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goals_unarchive => 'Restore';
 
   @override
-  String get goals_unarchived =>
-      'The goal is restored, and is part of the month\'s plan again.';
+  String get goals_unarchived => 'The goal is restored, and is part of the month\'s plan again.';
 
   @override
   String get goals_updated => 'The goal is updated.';
@@ -4092,8 +4012,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_balanceAfter => 'After this import';
 
   @override
-  String get import_balanceAfterWithSuspected =>
-      'If you include every one that looks typed';
+  String get import_balanceAfterWithSuspected => 'If you include every one that looks typed';
 
   @override
   String get import_balanceDiffers =>
@@ -4161,8 +4080,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_columns => 'Columns';
 
   @override
-  String get import_columnsCaption =>
-      'The first rows of your file, with what each column holds';
+  String get import_columnsCaption => 'The first rows of your file, with what each column holds';
 
   @override
   String get import_committing => 'Importing…';
@@ -4191,8 +4109,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_dateFormat => 'Date format';
 
   @override
-  String get import_dateFormat_compact =>
-      'Year, month and day together (20260803)';
+  String get import_dateFormat_compact => 'Year, month and day together (20260803)';
 
   @override
   String get import_dateFormat_dmy => 'Day/month/year (3/8/2026)';
@@ -4278,8 +4195,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get import_doneDetail =>
-      'They\'re in Needs a category, ready for you to sort.';
+  String get import_doneDetail => 'They\'re in Needs a category, ready for you to sort.';
 
   @override
   String get import_dropHint => 'Or drop the file onto this box.';
@@ -4345,8 +4261,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_headerRow => 'Header row';
 
   @override
-  String get import_headerRowHint =>
-      'Which line holds the column names. 0 if the file has none.';
+  String get import_headerRowHint => 'Which line holds the column names. 0 if the file has none.';
 
   @override
   String get import_history => 'Recent imports';
@@ -4412,8 +4327,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This file\'s columns aren\'t the same as the last file you imported into this account. Check the settings before you update the preview.';
 
   @override
-  String get import_mappingSaved =>
-      'These are the settings you saved for this account.';
+  String get import_mappingSaved => 'These are the settings you saved for this account.';
 
   @override
   String get import_mappingSuggested =>
@@ -4459,8 +4373,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_preview => 'Preview the import';
 
   @override
-  String get import_readFailed =>
-      'Your browser couldn\'t open that file. Try choosing it again.';
+  String get import_readFailed => 'Your browser couldn\'t open that file. Try choosing it again.';
 
   @override
   String get import_ready => 'Preview ready.';
@@ -4505,31 +4418,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_role_none => 'Not used';
 
   @override
-  String get import_row_row_amount_too_large =>
-      'The amount is larger than Budget Owl records.';
+  String get import_row_row_amount_too_large => 'The amount is larger than Budget Owl records.';
 
   @override
-  String get import_row_row_amount_too_precise =>
-      'The amount has more than four decimal places.';
+  String get import_row_row_amount_too_precise => 'The amount has more than four decimal places.';
 
   @override
   String get import_row_row_amount_unreadable => 'The amount can\'t be read.';
 
   @override
-  String get import_row_row_columns_short =>
-      'It has fewer columns than the rows around it.';
+  String get import_row_row_columns_short => 'It has fewer columns than the rows around it.';
 
   @override
-  String get import_row_row_currency_mismatch =>
-      'It\'s in a different currency from the account.';
+  String get import_row_row_currency_mismatch => 'It\'s in a different currency from the account.';
 
   @override
-  String get import_row_row_date_ambiguous =>
-      'The date can be read more than one way.';
+  String get import_row_row_date_ambiguous => 'The date can be read more than one way.';
 
   @override
-  String get import_row_row_date_out_of_range =>
-      'The date is too far in the past or the future.';
+  String get import_row_row_date_out_of_range => 'The date is too far in the past or the future.';
 
   @override
   String get import_row_row_date_unreadable => 'The date can\'t be read.';
@@ -4539,8 +4446,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'It contains a character code Budget Owl doesn\'t recognise.';
 
   @override
-  String get import_row_row_missing_field =>
-      'It\'s missing a date or an amount.';
+  String get import_row_row_missing_field => 'It\'s missing a date or an amount.';
 
   @override
   String get import_row_unknown => 'It can\'t be read.';
@@ -4731,12 +4637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String insights_keptLongPartial(
-    String amount,
-    String count,
-    String month,
-    String best,
-  ) {
+  String insights_keptLongPartial(String amount, String count, String month, String best) {
     return 'Kept an average of $amount a month over the $count complete months. Best month was $month, at $best.';
   }
 
@@ -4782,22 +4683,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insights_range_label => 'Range';
 
   @override
-  String insights_said_income(
-    String first,
-    String firstMonth,
-    String last,
-    String lastMonth,
-  ) {
+  String insights_said_income(String first, String firstMonth, String last, String lastMonth) {
     return 'Income: $first in $firstMonth, to $last in $lastMonth.';
   }
 
   @override
-  String insights_said_spending(
-    String first,
-    String firstMonth,
-    String last,
-    String lastMonth,
-  ) {
+  String insights_said_spending(String first, String firstMonth, String last, String lastMonth) {
     return 'Spending: $first in $firstMonth, to $last in $lastMonth.';
   }
 
@@ -4823,11 +4714,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insights_uncategorised_link => 'Give them a category';
 
   @override
-  String insights_uncategorised_many_both(
-    String count,
-    String out,
-    String inValue,
-  ) {
+  String insights_uncategorised_many_both(String count, String out, String inValue) {
     return '$count transactions need a category, so $out out and $inValue in aren\'t counted as income or spending.';
   }
 
@@ -4897,11 +4784,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insights_where_showFewer => 'Show fewer categories';
 
   @override
-  String insights_where_total(
-    String amount,
-    String compared,
-    String comparedMonth,
-  ) {
+  String insights_where_total(String amount, String compared, String comparedMonth) {
     return '$amount spent, against $compared in $comparedMonth.';
   }
 
@@ -4925,8 +4808,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invite_copy => 'Copy link';
 
   @override
-  String get invite_copyManual =>
-      'The link is selected. Copy it with your keyboard.';
+  String get invite_copyManual => 'The link is selected. Copy it with your keyboard.';
 
   @override
   String get invite_create => 'Create link';
@@ -4961,8 +4843,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invite_revoke => 'Revoke link';
 
   @override
-  String get invite_revoked =>
-      'This link has been revoked and can no longer be used.';
+  String get invite_revoked => 'This link has been revoked and can no longer be used.';
 
   @override
   String get invite_role => 'Their role';
@@ -4983,8 +4864,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'New here? Enter your name and choose a password. Already have an account on this instance? Leave both fields empty and you will be added with it.';
 
   @override
-  String get join_disclosure_heading =>
-      'Before you join: who can see your finances';
+  String get join_disclosure_heading => 'Before you join: who can see your finances';
 
   @override
   String get join_disclosure_nothingHidden =>
@@ -5087,20 +4967,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get login_heading => 'Your account';
 
   @override
-  String get login_lede =>
-      'Welcome back. Sign in to see your household\'s budget.';
+  String get login_lede => 'Welcome back. Sign in to see your household\'s budget.';
 
   @override
-  String get login_notice_created =>
-      'Your account is ready. Sign in to continue.';
+  String get login_notice_created => 'Your account is ready. Sign in to continue.';
 
   @override
-  String get login_notice_expired =>
-      'Your session ended. Sign in again to continue.';
+  String get login_notice_expired => 'Your session ended. Sign in again to continue.';
 
   @override
-  String get login_notice_joined =>
-      'You have joined the household. Sign in to continue.';
+  String get login_notice_joined => 'You have joined the household. Sign in to continue.';
 
   @override
   String get login_password => 'Password';
@@ -5280,8 +5156,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get offline_noCopy =>
-      'You\'re offline, and this phone has no saved copy of this yet.';
+  String get offline_noCopy => 'You\'re offline, and this phone has no saved copy of this yet.';
 
   @override
   String offline_staleNoAnswer(String ago) {
@@ -5328,8 +5203,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Both rows will lose their category and payee, and stop counting as income or spending. Splitting them later brings back two rows with no category.';
 
   @override
-  String get pairing_none =>
-      'No rows match. Try another account or other dates.';
+  String get pairing_none => 'No rows match. Try another account or other dates.';
 
   @override
   String get pairing_paired => 'Paired into a transfer.';
@@ -5393,29 +5267,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get preferences_title => 'Your preferences';
 
   @override
-  String get privacy_hidden =>
-      'Budget Owl is hidden while the app is in the background.';
+  String get privacy_hidden => 'Budget Owl is hidden while the app is in the background.';
 
   @override
   String get role_MEMBER => 'Member';
 
   @override
-  String get role_MEMBER_description =>
-      'can see and change the household\'s money';
+  String get role_MEMBER_description => 'can see and change the household\'s money';
 
   @override
   String get role_OWNER => 'Owner';
 
   @override
-  String get role_OWNER_description =>
-      'everything, including inviting and removing people';
+  String get role_OWNER_description => 'everything, including inviting and removing people';
 
   @override
   String get role_VIEWER => 'Viewer';
 
   @override
-  String get role_VIEWER_description =>
-      'can see the household\'s money, but not change it';
+  String get role_VIEWER_description => 'can see the household\'s money, but not change it';
 
   @override
   String get setup_accountHeading => 'Your account';
@@ -5643,8 +5513,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Everything that\'s happened to your money. Record what you spend as you go — you can always put a category on it later.';
 
   @override
-  String get transactions_mixedCurrencies =>
-      'No total — this page mixes currencies.';
+  String get transactions_mixedCurrencies => 'No total — this page mixes currencies.';
 
   @override
   String get transactions_needsCategory => 'Needs a category';
@@ -5845,8 +5714,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers_note => 'Note';
 
   @override
-  String get transfers_noteHint =>
-      'Optional. Both halves of the transfer get it.';
+  String get transfers_noteHint => 'Optional. Both halves of the transfer get it.';
 
   @override
   String get transfers_to => 'Into';
@@ -5855,8 +5723,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers_updated => 'Transfer saved.';
 
   @override
-  String get validation_amount =>
-      'Enter an amount using digits and a dot, like 1250.00 or -400.';
+  String get validation_amount => 'Enter an amount using digits and a dot, like 1250.00 or -400.';
 
   @override
   String get validation_currency => 'Enter a three-letter currency code.';
@@ -5869,8 +5736,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter the provider\'s address starting with https:// — or http:// only if it runs on this same machine.';
 
   @override
-  String get validation_lastFour =>
-      'Enter exactly four digits, or leave this empty.';
+  String get validation_lastFour => 'Enter exactly four digits, or leave this empty.';
 
   @override
   String validation_maxBytes(String max) {
@@ -5899,6 +5765,5 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose a different account. Money can\'t move from an account to itself.';
 
   @override
-  String get validation_server =>
-      'This value was not accepted. Check it and try again.';
+  String get validation_server => 'This value was not accepted. Check it and try again.';
 }

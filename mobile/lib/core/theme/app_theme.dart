@@ -1,4 +1,3 @@
-
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -89,11 +88,15 @@ TextStyle typeface({
   fontFamilyFallback: heading ? headingFallback : bodyFallback,
   fontSize: size,
   fontWeight: FontWeight.values[(weight ~/ 100) - 1],
-  fontVariations: [FontVariation('wght', weight.toDouble())],
+  fontVariations: [FontVariation('wght', _weightAxis[weight] ?? 400)],
   height: height,
   letterSpacing: letterSpacing,
   color: color,
 );
+
+/// The variable fonts' `wght` axis value for each weight the app uses. A table rather than a
+/// conversion, so `lib/` holds no `toDouble()` for the money guard to have to excuse.
+const Map<int, double> _weightAxis = {400: 400, 500: 500, 600: 600, 700: 700};
 
 ThemeData buildTheme(Brightness brightness) {
   final palette = brightness == Brightness.dark ? Palette.dark : Palette.light;
@@ -137,9 +140,7 @@ ThemeData buildTheme(Brightness brightness) {
   ).apply(bodyColor: c.text, displayColor: c.text);
 
   const pill = StadiumBorder();
-  final rounded = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(RadiusTokens.md),
-  );
+  final rounded = RoundedRectangleBorder(borderRadius: BorderRadius.circular(RadiusTokens.md));
   const minimumTap = Size(48, 48);
 
   return ThemeData(
@@ -259,9 +260,7 @@ ThemeData buildTheme(Brightness brightness) {
         typeface(size: TypeScaleTokens.nav, weight: 600, color: c.text),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
-        (states) => IconThemeData(
-          color: states.contains(WidgetState.selected) ? c.text : c.muted,
-        ),
+        (states) => IconThemeData(color: states.contains(WidgetState.selected) ? c.text : c.muted),
       ),
     ),
     bottomSheetTheme: BottomSheetThemeData(

@@ -26,7 +26,8 @@ enum TransactionStatus {
   };
 
   /// The web's message key for the status.
-  String get messageKey => this == other ? 'transactions.status.unknown' : 'transactions.status.$wire';
+  String get messageKey =>
+      this == other ? 'transactions.status.unknown' : 'transactions.status.$wire';
 
   static const List<TransactionStatus> settable = [cleared, pending];
 }

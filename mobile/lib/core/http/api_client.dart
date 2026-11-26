@@ -113,10 +113,7 @@ final class ApiClient {
         data: body == null ? null : jsonEncode(body),
         options: Options(
           method: method,
-          headers: {
-            ...headers,
-            if (body != null) 'Content-Type': 'application/json',
-          },
+          headers: {...headers, if (body != null) 'Content-Type': 'application/json'},
           extra: {_publicKey: public},
         ),
       );
@@ -265,9 +262,7 @@ final class _RedactedLog extends Interceptor {
   }
 }
 
-final RegExp _uuid = RegExp(
-  r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-);
+final RegExp _uuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
 /// The log line for an exchange. Public for its test.
 String redactedLine(RequestOptions options, int? status) {

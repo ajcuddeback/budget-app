@@ -38,8 +38,11 @@ String? redirectFor(SessionState session, String location) {
       return at(Routes.connect) ? null : Routes.connect;
     case SessionUnsupported():
       return at(Routes.connect) ? null : Routes.connect;
-    case SessionSignedOut():
-      return Routes.signedOut.any(at) ? null : Routes.signIn;
+    case SessionSignedOut(:final notice):
+      if (Routes.signedOut.any(at)) return null;
+      // A session that just ended, or an account just made, goes straight to sign-in with its
+      // note; otherwise the connect screen's choices — sign in, join, or set up.
+      return notice == null ? Routes.connect : Routes.signIn;
     case SessionSignedIn(:final user):
       if (user.membership == null) {
         return at(Routes.noHousehold) ? null : Routes.noHousehold;
@@ -121,8 +124,7 @@ class _TabShell extends StatelessWidget {
         onDestinationSelected: (index) =>
             shell.goBranch(index, initialLocation: index == shell.currentIndex),
         destinations: [
-          for (final tab in tabs)
-            NavigationDestination(icon: Icon(tab.icon), label: tab.label(l)),
+          for (final tab in tabs) NavigationDestination(icon: Icon(tab.icon), label: tab.label(l)),
           NavigationDestination(icon: const Icon(Icons.more_horiz), label: l.nav_more),
         ],
       ),

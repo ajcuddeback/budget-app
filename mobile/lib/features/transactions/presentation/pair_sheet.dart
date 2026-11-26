@@ -12,7 +12,7 @@ Future<String?> showPairSheet(
   BuildContext context, {
   required Transaction row,
   required List<Transaction> ledger,
-}) => Navigator.of(context).push<String>(
+}) => Navigator.of(context, rootNavigator: true).push<String>(
   MaterialPageRoute(
     fullscreenDialog: true,
     builder: (_) => PairSheet(row: row, ledger: ledger),
@@ -40,9 +40,8 @@ class _PairSheetState extends ConsumerState<PairSheet> {
   AppError? _error;
   bool _busy = false;
 
-  List<Transaction> get _candidates => widget.ledger
-      .where((t) => t.accountId != widget.row.accountId && !t.transfer)
-      .toList();
+  List<Transaction> get _candidates =>
+      widget.ledger.where((t) => t.accountId != widget.row.accountId && !t.transfer).toList();
 
   Future<void> _pair() async {
     final other = _chosen;
@@ -76,7 +75,7 @@ class _PairSheetState extends ConsumerState<PairSheet> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.pairing_title),
+        title: Text(l.pairing_title, maxLines: 2),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: l.common_cancel,
@@ -96,9 +95,8 @@ class _PairSheetState extends ConsumerState<PairSheet> {
             if (candidates.isEmpty) Text(l.pairing_none, style: text.bodyMedium),
             RadioGroup<String>(
               groupValue: _chosen?.id,
-              onChanged: (id) => setState(
-                () => _chosen = candidates.where((t) => t.id == id).firstOrNull,
-              ),
+              onChanged: (id) =>
+                  setState(() => _chosen = candidates.where((t) => t.id == id).firstOrNull),
               child: Column(
                 children: [
                   for (final t in candidates)

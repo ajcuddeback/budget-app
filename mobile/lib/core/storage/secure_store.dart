@@ -23,9 +23,7 @@ final class PlatformSecureStore implements SecureStore {
   const PlatformSecureStore();
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage(
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
   );
 
   @override

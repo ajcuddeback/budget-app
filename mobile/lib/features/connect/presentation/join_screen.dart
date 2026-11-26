@@ -7,6 +7,7 @@ import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/features/connect/domain/invitation_link.dart';
+import 'package:budget_owl/features/connect/presentation/back_to_connect.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
@@ -98,6 +99,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
     if (token == null) {
       return Screen(
+        leading: const BackToConnect(),
         title: l.join_title,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -143,6 +145,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       l.join_disclosure_trust,
     ];
     return Screen(
+      leading: const BackToConnect(),
       title: l.join_title,
       body: Form(
         key: _form,
@@ -150,7 +153,9 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Lede(l.join_lede),
-            Gutter(child: _Disclosure(heading: l.join_disclosure_heading, lines: disclosure)),
+            Gutter(
+              child: _Disclosure(heading: l.join_disclosure_heading, lines: disclosure),
+            ),
             Gutter(child: Text(l.join_accountNote)),
             Gutter(
               child: TextFormField(

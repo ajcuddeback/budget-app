@@ -4,6 +4,7 @@ import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/platform/device_label.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/features/connect/data/setup_status.dart';
+import 'package:budget_owl/features/connect/presentation/back_to_connect.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:flutter/services.dart';
@@ -57,13 +58,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     });
     try {
       final label = _label.text.trim();
-      await ref.read(sessionProvider.notifier).signIn(
-        email: _email.text.trim(),
-        password: _password.text,
-        deviceLabel: label.isEmpty
-            ? deviceLabelFor(ref.read(targetPlatformProvider), context.l10n)
-            : label,
-      );
+      await ref
+          .read(sessionProvider.notifier)
+          .signIn(
+            email: _email.text.trim(),
+            password: _password.text,
+            deviceLabel: label.isEmpty
+                ? deviceLabelFor(ref.read(targetPlatformProvider), context.l10n)
+                : label,
+          );
     } on AppError catch (error) {
       if (mounted) setState(() => _error = error);
     } finally {
@@ -83,6 +86,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final error = _error;
 
     return Screen(
+      leading: const BackToConnect(),
       title: l.login_title,
       body: AutofillGroup(
         child: Column(

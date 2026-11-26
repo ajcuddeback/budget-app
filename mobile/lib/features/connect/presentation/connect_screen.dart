@@ -111,8 +111,7 @@ class _AddressStepState extends ConsumerState<_AddressStep> {
           ),
           if (problem == AddressProblem.cleartext)
             Gutter(child: Text(l.connect_problem_cleartextHelp)),
-          if (failure != null)
-            Gutter(child: NoticeBanner(text: connectFailureText(l, failure))),
+          if (failure != null) Gutter(child: NoticeBanner(text: connectFailureText(l, failure))),
           Gutter(
             child: FilledButton(
               onPressed: _busy ? null : _connect,
@@ -183,8 +182,7 @@ class _Choices extends ConsumerWidget {
               child: Text(l.connect_join),
             ),
           ),
-          if (status.hasError)
-            Gutter(child: NoticeBanner(text: l.error_network)),
+          if (status.hasError) Gutter(child: NoticeBanner(text: l.error_network)),
           const SizedBox(height: SpaceTokens.s4),
           Gutter(
             child: TextButton(

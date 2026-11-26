@@ -27,7 +27,7 @@ Future<String?> showTransactionSheet(
   required List<Category> categories,
   Transaction? editing,
   String? defaultAccountId,
-}) => Navigator.of(context).push<String>(
+}) => Navigator.of(context, rootNavigator: true).push<String>(
   MaterialPageRoute(
     fullscreenDialog: true,
     builder: (_) => TransactionSheet(
@@ -136,9 +136,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
     _debounce = Timer(const Duration(milliseconds: 350), () async {
       final found = await ref.read(transactionsWriterProvider).suggestPayees(typed.trim());
       if (mounted) {
-        setState(
-          () => _suggestions = found.where((s) => s != _payee.text.trim()).take(5).toList(),
-        );
+        setState(() => _suggestions = found.where((s) => s != _payee.text.trim()).take(5).toList());
       }
     });
   }
@@ -206,7 +204,10 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing == null ? l.transactions_addTitle : l.transactions_editTitle),
+        title: Text(
+          editing == null ? l.transactions_addTitle : l.transactions_editTitle,
+          maxLines: 2,
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: l.common_cancel,
@@ -219,10 +220,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[
-                NoticeBanner(text: context.errorMessage(error)),
-                gap,
-              ],
+              if (error != null) ...[NoticeBanner(text: context.errorMessage(error)), gap],
               if (editing == null)
                 DropdownButtonFormField<String>(
                   initialValue: _accountId,
@@ -274,12 +272,9 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
                 enableSuggestions: false,
                 decoration: InputDecoration(
                   labelText: l.transactions_amount,
-                  helperText: account == null
-                      ? null
-                      : l.transactions_amountHint(account.currency),
+                  helperText: account == null ? null : l.transactions_amountHint(account.currency),
                 ),
-                validator: (value) =>
-                    parseAmountInput(value ?? '', allowSign: true) is ValidAmount
+                validator: (value) => parseAmountInput(value ?? '', allowSign: true) is ValidAmount
                     ? null
                     : l.validation_amount,
               ),

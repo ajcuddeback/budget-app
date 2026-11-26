@@ -20,7 +20,7 @@ Future<String?> showTransferSheet(
   BuildContext context, {
   required List<Account> accounts,
   Transfer? editing,
-}) => Navigator.of(context).push<String>(
+}) => Navigator.of(context, rootNavigator: true).push<String>(
   MaterialPageRoute(
     fullscreenDialog: true,
     builder: (_) => TransferSheet(accounts: accounts, editing: editing),
@@ -162,7 +162,7 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing == null ? l.transfers_addTitle : l.transfers_editTitle),
+        title: Text(editing == null ? l.transfers_addTitle : l.transfers_editTitle, maxLines: 2),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: l.common_cancel,
@@ -281,7 +281,10 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
                 Padding(
                   padding: const EdgeInsetsDirectional.only(top: SpaceTokens.s1),
                   child: Text(
-                    l.transfers_legDates(context.date(editing.fromDate), context.date(editing.toDate)),
+                    l.transfers_legDates(
+                      context.date(editing.fromDate),
+                      context.date(editing.toDate),
+                    ),
                     style: hint(),
                   ),
                 ),

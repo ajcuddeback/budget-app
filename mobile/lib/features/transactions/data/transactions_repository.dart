@@ -73,8 +73,9 @@ final class TransactionsWriter {
 
   /// The transfer a leg belongs to, fetched rather than assembled from the row: the sheet needs
   /// both accounts, both figures and the pair's current version, and a leg carries none of them.
-  Future<Transfer> transfer(String transferGroupId) async =>
-      Transfer.fromJson(await _api.getJson('/api/transfers/${Uri.encodeComponent(transferGroupId)}'));
+  Future<Transfer> transfer(String transferGroupId) async => Transfer.fromJson(
+    await _api.getJson('/api/transfers/${Uri.encodeComponent(transferGroupId)}'),
+  );
 
   Future<void> createTransfer(TransferForm form, {required bool crossCurrency}) =>
       _write('POST', '/api/transfers', createTransferBody(form, crossCurrency: crossCurrency));

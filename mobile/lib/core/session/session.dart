@@ -322,8 +322,5 @@ Future<({Map<String, String> headers, JsonMap status})> csrfForPublicWrite(ApiCl
   final text = response.data ?? '';
   final status = text.isEmpty ? const <String, Object?>{} : decodeObject(text);
   if (token == null) return (headers: const <String, String>{}, status: status);
-  return (
-    headers: {'X-XSRF-TOKEN': token, 'Cookie': 'XSRF-TOKEN=$token'},
-    status: status,
-  );
+  return (headers: {'X-XSRF-TOKEN': token, 'Cookie': 'XSRF-TOKEN=$token'}, status: status);
 }

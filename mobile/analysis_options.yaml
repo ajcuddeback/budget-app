@@ -10,6 +10,10 @@
 # as its own step).
 include: package:very_good_analysis/analysis_options.yaml
 
+# The repository's line length everywhere else (Java, TypeScript) is 100.
+formatter:
+  page_width: 100
+
 analyzer:
   language:
     strict-casts: true

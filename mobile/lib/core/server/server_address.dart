@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+
 /// The household's server, as the person typed it, checked before anything is sent to it.
 ///
 /// **There is no default and no suggestion** (ADR-0016): the app ships knowing no server, and
@@ -72,11 +73,7 @@ final class ServerAddress {
       return const AddressRefused(AddressProblem.cleartext);
     }
 
-    final origin = Uri(
-      scheme: scheme,
-      host: host,
-      port: uri.hasPort ? uri.port : null,
-    );
+    final origin = Uri(scheme: scheme, host: host, port: uri.hasPort ? uri.port : null);
     return AddressAccepted(ServerAddress._(origin));
   }
 

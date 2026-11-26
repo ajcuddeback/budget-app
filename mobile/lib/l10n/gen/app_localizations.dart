@@ -61,8 +61,7 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,8 +69,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -2312,12 +2310,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{goal} · {from} → {to} of {target}'**
-  String checkIn_choice_goalMoves(
-    String goal,
-    String from,
-    String to,
-    String target,
-  );
+  String checkIn_choice_goalMoves(String goal, String from, String to, String target);
 
   /// Web en.json "checkIn.choice.goalNeverMoves".
   ///
@@ -3643,12 +3636,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Paying {extra} extra is buying you {months} months: gone by {soon} instead of {lateValue}.'**
-  String debt_chart_buying(
-    String extra,
-    String months,
-    String soon,
-    String lateValue,
-  );
+  String debt_chart_buying(String extra, String months, String soon, String lateValue);
 
   /// Web en.json "debt.chart.clearsMarker".
   ///
@@ -3690,13 +3678,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{name}: {from} in {fromMonth}, down to {to} in {toMonth}.'**
-  String debt_chart_said(
-    String name,
-    String from,
-    String fromMonth,
-    String to,
-    String toMonth,
-  );
+  String debt_chart_said(String name, String from, String fromMonth, String to, String toMonth);
 
   /// Web en.json "debt.chart.saidNothing".
   ///
@@ -4494,11 +4476,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{interest} interest · {principal} principal · balance after {balance}'**
-  String debt_payment_preview(
-    String interest,
-    String principal,
-    String balance,
-  );
+  String debt_payment_preview(String interest, String principal, String balance);
 
   /// Web en.json "debt.payment.previewUnavailable".
   ///
@@ -4516,11 +4494,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Payment recorded: {interest} interest · {principal} principal. Balance now {balance}.'**
-  String debt_payment_recorded(
-    String interest,
-    String principal,
-    String balance,
-  );
+  String debt_payment_recorded(String interest, String principal, String balance);
 
   /// Web en.json "debt.payment.splitNote".
   ///
@@ -6422,12 +6396,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'At {monthly} a month you reach it in {month} — {count} months after {target}.'**
-  String goals_projection_late(
-    String monthly,
-    String month,
-    String count,
-    String target,
-  );
+  String goals_projection_late(String monthly, String month, String count, String target);
 
   /// Web en.json "goals.projection.lateOne".
   ///
@@ -6451,11 +6420,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Overdue since {target} — at {monthly} a month you reach it in {month}.'**
-  String goals_projection_overdueReaches(
-    String target,
-    String monthly,
-    String month,
-  );
+  String goals_projection_overdueReaches(String target, String monthly, String month);
 
   /// Web en.json "goals.projection.planLate".
   ///
@@ -7822,12 +7787,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Kept an average of {amount} a month over the {count} complete months. Best month was {month}, at {best}.'**
-  String insights_keptLongPartial(
-    String amount,
-    String count,
-    String month,
-    String best,
-  );
+  String insights_keptLongPartial(String amount, String count, String month, String best);
 
   /// Web en.json "insights.keptLongPartialOne".
   ///
@@ -7905,23 +7865,13 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Income: {first} in {firstMonth}, to {last} in {lastMonth}.'**
-  String insights_said_income(
-    String first,
-    String firstMonth,
-    String last,
-    String lastMonth,
-  );
+  String insights_said_income(String first, String firstMonth, String last, String lastMonth);
 
   /// Web en.json "insights.said.spending".
   ///
   /// In en, this message translates to:
   /// **'Spending: {first} in {firstMonth}, to {last} in {lastMonth}.'**
-  String insights_said_spending(
-    String first,
-    String firstMonth,
-    String last,
-    String lastMonth,
-  );
+  String insights_said_spending(String first, String firstMonth, String last, String lastMonth);
 
   /// Web en.json "insights.soFar".
   ///
@@ -7957,11 +7907,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{count} transactions need a category, so {out} out and {inValue} in aren\'t counted as income or spending.'**
-  String insights_uncategorised_many_both(
-    String count,
-    String out,
-    String inValue,
-  );
+  String insights_uncategorised_many_both(String count, String out, String inValue);
 
   /// Web en.json "insights.uncategorised.many.single".
   ///
@@ -8057,11 +8003,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{amount} spent, against {compared} in {comparedMonth}.'**
-  String insights_where_total(
-    String amount,
-    String compared,
-    String comparedMonth,
-  );
+  String insights_where_total(String amount, String compared, String comparedMonth);
 
   /// Web en.json "insights.where.uncategorised.many".
   ///
@@ -9780,8 +9722,7 @@ abstract class AppLocalizations {
   String get validation_server;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -9790,8 +9731,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

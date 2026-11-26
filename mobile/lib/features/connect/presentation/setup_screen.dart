@@ -3,6 +3,7 @@ import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/platform/device_label.dart';
 import 'package:budget_owl/core/session/session.dart';
+import 'package:budget_owl/features/connect/presentation/back_to_connect.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
@@ -66,11 +67,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         },
       );
       if (!mounted) return;
-      await ref.read(sessionProvider.notifier).signIn(
-        email: email,
-        password: password,
-        deviceLabel: deviceLabelFor(ref.read(targetPlatformProvider), context.l10n),
-      );
+      await ref
+          .read(sessionProvider.notifier)
+          .signIn(
+            email: email,
+            password: password,
+            deviceLabel: deviceLabelFor(ref.read(targetPlatformProvider), context.l10n),
+          );
     } on AppError catch (error) {
       if (mounted) setState(() => _error = error);
     } finally {
@@ -84,6 +87,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final l = context.l10n;
     final error = _error;
     return Screen(
+      leading: const BackToConnect(),
       title: l.setup_title,
       body: Form(
         key: _form,
