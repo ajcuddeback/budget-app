@@ -212,9 +212,10 @@ void main() {
       Future<void> write(ProviderContainer c) =>
           c.read(debtWriterProvider).updatePlan(strategyBody(0, Strategy.snowball));
 
-      await p.unconfirm();
+      await p.believeOffline();
       expect((await p.forced(write))?.isConnectivity, isTrue);
-      await p.goOffline();
+      await p.reachable();
+      await p.unconfirm();
       expect((await p.forced(write))?.isConnectivity, isTrue);
       expect(p.server.served.length, before);
     });

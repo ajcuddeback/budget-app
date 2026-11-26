@@ -294,9 +294,10 @@ void main() {
           .read(billsWriterProvider)
           .record('bil-0003', CalendarDate.parse('2026-08-18'), statusBody(OccurrenceStatus.paid));
 
-      await p.unconfirm();
+      await p.believeOffline();
       expect((await p.forced(write))?.isConnectivity, isTrue);
-      await p.goOffline();
+      await p.reachable();
+      await p.unconfirm();
       expect((await p.forced(write))?.isConnectivity, isTrue);
       expect(p.server.served.length, before);
     });

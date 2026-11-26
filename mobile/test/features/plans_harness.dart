@@ -79,6 +79,21 @@ final class Plans {
     await settle(tester);
   }
 
+  /// The phone has seen a request fail, though the server would answer the next one: only a
+  /// writer's own check stands between a tap and the request.
+  Future<void> believeOffline() async {
+    container.read(reachabilityProvider.notifier).record(Reachability.offline);
+    await settle(tester);
+  }
+
+  /// Back to a phone that reached a server whose version is confirmed.
+  Future<void> reachable() async {
+    container.read(reachabilityProvider.notifier)
+      ..record(Reachability.reached)
+      ..confirmVersion();
+    await settle(tester);
+  }
+
   /// The server answers, but its version is not confirmed this launch: writes are off for that
   /// reason, and the screen must say so rather than "offline".
   Future<void> unconfirm() async {
