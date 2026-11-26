@@ -531,3 +531,117 @@ through (now opaque).
 - **`PlatformSecureStore` is not exercised by tests** (2 of its 8 lines): it is the platform
   channel itself. Its `first_unlock_this_device` option is asserted by `guards_test`.
 - Every placeholder screen above, CSV export and import are phase 2.
+
+### Phase 2 — Household, preferences, admin
+
+**Built.** Three More entries replace their placeholders in `destinations.dart`; no child route
+was needed (the invite sheet is a full-screen dialog on the root navigator).
+
+- **Household** (`features/household/`): the household's name and base currency, editable by an
+  `OWNER` (`PUT /api/households/current`, both fields as the web sends them; then every live read
+  re-reads and the member is re-read for the name) and shown as disabled fields to anybody else
+  with *"Only an owner can change these."* The member list: name, *You*, email, joined date. An
+  owner gets a role picker and **Remove** on every other row; the only owner is told why they
+  cannot leave; anybody else gets **Leave** on their own row and role labels elsewhere. A role is
+  changed by choosing it (`PATCH …/members/{id}` with `{role}`), as on the web; **Remove** and
+  **Leave** are confirmed in the web's words. Leaving re-reads the member at once: the server
+  revoked every token the member had, so that `401` wipes the token, the cache and its key and
+  lands on sign-in with *"Your session ended"*, as the web routes to `/login?reason=expired`.
+- **Invite sheet**: email and role (with the web's role descriptions) → `POST …/invitations`. The
+  link is built from **the server this phone is connected to** and the response's relative
+  `acceptPath`, refused unless it stays on that origin and is exactly `/join/<token>`
+  (`buildInviteLink`). It is shown once, selectable, left to right in every layout, with the web's
+  *"treat this link like a password"* warning, role and expiry; **Copy link** is the only thing
+  that puts it on the clipboard; **Revoke link** (`DELETE …/invitations/{id}`) takes it off the
+  screen too; closing the sheet drops it. The token never reaches the cache, secure storage, a
+  provider or a log: the response goes through `ApiClient.write`, and `Invitation` keeps only
+  `acceptPath` and prints only its id.
+- **Preferences** (`features/preferences/`): display currency and language for the member, saved
+  with `PATCH …/members/me` (both fields always; *follow the household / this device* is `null`),
+  allowed for a `VIEWER`; then the member is re-read and every live read re-reads. **Appearance**:
+  Automatic / Light / Dark, applied at once, offline too, kept on the phone only.
+- **Admin** (`features/admin/`): the web console's three blocks. *This instance* (version, set-up
+  date, administrator, account count); *Signing in* (registration with its consequence in the
+  flow and *"Saving now will open registration"*; password sign-in as a stated rule while locked,
+  as a switch otherwise, with `deploy/restore-password-login.sh` named before it is turned off;
+  single sign-on with issuer, client id, secret, provisioning and whether an owner has proved
+  it); *Accounts*, read-only. The `PATCH /api/admin/settings` body is the web's
+  `buildSettingsPatch` rule for rule (only what changed, `version` always, the secret only when
+  typed and exactly as typed, *provider off* says only that). Turning the provider off is
+  confirmed; cancelling puts only that switch back. A `409 stale-version` re-reads, names the
+  settings that moved (names only), keeps what was typed and offers *Take the latest* / *Save my
+  changes anyway*; a `409 password-login-locked` is shown and re-read. Shown only when
+  `/api/auth/me` says `instanceAdmin`; a deep link from anybody else lands on More (phase 1's
+  `redirectFor`, unchanged) and the API's `403 not-instance-admin` is shown translated if met.
+- Every write is offered only when `canWriteNow`, refused again by its writer, and a refused or
+  failed write is shown with `writesOffText` (offline, or the version not yet confirmed) or the
+  server's translated code (`writeErrorText`). Nothing is queued.
+
+**Fixtures**: `MobileHouseholdFixtureIT` (its own class) records `household.generated.json` from
+the real API: 18 states, from each role's reads and forced writes to the console's conflict and
+lockout paths. Bearer and invitation tokens are registered as secrets, so the file holds
+`fixture-token-<who>` and `fixture-invitation-edsger` (in `token` and in `acceptPath`); the OIDC
+client secret is a value the class makes up and names `placeholder-…`; `setupCompletedAt` and
+`oidcOwnerLoginAt` are pinned like the other timestamps. `grace-demoted` deliberately pairs what
+Grace's phone read while an owner with the server's answer after her demotion, which is the only
+way to record "offered, then refused". `DemoFixtureIT` changed **only** in six modifiers
+(`DEMO_TODAY`, `MOBILE_FIXTURES`, `Caller`, `MobileRecorder`, `compareOrWrite`,
+`canonicaliseMobile`: `private` → package-private).
+
+**Departures**
+
+| Where | The web / the spec | Built | Why |
+| ----- | ------------------ | ----- | --- |
+| Theme override | Web: a masthead light/dark toggle in `localStorage`; Data model: shared prefs | Automatic / Light / Dark under Preferences, in a one-word file in Application Support (`budget_owl.theme`) | `guards_test` bans `SharedPreferences` from the app; secure storage is for credentials and is wiped on sign-out, while a theme outlives a sign-out as on the web. The file holds only `light`, `dark` or `system`; anything else reads as `system` |
+| Language preference | Web applies it to text and to date and number formatting | **Saved, not applied** on the phone; the hint says so (`preferences.localeHintPhone`) instead of the web's *"Dates and numbers always follow your choice"* | Only English ships and `context.localeName` comes from `Localizations` in core; applying a member's locale is a cross-cutting core change. Known gap below |
+| Currency names | Web: `Intl` currency names in a select | ISO codes with intl's symbol (`EUR · €`), from a list in `household/domain/currencies.dart` | Dart's `intl` has no currency names or code list. The server re-validates every code |
+| Locale names | Web: `Intl.DisplayNames` | A table of endonyms beside the web's 21 tags | No display-names API in Dart; endonyms read the same in every language, so they are data, not ARB keys |
+| Dropdown value at large text | — | One line with an ellipsis; the open menu shows every choice in full | A wrapped value was clipped to its first line |
+| Recovery command | Web: its own line, wrapping | One line that never wraps and scrolls sideways with a visible bar | A hyphen a line break adds cannot be told from one in the filename |
+| OIDC secret field | Web: `maxlength` | No character counter | A counter would show the length of the secret typed |
+| Household switching | Asked for if the web has it | **None** | An instance holds exactly one household (ADR-0026) and the web has no switcher. `CachedResource` keys by household and session epoch; leaving ends the session and the wipe removes every cached copy |
+| Role change | — | No confirmation; a picker, as the web's `<select>` | Parity: the web confirms removal and leaving, not a role change. The server refuses what it must |
+
+**Sabotage proofs** (each broken, tests run and seen to fail, restored with `git checkout`, `git
+diff` empty):
+
+| Control | Broken how | Failed |
+| ------- | ---------- | ------ |
+| Link only on this server | `buildInviteLink`'s origin and `//` checks removed | `requests_test`: refused when the path would take it to another host |
+| Copy only when asked | `_copy()` called as soon as the link was made | `household_test`: the clipboard held the link before the tap |
+| Token never cached | The invitation body written to the cache in `HouseholdWriter.invite` | `household_test`: 7 cache entries, expected 6. (The first version of this test read the cache file's bytes, which SQLCipher encrypts, so it could never have failed; replaced) |
+| Secret sent only when typed | The secret always sent | `requests_test` (blank not mentioned); two `admin_test` cases (bodies the fixture does not record) |
+| Issuer https | `isIssuerUrl` allowed any `http` | `requests_test`. The widget test **did not fail at first** (an empty secret stopped the save for its own reason); it now types the secret first and failed: the secret was sent to `http://id.example.org` |
+| Admin deep link | The `/more/admin` line of `redirectFor` removed | `admin_test`: `AdminScreen` was built |
+| Admin hidden in More | The `adminOnly` filter removed | `admin_test`: a non-admin `OWNER` saw Admin |
+| Leave leaves nothing | The re-read after leaving removed | `household_test`: no "session ended"; token and cache left |
+| Writer refuses offline itself | The writers' `canWrite` check removed | **Nothing failed at first**: the tests also took the server offline, so the socket refused instead. The tests now keep the server reachable while the phone records "offline"; then `household_test` (a write was served: a fixture miss) and `admin_test` (not refused) failed. A hang under the sabotage now fails on a 10 s bound in the test helper |
+| Role gating (UX) | `controlsFor` gave every row an owner's controls | `household_test`: a `VIEWER` saw two role pickers |
+| Secret obscured | `obscureText: false` | `admin_test`: obscured expected |
+
+**What reading the screenshots changed**: in RTL the currency read "$ · USD" (codes now draw left
+to right); at 2× helper text was cut with an ellipsis (it now wraps) and a dropdown value was
+clipped (one line, ellipsis); a viewer's read-only fields looked editable (now disabled fields);
+offline showed two stale labels (now one) and the error state a redundant offline banner;
+"Follow this phone" wrapped inside its segment (now "Automatic", explained in the hint); the
+recovery command was cut at 2× with no sign it continued (scrollbar); the secret field showed a
+length counter (removed); three scenarios scrolled past what they were meant to show. 58 PNGs in
+`household_golden_test.dart`, each read.
+
+**Known gaps**
+
+- **The member's language is not applied on the phone** (above). Needs core: a formatting locale
+  in `core/l10n/l10n.dart` from the membership, and date symbols initialised.
+- **At text 2.0 the shared `Screen` header breaks "Administration" mid-word** (one word wider than
+  the phone). A shared-widget fix (scale a title down to fit) for every area; not done here.
+- **The invite link wraps at a hyphen**, as the web's text box does; *Copy link* copies it exactly.
+- **Android 13+ shows copied text in a clipboard preview**; Flutter's `Clipboard` cannot mark it
+  sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`). The copy still happens only on a tap.
+- **An administrator with no household membership cannot reach the console on the phone**: core's
+  `redirectFor` sends every signed-in route to *not in a household* first. The web allows it.
+- **The invite-link golden has no 2× variant**: the test driver does not land the create tap at 2×
+  (the state was rendered at 2× before the second core merge and read). `invite-form` keeps its
+  2× golden.
+- **No `version` on household, membership or invitation writes**: the API has none and the web
+  sends none, so two owners renaming at once is last-write-wins on the server.
+- No API gap was found: every web behaviour in this area has its endpoint.
