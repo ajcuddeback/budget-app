@@ -12,21 +12,35 @@ Mounted into the PostgreSQL container on first start. It creates the non-owning 
 application connects as, so the application cannot alter its own schema at runtime (ADR-0030).
 Migrations run as the owning role; the app does not.
 
-## Behind a reverse proxy: which address the rate limits see
+## Behind a reverse proxy: which address the rate limits see (known gap)
 
 Every public route (sign-in, setup, invitations, the phone app's `GET /api/meta`) is rate-limited
 per **client address**, and the API takes that address from the socket, never from a forwarded
-header a caller could make up (`ClientAddress`). Behind a reverse proxy, the socket's address is
-the proxy's, so every phone and browser shares one limit: a busy household can see *"The server is
-busy"* in the app and `429`s on the web. If, and only if, the proxy is the **only** way to reach
-the API and it **replaces** `X-Forwarded-For` with the address it saw (nginx:
-`proxy_set_header X-Forwarded-For $remote_addr;`), set `SERVER_FORWARD_HEADERS_STRATEGY=native` in
-the API's environment so Spring Boot's `server.forward-headers-strategy` takes the real client
-address from the proxy. Never set it when the API port is reachable directly, or when the proxy
-*appends* to the header (`$proxy_add_x_forwarded_for`, which is what `frontend/nginx.conf` does
-today): the header then keeps whatever the caller sent, and Tomcat skips private-range entries
-as trusted proxies, so a caller on the LAN could choose the address the limit sees and step around
-it.
+header a caller could make up (`ClientAddress`).
+
+**As shipped, every caller shares one limit.** The stack publishes nginx (the `web` service) on
+`127.0.0.1:8080`, and a self-hoster puts their own TLS-terminating proxy in front of it. Two proxies
+sit before the API, so the API's socket address is always nginx's, and nginx's own `$remote_addr`
+is the outer proxy's, not the phone's. A busy household can see *"The server is busy. Try again in
+a minute."* in the app and `429`s on the web. This is a recorded known gap, not a setting to flip
+lightly.
+
+What correct forwarding needs, end to end:
+
+1. **The outermost proxy** — the one that terminates TLS and is the only thing reachable from the
+   network — sets `X-Forwarded-For` to the real client's address, **replacing** whatever the
+   client sent (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`).
+2. **Every inner proxy passes that header through unchanged** rather than appending to it. The
+   stack's `frontend/nginx.conf` currently *appends* (`$proxy_add_x_forwarded_for`), which keeps
+   whatever arrived and adds the outer proxy's address; with Tomcat skipping private-range entries
+   as trusted proxies, a caller could then choose the address the limit sees and step around it.
+3. **The API is told to trust the header** with `server.forward-headers-strategy=native`, which
+   Spring Boot reads from `SERVER_FORWARD_HEADERS_STRATEGY`. **It only takes effect once
+   `docker-compose.yml` passes that variable** in the `api` service's `environment:` block, and
+   today it does not: setting it in `.env` alone changes nothing.
+
+Until all three hold, leave the API on the socket address. A shared limit is an inconvenience; a
+limit a caller can choose for themselves is no limit.
 
 ## `restore-password-login.sh`
 

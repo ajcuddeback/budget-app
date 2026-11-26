@@ -377,6 +377,8 @@ drives the real API as the phone does and writes
 | Offline on Transactions | — | **No standing offline banner**: the stale label says the copy is old; *"You're offline — this needs a connection"* appears when a write is attempted. The record button stays opaque (`surface`/`muted`, field border) and explains on a tap | The design has no disabled-colour token; the web's 45% opacity let the row beneath show through the button |
 | Token storage | The token in secure storage | The token **and the origin that issued it**; a token whose origin is not the server about to be called is deleted, not loaded | Audit L3: no stored state can carry one server's token to another |
 | First run | — | A marker file in Application Support; when it is missing, secure storage is wiped before anything is read | Audit L5: the iOS Keychain survives an uninstall |
+| Sign-out order | "revokes the token server-side … and wipes local state whether or not the server answered" | The token leaves secure storage and memory **first**; the logout is sent with the copy; then the cache and key go | Audit N1: an app killed mid-sign-out while offline resumed signed in |
+| Launch version check | — | Runs **in sequence** inside start-up, before `/api/auth/me` (after the cached member is shown, when there is one) | Audit H-b: run beside start-up, the two could overwrite each other's state |
 
 ### Proving each control can fail
 
@@ -415,6 +417,17 @@ same way:
 | G3 translucent button | The button's background back on the divider token | `screens_test` offline (alpha 0.16, expected 1.0); 4 offline-stale goldens |
 | Meta limiter coverage | The prune at the cap removed | `MetaRateLimiterTest`: expired windows are dropped (JaCoCo had failed the gate on this package's branches) |
 
+After the re-audit:
+
+| Item | Broken how | Failed |
+| ---- | ---------- | ------ |
+| N1 token out first | The token read with `held` and cleared after the logout, as before | `session_test` N1: a token was in storage while the logout was in flight; killed then, the next launch was signed in |
+| N1 the revocation's 401 | The revocation marked as a bearer request | `api_client_test`: its 401 ended the session. (The session-level test still passed: `signOut`'s own `_ending` flag also stops a second end, so there are two guards) |
+| N2 foreign token | The full wipe on a foreign token removed | `session_test` N2: the cache file and key survived |
+| H-a origin per request | The interceptor's origin check removed | `api_client_test`: a foreign token was sent; a revocation went to the wrong origin |
+| H-b ordering | The version check put back beside start-up (`unawaited`) | `session_test` H-b (`/api/auth/me` was sent beside the check) and L4, which no longer has a delay in it |
+| N3 | Documentation only | — |
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -436,9 +449,11 @@ through (now opaque).
   channel, or a CA the user pastes in) is a phase-2 decision. iOS honours an enabled CA profile.
 - **The recents-screen behaviour on Android 13+ needs checking on a device.** No emulator or test
   here shows what the task switcher draws; the call and its version guard are pinned by a test.
-- **Behind a reverse proxy every phone shares one rate limit**, because the API keys limits on the
-  socket address; `deploy/README.md` says when `server.forward-headers-strategy` is safe to turn on
-  (the stack's own nginx appends to `X-Forwarded-For`, so not as shipped).
+- **Every phone and browser shares one rate limit as shipped.** The API keys limits on the socket
+  address, which is the stack's nginx, behind the self-hoster's own TLS proxy. Correct forwarding
+  needs the outermost proxy to set `X-Forwarded-For` from the real client, nginx to pass it through
+  rather than append, and `docker-compose.yml` to pass `SERVER_FORWARD_HEADERS_STRATEGY` to the API,
+  which it does not today (`deploy/README.md`).
 - **Pairing offers candidates from the ledger's first page only**, because only the first page is
   read and cached. A transfer's other half older than 50 rows cannot be picked yet.
 - **Release signing** still uses Flutter's debug keys (`android/app/build.gradle.kts`). Store

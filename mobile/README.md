@@ -153,7 +153,10 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
   app has one shared transport (`httpAdapterProvider`): closing it broke every later request,
   sign-out's logout included (audit H1). The fakes now fail any request after a close.
 - **A stored token is bound to its origin.** `TokenStore.save(token, origin:)` and
-  `load(origin:)`; a test phone that is "signed in" carries both (`TestPhone.signedIn`).
+  `load(origin:)`; the interceptor also refuses to attach it to a request for any other origin. A
+  test phone that is "signed in" carries both (`TestPhone.signedIn`).
+- **Ending a token takes it out of storage first.** `TokenStore.take()`, then
+  `ApiClient.revoke(token)`, then the wipe. Never send the logout while the token is still stored.
 - **A release build refuses `http://` at the socket** (`cleartext_policy.dart` around `runApp`).
   The Android and iOS network configs do not govern Dart's sockets on their own.
 
