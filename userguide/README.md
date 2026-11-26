@@ -45,6 +45,7 @@ account to seeing your first month's budget.
 | [See where your money went](features/see-where-your-money-went.md)             | Income against spending month by month, what you kept, where last month went by category, and downloading the figures |
 | [Save towards a goal](features/save-towards-a-goal.md)                          | Add a goal, set money aside or take it out, and why your savings account and the goal can differ                 |
 | [Change what you set aside each month](features/change-what-you-set-aside.md)   | Put more or less towards a goal from this month or next, and what that does to what's left                       |
+| [Do your weekly check-in](features/do-your-weekly-check-in.md)                  | Four short steps on a Sunday: what's new, what needs a category, which bills cleared, and what next week can hold |
 | _Recurring transactions_                                                        | Not written yet                                                                                                  |
 | _Reports_                                                                       | Not written yet                                                                                                  |
 

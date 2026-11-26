@@ -55,6 +55,11 @@ you meant to save looked like money you could spend. Now each goal's monthly amo
 full, from the start of the month, whether or not you've set it aside yet. If you set aside more
 than the plan in a month, the larger figure comes off.
 
+**Leftover money a weekly check-in puts towards a goal comes off on top.** It is extra to the
+month's plan, so it never counts as part of it. If you never put a check-in's leftover towards a
+goal, your figure is exactly what it was. See
+[Do your weekly check-in](do-your-weekly-check-in.md).
+
 **Money you'd already saved before you started tracking a goal never comes off.** It was saved in
 an earlier month, so it isn't part of this one.
 

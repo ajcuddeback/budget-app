@@ -474,6 +474,41 @@ class GoalProjectionTest {
         return ledger("3500", "0", NOVEMBER_2027, List.of(step(AUGUST, "110")), recorded);
     }
 
+    /**
+     * Decision 6 of the weekly check-in changed the fifth term to {@code max(planned,
+     * recordedOther) + recordedByCheckIn}. Without a check-in contribution that must be slice 11's
+     * {@code max(planned, recorded)} to the cent, for every plan and every recorded figure,
+     * withdrawals and over-funding included.
+     */
+    @Test
+    void without_check_in_contributions_the_month_is_slice_elevens_figure_to_the_cent() {
+        List<PlanStep> plan = List.of(step(AUGUST, "110"));
+        for (String recorded :
+                List.of("0", "50", "109.9999", "110", "110.0001", "250", "-40", "-0.0001")) {
+            GoalLedger ledger = ledger("3500", "0", null, plan, Map.of(AUGUST, recorded));
+            Money planned = ledger.planned(AUGUST);
+            Money shipped = planned.compareTo(money(recorded)) >= 0 ? planned : money(recorded);
+            assertThat(ledger.monthContribution(AUGUST))
+                    .as("recorded %s", recorded)
+                    .isEqualTo(shipped);
+        }
+    }
+
+    @Test
+    void a_check_in_contribution_counts_on_top_of_the_plan_and_only_on_top() {
+        GoalLedger ledger =
+                new GoalLedger(
+                        money("3500"),
+                        money("0"),
+                        null,
+                        List.of(step(AUGUST, "110")),
+                        Map.of(AUGUST, money("113")),
+                        Map.of(AUGUST, money("63")));
+
+        // 113 recorded, 63 of it by the check-in: max(110, 50) + 63 = 173.
+        assertThat(ledger.monthContribution(AUGUST)).isEqualTo(money("173"));
+    }
+
     private static GoalLedger ledger(
             String target,
             String start,

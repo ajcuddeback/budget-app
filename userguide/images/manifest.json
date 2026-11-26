@@ -4,8 +4,8 @@
     "file": "userguide/images/add-a-bill--bill-actions.png",
     "guide": "add-a-bill",
     "caption": "The Phone bill, with Edit, Retire and Delete beside its name and budgeted amount.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -13,8 +13,8 @@
     "file": "userguide/images/add-a-bill--bills-block.png",
     "guide": "add-a-bill",
     "caption": "The Your bills card, with its totals and the Add a bill button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -22,8 +22,8 @@
     "file": "userguide/images/add-a-bill--delete-confirm.png",
     "guide": "add-a-bill",
     "caption": "The Delete Council tax? window, saying your transactions are kept because a bill is a plan, not a payment.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -31,8 +31,8 @@
     "file": "userguide/images/add-a-bill--form.png",
     "guide": "add-a-bill",
     "caption": "The Add a bill window with a name and an amount filled in, and When it is due beneath them.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -40,8 +40,8 @@
     "file": "userguide/images/add-a-bill--fortnightly.png",
     "guide": "add-a-bill",
     "caption": "When it is due set to Every other week, showing Day of the week and a Counting from date.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -49,8 +49,8 @@
     "file": "userguide/images/add-a-bill--irregular.png",
     "guide": "add-a-bill",
     "caption": "When it is due set to Irregular, with a note that it has no set date and you record each payment as it happens.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -58,8 +58,8 @@
     "file": "userguide/images/add-a-bill--monthly.png",
     "guide": "add-a-bill",
     "caption": "When it is due set to Every month, with Day of the month set to 5 and a note about shorter months.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -67,8 +67,8 @@
     "file": "userguide/images/add-a-bill--retire-confirm.png",
     "guide": "add-a-bill",
     "caption": "The Retire Phone? window, saying it stops being listed in new months and keeps what you have recorded.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -76,8 +76,8 @@
     "file": "userguide/images/add-a-bill--retired-list.png",
     "guide": "add-a-bill",
     "caption": "The Retired bills list at the foot of the Your bills card, with a Restore button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -85,8 +85,8 @@
     "file": "userguide/images/add-a-bill--varies.png",
     "guide": "add-a-bill",
     "caption": "The amount varies ticked, with a Give or take box underneath it.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -94,8 +94,8 @@
     "file": "userguide/images/add-a-debt--add-button.png",
     "guide": "add-a-debt",
     "caption": "The Your debts card with the Add a debt button beside its heading.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -103,8 +103,8 @@
     "file": "userguide/images/add-a-debt--balance.png",
     "guide": "add-a-debt",
     "caption": "Balance now filled in with 1240.00 and the date that balance was true set, with the hint that it comes off the statement.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -112,8 +112,8 @@
     "file": "userguide/images/add-a-debt--bill-link.png",
     "guide": "add-a-debt",
     "caption": "The bill that pays its minimum, set to Car payment, with the note that saying which bill means the minimum is counted once.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -121,8 +121,8 @@
     "file": "userguide/images/add-a-debt--edit-terms.png",
     "guide": "add-a-debt",
     "caption": "The Edit terms window for a debt that already exists, with the Work the rate out for me tick box and its note above the annual rate.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -130,8 +130,8 @@
     "file": "userguide/images/add-a-debt--empty.png",
     "guide": "add-a-debt",
     "caption": "The Debt plan page with no debts: Nothing owed here yet, what a debt is, the note about a minimum that is already a bill, and an Add a debt button.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -139,8 +139,8 @@
     "file": "userguide/images/add-a-debt--form-top.png",
     "guide": "add-a-debt",
     "caption": "The Add a debt window: What you call it, Kind, Who you owe it to, Balance now and the date that balance was true.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -148,8 +148,8 @@
     "file": "userguide/images/add-a-debt--rate-and-minimum.png",
     "guide": "add-a-debt",
     "caption": "Annual rate set to 29.9 and Minimum payment set to 45, each with its hint underneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -157,8 +157,8 @@
     "file": "userguide/images/add-an-account--accounts.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen: accounts grouped by currency, each group with its own subtotal.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -166,8 +166,8 @@
     "file": "userguide/images/add-an-account--add-filled.png",
     "guide": "add-an-account",
     "caption": "The Add an account window filled in for a credit card, with Save account at the bottom.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -175,8 +175,8 @@
     "file": "userguide/images/add-an-account--add-form.png",
     "guide": "add-an-account",
     "caption": "The Add an account window, before anything is filled in.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -184,8 +184,8 @@
     "file": "userguide/images/add-an-account--added.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen after adding the card: \"Account added.\" and the new row in the US Dollar group.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -193,8 +193,8 @@
     "file": "userguide/images/add-an-account--currency-locked.png",
     "guide": "add-an-account",
     "caption": "The Edit account window with Currency greyed out and the reason printed under it.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -202,8 +202,8 @@
     "file": "userguide/images/add-an-account--edit-form.png",
     "guide": "add-an-account",
     "caption": "The Edit account window, filled in with what the account says now.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -211,8 +211,8 @@
     "file": "userguide/images/add-an-account--empty.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen with no accounts yet, offering Add your first account.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -220,8 +220,8 @@
     "file": "userguide/images/add-an-account--one-currency.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen for a household with one currency: a plain list, no currency headings and no subtotal.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -229,8 +229,8 @@
     "file": "userguide/images/add-an-account--opening-balance.png",
     "guide": "add-an-account",
     "caption": "The Opening balance field, reached by scrolling down inside the window, with a negative amount in it.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -238,8 +238,8 @@
     "file": "userguide/images/add-an-account--saved.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen after saving: \"Account saved.\" and the new name in the list.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -247,8 +247,8 @@
     "file": "userguide/images/add-an-account--viewer.png",
     "guide": "add-an-account",
     "caption": "The Accounts screen for someone whose role is Viewer: the balances, and nothing to click.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -256,8 +256,8 @@
     "file": "userguide/images/add-your-income--arrivals.png",
     "guide": "add-your-income",
     "caption": "The Weekend work income source, showing how many arrivals the month has and what that comes to.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -265,8 +265,8 @@
     "file": "userguide/images/add-your-income--form.png",
     "guide": "add-your-income",
     "caption": "The Add an income source window with a name, an amount each time, when it arrives and the account it lands in.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -274,8 +274,8 @@
     "file": "userguide/images/add-your-income--income-block.png",
     "guide": "add-your-income",
     "caption": "The Income card: what is expected this month, each source, and the Add an income source button.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -283,8 +283,8 @@
     "file": "userguide/images/add-your-income--retired.png",
     "guide": "add-your-income",
     "caption": "The Retired income sources list, with a Restore button beside the one that is retired.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -292,8 +292,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archive-button.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Travel Card row, with its Archive button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -301,8 +301,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archive-confirm.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to archive Travel Card.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -310,8 +310,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archived.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after archiving: the card has left the list and the Archived section now says Show 2 archived.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -319,8 +319,8 @@
     "file": "userguide/images/archive-or-delete-an-account--archived-shown.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Archived section opened, listing the archived accounts with a Bring back button each.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -328,8 +328,8 @@
     "file": "userguide/images/archive-or-delete-an-account--brought-back.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after bringing the card back: \"That account is back in your lists.\"",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -337,8 +337,8 @@
     "file": "userguide/images/archive-or-delete-an-account--delete-confirm.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The window asking whether to delete Berlin Savings, saying it cannot be undone.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -346,8 +346,8 @@
     "file": "userguide/images/archive-or-delete-an-account--delete-not-offered.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Everyday Checking row, which has transactions: Edit and Archive, and no Delete.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -355,8 +355,8 @@
     "file": "userguide/images/archive-or-delete-an-account--delete-refused.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The message shown when an account has transactions: it cannot be deleted, and archiving is offered instead.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -364,8 +364,8 @@
     "file": "userguide/images/archive-or-delete-an-account--deleted.png",
     "guide": "archive-or-delete-an-account",
     "caption": "The Accounts screen after deleting: \"That account has been deleted.\" and the row gone.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -373,8 +373,8 @@
     "file": "userguide/images/change-what-you-set-aside--change-button.png",
     "guide": "change-what-you-set-aside",
     "caption": "The Change button on the plan card.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -382,8 +382,8 @@
     "file": "userguide/images/change-what-you-set-aside--dialog.png",
     "guide": "change-what-you-set-aside",
     "caption": "The Change the plan window with $165 a month starting this month, and the answer underneath saying when that reaches the target.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -391,8 +391,8 @@
     "file": "userguide/images/change-what-you-set-aside--next-month.png",
     "guide": "change-what-you-set-aside",
     "caption": "The same window with Next month, September 2026, chosen, and the sentence saying August stays as it is.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -400,8 +400,8 @@
     "file": "userguide/images/change-what-you-set-aside--plan.png",
     "guide": "change-what-you-set-aside",
     "caption": "The plan card for Japan: $110.00 a month in August 2026, $165.00 a month from September 2026, when that reaches the target, and $163.13 a month to make November 2027.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -409,8 +409,8 @@
     "file": "userguide/images/choose-how-people-sign-in--conflict.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The notice saying somebody else saved first, naming which setting changed, with Take the latest and Save my changes anyway.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -418,8 +418,8 @@
     "file": "userguide/images/choose-how-people-sign-in--nothing-changed.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The message shown when Save is selected and none of the settings differ from what is stored.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -427,8 +427,8 @@
     "file": "userguide/images/choose-how-people-sign-in--password-locked.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password group with no switch, explaining that an owner has to sign in through the provider first.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -436,8 +436,8 @@
     "file": "userguide/images/choose-how-people-sign-in--password-off-recovery.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password group after unticking the switch, naming the command that switches it back on from the server.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -445,8 +445,8 @@
     "file": "userguide/images/choose-how-people-sign-in--password-switch.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Email and password switch, now offered and ticked, on a server whose provider has been proved.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -454,8 +454,8 @@
     "file": "userguide/images/choose-how-people-sign-in--provider-proven.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on group on a server whose owner has signed in through the provider.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -463,8 +463,8 @@
     "file": "userguide/images/choose-how-people-sign-in--registration-off.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Registration box on the Signing in block, unticked, with the consequence of ticking it stated beneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -472,8 +472,8 @@
     "file": "userguide/images/choose-how-people-sign-in--registration-opening.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Registration group with the box ticked, warning that saving now will open registration.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -481,8 +481,8 @@
     "file": "userguide/images/choose-how-people-sign-in--saved.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Signing in block confirming \"Saved.\" above the settings.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -490,8 +490,8 @@
     "file": "userguide/images/choose-how-people-sign-in--secret-field.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Client secret box: empty, with \"A secret is set.\" and the note that a stored secret is never shown back.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -499,8 +499,8 @@
     "file": "userguide/images/choose-how-people-sign-in--secret-rotated.png",
     "guide": "choose-how-people-sign-in",
     "caption": "After replacing the client secret: email and password sign-in is on again and cannot be turned off until an owner signs in through the provider.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -508,8 +508,8 @@
     "file": "userguide/images/choose-how-people-sign-in--signing-in.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Signing in block on a server with no provider: Registration, Email and password, Single sign-on.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -517,8 +517,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-fields.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields: Issuer URL, Client ID, Client secret saying \"No secret set.\", and the account-creation box.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -526,8 +526,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-filled.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on fields filled in, with the client secret hidden as dots.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -535,8 +535,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-off.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on box on the Signing in block, unticked, with no provider fields showing.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -544,8 +544,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-off-cancelled.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on group after cancelling: the box is ticked again and the provider's details are back.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -553,8 +553,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-off-confirm.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The window asking you to confirm turning single sign-on off.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -562,8 +562,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-saved.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The saved Single sign-on settings: the client secret box empty again, with \"A secret is set.\" beneath it.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -571,8 +571,8 @@
     "file": "userguide/images/choose-how-people-sign-in--sso-turning-off.png",
     "guide": "choose-how-people-sign-in",
     "caption": "The Single sign-on group after unticking the box, warning that email and password sign-in comes back on.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -580,8 +580,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card: one line per order of attack, the assumption underneath, and the headline saying what is left to clear and the debt-free month.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -589,8 +589,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--commitment.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The strip at the top of the page: what is committed to debt each month and how much of it is strategic, with Change the monthly amount beside it.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -598,8 +598,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card: two cards side by side, each with its reasoning, its debt-free month, when the first debt goes and the interest along the way, then the sentence that compares them.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -607,8 +607,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--debts.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table: rung, debt, balance, rate, progress, when it clears and what it is paying, with Open and Edit terms on each row.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -616,8 +616,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--footer.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The line at the foot of the page saying the minimums are each counted once in Bills and income.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -625,8 +625,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--monthly-amount.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "Towards debt each month opened for editing, with the amount in a box, its hint, and Save and Cancel beside it.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -634,8 +634,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-button.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Order of attack card with Your own order circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -643,8 +643,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card under Your own order before anything is moved: one line keyed to all three orders.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -652,8 +652,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-chosen.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The top of the page after choosing Your own order: the saved message and the Order of attack card with Your own order in use.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -661,8 +661,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card with a line above the two cards saying what your own order costs.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -670,8 +670,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table after moving Car loan up: Car loan on rung 1 with the extra, Visa on rung 2, and new dates.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -679,8 +679,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card after the move: your own order drawn as its own line beside avalanche and snowball.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -688,8 +688,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card after the move: the line above the cards with the new debt-free month and interest, and the two cards unchanged.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -697,8 +697,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moves.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table with Move up and Move down on each row, Move up on Car loan circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -706,8 +706,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--page.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page: the monthly commitment, the order of attack, the balance-to-zero chart, the two orders compared, and the table of debts.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -715,8 +715,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--strategy.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Order of attack card with Avalanche, Snowball and Your own order as three buttons, Avalanche in use.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -724,8 +724,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--viewer.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page for someone whose role is Viewer: every figure and every date, and nothing to click.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -733,8 +733,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--viewer-own-order.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table as a viewer when the household uses its own order: the order in a sentence, and no Move up or Move down.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -742,8 +742,8 @@
     "file": "userguide/images/confirm-what-you-owe--balance.png",
     "guide": "confirm-what-you-owe",
     "caption": "The Balance now card for an estimated balance: the figure, the words estimated — not confirmed, and a Confirm the balance button.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -751,8 +751,8 @@
     "file": "userguide/images/confirm-what-you-owe--confirm-button.png",
     "guide": "confirm-what-you-owe",
     "caption": "The buttons under the debt name, with Confirm the balance beside Log a payment and Edit terms.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -760,8 +760,8 @@
     "file": "userguide/images/confirm-what-you-owe--correct-it.png",
     "guide": "confirm-what-you-owe",
     "caption": "The same window after Correct it: What the statement says filled in, the date it was true, and the note that a disagreement is recorded as a correction.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -769,8 +769,8 @@
     "file": "userguide/images/confirm-what-you-owe--estimate-line.png",
     "guide": "confirm-what-you-owe",
     "caption": "The foot of the Loan terms card, saying the balance is an estimate rolled forward from the figure last confirmed, with the minimum assumed paid and the interest added.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -778,8 +778,8 @@
     "file": "userguide/images/confirm-what-you-owe--no-line.png",
     "guide": "confirm-what-you-owe",
     "caption": "The Balance over time card with no chart, saying there is no line to draw because the payment is less than the interest the balance builds up.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -787,8 +787,8 @@
     "file": "userguide/images/confirm-what-you-owe--sheet.png",
     "guide": "confirm-what-you-owe",
     "caption": "The Is this still right? window: the estimate, what it assumed, what was last confirmed, and the buttons Confirm, Correct it and Cancel.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -796,8 +796,8 @@
     "file": "userguide/images/confirm-what-you-owe--stale-balance.png",
     "guide": "confirm-what-you-owe",
     "caption": "The Balance now card for a balance estimated for over a year: the last confirmed figure, the words last confirmed over a year ago, and the sentence asking for a statement.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -805,8 +805,8 @@
     "file": "userguide/images/confirm-what-you-owe--stale-sheet.png",
     "guide": "confirm-what-you-owe",
     "caption": "The Time for a statement window: the last figure confirmed, how many months it has been, and the buttons underneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -814,8 +814,8 @@
     "file": "userguide/images/create-your-account--setup-done.png",
     "guide": "create-your-account",
     "caption": "The Transactions screen you land on after creating your account, with nothing recorded yet.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -823,8 +823,8 @@
     "file": "userguide/images/create-your-account--setup-filled.png",
     "guide": "create-your-account",
     "caption": "The setup form filled in.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -832,8 +832,8 @@
     "file": "userguide/images/create-your-account--setup-form.png",
     "guide": "create-your-account",
     "caption": "The Set up Budget Owl screen with an empty form.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -841,8 +841,89 @@
     "file": "userguide/images/create-your-account--setup-password-short.png",
     "guide": "create-your-account",
     "caption": "The password field asking for at least 12 characters.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--bills",
+    "file": "userguide/images/do-your-weekly-check-in--bills.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Step 3, Bills: a repeating $71.99 from COMCAST XFINITY mapped to the Internet bill, then the table of this month’s bills and $640.99 still to leave this month.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--categorize",
+    "file": "userguide/images/do-your-weekly-check-in--categorize.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Step 2, Categorize: three charges given a category, Always file this payee here ticked for SQ *BLUE BOTTLE, and the week in one line: spent $487.00 so far.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--done",
+    "file": "userguide/images/do-your-weekly-check-in--done.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Check-in done: filed 3 charges, remembered 1 payee, marked Gym prepaid, marked Internet paid and remembered the mapping, recorded $63.00 to Emergency fund, and next week $480.00.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--finish",
+    "file": "userguide/images/do-your-weekly-check-in--finish.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "The Finish check-in button at the foot of Next week.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--next-week",
+    "file": "userguide/images/do-your-weekly-check-in--next-week.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Step 4, Next week: you came in $63.00 under, the surplus put towards Emergency fund ($2,340.00 → $2,403.00 of $6,000.00), and next week you can spend $480.00, about $68.57 a day.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--not-started",
+    "file": "userguide/images/do-your-weekly-check-in--not-started.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Check-in for week 34, not started yet, with the Start check-in button.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--payee-rules",
+    "file": "userguide/images/do-your-weekly-check-in--payee-rules.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Payee rules on the Categories page: SQ *BLUE BOTTLE files under Eating Out, with a Remove button.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--prompt",
+    "file": "userguide/images/do-your-weekly-check-in--prompt.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "The Weekly check-in card at the top of Transactions: due Sunday, 3 charges waiting on a category, with a Start now button.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
+    "viewport": "1280x720"
+  },
+  {
+    "name": "do-your-weekly-check-in--whats-new",
+    "file": "userguide/images/do-your-weekly-check-in--whats-new.png",
+    "guide": "do-your-weekly-check-in",
+    "caption": "Step 1, What's new: the paycheck from Northwind Systems landed as expected, and a $126.00 charge from Mountain Strength Co, three times the usual gym bill, answered Yes, prepaid.",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -850,8 +931,8 @@
     "file": "userguide/images/give-a-transaction-a-category--choose.png",
     "guide": "give-a-transaction-a-category",
     "caption": "The Edit transaction window with the Category list open.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -859,8 +940,8 @@
     "file": "userguide/images/give-a-transaction-a-category--filtered.png",
     "guide": "give-a-transaction-a-category",
     "caption": "The list narrowed to just the transactions that still need a category.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -868,8 +949,8 @@
     "file": "userguide/images/give-a-transaction-a-category--needs-a-category.png",
     "guide": "give-a-transaction-a-category",
     "caption": "A transaction in the list marked \"Needs a category\", with the Needs a category filter button circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -877,8 +958,8 @@
     "file": "userguide/images/import-a-bank-statement--account.png",
     "guide": "import-a-bank-statement",
     "caption": "The Import a statement screen: Account set to Everyday Checking •4417 and circled, then Statement file inside a dashed box, then Format.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -886,8 +967,8 @@
     "file": "userguide/images/import-a-bank-statement--confirm.png",
     "guide": "import-a-bank-statement",
     "caption": "The button at the bottom of the preview, circled: Import 6 transactions into Everyday Checking •4417, beside Start over.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -895,8 +976,8 @@
     "file": "userguide/images/import-a-bank-statement--csv-mapping.png",
     "guide": "import-a-bank-statement",
     "caption": "How to read it, for a CSV file: Budget Owl's guesses for date format (Month/day/year), separators, and Money out appears as A separate column; then each column with what it holds — Posted is Date, Description is Payee, Debit is Money out, Credit is Money in, Balance is Not used — above the first five rows of the file, and an Update preview button.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -904,8 +985,8 @@
     "file": "userguide/images/import-a-bank-statement--done.png",
     "guide": "import-a-bank-statement",
     "caption": "Imported 6 transactions into Everyday Checking •4417. They're in Needs a category, ready for you to sort. Below: See them in the ledger, Import another file and Undo this import.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -913,8 +994,8 @@
     "file": "userguide/images/import-a-bank-statement--file.png",
     "guide": "import-a-bank-statement",
     "caption": "Statement file holding checking-august.qfx, circled. Underneath: OFX, QFX, QIF or CSV, up to 5 MB, and Selected: 1 kB. Format has filled itself in as OFX or QFX.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -922,8 +1003,8 @@
     "file": "userguide/images/import-a-bank-statement--history.png",
     "guide": "import-a-bank-statement",
     "caption": "Recent imports, listing Everyday Checking · OFX or QFX with nothing left to undo, and an earlier Travel Card · QIF import with an Undo button.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -931,8 +1012,8 @@
     "file": "userguide/images/import-a-bank-statement--ledger-button.png",
     "guide": "import-a-bank-statement",
     "caption": "The Transactions screen with the Import a statement button, beside Move money, circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -940,8 +1021,8 @@
     "file": "userguide/images/import-a-bank-statement--needs-a-look.png",
     "guide": "import-a-bank-statement",
     "caption": "Needs a look: an unticked box reading \"Include Aug 20, 2026, Greenfield Market, -$92.15\" with \"Looks like the one already in your ledger on Aug 20, 2026\" beneath, Include all and Leave all out buttons, two rows already in your ledger, and Line 10, \"The date can't be read\", saying 20260231.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -949,8 +1030,8 @@
     "file": "userguide/images/import-a-bank-statement--other-account.png",
     "guide": "import-a-bank-statement",
     "caption": "A warning at the top of the preview: This file looks like it belongs to a different account from Everyday Checking •4417. Check you chose the right one before importing.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -958,8 +1039,8 @@
     "file": "userguide/images/import-a-bank-statement--sample.png",
     "guide": "import-a-bank-statement",
     "caption": "The first rows to be added, laid out like the Transactions list: Greenfield Market -$54.30, City Transit -$2.75, Northwind Systems $2,150.00 and more, each marked Needs a category.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -967,8 +1048,8 @@
     "file": "userguide/images/import-a-bank-statement--summary.png",
     "guide": "import-a-bank-statement",
     "caption": "The summary: 6 new, 2 already in your ledger, 1 looks like one you typed, 1 could not be read; statement dates Aug 18 to Aug 31, 2026; money in $2,150.00 and out -$181.05; $2,480.15 in Budget Owl now and $4,449.10 after this import; and \"Your bank says the balance is $4,449.10. After this import, Budget Owl will say $4,449.10. They match.\"",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -976,8 +1057,8 @@
     "file": "userguide/images/import-a-bank-statement--undo-confirm.png",
     "guide": "import-a-bank-statement",
     "caption": "The Undo this import? window: it removes the 6 transactions this import added to Everyday Checking, links to a bill, a debt payment or an envelope go with them, and rows paired into a transfer stay. Cancel and Undo this import buttons.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -985,8 +1066,8 @@
     "file": "userguide/images/invite-someone--household.png",
     "guide": "invite-someone",
     "caption": "The Household screen as an owner, with the Invite someone button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -994,8 +1075,8 @@
     "file": "userguide/images/invite-someone--invite-copied.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window just after selecting Copy link, with \"Link copied.\" beside the button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1003,8 +1084,8 @@
     "file": "userguide/images/invite-someone--invite-filled.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window with an email address and the Viewer role chosen.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1012,8 +1093,8 @@
     "file": "userguide/images/invite-someone--invite-form.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window, before anything is filled in.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1021,8 +1102,8 @@
     "file": "userguide/images/invite-someone--invite-link.png",
     "guide": "invite-someone",
     "caption": "The invitation link, with the warning to treat it like a password.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1030,8 +1111,8 @@
     "file": "userguide/images/invite-someone--invite-revoked.png",
     "guide": "invite-someone",
     "caption": "The Invite someone window after the link has been revoked.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1039,8 +1120,8 @@
     "file": "userguide/images/join-a-household--join-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen after joining.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1048,8 +1129,8 @@
     "file": "userguide/images/join-a-household--join-existing.png",
     "guide": "join-a-household",
     "caption": "The invitation screen as someone who already has an account on this instance.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1057,8 +1138,8 @@
     "file": "userguide/images/join-a-household--join-existing-done.png",
     "guide": "join-a-household",
     "caption": "The welcome screen for someone who already had an account.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1066,8 +1147,8 @@
     "file": "userguide/images/join-a-household--join-form.png",
     "guide": "join-a-household",
     "caption": "The invitation screen, with the notice about who can see what you record.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1075,8 +1156,8 @@
     "file": "userguide/images/join-a-household--join-needs-details.png",
     "guide": "join-a-household",
     "caption": "The invitation screen asking for a name and password.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1084,8 +1165,8 @@
     "file": "userguide/images/join-a-household--join-sign-in.png",
     "guide": "join-a-household",
     "caption": "The Sign in screen after joining, with a message that you have joined the household.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1093,8 +1174,8 @@
     "file": "userguide/images/join-a-household--join-signed-in.png",
     "guide": "join-a-household",
     "caption": "The screen asking you to sign out before you accept an invitation.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1102,8 +1183,8 @@
     "file": "userguide/images/join-a-household--join-unusable.png",
     "guide": "join-a-household",
     "caption": "The message shown when an invitation link has expired, been used, or been cancelled.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1111,8 +1192,8 @@
     "file": "userguide/images/log-a-debt-payment--balance.png",
     "guide": "log-a-debt-payment",
     "caption": "The Balance now card: the figure, when it was confirmed, and how much has been paid off so far.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1120,8 +1201,8 @@
     "file": "userguide/images/log-a-debt-payment--history.png",
     "guide": "log-a-debt-payment",
     "caption": "The Payment history table: date, paid, interest, principal, balance after and how each row got here, with the compounding rule underneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1129,8 +1210,8 @@
     "file": "userguide/images/log-a-debt-payment--log-button.png",
     "guide": "log-a-debt-payment",
     "caption": "The two buttons under the debt name: Log a payment and Edit terms.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1138,8 +1219,8 @@
     "file": "userguide/images/log-a-debt-payment--note.png",
     "guide": "log-a-debt-payment",
     "caption": "The Note box at the foot of the window, above Record it and Cancel.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1147,8 +1228,8 @@
     "file": "userguide/images/log-a-debt-payment--over-time.png",
     "guide": "log-a-debt-payment",
     "caption": "The Balance over time card: what you are paying against the at-the-minimum comparison line, with the sentence saying what the extra is buying.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1156,8 +1237,8 @@
     "file": "userguide/images/log-a-debt-payment--page.png",
     "guide": "log-a-debt-payment",
     "caption": "The page for one debt: its name, the loan terms, the balance now, the balance over time and the payment history.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1165,8 +1246,8 @@
     "file": "userguide/images/log-a-debt-payment--paid-from.png",
     "guide": "log-a-debt-payment",
     "caption": "The Paid from box, with the note that nothing is recorded against that account and no transaction is created.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1174,8 +1255,8 @@
     "file": "userguide/images/log-a-debt-payment--preview.png",
     "guide": "log-a-debt-payment",
     "caption": "The line under Amount paid giving the interest, the principal and the balance after for the amount in the box.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1183,8 +1264,8 @@
     "file": "userguide/images/log-a-debt-payment--preview-extra.png",
     "guide": "log-a-debt-payment",
     "caption": "Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1192,8 +1273,8 @@
     "file": "userguide/images/log-a-debt-payment--preview-unavailable.png",
     "guide": "log-a-debt-payment",
     "caption": "The Log a payment window with the note that the split could not be worked out just now, and Record it still there.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1201,8 +1282,8 @@
     "file": "userguide/images/log-a-debt-payment--recorded.png",
     "guide": "log-a-debt-payment",
     "caption": "The banner after recording a payment, naming how much went on interest, how much came off the balance, and the balance now.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1210,8 +1291,8 @@
     "file": "userguide/images/log-a-debt-payment--sheet.png",
     "guide": "log-a-debt-payment",
     "caption": "The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, the split that amount would record, Date paid, Paid from and Note.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1219,8 +1300,8 @@
     "file": "userguide/images/log-a-debt-payment--terms.png",
     "guide": "log-a-debt-payment",
     "caption": "The Loan terms card: what it started at, the balance now, the annual rate, the minimum payment, what you are paying, months left, when it is gone and the interest still to come, with Solved and From your plan tags.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1228,8 +1309,8 @@
     "file": "userguide/images/log-spend-in-an-envelope--envelope.png",
     "guide": "log-spend-in-an-envelope",
     "caption": "The Groceries envelope showing $116.70 left, the bar part filled, and the Log spend button circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1237,8 +1318,8 @@
     "file": "userguide/images/log-spend-in-an-envelope--log.png",
     "guide": "log-spend-in-an-envelope",
     "caption": "The Groceries log: three entries, each marked either Typed or From a transaction.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1246,8 +1327,8 @@
     "file": "userguide/images/log-spend-in-an-envelope--overspent.png",
     "guide": "log-spend-in-an-envelope",
     "caption": "The Eating Out envelope showing -$11.20 over, with its bar full and marked.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1255,8 +1336,8 @@
     "file": "userguide/images/log-spend-in-an-envelope--quick-add.png",
     "guide": "log-spend-in-an-envelope",
     "caption": "The Log spend window with 18.40 typed into Amount and everything else empty.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1264,8 +1345,8 @@
     "file": "userguide/images/manage-members--members-leave-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm leaving the household.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1273,8 +1354,8 @@
     "file": "userguide/images/manage-members--members-member-view.png",
     "guide": "manage-members",
     "caption": "The Household screen as a member: settings are read-only and a Leave button is shown.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1282,8 +1363,8 @@
     "file": "userguide/images/manage-members--members-no-household.png",
     "guide": "manage-members",
     "caption": "The screen shown to someone who is signed in but belongs to no household.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1291,8 +1372,8 @@
     "file": "userguide/images/manage-members--members-only-owner.png",
     "guide": "manage-members",
     "caption": "The note shown to the only owner, explaining why there is no Leave button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1300,8 +1381,8 @@
     "file": "userguide/images/manage-members--members-owner.png",
     "guide": "manage-members",
     "caption": "The Household screen as an owner, listing three people and their roles.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1309,8 +1390,8 @@
     "file": "userguide/images/manage-members--members-remove-confirm.png",
     "guide": "manage-members",
     "caption": "The window asking you to confirm removing Sam Rivera.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1318,8 +1399,8 @@
     "file": "userguide/images/manage-members--members-role-changed.png",
     "guide": "manage-members",
     "caption": "Jordan Rivera now shown with the Member role.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1327,8 +1408,8 @@
     "file": "userguide/images/mark-a-bill-paid--banner.png",
     "guide": "mark-a-bill-paid",
     "caption": "A banner at the top of the page reading Marked paid.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1336,8 +1417,8 @@
     "file": "userguide/images/mark-a-bill-paid--correct-open.png",
     "guide": "mark-a-bill-paid",
     "caption": "Correct this opened, showing Paid a different amount, Skip, Mark as due and Forget.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1345,8 +1426,8 @@
     "file": "userguide/images/mark-a-bill-paid--correct-this.png",
     "guide": "mark-a-bill-paid",
     "caption": "The first Cleaner row, with Correct this beneath it.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1354,8 +1435,8 @@
     "file": "userguide/images/mark-a-bill-paid--forget-confirm.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Forget what was recorded? window, explaining it is not the same as marking the bill due.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1363,8 +1444,8 @@
     "file": "userguide/images/mark-a-bill-paid--irregular.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Vet bill, with no dates of its own and a Record a payment button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1372,8 +1453,8 @@
     "file": "userguide/images/mark-a-bill-paid--irregular-form.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Record a payment for Vet window, asking for the date it was due, the amount paid and the date paid.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1381,8 +1462,8 @@
     "file": "userguide/images/mark-a-bill-paid--mark-paid.png",
     "guide": "mark-a-bill-paid",
     "caption": "The third week of the Cleaner bill, with its Mark paid button ringed.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1390,8 +1471,8 @@
     "file": "userguide/images/mark-a-bill-paid--marked.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Cleaner bill with the third week now tagged Paid and You recorded this, and no Mark paid button left on that row.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1399,8 +1480,8 @@
     "file": "userguide/images/mark-a-bill-paid--other-amount.png",
     "guide": "mark-a-bill-paid",
     "caption": "The What did you pay for Cleaner? window, with Amount paid and Date paid.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1408,8 +1489,8 @@
     "file": "userguide/images/mark-a-bill-paid--overdue.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Council tax bill, its row tagged Due and Overdue.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1417,8 +1498,8 @@
     "file": "userguide/images/mark-a-bill-paid--skipped.png",
     "guide": "mark-a-bill-paid",
     "caption": "The last row of the Cleaner bill, now tagged Skipped and You recorded this.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1426,8 +1507,8 @@
     "file": "userguide/images/mark-a-bill-paid--surprising.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Phone bill row showing Budgeted and Paid side by side, tagged Not what was budgeted.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1435,8 +1516,8 @@
     "file": "userguide/images/mark-a-bill-paid--totals.png",
     "guide": "mark-a-bill-paid",
     "caption": "The three totals above the bills list: bills this month, still to pay and overdue.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1444,8 +1525,8 @@
     "file": "userguide/images/mark-a-bill-paid--weekly.png",
     "guide": "mark-a-bill-paid",
     "caption": "The Cleaner bill: one row for each week of the month, each with its own date, status and Mark paid button.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1453,8 +1534,8 @@
     "file": "userguide/images/move-money-between-accounts--amount.png",
     "guide": "move-money-between-accounts",
     "caption": "Amount that left holding 250.00, with the hint underneath saying it is in USD, the currency of the account it leaves, and that there is no minus sign.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1462,8 +1543,8 @@
     "file": "userguide/images/move-money-between-accounts--cross-currency.png",
     "guide": "move-money-between-accounts",
     "caption": "The window with Into set to Berlin Savings (EUR): a second box, Amount that arrived, has appeared below Amount that left, with a hint saying the two accounts are in different currencies and only your statement knows what arrived.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1471,8 +1552,8 @@
     "file": "userguide/images/move-money-between-accounts--cross-currency-hint.png",
     "guide": "move-money-between-accounts",
     "caption": "The hint under Amount that arrived, read in full: these two accounts are in different currencies, so what arrived is not the same number as what left, and only your statement knows it — copy it from there, in EUR.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1480,8 +1561,8 @@
     "file": "userguide/images/move-money-between-accounts--delete-confirm.png",
     "guide": "move-money-between-accounts",
     "caption": "The Delete this transfer? window, saying both halves go and both account balances go back to what they were, and that it cannot be undone.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1489,8 +1570,8 @@
     "file": "userguide/images/move-money-between-accounts--edit.png",
     "guide": "move-money-between-accounts",
     "caption": "The Edit this transfer window: the two accounts named as Everyday Checking to Emergency Fund with no lists to change them, then Amount that left, Date and Note.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1498,8 +1579,8 @@
     "file": "userguide/images/move-money-between-accounts--into.png",
     "guide": "move-money-between-accounts",
     "caption": "Into set to Emergency Fund (USD), with the Into list circled, below Out of set to Everyday Checking (USD).",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1507,8 +1588,8 @@
     "file": "userguide/images/move-money-between-accounts--move-money-button.png",
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with the Move money button, beside Record a transaction, circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1516,8 +1597,8 @@
     "file": "userguide/images/move-money-between-accounts--moved.png",
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen with a Money moved. banner above the list.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1525,8 +1606,8 @@
     "file": "userguide/images/move-money-between-accounts--needs-a-category.png",
     "guide": "move-money-between-accounts",
     "caption": "The list narrowed to what still needs a category: one shop transaction, and neither half of the transfer.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1534,8 +1615,8 @@
     "file": "userguide/images/move-money-between-accounts--note.png",
     "guide": "move-money-between-accounts",
     "caption": "The lower half of the window, reached by scrolling inside it: Date, then Note with a hint saying it is optional and both halves of the transfer get it.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1543,8 +1624,8 @@
     "file": "userguide/images/move-money-between-accounts--one-row.png",
     "guide": "move-money-between-accounts",
     "caption": "One transfer row close up: Transfer out, -$500.00, Aug 16, 2026, Everyday Checking, Between your accounts, Transfer, with the note Transfer to Emergency Fund and Edit and Delete buttons.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1552,8 +1633,8 @@
     "file": "userguide/images/move-money-between-accounts--out-of.png",
     "guide": "move-money-between-accounts",
     "caption": "Out of set to Everyday Checking (USD), with the Out of list circled. Every account in the list is followed by its currency.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1561,8 +1642,8 @@
     "file": "userguide/images/move-money-between-accounts--same-account.png",
     "guide": "move-money-between-accounts",
     "caption": "Out of and Into both set to Everyday Checking (USD), with a message under Into saying it has to be a different account.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1570,8 +1651,8 @@
     "file": "userguide/images/move-money-between-accounts--sheet.png",
     "guide": "move-money-between-accounts",
     "caption": "The Move money between your accounts window as it opens: a note saying a transfer has no category and nobody to pay, then Out of, Into, Amount that left, Date and Note.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1579,8 +1660,8 @@
     "file": "userguide/images/move-money-between-accounts--two-rows.png",
     "guide": "move-money-between-accounts",
     "caption": "The list showing the same transfer twice: Transfer in, $500.00 into Emergency Fund, and Transfer out, -$500.00 from Everyday Checking, both dated Aug 16, 2026 and both labelled Between your accounts with a Transfer badge.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1588,8 +1669,8 @@
     "file": "userguide/images/move-money-between-accounts--viewer.png",
     "guide": "move-money-between-accounts",
     "caption": "The Transactions screen as a viewer: the transfer rows are there with their amounts, and there is no Move money button and no buttons on any row.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1597,8 +1678,8 @@
     "file": "userguide/images/organise-your-categories--add.png",
     "guide": "organise-your-categories",
     "caption": "The Add a category window with Childcare typed in the Name box.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1606,8 +1687,8 @@
     "file": "userguide/images/organise-your-categories--delete.png",
     "guide": "organise-your-categories",
     "caption": "The confirmation for deleting a category, saying your transactions are kept and will need a category again.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1615,8 +1696,8 @@
     "file": "userguide/images/organise-your-categories--sub-category.png",
     "guide": "organise-your-categories",
     "caption": "The Add a category window opened from Bills, with Sits under already set to Bills and Kind greyed out.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1624,8 +1705,8 @@
     "file": "userguide/images/organise-your-categories--tree.png",
     "guide": "organise-your-categories",
     "caption": "The Categories screen: Income and Spending groups, with sub-categories indented under their parent.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1633,8 +1714,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--chosen.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "The Emergency Fund row ticked; underneath, a box saying both rows will lose their category and payee and stop counting as income or spending; and Pair these two rows, circled, ready to select.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1642,8 +1723,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--paired.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "The banner Paired into a transfer., as it appears above the list.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1651,8 +1732,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--row-button.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "Two rows at the top of the Transactions list: TRANSFER FROM CHK 4417, $300.00, Aug 19, 2026, Emergency Fund, and ONLINE TRANSFER TO SAVINGS, -$300.00, Aug 18, 2026, Everyday Checking, whose This is a transfer… button is circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1660,8 +1741,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--sheet.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "The Pair this with the other half of a transfer window: This row, Aug 18, 2026 · Everyday Checking · ONLINE TRANSFER TO SAVINGS · -$300.00; Other account, From and To; and Rows to choose from, with Aug 19, 2026 · Emergency Fund · TRANSFER FROM CHK 4417 · $300.00 not ticked. Pair these two rows is greyed out.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1669,8 +1750,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--split-button.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "A transfer row with Edit, Split into two rows (circled) and Delete.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1678,8 +1759,8 @@
     "file": "userguide/images/pair-two-rows-into-a-transfer--split-confirm.png",
     "guide": "pair-two-rows-into-a-transfer",
     "caption": "The Split this transfer into two rows? window: both rows stay with their amounts and dates but come back with no category and no payee, and count as income and spending again. Cancel and Split buttons.",
-    "capturedAt": "2026-11-25",
-    "commit": "ee8f5f0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1687,8 +1768,8 @@
     "file": "userguide/images/record-a-transaction--filled.png",
     "guide": "record-a-transaction",
     "caption": "The filled-in window: 18.40 out of Everyday Checking, Greenfield Market, Groceries.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1696,8 +1777,8 @@
     "file": "userguide/images/record-a-transaction--form.png",
     "guide": "record-a-transaction",
     "caption": "The Record a transaction window as it opens, with today's date already filled in and Money out chosen.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1705,8 +1786,8 @@
     "file": "userguide/images/record-a-transaction--ledger.png",
     "guide": "record-a-transaction",
     "caption": "The Transactions screen: what has happened to your money, newest first, with the Record a transaction button circled.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1714,8 +1795,8 @@
     "file": "userguide/images/record-a-transaction--payee.png",
     "guide": "record-a-transaction",
     "caption": "The Who it was with box with \"Green\" typed, showing Greenfield Market suggested underneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1723,8 +1804,8 @@
     "file": "userguide/images/save-towards-a-goal--add-button.png",
     "guide": "save-towards-a-goal",
     "caption": "The Add a goal button at the top right of the Goals page.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1732,8 +1813,8 @@
     "file": "userguide/images/save-towards-a-goal--add-dialog.png",
     "guide": "save-towards-a-goal",
     "caption": "The Add a goal window filled in for a new bike: $900 by June 2027 at $75 a month, with the answer underneath saying when that gets there and what it would take to make June.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1741,8 +1822,8 @@
     "file": "userguide/images/save-towards-a-goal--archived.png",
     "guide": "save-towards-a-goal",
     "caption": "The Archived goals section, shown under the list, with the Wedding gift goal and the note that an archived goal is no longer part of the month’s plan.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1750,8 +1831,8 @@
     "file": "userguide/images/save-towards-a-goal--detail.png",
     "guide": "save-towards-a-goal",
     "caption": "The Emergency fund page: how far along it is, the account it is kept in, the plan, and the history with a withdrawal for a vet bill.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1759,8 +1840,8 @@
     "file": "userguide/images/save-towards-a-goal--history.png",
     "guide": "save-towards-a-goal",
     "caption": "The History card: what was already saved when tracking started, then each amount set aside or taken out, with the vet bill marked Withdrawal.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1768,8 +1849,8 @@
     "file": "userguide/images/save-towards-a-goal--list.png",
     "guide": "save-towards-a-goal",
     "caption": "The Goals page: New laptop, Japan and Emergency fund, each with a bar, how much is saved of the target, and a sentence saying when it gets there.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1777,8 +1858,8 @@
     "file": "userguide/images/save-towards-a-goal--progress.png",
     "guide": "save-towards-a-goal",
     "caption": "The How far along card: $2,340.00 of $6,000.00 with its bar, $3,660.00 to go, and the Emergency Fund account’s own balance labelled as the account’s.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1786,8 +1867,8 @@
     "file": "userguide/images/save-towards-a-goal--set-aside-button.png",
     "guide": "save-towards-a-goal",
     "caption": "The Set money aside button under the goal’s name.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1795,8 +1876,8 @@
     "file": "userguide/images/save-towards-a-goal--set-aside-dialog.png",
     "guide": "save-towards-a-goal",
     "caption": "The Set money aside window, filled in with the $100.00 still to come for August 2026, today’s date, and a note saying no account is touched.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1804,8 +1885,8 @@
     "file": "userguide/images/save-towards-a-goal--set-aside-done.png",
     "guide": "save-towards-a-goal",
     "caption": "The message Money set aside. at the top of the goal page.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1813,8 +1894,8 @@
     "file": "userguide/images/save-towards-a-goal--take-out-dialog.png",
     "guide": "save-towards-a-goal",
     "caption": "The Take money out window with $250 and the note New tyres.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1822,8 +1903,8 @@
     "file": "userguide/images/save-towards-a-goal--viewer.png",
     "guide": "save-towards-a-goal",
     "caption": "The Japan goal as a viewer: every figure, the plan and the history, and no buttons to change anything.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1831,8 +1912,8 @@
     "file": "userguide/images/see-whats-left-this-month--envelopes.png",
     "guide": "see-whats-left-this-month",
     "caption": "The Envelopes card at the foot of the page: what is set aside this month, and an Open envelopes button.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1840,8 +1921,8 @@
     "file": "userguide/images/see-whats-left-this-month--month.png",
     "guide": "see-whats-left-this-month",
     "caption": "The month picker at the top of the page, with Previous month and Next month either side of the month name.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1849,8 +1930,8 @@
     "file": "userguide/images/see-whats-left-this-month--owed.png",
     "guide": "see-whats-left-this-month",
     "caption": "The Owed card: owed in all, the minimums a month, how many debts, and the note saying which part of the minimums comes off what is left.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1858,8 +1939,8 @@
     "file": "userguide/images/see-whats-left-this-month--page.png",
     "guide": "see-whats-left-this-month",
     "caption": "The Bills & income page: the month picker, what is left this month, income, bills and envelopes.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1867,8 +1948,8 @@
     "file": "userguide/images/see-whats-left-this-month--short.png",
     "guide": "see-whats-left-this-month",
     "caption": "The same card showing a negative figure labelled short this month, with a note under it.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1876,8 +1957,8 @@
     "file": "userguide/images/see-whats-left-this-month--viewer.png",
     "guide": "see-whats-left-this-month",
     "caption": "The page for someone whose role is Viewer: every figure and every bill, and nothing to click.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1885,8 +1966,8 @@
     "file": "userguide/images/see-whats-left-this-month--whats-left.png",
     "guide": "see-whats-left-this-month",
     "caption": "The What’s left this month card: one figure, with income expected, bills this month, set aside in envelopes and still to pay beneath it.",
-    "capturedAt": "2026-11-25",
-    "commit": "e7089a0",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1894,8 +1975,8 @@
     "file": "userguide/images/see-where-your-money-went--children.png",
     "guide": "see-where-your-money-went",
     "caption": "Bills opened to show Rent at $1,450.00, flat, and Utilities at $101.30, up 14%.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1903,8 +1984,8 @@
     "file": "userguide/images/see-where-your-money-went--currency.png",
     "guide": "see-where-your-money-went",
     "caption": "The Currency buttons, USD and EUR, above the two cards, with the note that each currency is reported on its own.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1912,8 +1993,8 @@
     "file": "userguide/images/see-where-your-money-went--empty.png",
     "guide": "see-where-your-money-went",
     "caption": "The Income vs spending card saying nothing was recorded between September 2025 and August 2026, that amounts logged straight into an envelope do not appear here, and a Record a transaction link.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1921,8 +2002,8 @@
     "file": "userguide/images/see-where-your-money-went--figures.png",
     "guide": "see-where-your-money-went",
     "caption": "Show the figures opened: a table with one row per month, from September 2025 to August 2026 (so far), giving income, spending, needs a category in and out, and kept.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1930,8 +2011,8 @@
     "file": "userguide/images/see-where-your-money-went--income.png",
     "guide": "see-where-your-money-went",
     "caption": "The Income vs spending card: 12 mo, 6 mo and 3 mo buttons, the average kept and best month, a solid income line and a dashed spending line from Sep 2025 to Aug 2026, and the line saying one transaction needs a category.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1939,8 +2020,8 @@
     "file": "userguide/images/see-where-your-money-went--page.png",
     "guide": "see-where-your-money-went",
     "caption": "The Insights page: the Income vs spending card on the left and the Where July 2026 went card on the right.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1948,8 +2029,8 @@
     "file": "userguide/images/see-where-your-money-went--range.png",
     "guide": "see-where-your-money-went",
     "caption": "The 12 mo, 6 mo and 3 mo buttons, with 12 mo selected.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1957,8 +2038,8 @@
     "file": "userguide/images/see-where-your-money-went--so-far.png",
     "guide": "see-where-your-money-went",
     "caption": "Where August 2026 has gone so far, with the Next month button greyed out and a line saying $92.15 across 1 transaction needs a category.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1966,8 +2047,8 @@
     "file": "userguide/images/see-where-your-money-went--where.png",
     "guide": "see-where-your-money-went",
     "caption": "The Where July 2026 went card: a bar split by category, $1,943.10 spent against $2,271.20 in June 2026, and a row for each category with its amount and how it moved.",
-    "capturedAt": "2026-11-25",
-    "commit": "180f058",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1975,8 +2056,8 @@
     "file": "userguide/images/see-who-can-sign-in--accounts.png",
     "guide": "see-who-can-sign-in",
     "caption": "The Accounts block listing four people, one tagged Administrator, one tagged Disabled.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1984,8 +2065,8 @@
     "file": "userguide/images/see-who-can-sign-in--admin-link.png",
     "guide": "see-who-can-sign-in",
     "caption": "The Admin link at the end of the navigation bar.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -1993,8 +2074,8 @@
     "file": "userguide/images/see-who-can-sign-in--admin-page.png",
     "guide": "see-who-can-sign-in",
     "caption": "The whole Administration screen: This instance, Signing in, and Accounts.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2002,8 +2083,8 @@
     "file": "userguide/images/see-who-can-sign-in--instance.png",
     "guide": "see-who-can-sign-in",
     "caption": "The This instance block: version, when the server was set up, who administers it, and how many accounts exist.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2011,8 +2092,8 @@
     "file": "userguide/images/see-who-can-sign-in--no-admin-link.png",
     "guide": "see-who-can-sign-in",
     "caption": "The navigation bar as somebody who is not the administrator: no Admin link.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2020,8 +2101,8 @@
     "file": "userguide/images/set-up-an-envelope--form.png",
     "guide": "set-up-an-envelope",
     "caption": "The Add an envelope window with a name, the month and an amount filled in.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2029,8 +2110,8 @@
     "file": "userguide/images/set-up-an-envelope--list.png",
     "guide": "set-up-an-envelope",
     "caption": "The Envelopes screen for August 2026: each envelope leads with what is left, with the month and the totals above.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2038,8 +2119,8 @@
     "file": "userguide/images/sign-in--login-expired.png",
     "guide": "sign-in",
     "caption": "The sign-in screen explaining that your session ended.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2047,8 +2128,8 @@
     "file": "userguide/images/sign-in--login-form.png",
     "guide": "sign-in",
     "caption": "The sign-in screen.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2056,8 +2137,8 @@
     "file": "userguide/images/sign-in--login-too-many.png",
     "guide": "sign-in",
     "caption": "The message asking you to wait before trying to sign in again.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2065,8 +2146,8 @@
     "file": "userguide/images/sign-in--login-wrong-password.png",
     "guide": "sign-in",
     "caption": "The message shown when the email address or password is wrong.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2074,8 +2155,8 @@
     "file": "userguide/images/your-devices--devices.png",
     "guide": "your-devices",
     "caption": "The Devices screen listing this browser, another browser, and a phone.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2083,8 +2164,8 @@
     "file": "userguide/images/your-devices--devices-confirm-current.png",
     "guide": "your-devices",
     "caption": "The window warning that you are about to sign out of the browser you are using.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2092,8 +2173,8 @@
     "file": "userguide/images/your-devices--devices-revoked.png",
     "guide": "your-devices",
     "caption": "The Devices screen after signing the other browser out.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2101,8 +2182,8 @@
     "file": "userguide/images/your-display-settings--preferences.png",
     "guide": "your-display-settings",
     "caption": "The Your preferences screen.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2110,8 +2191,8 @@
     "file": "userguide/images/your-display-settings--preferences-chosen.png",
     "guide": "your-display-settings",
     "caption": "Euro and German chosen, before saving.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   },
   {
@@ -2119,8 +2200,8 @@
     "file": "userguide/images/your-display-settings--preferences-saved.png",
     "guide": "your-display-settings",
     "caption": "The preferences screen confirming that they were saved.",
-    "capturedAt": "2026-11-25",
-    "commit": "97eca58",
+    "capturedAt": "2026-11-26",
+    "commit": "ad98740",
     "viewport": "1280x720"
   }
 ]
