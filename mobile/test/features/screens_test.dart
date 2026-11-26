@@ -3,6 +3,7 @@ import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/errors/error_text.dart';
 import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/money/money.dart';
+import 'package:budget_owl/core/privacy/privacy_cover.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/features/transactions/data/transactions_repository.dart';
 import 'package:budget_owl/features/transactions/domain/requests.dart';
@@ -199,6 +200,22 @@ void main() {
 
     expect(server.served, contains('POST /api/auth/logout'));
     expect(phone.store.values.keys, ['budget_owl.server']);
+  });
+
+  testWidgets('the running app is covered in the task switcher, over every route', (tester) async {
+    await signedIn(tester);
+    expect(find.text('Budget Owl'), findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+
+    expect(find.text('Budget Owl'), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text('Greenfield Market').first, matching: find.byType(PrivacyCover)),
+      findsOneWidget,
+    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
   });
 
   group('transactions', () {

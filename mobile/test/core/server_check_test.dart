@@ -64,7 +64,10 @@ void main() {
   });
 
   test("another app's JSON is not Budget Owl", () async {
-    final adapter = ScriptedAdapter((_) async => json(200, {'app': 'other', 'apiVersion': 1}));
+    // Every other field is what Budget Owl would send, so only the name can refuse it.
+    final adapter = ScriptedAdapter(
+      (_) async => json(200, {'app': 'other', 'apiVersion': 1, 'minimumClientApiVersion': 1}),
+    );
 
     expect(await problemFor(adapter), ConnectProblem.notBudgetOwl);
   });

@@ -57,6 +57,13 @@ void main() {
       expect(parseWireAmount('-92.1500'), Decimal.parse('-92.15'));
     });
 
+    test('keeps every digit of the largest amount NUMERIC(19,4) holds — a double would not', () {
+      // 19 significant digits: a double has about 16, so this would come back as 1e15.
+      expect(parseWireAmount('999999999999999.9999').toString(), '999999999999999.9999');
+      expect(parseWireAmount('-0.0001').toString(), '-0.0001');
+      expect(usd('123456789012345.6789'), r'$123,456,789,012,345.68');
+    });
+
     for (final refused in [
       '1e3',
       '1E+10000000',
