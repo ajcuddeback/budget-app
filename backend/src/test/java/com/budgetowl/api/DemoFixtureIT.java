@@ -22,6 +22,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Generates the debt fixtures the UI harness serves, <b>from the real stack</b>, and fails if the
@@ -1251,28 +1256,8 @@ class DemoFixtureIT extends ApiTestBase {
      */
     private Map<UUID, String> seedTheDemoLedger(Household household) {
         ApiClient owner = household.owner();
-        Map<String, UUID> categories = new LinkedHashMap<>();
-        categories.put("cat-0001", seededCategoryId("Income"));
-        categories.put("cat-0002", seededCategoryId("Salary"));
-        categories.put("cat-0003", seededCategoryId("Bills"));
-        categories.put("cat-0004", seededCategoryId("Rent or mortgage"));
-        categories.put("cat-0005", seededCategoryId("Utilities"));
-        categories.put("cat-0006", seededCategoryId("Groceries"));
-        categories.put("cat-0007", seededCategoryId("Transport"));
-        categories.put("cat-0008", seededCategoryId("Eating Out"));
-        // demo-data.ts calls it "Rent".
-        ok200(
-                owner.patch(
-                        "/api/categories/" + categories.get("cat-0004"),
-                        "{\"version\":0,\"name\":\"Rent\"}"));
-        categories.put("cat-0009", createCategory(owner, "Wedding", "EXPENSE", null));
-
-        Map<String, UUID> accounts = new LinkedHashMap<>();
-        accounts.put(
-                "acc-0001", demoAccount(owner, "Everyday Checking", "4417", "CHECKING", "1641.75"));
-        accounts.put("acc-0002", demoAccount(owner, "Emergency Fund", null, "SAVINGS", "5620.00"));
-        accounts.put(
-                "acc-0003", demoAccount(owner, "Travel Card", "8820", "CREDIT_CARD", "-215.24"));
+        Map<String, UUID> categories = seedDemoCategories(owner);
+        Map<String, UUID> accounts = seedDemoAccounts(owner);
 
         for (String[] row : DEMO_LEDGER) {
             ApiResponse created =
@@ -1309,6 +1294,763 @@ class DemoFixtureIT extends ApiTestBase {
         categories.forEach((name, id) -> stable.put(id, name));
         accounts.forEach((name, id) -> stable.put(id, name));
         return stable;
+    }
+
+    /** The demo household's categories, by the stable names {@code demo-data.ts} uses. */
+    private Map<String, UUID> seedDemoCategories(ApiClient owner) {
+        Map<String, UUID> categories = new LinkedHashMap<>();
+        categories.put("cat-0001", seededCategoryId("Income"));
+        categories.put("cat-0002", seededCategoryId("Salary"));
+        categories.put("cat-0003", seededCategoryId("Bills"));
+        categories.put("cat-0004", seededCategoryId("Rent or mortgage"));
+        categories.put("cat-0005", seededCategoryId("Utilities"));
+        categories.put("cat-0006", seededCategoryId("Groceries"));
+        categories.put("cat-0007", seededCategoryId("Transport"));
+        categories.put("cat-0008", seededCategoryId("Eating Out"));
+        // demo-data.ts calls it "Rent".
+        ok200(
+                owner.patch(
+                        "/api/categories/" + categories.get("cat-0004"),
+                        "{\"version\":0,\"name\":\"Rent\"}"));
+        categories.put("cat-0009", createCategory(owner, "Wedding", "EXPENSE", null));
+        return categories;
+    }
+
+    /** The demo household's three accounts, by the stable names {@code demo-data.ts} uses. */
+    private Map<String, UUID> seedDemoAccounts(ApiClient owner) {
+        Map<String, UUID> accounts = new LinkedHashMap<>();
+        accounts.put(
+                "acc-0001", demoAccount(owner, "Everyday Checking", "4417", "CHECKING", "1641.75"));
+        accounts.put("acc-0002", demoAccount(owner, "Emergency Fund", null, "SAVINGS", "5620.00"));
+        accounts.put(
+                "acc-0003", demoAccount(owner, "Travel Card", "8820", "CREDIT_CARD", "-215.24"));
+        return accounts;
+    }
+
+    // =========================================================== mobile fixtures (slice 15)
+
+    /**
+     * Where the Flutter app's fake HTTP layer reads from (mobile/test/support/fixture_server.dart).
+     *
+     * <p>The mobile equivalent of the {@code *.generated.ts} files above, for the same reason: a
+     * golden screenshot shows whatever the fixture says, and a hand-written balance would be a
+     * figure the application never computed. The fake answers <b>only</b> the exchanges written
+     * here and fails the test on anything else, so a screen cannot render a response nobody
+     * generated.
+     */
+    private static final Path MOBILE_FIXTURES = Path.of("..", "mobile", "test", "fixtures");
+
+    /** The device label the app derives on an Android phone (mobile/lib/core/platform). */
+    private static final String PHONE_LABEL = "Phone · Android";
+
+    /** The ledger as the app asks for it: first page, the web's page size. */
+    private static final String LEDGER = "/api/transactions?page=0&size=50";
+
+    private static final String ACCOUNTS = "/api/accounts?includeArchived=true&page=0&size=200";
+
+    private static final String CATEGORIES = "/api/categories?includeArchived=true&page=0&size=200";
+
+    /**
+     * A payee for each kind of row, so the phone's ledger reads like a ledger. The figures are
+     * {@link #DEMO_LEDGER}'s own — the mobile household is its July and August, not a third copy of
+     * anybody's arithmetic.
+     */
+    private static final Map<String, String> MOBILE_PAYEES =
+            Map.of(
+                    "cat-0002", "Northwind Systems",
+                    "cat-0004", "Fairview Lettings",
+                    "cat-0005", "Metro Power",
+                    "cat-0006", "Greenfield Market",
+                    "cat-0007", "City Transit",
+                    "cat-0008", "Corner Kitchen",
+                    "none", "Greenfield Market");
+
+    /** The ids a mobile scenario needs to address, by a name a test can read. */
+    private record MobileDemo(
+            Map<String, UUID> accounts,
+            Map<String, UUID> categories,
+            Map<String, UUID> rows,
+            UUID augustTransfer,
+            Map<UUID, String> stable) {
+
+        String account(String name) {
+            return accounts.get(name).toString();
+        }
+
+        String category(String name) {
+            return categories.get(name).toString();
+        }
+
+        String row(String name) {
+            return rows.get(name).toString();
+        }
+    }
+
+    /** Who made a recorded request: a token's owner by name, or nobody. */
+    private record Caller(String name, ApiClient client, Map<String, String> headers) {
+
+        static Caller stranger(ApiClient client) {
+            return new Caller(null, client, Map.of());
+        }
+    }
+
+    /**
+     * Records exchanges as the mobile fake replays them.
+     *
+     * <p>Each exchange carries the <b>state</b> it belongs to (the fake starts in one and a write
+     * moves it to the exchange's {@code then}), the request exactly as the app must send it — the
+     * bearer's owner, any CSRF header, the JSON body — and the response exactly as the API gave it.
+     * {@code "*"} is any state, for the public reads an app makes whenever it likes.
+     */
+    private static final class MobileRecorder {
+
+        private static final ObjectMapper JSON = JsonMapper.builder().build();
+
+        private final ArrayNode exchanges = JSON.createArrayNode();
+        private final Map<String, String> secrets = new LinkedHashMap<>();
+        private String state = "*";
+
+        void in(String next) {
+            state = next;
+        }
+
+        /** A credential that must not reach the file: replaced by {@code canonical} everywhere. */
+        void secret(String raw, String canonical) {
+            secrets.put(raw, canonical);
+        }
+
+        ApiResponse send(Caller caller, String method, String path, String body) {
+            return exchange(caller, method, path, body, null);
+        }
+
+        ApiResponse sendThen(String then, Caller caller, String method, String path, String body) {
+            return exchange(caller, method, path, body, then);
+        }
+
+        private ApiResponse exchange(
+                Caller caller, String method, String path, String body, String then) {
+            ApiResponse response = caller.client().send(method, path, body);
+            ObjectNode exchange = JSON.createObjectNode();
+            exchange.put("state", state);
+            exchange.put("method", method);
+            exchange.put("path", path);
+            if (caller.name() == null) {
+                exchange.putNull("auth");
+            } else {
+                exchange.put("auth", caller.name());
+            }
+            if (!caller.headers().isEmpty()) {
+                ObjectNode headers = exchange.putObject("requestHeaders");
+                new TreeMap<>(caller.headers()).forEach(headers::put);
+            }
+            exchange.set("request", body == null ? JSON.nullNode() : JSON.readTree(body));
+            exchange.put("status", response.status());
+            // Only the headers the app reads: Retry-After on a 429, the meta route's caching, and
+            // the CSRF cookie from the one read the app takes it from before a public write.
+            ObjectNode headers = JSON.createObjectNode();
+            response.header("Retry-After").ifPresent(value -> headers.put("Retry-After", value));
+            if (path.equals("/api/meta")) {
+                response.header("Cache-Control")
+                        .ifPresent(value -> headers.put("Cache-Control", value));
+            }
+            if (path.equals("/api/setup/status")) {
+                response.headerValues("Set-Cookie").stream()
+                        .filter(cookie -> cookie.startsWith("XSRF-TOKEN="))
+                        .findFirst()
+                        .ifPresent(cookie -> headers.put("Set-Cookie", cookie));
+            }
+            if (!headers.isEmpty()) {
+                exchange.set("responseHeaders", headers);
+            }
+            exchange.set(
+                    "body",
+                    response.body() == null || response.body().isBlank()
+                            ? JSON.nullNode()
+                            : JSON.readTree(response.body()));
+            if (then != null) {
+                exchange.put("then", then);
+            }
+            exchanges.add(exchange);
+            return response;
+        }
+
+        String render(String scenario) {
+            ObjectNode root = JSON.createObjectNode();
+            root.put(
+                    "_generated",
+                    "GENERATED by backend DemoFixtureIT ("
+                            + scenario
+                            + "). Do not edit by hand. Real responses of the real application,"
+                            + " clock fixed, ids and credentials canonicalised. Regenerate: mvn -f"
+                            + " backend test -Dtest=DemoFixtureIT -Dfixtures.write=true");
+            root.set("exchanges", exchanges);
+            String document = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            for (Map.Entry<String, String> secret : secrets.entrySet()) {
+                document = document.replace(secret.getKey(), secret.getValue());
+            }
+            return document + "\n";
+        }
+    }
+
+    /**
+     * The phone's demo household, and every exchange the built screens make against it.
+     *
+     * <p>One story, told in order, because each write moves the server: connect, sign in, read the
+     * ledger, record a coffee, delete it, file the pending shop, move money, correct the transfer,
+     * delete it, move money into euros, split August's transfer, pair it back. Each step's reads
+     * are recorded in the state it leaves the server in, so a test that starts in any state sees
+     * exactly the ledger the API would have shown it.
+     */
+    @Test
+    void the_committed_mobile_fixtures_are_what_the_application_returns() throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+        MobileDemo demo = seedTheMobileLedger(household);
+        // The clock stays at real time: nothing these screens read is derived from today, and a
+        // token issued "in August 2026" would expire before the database says it was created
+        // (ck_auth_tokens_expires_after_creation). Every timestamp is pinned when rendered.
+
+        MobileRecorder record = new MobileRecorder();
+        Caller stranger = Caller.stranger(anonymous());
+
+        // Any state: an app asks who the server is whenever it starts.
+        record.in("*");
+        record.send(stranger, "GET", "/api/meta", null);
+        record.send(stranger, "GET", "/api/setup/status", null);
+
+        // Connecting and signing in.
+        record.in("connect");
+        record.send(stranger, "POST", "/api/auth/token", tokenBody(OWNER_EMAIL, "wrong-guess-1"));
+        Caller owner = signInAsPhone(record, stranger, "demo", OWNER_EMAIL, OWNER_SECRET, "owner");
+        Caller viewer =
+                signInAsPhone(record, stranger, "viewer", VIEWER_EMAIL, VIEWER_SECRET, "viewer");
+
+        // ---- demo: the household as the owner first sees it.
+        record.in("demo");
+        readTheLedger(record, owner, demo);
+        for (String filter :
+                List.of(
+                        "&accountId=" + demo.account("acc-0003"),
+                        "&uncategorised=true",
+                        "&categoryId=" + demo.category("cat-0006"),
+                        "&from=2026-08-01&to=2026-08-31",
+                        "&search=market")) {
+            record.send(owner, "GET", LEDGER + filter, null);
+        }
+        for (String typed : List.of("Co", "Gr", "Corner%20Kitchen")) {
+            record.send(owner, "GET", "/api/transactions/payee-suggestions?typed=" + typed, null);
+        }
+        record.send(owner, "GET", "/api/transfers/" + demo.augustTransfer(), null);
+        record.send(owner, "GET", "/api/auth/devices?page=0&size=50", null);
+        // Two rows going the same way cannot be one transfer — a real 422, rendered from its code.
+        record.send(
+                owner,
+                "POST",
+                "/api/transactions/" + demo.row("groceries-aug-03") + "/pair",
+                """
+                {"withTransactionId":"%s","version":0,"withVersion":0}
+                """
+                        .formatted(demo.row("dinner-aug-09")));
+
+        // ---- viewer: the same household, read-only.
+        record.in("viewer");
+        readTheLedger(record, viewer, demo);
+        record.send(viewer, "POST", "/api/transactions", coffee(demo));
+
+        // ---- record a coffee, then delete it.
+        record.in("demo");
+        ApiResponse coffee =
+                record.sendThen("added", owner, "POST", "/api/transactions", coffee(demo));
+        nameRows(demo.stable());
+        record.in("added");
+        readTheLedger(record, owner, demo);
+        record.sendThen(
+                "deleted", owner, "DELETE", "/api/transactions/" + coffee.stringField("id"), null);
+        record.in("deleted");
+        readTheLedger(record, owner, demo);
+
+        // ---- file the pending shop under Groceries.
+        record.sendThen(
+                "categorised",
+                owner,
+                "PATCH",
+                "/api/transactions/" + demo.row("pending-groceries"),
+                """
+                {"version":0,"categoryId":"%s"}
+                """
+                        .formatted(demo.category("cat-0006")));
+        record.in("categorised");
+        readTheLedger(record, owner, demo);
+
+        // A phone still holding version 0 of that row: somebody else's edit got there first.
+        record.in("demo");
+        record.send(
+                owner,
+                "PATCH",
+                "/api/transactions/" + demo.row("pending-groceries"),
+                """
+                {"version":0,"note":"weekly shop"}
+                """);
+
+        // ---- move money, correct it, delete it.
+        record.in("categorised");
+        ApiResponse moved =
+                record.sendThen(
+                        "moved",
+                        owner,
+                        "POST",
+                        "/api/transfers",
+                        """
+                        {"fromAccountId":"%s","toAccountId":"%s","date":"2026-08-20",
+                         "amount":"200.00","note":"Top up"}
+                        """
+                                .formatted(demo.account("acc-0001"), demo.account("acc-0002")));
+        String movedId = moved.stringField("id");
+        demo.stable().put(UUID.fromString(movedId), "tgr-0002");
+        nameRows(demo.stable());
+        record.in("moved");
+        readTheLedger(record, owner, demo);
+        ApiResponse readBack = record.send(owner, "GET", "/api/transfers/" + movedId, null);
+        record.sendThen(
+                "transfer-edited",
+                owner,
+                "PATCH",
+                "/api/transfers/" + movedId,
+                """
+                {"version":%d,"amount":"250.00"}
+                """
+                        .formatted(readBack.numberField("version")));
+        record.in("transfer-edited");
+        readTheLedger(record, owner, demo);
+        record.sendThen("transfer-deleted", owner, "DELETE", "/api/transfers/" + movedId, null);
+        record.in("transfer-deleted");
+        readTheLedger(record, owner, demo);
+
+        // ---- into euros: two figures, because only the statement knows the second (ADR-0033).
+        ApiResponse crossed =
+                record.sendThen(
+                        "crossed",
+                        owner,
+                        "POST",
+                        "/api/transfers",
+                        """
+                        {"fromAccountId":"%s","toAccountId":"%s","date":"2026-08-20",
+                         "amount":"100.00","amountReceived":"92.50"}
+                        """
+                                .formatted(demo.account("acc-0001"), demo.account("acc-0004")));
+        demo.stable().put(UUID.fromString(crossed.stringField("id")), "tgr-0003");
+        nameRows(demo.stable());
+        record.in("crossed");
+        readTheLedger(record, owner, demo);
+        record.send(owner, "GET", "/api/transfers/" + crossed.stringField("id"), null);
+
+        // ---- split August's transfer into two rows, then pair them back.
+        ApiResponse august =
+                record.send(owner, "GET", "/api/transfers/" + demo.augustTransfer(), null);
+        ApiResponse split =
+                record.sendThen(
+                        "split",
+                        owner,
+                        "POST",
+                        "/api/transfers/" + demo.augustTransfer() + "/split",
+                        """
+                        {"version":%d}
+                        """
+                                .formatted(august.numberField("version")));
+        record.in("split");
+        readTheLedger(record, owner, demo);
+        JsonNode legs = MobileRecorder.JSON.readTree(split.body()).get("transactions");
+        JsonNode out =
+                legs.get(0).get("amount").asString().startsWith("-") ? legs.get(0) : legs.get(1);
+        JsonNode in = out == legs.get(0) ? legs.get(1) : legs.get(0);
+        ApiResponse paired =
+                record.sendThen(
+                        "paired",
+                        owner,
+                        "POST",
+                        "/api/transactions/" + out.get("id").asString() + "/pair",
+                        """
+                {"withTransactionId":"%s","version":%d,"withVersion":%d}
+                """
+                                .formatted(
+                                        in.get("id").asString(),
+                                        out.get("version").asLong(),
+                                        in.get("version").asLong()));
+        demo.stable().put(UUID.fromString(paired.stringField("id")), "tgr-0004");
+        record.in("paired");
+        readTheLedger(record, owner, demo);
+
+        // ---- a member removed from the household signs in to the not-a-member screen.
+        ApiClient ownerBrowser = signIn(OWNER_EMAIL, OWNER_SECRET);
+        ok204(
+                ownerBrowser.delete(
+                        "/api/households/current/members/" + membershipIdOf(MEMBER_EMAIL)));
+        record.in("connect");
+        Caller removed =
+                signInAsPhone(
+                        record, stranger, "no-household", MEMBER_EMAIL, MEMBER_SECRET, "member");
+        record.in("no-household");
+        record.send(removed, "GET", "/api/auth/me", null);
+
+        // ---- devices: the phone sees itself, and signs a browser out.
+        record.in("demo");
+        ApiResponse devices = record.send(owner, "GET", "/api/auth/devices?page=0&size=50", null);
+        java.util.regex.Matcher session =
+                java.util.regex.Pattern.compile("\"(s-[0-9a-f]{64})\"").matcher(devices.body());
+        int sessions = 0;
+        while (session.find()) {
+            record.secret(session.group(1), String.format("s-session-%04d", ++sessions));
+        }
+        session.reset();
+        if (!session.find()) {
+            throw new AssertionError("the owner's browser session is not on the devices list");
+        }
+        record.sendThen(
+                "device-revoked", owner, "DELETE", "/api/auth/devices/" + session.group(1), null);
+        record.in("device-revoked");
+        record.send(owner, "GET", "/api/auth/devices?page=0&size=50", null);
+
+        // ---- signing out ends the token; every read after it is the 401 a revoked phone gets.
+        record.in("*");
+        record.sendThen("revoked", owner, "POST", "/api/auth/logout", null);
+        record.in("revoked");
+        readTheLedger(record, owner, demo);
+
+        compareOrWriteMobile(
+                canonicaliseMobile(record.render("demo household"), demo.stable()),
+                MOBILE_FIXTURES.resolve("demo.generated.json"),
+                Path.of("target", "mobile-demo.generated.json"));
+    }
+
+    /**
+     * Names every transaction and payee the database holds that has no name yet, by what it is.
+     *
+     * <p>Needed because the ledger orders rows {@code date desc, id desc} and ids are random: two
+     * rows on one date (a salary and the rent, both legs of a transfer) come back in a different
+     * order each run, and naming ids by first appearance would then renumber everything after them.
+     * A row named by its date, account and amount keeps its name however it sorts. Called after
+     * every write that makes rows, while they exist — a deleted coffee must already have its name.
+     */
+    private void nameRows(Map<UUID, String> stable) {
+        java.util.Set<String> used = new java.util.HashSet<>(stable.values());
+        for (Map<String, Object> row :
+                jdbc.queryForList(
+                        "SELECT id, date, account_id, amount FROM transactions ORDER BY date, id")) {
+            UUID id = (UUID) row.get("id");
+            if (stable.containsKey(id)) {
+                continue;
+            }
+            java.math.BigDecimal amount = (java.math.BigDecimal) row.get("amount");
+            String base =
+                    "row-"
+                            + row.get("date")
+                            + "-"
+                            + stable.getOrDefault((UUID) row.get("account_id"), "acc-other")
+                            + (amount.signum() < 0 ? "-out-" : "-in-")
+                            + amount.abs().stripTrailingZeros().toPlainString();
+            String name = base;
+            for (int n = 2; used.contains(name); n++) {
+                name = base + "-" + n;
+            }
+            used.add(name);
+            stable.put(id, name);
+        }
+        for (Map<String, Object> payee : jdbc.queryForList("SELECT id, name FROM payees")) {
+            UUID id = (UUID) payee.get("id");
+            stable.putIfAbsent(
+                    id,
+                    "payee-"
+                            + ((String) payee.get("name"))
+                                    .toLowerCase(java.util.Locale.ROOT)
+                                    .replaceAll("[^a-z0-9]+", "-"));
+        }
+    }
+
+    /**
+     * {@link #compareOrWrite}, insensitive to the order of rows that share a date.
+     *
+     * <p>The ledger's order among same-date rows is the order of their random ids, so it is real
+     * and arbitrary: a regeneration may flip a salary and the rent. The committed file keeps
+     * whichever real order it was written with; the comparison sorts each page's rows by date and
+     * stable id first, so a flip is not drift, while any other change — a figure, a field, a row —
+     * still fails.
+     */
+    private static void compareOrWriteMobile(String document, Path committed, Path regenerated)
+            throws IOException {
+        if (Boolean.getBoolean("fixtures.write") || !Files.exists(committed)) {
+            compareOrWrite(document, committed, regenerated);
+            return;
+        }
+        String stored = Files.readString(committed);
+        JsonNode now = tieOrderFree(MobileRecorder.JSON.readTree(document));
+        JsonNode then = tieOrderFree(MobileRecorder.JSON.readTree(stored));
+        if (!now.equals(then)) {
+            compareOrWrite(document, committed, regenerated);
+        }
+    }
+
+    private static JsonNode tieOrderFree(JsonNode node) {
+        if (node.isObject()) {
+            ObjectNode copy = MobileRecorder.JSON.createObjectNode();
+            for (Map.Entry<String, JsonNode> field : node.properties()) {
+                copy.set(field.getKey(), tieOrderFree(field.getValue()));
+            }
+            return copy;
+        }
+        if (node.isArray()) {
+            List<JsonNode> items = new java.util.ArrayList<>();
+            node.forEach(item -> items.add(tieOrderFree(item)));
+            if (items.stream().allMatch(item -> item.has("date") && item.has("id"))) {
+                items.sort(
+                        java.util.Comparator.comparing(
+                                        (JsonNode item) -> item.get("date").asString())
+                                .reversed()
+                                .thenComparing(item -> item.get("id").asString()));
+            }
+            ArrayNode copy = MobileRecorder.JSON.createArrayNode();
+            items.forEach(copy::add);
+            return copy;
+        }
+        return node;
+    }
+
+    /**
+     * A fresh instance, as a phone meets it: set up the first account, sign in to an empty
+     * household, then accept an invitation as a second person.
+     */
+    @Test
+    void the_committed_mobile_first_run_fixtures_are_what_the_application_returns()
+            throws IOException {
+        clock.moveTo(Instant.now());
+        MobileRecorder record = new MobileRecorder();
+        Caller stranger = Caller.stranger(anonymous());
+
+        record.in("*");
+        record.send(stranger, "GET", "/api/meta", null);
+
+        // ---- fresh: the CSRF cookie comes from the status read, and the public write sends it
+        // back as a header (SecurityConfig: a cookie-less client still needs it on public writes).
+        // A client of its own, holding no cookie yet, as the app never does.
+        record.in("fresh");
+        ApiClient phone = anonymous();
+        record.send(Caller.stranger(phone), "GET", "/api/setup/status", null);
+        String csrf = phone.cookie("XSRF-TOKEN").orElseThrow();
+        record.secret(csrf, "fixture-csrf");
+        Caller withCsrf =
+                new Caller(
+                        null, phone, Map.of("X-XSRF-TOKEN", csrf, "Cookie", "XSRF-TOKEN=" + csrf));
+        record.sendThen(
+                "set-up",
+                withCsrf,
+                "POST",
+                "/api/setup/first-user",
+                """
+                {"displayName":"Ada","email":"%s","password":"%s",
+                 "householdName":"Rivera Household","baseCurrency":"USD"}
+                """
+                        .formatted(OWNER_EMAIL, OWNER_SECRET));
+
+        record.in("set-up");
+        record.send(stranger, "GET", "/api/setup/status", null);
+        Caller owner = signInAsPhone(record, stranger, "empty", OWNER_EMAIL, OWNER_SECRET, "owner");
+
+        record.in("empty");
+        record.send(owner, "GET", "/api/auth/me", null);
+        record.send(owner, "GET", ACCOUNTS, null);
+        record.send(owner, "GET", CATEGORIES, null);
+        record.send(owner, "GET", LEDGER, null);
+        Map<UUID, String> stable = new LinkedHashMap<>();
+        stable.put(seededCategoryId("Groceries"), "cat-0006");
+
+        // ---- an invitation, made on the web and pasted into a second phone.
+        clock.moveTo(Instant.now());
+        String invitation = invite(signIn(OWNER_EMAIL, OWNER_SECRET), MEMBER_EMAIL, "MEMBER");
+        record.secret(invitation, "fixture-invitation");
+        ApiClient secondPhone = anonymous();
+        record.in("invited");
+        record.send(Caller.stranger(secondPhone), "GET", "/api/setup/status", null);
+        String secondCsrf = secondPhone.cookie("XSRF-TOKEN").orElseThrow();
+        record.secret(secondCsrf, "fixture-csrf-2");
+        Caller joining =
+                new Caller(
+                        null,
+                        secondPhone,
+                        Map.of("X-XSRF-TOKEN", secondCsrf, "Cookie", "XSRF-TOKEN=" + secondCsrf));
+        record.send(
+                joining,
+                "POST",
+                "/api/invitations/not-an-invitation/accept",
+                """
+                {"displayName":"Grace","password":"%s"}
+                """
+                        .formatted(MEMBER_SECRET));
+        record.sendThen(
+                "joined",
+                joining,
+                "POST",
+                "/api/invitations/" + invitation + "/accept",
+                """
+                {"displayName":"Grace","password":"%s"}
+                """
+                        .formatted(MEMBER_SECRET));
+        record.in("joined");
+        Caller member =
+                signInAsPhone(
+                        record,
+                        Caller.stranger(anonymous()),
+                        "member",
+                        MEMBER_EMAIL,
+                        MEMBER_SECRET,
+                        "member");
+        record.in("member");
+        record.send(member, "GET", "/api/auth/me", null);
+        record.send(member, "GET", ACCOUNTS, null);
+        record.send(member, "GET", CATEGORIES, null);
+        record.send(member, "GET", LEDGER, null);
+
+        compareOrWrite(
+                canonicaliseMobile(record.render("first run"), stable),
+                MOBILE_FIXTURES.resolve("first-run.generated.json"),
+                Path.of("target", "mobile-first-run.generated.json"));
+    }
+
+    /** Issues a phone's token through a recorded exchange, and names it in the file. */
+    private Caller signInAsPhone(
+            MobileRecorder record,
+            Caller stranger,
+            String then,
+            String email,
+            String secret,
+            String who) {
+        ApiResponse issued =
+                record.sendThen(
+                        then, stranger, "POST", "/api/auth/token", tokenBody(email, secret));
+        if (issued.status() != 201) {
+            throw new AssertionError("could not issue a phone token: " + issued.body());
+        }
+        String token = issued.stringField("token");
+        record.secret(token, "fixture-token-" + who);
+        return new Caller(who, anonymous().withBearerToken(token), Map.of());
+    }
+
+    private static String tokenBody(String email, String secret) {
+        return """
+               {"email":"%s","password":"%s","deviceLabel":"%s"}
+               """
+                .formatted(email, secret, PHONE_LABEL);
+    }
+
+    /** The coffee the journey records, exactly as the add sheet sends it. */
+    private static String coffee(MobileDemo demo) {
+        return """
+               {"accountId":"%s","date":"2026-08-20","amount":"-4.50","status":"CLEARED",
+                "payeeName":"Corner Kitchen","categoryId":"%s"}
+               """
+                .formatted(demo.account("acc-0001"), demo.category("cat-0008"));
+    }
+
+    /** What the transactions screen reads on arrival, and with the first account chosen. */
+    private static void readTheLedger(MobileRecorder record, Caller who, MobileDemo demo) {
+        record.send(who, "GET", "/api/auth/me", null);
+        record.send(who, "GET", ACCOUNTS, null);
+        record.send(who, "GET", CATEGORIES, null);
+        record.send(who, "GET", LEDGER, null);
+        record.send(who, "GET", LEDGER + "&accountId=" + demo.account("acc-0001"), null);
+    }
+
+    private static void ok204(ApiResponse response) {
+        if (response.status() != 204) {
+            throw new AssertionError("a demo setup step failed: " + response.body());
+        }
+    }
+
+    /**
+     * July and August of {@link #DEMO_LEDGER}, with a payee on every row, a fourth account in euros
+     * for the cross-currency transfer, and July's and August's transfers.
+     */
+    private MobileDemo seedTheMobileLedger(Household household) {
+        ApiClient owner = household.owner();
+        Map<String, UUID> categories = seedDemoCategories(owner);
+        Map<String, UUID> accounts = seedDemoAccounts(owner);
+        accounts.put("acc-0004", demoAccount(owner, "Berlin Savings", null, "SAVINGS", "1200.00"));
+
+        Map<String, UUID> rows = new LinkedHashMap<>();
+        for (String[] row : DEMO_LEDGER) {
+            if (row[0].compareTo("2026-07-01") < 0) {
+                continue;
+            }
+            String payee = MOBILE_PAYEES.get(row[3] == null ? "none" : row[3]);
+            String note = "2026-08-12".equals(row[0]) ? "\"big shop\"" : "null";
+            ApiResponse created =
+                    owner.post(
+                            "/api/transactions",
+                            """
+                            {"accountId":"%s","date":"%s","amount":"%s","categoryId":%s,
+                             "status":"%s","payeeName":"%s","note":%s}
+                            """
+                                    .formatted(
+                                            accounts.get(row[2]),
+                                            row[0],
+                                            row[1],
+                                            row[3] == null
+                                                    ? "null"
+                                                    : "\"" + categories.get(row[3]) + "\"",
+                                            row[4],
+                                            payee,
+                                            note));
+            if (created.status() != 201) {
+                throw new AssertionError("could not seed a mobile transaction: " + created.body());
+            }
+            UUID id = UUID.fromString(created.stringField("id"));
+            switch (row[0] + " " + row[1]) {
+                case "2026-08-20 -92.15" -> rows.put("pending-groceries", id);
+                case "2026-08-03 -86.40" -> rows.put("groceries-aug-03", id);
+                case "2026-08-09 -41.20" -> rows.put("dinner-aug-09", id);
+                default -> {}
+            }
+        }
+        UUID august = null;
+        Map<UUID, String> stable = new LinkedHashMap<>();
+        for (String[] transfer : DEMO_TRANSFERS) {
+            if (transfer[0].compareTo("2026-07-01") < 0) {
+                continue;
+            }
+            UUID made =
+                    transfer(
+                            owner,
+                            accounts.get(transfer[2]),
+                            accounts.get(transfer[3]),
+                            transfer[0],
+                            transfer[1]);
+            if (transfer[0].startsWith("2026-08")) {
+                august = made;
+                stable.put(made, "tgr-0001");
+            } else {
+                stable.put(made, "tgr-" + transfer[0]);
+            }
+        }
+        ok200(owner.post("/api/categories/" + categories.get("cat-0009") + "/archive", null));
+
+        categories.forEach((name, id) -> stable.put(id, name));
+        accounts.forEach((name, id) -> stable.put(id, name));
+        nameRows(stable);
+        return new MobileDemo(accounts, categories, rows, august, stable);
+    }
+
+    /**
+     * Ids to stable names, timestamps to the demo instant, and the two values a fixture cannot pin
+     * by construction — a problem's correlation id and the JDK in a browser's user agent.
+     */
+    private static String canonicaliseMobile(String document, Map<UUID, String> stable) {
+        String pinned =
+                document.replaceAll(
+                                "\"(createdAt|updatedAt|lastUsedAt|expiresAt|joinedAt)\"(\\s*):(\\s*)\"[^\"]+\"",
+                                "\"$1\"$2:$3\"" + DEMO_TODAY + "\"")
+                        .replaceAll(
+                                "\"correlationId\"(\\s*):(\\s*)\"[^\"]+\"",
+                                "\"correlationId\"$1:$2\"fixture-correlation\"")
+                        .replaceAll("Java-http-client/[0-9._A-Za-z-]+", "Java-http-client");
+        return canonicalise(pinned, new Fixture(Map.of(), null, stable));
     }
 
     /**
