@@ -63,7 +63,7 @@ class DemoFixtureIT extends ApiTestBase {
      * The instant the demo household lives at — inside `2026-08`, the month every other fixture
      * uses. Mid-month and mid-day so no boundary rounding is load-bearing.
      */
-    private static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
+    static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
 
     /**
      * The amounts the log-a-payment sheet offers without typing: the plan's allocation for each
@@ -622,7 +622,7 @@ class DemoFixtureIT extends ApiTestBase {
      * <p>Shared by both scenarios: the demo household the guide is captured from, and the balance
      * states that household deliberately does not have.
      */
-    private static void compareOrWrite(String document, Path committed, Path regenerated)
+    static void compareOrWrite(String document, Path committed, Path regenerated)
             throws IOException {
         if (Boolean.getBoolean("fixtures.write")) {
             Files.createDirectories(committed.getParent());
@@ -1338,7 +1338,7 @@ class DemoFixtureIT extends ApiTestBase {
      * here and fails the test on anything else, so a screen cannot render a response nobody
      * generated.
      */
-    private static final Path MOBILE_FIXTURES = Path.of("..", "mobile", "test", "fixtures");
+    static final Path MOBILE_FIXTURES = Path.of("..", "mobile", "test", "fixtures");
 
     /** The device label the app derives on an Android phone (mobile/lib/core/platform). */
     private static final String PHONE_LABEL = "Phone · Android";
@@ -1387,7 +1387,7 @@ class DemoFixtureIT extends ApiTestBase {
     }
 
     /** Who made a recorded request: a token's owner by name, or nobody. */
-    private record Caller(String name, ApiClient client, Map<String, String> headers) {
+    record Caller(String name, ApiClient client, Map<String, String> headers) {
 
         static Caller stranger(ApiClient client) {
             return new Caller(null, client, Map.of());
@@ -1402,7 +1402,7 @@ class DemoFixtureIT extends ApiTestBase {
      * bearer's owner, any CSRF header, the JSON body — and the response exactly as the API gave it.
      * {@code "*"} is any state, for the public reads an app makes whenever it likes.
      */
-    private static final class MobileRecorder {
+    static final class MobileRecorder {
 
         private static final ObjectMapper JSON = JsonMapper.builder().build();
 
@@ -2043,7 +2043,7 @@ class DemoFixtureIT extends ApiTestBase {
      * Ids to stable names, timestamps to the demo instant, and the two values a fixture cannot pin
      * by construction — a problem's correlation id and the JDK in a browser's user agent.
      */
-    private static String canonicaliseMobile(String document, Map<UUID, String> stable) {
+    static String canonicaliseMobile(String document, Map<UUID, String> stable) {
         String pinned =
                 document.replaceAll(
                                 "\"(createdAt|updatedAt|lastUsedAt|expiresAt|joinedAt)\"(\\s*):(\\s*)\"[^\"]+\"",
