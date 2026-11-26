@@ -1,8 +1,8 @@
 # Feature: Weekly check-in
 
 - **Slice:** 14
-- **Status:** Planned — slice 14. Nothing is built. Nine product questions are open and several
-  rules below depend on them. Each such rule names its decision; see
+- **Status:** Planned — slice 14. Nothing is built. **All nine decisions are settled** (owner,
+  2026-11-26): every recommendation below is taken. See
   [Open questions: decisions needed](#open-questions-decisions-needed).
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-26
@@ -1114,6 +1114,13 @@ that reads the week.
   [Where the surplus goes](#where-the-surplus-goes-decisions-5-and-6)).
 
 ## Open questions: decisions needed
+
+**Decided 2026-11-26 by the owner: every recommendation below is taken.** Asked directly:
+1 (the plan, not balances), 3 and 4 (build payee rules and bill ↔ charge matching in this slice),
+and "accept the rest" for 2, 5, 7, 8 and 9. On 6 the owner stated no preference, so the
+recommendation stands (a check-in contribution counts on top of the plan). Decision 1 is recorded
+as ADR-0040 and "rules act only through a completed check-in" (3 with 4) as ADR-0041, at the
+start of implementation, as the entries below say.
 
 For the product owner. Each question changes what gets built. Each has a recommendation, and the
 rules above are written as if it were taken.
