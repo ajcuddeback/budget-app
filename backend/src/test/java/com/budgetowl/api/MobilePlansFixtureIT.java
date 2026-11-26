@@ -28,10 +28,10 @@ import tools.jackson.databind.json.JsonMapper;
  * real application</b>.
  *
  * <p>The mobile twin of {@link DemoFixtureIT}'s mobile section, in a class of its own so the areas
- * phase 2 builds in parallel each record their own file. Every response in
- * {@code mobile/test/fixtures/{bills,debt,goals}.generated.json} is one the API returned to the
- * request the app makes: a "what's left" figure, a payoff month, a payment's interest split or a
- * goal's projection drawn in a golden is the server's arithmetic, never a hand's.
+ * phase 2 builds in parallel each record their own file. Every response in {@code
+ * mobile/test/fixtures/{bills,debt,goals}.generated.json} is one the API returned to the request
+ * the app makes: a "what's left" figure, a payoff month, a payment's interest split or a goal's
+ * projection drawn in a golden is the server's arithmetic, never a hand's.
  *
  * <p><b>One household, told three ways.</b> Each test seeds the same "plans household" through the
  * API — bills on every schedule, a fortnightly wage, the designs' three debts with the car payment
@@ -46,8 +46,9 @@ import tools.jackson.databind.json.JsonMapper;
  * payoff month, an estimated balance — is seeded and read there. Every change to the payoff plan
  * moves the clock on by a second, because plan snapshots are unique on the instant they were taken.
  *
- * <p>Regenerate: {@code mvn -f backend -B verify -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false
- * -Dit.test='MobilePlansFixtureIT*' -Dfixtures.write=true}. Never edit a generated file by hand.
+ * <p>Regenerate: {@code mvn -f backend -B verify -Dtest=none
+ * -Dsurefire.failIfNoSpecifiedTests=false -Dit.test='MobilePlansFixtureIT*' -Dfixtures.write=true}.
+ * Never edit a generated file by hand.
  */
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 @Import(DemoFixtureIT.DemoClock.class)
@@ -66,7 +67,8 @@ class MobilePlansFixtureIT extends ApiTestBase {
     private static final String SUMMARY = "/api/periods/%s/summary";
 
     /** The bills the debt dialog offers: this month's, active only, as the web asks. */
-    private static final String ACTIVE_BILLS = "/api/bills?period=" + PERIOD + "&includeInactive=false";
+    private static final String ACTIVE_BILLS =
+            "/api/bills?period=" + PERIOD + "&includeInactive=false";
 
     private static final String DEBTS = "/api/debts?includeArchived=false";
 
@@ -141,65 +143,164 @@ class MobilePlansFixtureIT extends ApiTestBase {
         String bills = "/api/bills/";
         record.in("plans");
         long phoneVersion = version(owner, bills + plans.id("bil-0002") + "?period=" + PERIOD);
-        billsStep(record, owner, "plans", "paid", "PUT", occurrence(plans, "bil-0003", "2026-08-18"),
+        billsStep(
+                record,
+                owner,
+                "plans",
+                "paid",
+                "PUT",
+                occurrence(plans, "bil-0003", "2026-08-18"),
                 "{\"status\":\"PAID\"}");
-        billsStep(record, owner, "paid", "paid-other", "PUT",
+        billsStep(
+                record,
+                owner,
+                "paid",
+                "paid-other",
+                "PUT",
                 occurrence(plans, "bil-0005", "2026-08-17"),
                 "{\"status\":\"PAID\",\"actualAmount\":\"14.50\",\"paidDate\":\"" + TODAY + "\"}");
-        billsStep(record, owner, "paid-other", "skipped", "PUT",
-                occurrence(plans, "bil-0004", "2026-08-25"), "{\"status\":\"SKIPPED\"}");
-        billsStep(record, owner, "skipped", "marked-due", "PUT",
-                occurrence(plans, "bil-0001", "2026-08-01"), "{\"status\":\"DUE\"}");
-        billsStep(record, owner, "marked-due", "forgotten", "DELETE",
-                occurrence(plans, "bil-0002", "2026-08-12"), null);
-        billsStep(record, owner, "forgotten", "recorded", "PUT",
+        billsStep(
+                record,
+                owner,
+                "paid-other",
+                "skipped",
+                "PUT",
+                occurrence(plans, "bil-0004", "2026-08-25"),
+                "{\"status\":\"SKIPPED\"}");
+        billsStep(
+                record,
+                owner,
+                "skipped",
+                "marked-due",
+                "PUT",
+                occurrence(plans, "bil-0001", "2026-08-01"),
+                "{\"status\":\"DUE\"}");
+        billsStep(
+                record,
+                owner,
+                "marked-due",
+                "forgotten",
+                "DELETE",
+                occurrence(plans, "bil-0002", "2026-08-12"),
+                null);
+        billsStep(
+                record,
+                owner,
+                "forgotten",
+                "recorded",
+                "PUT",
                 occurrence(plans, "bil-0008", TODAY),
                 "{\"status\":\"PAID\",\"actualAmount\":\"25\",\"paidDate\":\"" + TODAY + "\"}");
         ApiResponse water =
-                billsStep(record, owner, "recorded", "bill-added", "POST", "/api/bills",
+                billsStep(
+                        record,
+                        owner,
+                        "recorded",
+                        "bill-added",
+                        "POST",
+                        "/api/bills",
                         """
                         {"name":"Water","expectedAmount":"38.50",
                          "schedule":{"kind":"MONTHLY","dayOfMonth":22}}
                         """);
         plans.stable().put(id(water), "bil-0010");
         long phone = version(owner, bills + plans.id("bil-0002") + "?period=" + PERIOD);
-        billsStep(record, owner, "bill-added", "bill-edited", "PATCH", bills + plans.id("bil-0002"),
+        billsStep(
+                record,
+                owner,
+                "bill-added",
+                "bill-edited",
+                "PATCH",
+                bills + plans.id("bil-0002"),
                 "{\"version\":" + phone + ",\"expectedAmount\":\"48\"}");
         long gym = version(owner, bills + plans.id("bil-0005") + "?period=" + PERIOD);
-        billsStep(record, owner, "bill-edited", "bill-retired", "PATCH", bills + plans.id("bil-0005"),
+        billsStep(
+                record,
+                owner,
+                "bill-edited",
+                "bill-retired",
+                "PATCH",
+                bills + plans.id("bil-0005"),
                 "{\"version\":" + gym + ",\"active\":false}");
         long streaming = version(owner, bills + plans.id("bil-0009") + "?period=" + PERIOD);
-        billsStep(record, owner, "bill-retired", "bill-restored", "PATCH",
-                bills + plans.id("bil-0009"), "{\"version\":" + streaming + ",\"active\":true}");
-        billsStep(record, owner, "bill-restored", "bill-deleted", "DELETE",
-                bills + plans.id("bil-0007"), null);
+        billsStep(
+                record,
+                owner,
+                "bill-retired",
+                "bill-restored",
+                "PATCH",
+                bills + plans.id("bil-0009"),
+                "{\"version\":" + streaming + ",\"active\":true}");
+        billsStep(
+                record,
+                owner,
+                "bill-restored",
+                "bill-deleted",
+                "DELETE",
+                bills + plans.id("bil-0007"),
+                null);
 
         String income = "/api/income/";
         ApiResponse tutoring =
-                billsStep(record, owner, "bill-deleted", "income-added", "POST", "/api/income",
+                billsStep(
+                        record,
+                        owner,
+                        "bill-deleted",
+                        "income-added",
+                        "POST",
+                        "/api/income",
                         """
                         {"name":"Tutoring","amount":"60",
                          "schedule":{"kind":"WEEKLY","dayOfWeek":"SATURDAY"}}
                         """);
         UUID tutor = id(tutoring);
         plans.stable().put(tutor, "inc-0004");
-        billsStep(record, owner, "income-added", "income-edited", "PATCH", income + tutor,
-                "{\"version\":" + version(owner, income + tutor + "?period=" + PERIOD)
+        billsStep(
+                record,
+                owner,
+                "income-added",
+                "income-edited",
+                "PATCH",
+                income + tutor,
+                "{\"version\":"
+                        + version(owner, income + tutor + "?period=" + PERIOD)
                         + ",\"amount\":\"65\"}");
         long benefit = version(owner, income + plans.id("inc-0002") + "?period=" + PERIOD);
-        billsStep(record, owner, "income-edited", "income-retired", "PATCH",
-                income + plans.id("inc-0002"), "{\"version\":" + benefit + ",\"active\":false}");
+        billsStep(
+                record,
+                owner,
+                "income-edited",
+                "income-retired",
+                "PATCH",
+                income + plans.id("inc-0002"),
+                "{\"version\":" + benefit + ",\"active\":false}");
         long freelance = version(owner, income + plans.id("inc-0003") + "?period=" + PERIOD);
-        billsStep(record, owner, "income-retired", "income-restored", "PATCH",
-                income + plans.id("inc-0003"), "{\"version\":" + freelance + ",\"active\":true}");
-        billsStep(record, owner, "income-restored", "income-deleted", "DELETE", income + tutor, null);
-        billsStep(record, owner, "income-deleted", "unmapped", "DELETE",
-                "/api/charge-rules/" + plans.id("rul-0001"), null);
+        billsStep(
+                record,
+                owner,
+                "income-retired",
+                "income-restored",
+                "PATCH",
+                income + plans.id("inc-0003"),
+                "{\"version\":" + freelance + ",\"active\":true}");
+        billsStep(
+                record, owner, "income-restored", "income-deleted", "DELETE", income + tutor, null);
+        billsStep(
+                record,
+                owner,
+                "income-deleted",
+                "unmapped",
+                "DELETE",
+                "/api/charge-rules/" + plans.id("rul-0001"),
+                null);
 
         // A phone still holding the phone bill as "plans" read it: somebody else's edit got there
         // first, so its PATCH is the 409 a stale version gets.
         record.in("plans");
-        record.send(owner, "PATCH", bills + plans.id("bil-0002"),
+        record.send(
+                owner,
+                "PATCH",
+                bills + plans.id("bil-0002"),
                 "{\"version\":" + phoneVersion + ",\"expectedAmount\":\"48\"}");
 
         write(record, plans, "bills");
@@ -264,7 +365,10 @@ class MobilePlansFixtureIT extends ApiTestBase {
         // What the log-a-payment sheet asks before anything is recorded: the Visa at what the plan
         // gives it, and at that plus the sheet's one-tap fifty.
         for (String amount : List.of("445", "495")) {
-            record.send(owner, "POST", "/api/debts/" + plans.id("deb-0001") + "/payments/preview",
+            record.send(
+                    owner,
+                    "POST",
+                    "/api/debts/" + plans.id("deb-0001") + "/payments/preview",
                     "{\"amount\":\"" + amount + "\"}");
         }
 
@@ -272,20 +376,49 @@ class MobilePlansFixtureIT extends ApiTestBase {
         readHome(record, phones.viewer());
         readDebtPlan(record, phones.viewer());
         readDebtDetails(record, phones.viewer(), plans, debts);
-        record.send(phones.viewer(), "PUT", PLAN,
+        record.send(
+                phones.viewer(),
+                "PUT",
+                PLAN,
                 "{\"version\":" + planVersion(owner) + ",\"strategy\":\"SNOWBALL\"}");
 
         String visa = "/api/debts/" + plans.id("deb-0001");
-        debtStep(record, owner, plans, debts, "plans", "payment-logged", "POST", visa + "/payments",
-                "{\"paidDate\":\"" + TODAY + "\",\"amount\":\"495\",\"paidFromAccountId\":\""
-                        + plans.id("acc-0001") + "\"}");
+        debtStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "plans",
+                "payment-logged",
+                "POST",
+                visa + "/payments",
+                "{\"paidDate\":\""
+                        + TODAY
+                        + "\",\"amount\":\"495\",\"paidFromAccountId\":\""
+                        + plans.id("acc-0001")
+                        + "\"}");
         long visaVersion = detailVersion(owner, visa);
-        debtStep(record, owner, plans, debts, "payment-logged", "terms-edited", "PATCH", visa,
+        debtStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "payment-logged",
+                "terms-edited",
+                "PATCH",
+                visa,
                 "{\"version\":" + visaVersion + ",\"servicer\":\"Chase Bank\"}");
 
         // A debt added three months after its statement: ESTIMATED, so its page asks to confirm.
         ApiResponse store =
-                debtStep(record, owner, plans, debts, "terms-edited", "debt-added", "POST",
+                debtStep(
+                        record,
+                        owner,
+                        plans,
+                        debts,
+                        "terms-edited",
+                        "debt-added",
+                        "POST",
                         "/api/debts",
                         """
                         {"name":"Store card","kind":"CREDIT_CARD","servicer":"Argos",
@@ -299,13 +432,27 @@ class MobilePlansFixtureIT extends ApiTestBase {
         record.in("debt-added");
         readDebtDetails(record, owner, plans, debts);
 
-        debtStep(record, owner, plans, debts, "debt-added", "estimate-corrected", "POST",
+        debtStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "debt-added",
+                "estimate-corrected",
+                "POST",
                 "/api/debts/" + storeCard + "/balance",
                 "{\"balance\":\"1180\",\"balanceDate\":\"" + TODAY + "\"}");
 
         // Fourteen months unconfirmed: past the cap, so the page asks for a statement instead.
         ApiResponse overdraft =
-                debtStep(record, owner, plans, debts, "estimate-corrected", "stale-added", "POST",
+                debtStep(
+                        record,
+                        owner,
+                        plans,
+                        debts,
+                        "estimate-corrected",
+                        "stale-added",
+                        "POST",
                         "/api/debts",
                         """
                         {"name":"Old overdraft","kind":"CREDIT_CARD","servicer":"Monzo",
@@ -318,26 +465,69 @@ class MobilePlansFixtureIT extends ApiTestBase {
         debts.add("deb-0005");
         record.in("stale-added");
         readDebtDetails(record, owner, plans, debts);
-        debtStep(record, owner, plans, debts, "stale-added", "stale-confirmed", "POST",
+        debtStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "stale-added",
+                "stale-confirmed",
+                "POST",
                 "/api/debts/" + old + "/balance",
                 "{\"balance\":\"860\",\"balanceDate\":\"" + TODAY + "\"}");
 
         // The plan itself: the order of attack, the household's own order, and the amount.
-        planStep(record, owner, plans, debts, "stale-confirmed", "snowball",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "stale-confirmed",
+                "snowball",
                 "{\"version\":%d,\"strategy\":\"SNOWBALL\"}");
-        planStep(record, owner, plans, debts, "snowball", "avalanche",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "snowball",
+                "avalanche",
                 "{\"version\":%d,\"strategy\":\"AVALANCHE\"}");
         List<String> rungs = rungOrder(owner, plans);
-        planStep(record, owner, plans, debts, "avalanche", "custom",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "avalanche",
+                "custom",
                 "{\"version\":%d,\"strategy\":\"CUSTOM\",\"customOrder\":" + ids(rungs) + "}");
         List<String> moved = new ArrayList<>(rungs);
         moved.set(0, rungs.get(1));
         moved.set(1, rungs.get(0));
-        planStep(record, owner, plans, debts, "custom", "custom-moved",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "custom",
+                "custom-moved",
                 "{\"version\":%d,\"strategy\":\"CUSTOM\",\"customOrder\":" + ids(moved) + "}");
-        planStep(record, owner, plans, debts, "custom-moved", "amount",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "custom-moved",
+                "amount",
                 "{\"version\":%d,\"monthlyAmount\":\"2000\"}");
-        planStep(record, owner, plans, debts, "amount", "below",
+        planStep(
+                record,
+                owner,
+                plans,
+                debts,
+                "amount",
+                "below",
                 "{\"version\":%d,\"monthlyAmount\":\"600\"}");
 
         write(record, plans, "debt");
@@ -376,7 +566,15 @@ class MobilePlansFixtureIT extends ApiTestBase {
         // Plan snapshots are unique on the instant they were taken.
         clock.moveTo(clock.instant().plusSeconds(1));
         String shown = whatIfAmount(JSON.readTree(who.client().get(PLAN).body()));
-        debtStep(record, who, plans, debts, from, to, "PUT", PLAN,
+        debtStep(
+                record,
+                who,
+                plans,
+                debts,
+                from,
+                to,
+                "PUT",
+                PLAN,
                 body.formatted(planVersion(who.client())));
         // A new monthly amount: the phone re-reads the what-if it was showing as the write lands,
         // before the new plan moves it on to the new amount's. Answered as the real API answers it.
@@ -475,33 +673,54 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
         Plans plans = seedThePlans(household);
         Caller owner = phones.owner();
-        List<String> goals = new ArrayList<>(List.of("gol-0001", "gol-0002", "gol-0003", "gol-0004"));
+        List<String> goals =
+                new ArrayList<>(List.of("gol-0001", "gol-0002", "gol-0003", "gol-0004"));
 
         record.in("plans");
         readGoals(record, owner, plans, goals);
         // The emergency fund's history runs past one page: "Show more" reads the second.
-        record.send(owner, "GET",
-                "/api/goals/" + plans.id("gol-0002") + "/contributions?page=1&size=50", null);
+        record.send(
+                owner,
+                "GET",
+                "/api/goals/" + plans.id("gol-0002") + "/contributions?page=1&size=50",
+                null);
         // The add dialog as the test fills it in, and the edit and plan dialogs as they open.
         record.send(owner, "POST", "/api/goals/projection-preview", "{\"targetAmount\":\"900\"}");
         for (String goal : goals) {
-            record.send(owner, "POST", "/api/goals/" + plans.id(goal) + "/projection-preview", "{}");
+            record.send(
+                    owner, "POST", "/api/goals/" + plans.id(goal) + "/projection-preview", "{}");
         }
         for (String amount : List.of("110", "165")) {
-            record.send(owner, "POST", "/api/goals/" + plans.id("gol-0001") + "/projection-preview",
+            record.send(
+                    owner,
+                    "POST",
+                    "/api/goals/" + plans.id("gol-0001") + "/projection-preview",
                     "{\"monthlyAmount\":\"" + amount + "\"}");
         }
-        record.send(owner, "POST", "/api/goals/" + plans.id("gol-0001") + "/projection-preview",
+        record.send(
+                owner,
+                "POST",
+                "/api/goals/" + plans.id("gol-0001") + "/projection-preview",
                 "{\"targetAmount\":\"4000\"}");
 
         record.in("viewer");
         readGoals(record, phones.viewer(), plans, goals);
-        record.send(phones.viewer(), "POST",
+        record.send(
+                phones.viewer(),
+                "POST",
                 "/api/goals/" + plans.id("gol-0001") + "/contributions",
                 "{\"amount\":\"110\",\"date\":\"" + TODAY + "\"}");
 
         ApiResponse bike =
-                goalStep(record, owner, plans, goals, "plans", "goal-added", "POST", "/api/goals",
+                goalStep(
+                        record,
+                        owner,
+                        plans,
+                        goals,
+                        "plans",
+                        "goal-added",
+                        "POST",
+                        "/api/goals",
                         "{\"name\":\"Bike\",\"targetAmount\":\"900\"}");
         UUID bikeId = id(bike);
         plans.ids().put("gol-0005", bikeId);
@@ -511,22 +730,55 @@ class MobilePlansFixtureIT extends ApiTestBase {
         readGoals(record, owner, plans, goals);
 
         String japan = "/api/goals/" + plans.id("gol-0001");
-        goalStep(record, owner, plans, goals, "goal-added", "set-aside", "POST",
-                japan + "/contributions", "{\"amount\":\"110\",\"date\":\"" + TODAY + "\"}");
-        goalStep(record, owner, plans, goals, "set-aside", "taken-out", "POST",
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "goal-added",
+                "set-aside",
+                "POST",
+                japan + "/contributions",
+                "{\"amount\":\"110\",\"date\":\"" + TODAY + "\"}");
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "set-aside",
+                "taken-out",
+                "POST",
                 "/api/goals/" + plans.id("gol-0002") + "/contributions",
                 "{\"amount\":\"-50\",\"date\":\"" + TODAY + "\",\"note\":\"Vet\"}");
         record.in("taken-out");
         record.send(owner, "POST", japan + "/projection-preview", "{}");
         record.send(owner, "POST", japan + "/projection-preview", "{\"targetAmount\":\"4000\"}");
-        goalStep(record, owner, plans, goals, "taken-out", "goal-edited", "PATCH", japan,
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "taken-out",
+                "goal-edited",
+                "PATCH",
+                japan,
                 "{\"version\":" + version(owner, japan) + ",\"targetAmount\":\"4000\"}");
         record.in("goal-edited");
         for (String amount : List.of("110", "165")) {
-            record.send(owner, "POST", japan + "/projection-preview",
+            record.send(
+                    owner,
+                    "POST",
+                    japan + "/projection-preview",
                     "{\"monthlyAmount\":\"" + amount + "\"}");
         }
-        goalStep(record, owner, plans, goals, "goal-edited", "plan-changed", "PUT",
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "goal-edited",
+                "plan-changed",
+                "PUT",
                 japan + "/contribution-plan/" + PERIOD,
                 "{\"monthlyAmount\":\"165\",\"version\":" + version(owner, japan) + "}");
         String newest =
@@ -535,16 +787,48 @@ class MobilePlansFixtureIT extends ApiTestBase {
                         .get(0)
                         .get("id")
                         .asString();
-        goalStep(record, owner, plans, goals, "plan-changed", "contribution-removed", "DELETE",
-                japan + "/contributions/" + newest, null);
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "plan-changed",
+                "contribution-removed",
+                "DELETE",
+                japan + "/contributions/" + newest,
+                null);
         String laptop = "/api/goals/" + plans.id("gol-0003");
-        goalStep(record, owner, plans, goals, "contribution-removed", "archived", "POST",
-                laptop + "/archive", "{}");
-        goalStep(record, owner, plans, goals, "archived", "unarchived", "POST",
-                laptop + "/unarchive", "{}");
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "contribution-removed",
+                "archived",
+                "POST",
+                laptop + "/archive",
+                "{}");
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "archived",
+                "unarchived",
+                "POST",
+                laptop + "/unarchive",
+                "{}");
         goals.remove("gol-0005");
-        goalStep(record, owner, plans, goals, "unarchived", "deleted", "DELETE",
-                "/api/goals/" + bikeId, null);
+        goalStep(
+                record,
+                owner,
+                plans,
+                goals,
+                "unarchived",
+                "deleted",
+                "DELETE",
+                "/api/goals/" + bikeId,
+                null);
 
         write(record, plans, "goals");
     }
@@ -570,7 +854,8 @@ class MobilePlansFixtureIT extends ApiTestBase {
     }
 
     /** The goals list, and every goal's page: the goal, its plan and its history. */
-    private static void readGoals(MobileRecorder record, Caller who, Plans plans, List<String> goals) {
+    private static void readGoals(
+            MobileRecorder record, Caller who, Plans plans, List<String> goals) {
         readHome(record, who);
         record.send(who, "GET", GOALS, null);
         for (String goal : goals) {
@@ -657,19 +942,39 @@ class MobilePlansFixtureIT extends ApiTestBase {
         name.accept("acc-0001", checking);
         name.accept("acc-0002", savings);
 
-        UUID rent = bill(owner, "Rent", "1450.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":1}",
-                ",\"categoryId\":\"" + seededCategoryId("Rent or mortgage") + "\"");
+        UUID rent =
+                bill(
+                        owner,
+                        "Rent",
+                        "1450.00",
+                        "{\"kind\":\"MONTHLY\",\"dayOfMonth\":1}",
+                        ",\"categoryId\":\"" + seededCategoryId("Rent or mortgage") + "\"");
         UUID phone = bill(owner, "Phone", "45.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":12}", "");
-        UUID power = bill(owner, "Electricity", "120.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":18}",
-                ",\"amountVaries\":true,\"tolerance\":\"22.00\",\"categoryId\":\""
-                        + seededCategoryId("Utilities") + "\"");
-        UUID internet = bill(owner, "Internet", "60.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":25}", "");
-        UUID gym = bill(owner, "Gym", "12.00", "{\"kind\":\"WEEKLY\",\"dayOfWeek\":\"MONDAY\"}", "");
-        UUID car = bill(owner, "Car payment", "342.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":5}", "");
-        UUID insurance = bill(owner, "Car insurance", "480.00",
-                "{\"kind\":\"YEARLY\",\"month\":3,\"dayOfMonth\":1}", "");
+        UUID power =
+                bill(
+                        owner,
+                        "Electricity",
+                        "120.00",
+                        "{\"kind\":\"MONTHLY\",\"dayOfMonth\":18}",
+                        ",\"amountVaries\":true,\"tolerance\":\"22.00\",\"categoryId\":\""
+                                + seededCategoryId("Utilities")
+                                + "\"");
+        UUID internet =
+                bill(owner, "Internet", "60.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":25}", "");
+        UUID gym =
+                bill(owner, "Gym", "12.00", "{\"kind\":\"WEEKLY\",\"dayOfWeek\":\"MONDAY\"}", "");
+        UUID car =
+                bill(owner, "Car payment", "342.00", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":5}", "");
+        UUID insurance =
+                bill(
+                        owner,
+                        "Car insurance",
+                        "480.00",
+                        "{\"kind\":\"YEARLY\",\"month\":3,\"dayOfMonth\":1}",
+                        "");
         UUID cleaner = bill(owner, "Window cleaner", "25.00", "{\"kind\":\"IRREGULAR\"}", "");
-        UUID streaming = bill(owner, "Streaming", "15.99", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":9}", "");
+        UUID streaming =
+                bill(owner, "Streaming", "15.99", "{\"kind\":\"MONTHLY\",\"dayOfMonth\":9}", "");
         name.accept("bil-0001", rent);
         name.accept("bil-0002", phone);
         name.accept("bil-0003", power);
@@ -680,20 +985,37 @@ class MobilePlansFixtureIT extends ApiTestBase {
         name.accept("bil-0008", cleaner);
         name.accept("bil-0009", streaming);
         record(owner, rent, "2026-08-01", "{\"status\":\"PAID\",\"paidDate\":\"2026-08-01\"}");
-        record(owner, phone, "2026-08-12",
+        record(
+                owner,
+                phone,
+                "2026-08-12",
                 "{\"status\":\"PAID\",\"actualAmount\":\"52.30\",\"paidDate\":\"2026-08-12\"}");
         record(owner, gym, "2026-08-03", "{\"status\":\"PAID\",\"paidDate\":\"2026-08-03\"}");
         record(owner, gym, "2026-08-10", "{\"status\":\"SKIPPED\"}");
         record(owner, car, "2026-08-05", "{\"status\":\"PAID\",\"paidDate\":\"2026-08-05\"}");
         retire(owner, "/api/bills/" + streaming + "?period=" + PERIOD, "/api/bills/" + streaming);
 
-        UUID salary = income(owner, "Salary", "1850.00",
-                "{\"kind\":\"FORTNIGHTLY\",\"dayOfWeek\":\"FRIDAY\",\"anchorDate\":\"2026-07-31\"}",
-                ",\"accountId\":\"" + checking + "\"");
-        UUID benefit = income(owner, "Child benefit", "102.40",
-                "{\"kind\":\"MONTHLY\",\"dayOfMonth\":7}", "");
-        UUID freelance = income(owner, "Freelance", "300.00",
-                "{\"kind\":\"MONTHLY\",\"dayOfMonth\":15}", "");
+        UUID salary =
+                income(
+                        owner,
+                        "Salary",
+                        "1850.00",
+                        "{\"kind\":\"FORTNIGHTLY\",\"dayOfWeek\":\"FRIDAY\",\"anchorDate\":\"2026-07-31\"}",
+                        ",\"accountId\":\"" + checking + "\"");
+        UUID benefit =
+                income(
+                        owner,
+                        "Child benefit",
+                        "102.40",
+                        "{\"kind\":\"MONTHLY\",\"dayOfMonth\":7}",
+                        "");
+        UUID freelance =
+                income(
+                        owner,
+                        "Freelance",
+                        "300.00",
+                        "{\"kind\":\"MONTHLY\",\"dayOfMonth\":15}",
+                        "");
         name.accept("inc-0001", salary);
         name.accept("inc-0002", benefit);
         name.accept("inc-0003", freelance);
@@ -702,13 +1024,14 @@ class MobilePlansFixtureIT extends ApiTestBase {
         // The internet's mapping. Charge rules are written only by completing a check-in
         // (ADR-0041) and there is no route that creates one, so this one row is put in directly,
         // against a payee the API made; what the fixture records is the API reading it back.
-        created(owner.post(
-                "/api/transactions",
-                """
+        created(
+                owner.post(
+                        "/api/transactions",
+                        """
                 {"accountId":"%s","date":"2026-07-25","amount":"-60.00","status":"CLEARED",
                  "payeeName":"COMCAST XFINITY"}
                 """
-                        .formatted(checking)));
+                                .formatted(checking)));
         UUID payee = jdbc.queryForObject("SELECT id FROM payees", UUID.class);
         UUID householdId = jdbc.queryForObject("SELECT id FROM households", UUID.class);
         UUID rule = UUID.randomUUID();
@@ -733,37 +1056,74 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
     private void seedTheDebts(
             ApiClient owner, UUID carPayment, java.util.function.BiConsumer<String, UUID> name) {
-        UUID visa = debt(owner, "Visa", "CREDIT_CARD", "Chase", "8240.00", "22.900", "185.00",
-                "\"10650.00\"", "2026-02-20", null);
+        UUID visa =
+                debt(
+                        owner,
+                        "Visa",
+                        "CREDIT_CARD",
+                        "Chase",
+                        "8240.00",
+                        "22.900",
+                        "185.00",
+                        "\"10650.00\"",
+                        "2026-02-20",
+                        null);
         for (int month = 3; month <= 8; month++) {
-            created(owner.post(
-                    "/api/debts/" + visa + "/payments",
-                    "{\"paidDate\":\"2026-%02d-20\",\"amount\":\"445.00\"}".formatted(month)));
+            created(
+                    owner.post(
+                            "/api/debts/" + visa + "/payments",
+                            "{\"paidDate\":\"2026-%02d-20\",\"amount\":\"445.00\"}"
+                                    .formatted(month)));
         }
-        ok(owner.post(
-                "/api/debts/" + visa + "/balance",
-                "{\"balance\":\"6180.00\",\"balanceDate\":\"" + TODAY
-                        + "\",\"note\":\"Statement from Chase\"}"));
-        UUID carLoan = debt(owner, "Car loan", "INSTALLMENT", "Ally", "10650.00", "6.400", "342.00",
-                "\"18400.00\"", TODAY, carPayment);
-        UUID student = debt(owner, "Student loan", "INSTALLMENT", "Nelnet", "9650.00", "4.500",
-                "118.00", "null", TODAY, null);
+        ok(
+                owner.post(
+                        "/api/debts/" + visa + "/balance",
+                        "{\"balance\":\"6180.00\",\"balanceDate\":\""
+                                + TODAY
+                                + "\",\"note\":\"Statement from Chase\"}"));
+        UUID carLoan =
+                debt(
+                        owner,
+                        "Car loan",
+                        "INSTALLMENT",
+                        "Ally",
+                        "10650.00",
+                        "6.400",
+                        "342.00",
+                        "\"18400.00\"",
+                        TODAY,
+                        carPayment);
+        UUID student =
+                debt(
+                        owner,
+                        "Student loan",
+                        "INSTALLMENT",
+                        "Nelnet",
+                        "9650.00",
+                        "4.500",
+                        "118.00",
+                        "null",
+                        TODAY,
+                        null);
         name.accept("deb-0001", visa);
         name.accept("deb-0002", carLoan);
         name.accept("deb-0003", student);
         clock.moveTo(clock.instant().plusSeconds(1));
-        ok(owner.put(
-                PLAN,
-                "{\"strategy\":\"AVALANCHE\",\"monthlyAmount\":\"905.00\",\"version\":"
-                        + planVersion(owner)
-                        + "}"));
+        ok(
+                owner.put(
+                        PLAN,
+                        "{\"strategy\":\"AVALANCHE\",\"monthlyAmount\":\"905.00\",\"version\":"
+                                + planVersion(owner)
+                                + "}"));
     }
 
     private void seedTheGoals(
             ApiClient owner, UUID savings, java.util.function.BiConsumer<String, UUID> name) {
-        UUID japan = goal(owner,
-                "{\"name\":\"Japan\",\"targetAmount\":\"3500.00\",\"targetMonth\":\"2027-11\","
-                        + "\"monthlyContribution\":\"110.00\"}");
+        UUID japan =
+                goal(
+                        owner,
+                        "{\"name\":\"Japan\",\"targetAmount\":\"3500.00\",\"targetMonth\":\"2027-11\","
+                                + "\"monthlyContribution\":\"110.00\"}");
         String[][] japanMonths = {
             {"2026-01-15", "120.00"}, {"2026-02-15", "120.00"}, {"2026-03-15", "130.00"},
             {"2026-04-15", "130.00"}, {"2026-05-15", "130.00"}, {"2026-06-15", "130.00"},
@@ -772,31 +1132,44 @@ class MobilePlansFixtureIT extends ApiTestBase {
         for (String[] month : japanMonths) {
             contribute(owner, japan, month[0], month[1], null);
         }
-        ok(owner.put(
-                "/api/goals/" + japan + "/contribution-plan/2026-09",
-                "{\"monthlyAmount\":\"165.00\",\"version\":" + version(owner, "/api/goals/" + japan)
-                        + "}"));
-        UUID fund = goal(owner,
-                "{\"name\":\"Emergency fund\",\"targetAmount\":\"6000.00\",\"startingAmount\":"
-                        + "\"2000.00\",\"monthlyContribution\":\"200.00\",\"accountId\":\""
-                        + savings + "\"}");
+        ok(
+                owner.put(
+                        "/api/goals/" + japan + "/contribution-plan/2026-09",
+                        "{\"monthlyAmount\":\"165.00\",\"version\":"
+                                + version(owner, "/api/goals/" + japan)
+                                + "}"));
+        UUID fund =
+                goal(
+                        owner,
+                        "{\"name\":\"Emergency fund\",\"targetAmount\":\"6000.00\",\"startingAmount\":"
+                                + "\"2000.00\",\"monthlyContribution\":\"200.00\",\"accountId\":\""
+                                + savings
+                                + "\"}");
         // A year of weekly round-ups first: more history than one page, so "Show more" has a
         // second page to read.
         for (int week = 0; week < 52; week++) {
-            contribute(owner, fund, LocalDate.parse("2025-06-01").plusWeeks(week).toString(),
-                    "25.00", null);
+            contribute(
+                    owner,
+                    fund,
+                    LocalDate.parse("2025-06-01").plusWeeks(week).toString(),
+                    "25.00",
+                    null);
         }
         contribute(owner, fund, "2026-06-01", "200.00", null);
         contribute(owner, fund, "2026-07-01", "200.00", null);
         contribute(owner, fund, "2026-07-18", "-160.00", "Vet bill");
         contribute(owner, fund, "2026-08-03", "100.00", null);
-        UUID laptop = goal(owner,
-                "{\"name\":\"New laptop\",\"targetAmount\":\"1200.00\",\"targetMonth\":\"2026-10\"}");
+        UUID laptop =
+                goal(
+                        owner,
+                        "{\"name\":\"New laptop\",\"targetAmount\":\"1200.00\",\"targetMonth\":\"2026-10\"}");
         for (int month = 3; month <= 7; month++) {
             contribute(owner, laptop, "2026-%02d-10".formatted(month), "250.00", null);
         }
-        UUID gift = goal(owner,
-                "{\"name\":\"Wedding gift\",\"targetAmount\":\"300.00\",\"startingAmount\":\"300.00\"}");
+        UUID gift =
+                goal(
+                        owner,
+                        "{\"name\":\"Wedding gift\",\"targetAmount\":\"300.00\",\"startingAmount\":\"300.00\"}");
         ok(owner.post("/api/goals/" + gift + "/archive", "{}"));
         name.accept("gol-0001", japan);
         name.accept("gol-0002", fund);
@@ -806,7 +1179,9 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
     // ============================================================================== helpers
 
-    /** What the phone reads on arrival, whatever tab it is on: the Transactions tab is built first. */
+    /**
+     * What the phone reads on arrival, whatever tab it is on: the Transactions tab is built first.
+     */
     private static void readHome(MobileRecorder record, Caller who) {
         record.send(who, "GET", "/api/auth/me", null);
         record.send(who, "GET", DemoFixtureIT.ACCOUNTS, null);
@@ -842,32 +1217,38 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
     private UUID account(
             ApiClient owner, String name, String lastFour, String type, String openingBalance) {
-        return id(created(owner.post(
-                "/api/accounts",
-                """
+        return id(
+                created(
+                        owner.post(
+                                "/api/accounts",
+                                """
                 {"name":"%s","lastFour":%s,"type":"%s","currency":"USD","openingBalance":"%s"}
                 """
-                        .formatted(
-                                name,
-                                lastFour == null ? "null" : "\"" + lastFour + "\"",
-                                type,
-                                openingBalance))));
+                                        .formatted(
+                                                name,
+                                                lastFour == null ? "null" : "\"" + lastFour + "\"",
+                                                type,
+                                                openingBalance))));
     }
 
     private static UUID bill(
             ApiClient owner, String name, String amount, String schedule, String extra) {
-        return id(created(owner.post(
-                "/api/bills",
-                "{\"name\":\"%s\",\"expectedAmount\":\"%s\",\"schedule\":%s%s}"
-                        .formatted(name, amount, schedule, extra))));
+        return id(
+                created(
+                        owner.post(
+                                "/api/bills",
+                                "{\"name\":\"%s\",\"expectedAmount\":\"%s\",\"schedule\":%s%s}"
+                                        .formatted(name, amount, schedule, extra))));
     }
 
     private static UUID income(
             ApiClient owner, String name, String amount, String schedule, String extra) {
-        return id(created(owner.post(
-                "/api/income",
-                "{\"name\":\"%s\",\"amount\":\"%s\",\"schedule\":%s%s}"
-                        .formatted(name, amount, schedule, extra))));
+        return id(
+                created(
+                        owner.post(
+                                "/api/income",
+                                "{\"name\":\"%s\",\"amount\":\"%s\",\"schedule\":%s%s}"
+                                        .formatted(name, amount, schedule, extra))));
     }
 
     private static void record(ApiClient owner, UUID bill, String date, String body) {
@@ -890,23 +1271,24 @@ class MobilePlansFixtureIT extends ApiTestBase {
             String balanceDate,
             UUID billId) {
         ApiResponse created =
-                created(owner.post(
-                        "/api/debts",
-                        """
+                created(
+                        owner.post(
+                                "/api/debts",
+                                """
                         {"name":"%s","kind":"%s","servicer":"%s","balance":"%s",
                          "balanceDate":"%s","apr":"%s","minimumPayment":"%s",
                          "originalBalance":%s,"billId":%s}
                         """
-                                .formatted(
-                                        name,
-                                        kind,
-                                        servicer,
-                                        balance,
-                                        balanceDate,
-                                        apr,
-                                        minimum,
-                                        originalBalance,
-                                        billId == null ? "null" : "\"" + billId + "\"")));
+                                        .formatted(
+                                                name,
+                                                kind,
+                                                servicer,
+                                                balance,
+                                                balanceDate,
+                                                apr,
+                                                minimum,
+                                                originalBalance,
+                                                billId == null ? "null" : "\"" + billId + "\"")));
         return debtId(created);
     }
 
@@ -916,10 +1298,14 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
     private static void contribute(
             ApiClient owner, UUID goal, String date, String amount, String note) {
-        created(owner.post(
-                "/api/goals/" + goal + "/contributions",
-                "{\"amount\":\"%s\",\"date\":\"%s\"%s}"
-                        .formatted(amount, date, note == null ? "" : ",\"note\":\"" + note + "\"")));
+        created(
+                owner.post(
+                        "/api/goals/" + goal + "/contributions",
+                        "{\"amount\":\"%s\",\"date\":\"%s\"%s}"
+                                .formatted(
+                                        amount,
+                                        date,
+                                        note == null ? "" : ",\"note\":\"" + note + "\"")));
     }
 
     /** The top-level id. A bill's occurrences and mappings carry ids of their own. */
