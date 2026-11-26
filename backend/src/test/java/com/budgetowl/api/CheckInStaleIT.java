@@ -27,11 +27,11 @@ class CheckInStaleIT extends CheckInTestBase {
                                 canvas.household()
                                         .member()
                                         .patch(
-                                                "/api/transactions/" + canvas.id("amazon"),
+                                                "/api/transactions/" + canvas.id("ride"),
                                                 "{\"note\":\"a gift\",\"version\":0}"),
                                 200),
                 "alloc:ROLL_OVER",
-                List.of("cat:amazon=subject-changed"),
+                List.of("cat:ride=subject-changed"),
                 true);
     }
 
@@ -43,12 +43,12 @@ class CheckInStaleIT extends CheckInTestBase {
                                 canvas.household()
                                         .member()
                                         .patch(
-                                                "/api/transactions/" + canvas.id("amazon"),
+                                                "/api/transactions/" + canvas.id("ride"),
                                                 "{\"categoryId\":\"%s\",\"version\":0}"
                                                         .formatted(seededCategoryId("Shopping"))),
                                 200),
                 "alloc:ROLL_OVER",
-                List.of("cat:amazon=subject-changed"),
+                List.of("cat:ride=subject-changed"),
                 true);
     }
 
@@ -59,7 +59,7 @@ class CheckInStaleIT extends CheckInTestBase {
                         ok(
                                 canvas.household()
                                         .member()
-                                        .delete("/api/transactions/" + canvas.id("amazon")),
+                                        .delete("/api/transactions/" + canvas.id("ride")),
                                 204),
                 "alloc:ROLL_OVER",
                 List.of("alloc=surplus-changed"),
@@ -246,7 +246,7 @@ class CheckInStaleIT extends CheckInTestBase {
         }
         List<String> wanted = new ArrayList<>();
         for (String entry : expected) {
-            // "cat:amazon=subject-changed" names the item by kind and canvas id; "alloc=…" is a
+            // "cat:ride=subject-changed" names the item by kind and canvas id; "alloc=…" is a
             // key.
             String[] keyAndReason = entry.split("=");
             String[] kindAndName = keyAndReason[0].split(":");

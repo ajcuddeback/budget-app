@@ -64,7 +64,7 @@ class CheckInLimitsIT extends CheckInTestBase {
                 .contains("limit-reached");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM payee_rules", Long.class))
                 .isEqualTo((long) PayeeRuleService.MAXIMUM_PER_HOUSEHOLD);
-        assertThat(categoryOf(canvas.id("amazon"))).as("and nothing else was written").isNull();
+        assertThat(categoryOf(canvas.id("ride"))).as("and nothing else was written").isNull();
     }
 
     @Test
@@ -168,7 +168,7 @@ class CheckInLimitsIT extends CheckInTestBase {
                 draft);
 
         ApiResponse refused =
-                owner.put(W34 + "/answers/cat." + canvas.id("amazon"), "{\"choice\":\"LEAVE\"}");
+                owner.put(W34 + "/answers/cat." + canvas.id("ride"), "{\"choice\":\"LEAVE\"}");
 
         assertThat(refused.status()).isEqualTo(409);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM check_in_answers", Long.class))

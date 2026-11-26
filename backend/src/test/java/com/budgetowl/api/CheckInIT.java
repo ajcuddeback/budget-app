@@ -258,6 +258,17 @@ class CheckInIT extends CheckInTestBase {
     }
 
     @Test
+    void current_is_the_week_containing_the_servers_today() {
+        Household household = seedHousehold();
+        at(Instant.parse("2026-08-19T12:00:00Z"));
+
+        ApiResponse current = household.viewer().get("/api/check-ins/current");
+
+        assertThat(current.status()).isEqualTo(200);
+        assertThat(current.stringField("week")).isEqualTo("2026-W34");
+    }
+
+    @Test
     void a_day_of_slack_either_side_of_monday_moves_the_range_by_a_week() {
         Household household = seedHousehold();
 
@@ -338,7 +349,7 @@ class CheckInIT extends CheckInTestBase {
                 List.of(canvas.id("fund"), canvas.id("tartine"), archived, UUID.randomUUID())) {
             assertThat(
                             owner.put(
-                                            W34 + "/answers/cat." + canvas.id("amazon"),
+                                            W34 + "/answers/cat." + canvas.id("ride"),
                                             "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\"}"
                                                     .formatted(wrong))
                                     .status())
@@ -368,7 +379,7 @@ class CheckInIT extends CheckInTestBase {
         Canvas canvas = canvasWeek();
         Household household = canvas.household();
         ok(household.owner().put(W34, null), 201);
-        String key = "cat." + canvas.id("amazon");
+        String key = "cat." + canvas.id("ride");
         String body =
                 "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\"}"
                         .formatted(seededCategoryId("Shopping"));
@@ -387,7 +398,7 @@ class CheckInIT extends CheckInTestBase {
         Canvas canvas = canvasWeek();
         Household household = canvas.household();
         JsonNode started = json(ok(household.owner().put(W34, null), 201));
-        answer(household.member(), "cat." + canvas.id("amazon"), "{\"choice\":\"LEAVE\"}");
+        answer(household.member(), "cat." + canvas.id("ride"), "{\"choice\":\"LEAVE\"}");
 
         ApiResponse refused = household.owner().post(W34 + "/complete", completeBody(started));
 
@@ -405,7 +416,7 @@ class CheckInIT extends CheckInTestBase {
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM check_in_answers", Long.class))
                 .isZero();
-        assertThat(categoryOf(canvas.id("amazon"))).isNull();
+        assertThat(categoryOf(canvas.id("ride"))).isNull();
         assertThat(owner.get(W34).stringField("status")).isEqualTo("NOT_STARTED");
     }
 
@@ -425,11 +436,12 @@ class CheckInIT extends CheckInTestBase {
 
     // ---------------------------------------------------------------------- authorization
 
-    /** The eleven routes of the API table, each with a valid-looking body. */
+    /** The eleven routes of the API table plus {@code /current}, each with a valid-looking body. */
     static List<Route> everyRoute() {
         String any = "00000000-0000-4000-8000-00000000f00d";
         return List.of(
                 new Route("GET", "/api/check-ins", null),
+                new Route("GET", "/api/check-ins/current", null),
                 new Route("GET", "/api/check-ins/{week}", null),
                 new Route("PUT", "/api/check-ins/{week}", null),
                 new Route(
@@ -466,8 +478,8 @@ class CheckInIT extends CheckInTestBase {
     }
 
     @Test
-    void the_sweep_covers_all_eleven_routes() {
-        assertThat(everyRoute()).hasSize(11);
+    void the_sweep_covers_all_twelve_routes() {
+        assertThat(everyRoute()).hasSize(12);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -561,7 +573,7 @@ class CheckInIT extends CheckInTestBase {
         assertThat(phone.put(W34, null).status()).isEqualTo(201);
         assertThat(
                         phone.put(
-                                        W34 + "/answers/cat." + canvas.id("amazon"),
+                                        W34 + "/answers/cat." + canvas.id("ride"),
                                         "{\"choice\":\"LEAVE\"}")
                                 .status())
                 .isEqualTo(200);
@@ -569,7 +581,7 @@ class CheckInIT extends CheckInTestBase {
         assertThat(
                         viewersPhone
                                 .put(
-                                        W34 + "/answers/cat." + canvas.id("amazon"),
+                                        W34 + "/answers/cat." + canvas.id("ride"),
                                         "{\"choice\":\"LEAVE\",\"version\":0}")
                                 .status())
                 .as("neither transport may skip a check the other applies (ADR-0018)")

@@ -83,7 +83,7 @@ class CheckInNeverIT extends CheckInTestBase {
         Map<String, Object> categoriesAfter = categories();
         for (Map.Entry<String, Object> row : categoriesBefore.entrySet()) {
             boolean answered =
-                    List.of(canvas.id("blueBottle"), canvas.id("wholeFoods"), canvas.id("amazon"))
+                    List.of(canvas.id("blueBottle"), canvas.id("wholeFoods"), canvas.id("ride"))
                             .stream()
                             .map(UUID::toString)
                             .anyMatch(row.getKey()::equals);

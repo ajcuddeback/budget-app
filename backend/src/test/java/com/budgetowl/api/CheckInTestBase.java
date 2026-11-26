@@ -1,9 +1,6 @@
 package com.budgetowl.api;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,10 +41,10 @@ import tools.jackson.databind.json.JsonMapper;
 abstract class CheckInTestBase extends ApiTestBase {
 
     /** Sunday of week 33, mid-day: when the first check-in is finished. */
-    protected static final Instant WEEK_33_SUNDAY = Instant.parse("2026-08-16T12:00:00Z");
+    protected static final Instant WEEK_33_SUNDAY = CanvasWeek.WEEK_33_SUNDAY;
 
     /** Friday of week 34, mid-day: the canvas's desktop artboard. */
-    protected static final Instant WEEK_34_FRIDAY = Instant.parse("2026-08-21T12:00:00Z");
+    protected static final Instant WEEK_34_FRIDAY = CanvasWeek.WEEK_34_FRIDAY;
 
     protected static final String W33 = "/api/check-ins/2026-W33";
     protected static final String W34 = "/api/check-ins/2026-W34";
@@ -84,178 +81,19 @@ abstract class CheckInTestBase extends ApiTestBase {
      */
     protected Canvas canvasWeek() {
         Household household = seedHousehold();
-        ApiClient owner = household.owner();
-        Map<String, UUID> ids = new LinkedHashMap<>();
-        at(WEEK_33_SUNDAY);
-
-        UUID chase = createAccount(owner, "Chase", "4412");
-        ids.put("chase", chase);
-        ids.put("rent", bill(owner, "Rent", "1650.00", 1, seededCategoryId("Rent or mortgage")));
-        ids.put("car", bill(owner, "Car payment", "342.00", 24, null));
-        ids.put(
-                "internet",
-                bill(owner, "Internet", "71.99", 25, seededCategoryId("Phone and internet")));
-        ids.put("visa", bill(owner, "Visa", "185.00", 28, null));
-        ids.put("gym", bill(owner, "Gym", "42.00", 18, seededCategoryId("Health")));
-        income(owner, "Northwind Systems", "2620.00", 20, chase);
-        income(owner, "Rivera Design", "2000.00", 5, chase);
-        ids.put(
-                "groceries",
-                UUID.fromString(
-                        ok(
-                                        owner.post(
-                                                "/api/envelopes",
-                                                """
-                                                {"name":"Groceries","period":"2026-08","amount":"600.00",
-                                                 "categoryId":"%s"}
-                                                """
-                                                        .formatted(seededCategoryId("Groceries"))),
-                                        201)
-                                .stringField("id")));
-        UUID fund =
-                UUID.fromString(
-                        ok(
-                                        owner.post(
-                                                "/api/goals",
-                                                """
-                                                {"name":"Emergency fund","targetAmount":"6000.00",
-                                                 "startingAmount":"2140.00","monthlyContribution":"200.00"}
-                                                """),
-                                        201)
-                                .stringField("id"));
-        ids.put("fund", fund);
-        ok(
-                owner.post(
-                        "/api/goals/" + fund + "/contributions",
-                        "{\"amount\":\"200.00\",\"date\":\"2026-07-15\"}"),
-                201);
-        ids.put(
-                "visaDebt",
-                debt(
-                        owner,
-                        "Visa •8823",
-                        "CREDIT_CARD",
-                        "6180.00",
-                        "24.99",
-                        "185.00",
-                        ids.get("visa")));
-        ids.put(
-                "carDebt",
-                debt(
-                        owner,
-                        "Car loan",
-                        "INSTALLMENT",
-                        "10650.00",
-                        "6.90",
-                        "342.00",
-                        ids.get("car")));
-        ok(
-                owner.put(
-                        "/api/debt-plan",
-                        "{\"strategy\":\"AVALANCHE\",\"monthlyAmount\":\"645.00\",\"version\":0}"),
-                200);
-        ok(
-                owner.put(
-                        "/api/bills/" + ids.get("rent") + "/occurrences/2026-08-01",
-                        "{\"status\":\"PAID\"}"),
-                200);
-
-        spend(owner, chase, "2026-06-19", "-71.99", "COMCAST XFINITY", "Phone and internet");
-        spend(owner, chase, "2026-07-19", "-71.99", "COMCAST XFINITY", "Phone and internet");
-        spend(owner, chase, "2026-07-20", "2620.00", "Northwind Systems", "Salary");
-        spend(owner, chase, "2026-08-01", "-1650.00", "Landlord", "Rent or mortgage");
-        spend(owner, chase, "2026-08-03", "-120.44", "Tartine", "Eating Out");
-        spend(owner, chase, "2026-08-05", "2000.00", "Rivera Design", "Salary");
-        spend(owner, chase, "2026-08-06", "-210.00", "Whole Foods", "Groceries");
-        spend(owner, chase, "2026-08-09", "-230.00", "Target", "Shopping");
-
-        // Week 33: the first check-in, nothing to allocate. Its completion sets week 34's target.
-        ok(owner.put(W33, null), 201);
-        JsonNode first = json(owner.get(W33));
-        ok(
-                owner.post(
-                        W33 + "/complete",
-                        "{\"version\":%d,\"basis\":\"%s\"}"
-                                .formatted(
-                                        first.get("version").asLong(),
-                                        first.get("basis").asString())),
-                200);
-        assertThat(
-                        jdbc.queryForObject(
-                                "SELECT next_week_target FROM check_ins WHERE week_start = '2026-08-10'",
-                                java.math.BigDecimal.class))
-                .as("week 33's next-week figure is the canvas's target")
-                .isEqualByComparingTo("550.00");
-
-        spend(owner, chase, "2026-08-14", "-80.00", "City Parking", "Transit");
-
-        at(WEEK_34_FRIDAY);
-        ids.put(
-                "tartine",
-                spend(owner, chase, "2026-08-17", "-42.30", "Tartine Bakery", "Eating Out"));
-        ids.put("target", spend(owner, chase, "2026-08-18", "-250.80", "Target", "Shopping"));
-        ids.put(
-                "gymCharge",
-                spend(owner, chase, "2026-08-18", "-126.00", "Mountain Strength Co", "Health"));
-        ids.put(
-                "comcast",
-                spend(
-                        owner,
-                        chase,
-                        "2026-08-19",
-                        "-71.99",
-                        "COMCAST XFINITY",
-                        "Phone and internet"));
-        ids.put("blueBottle", spend(owner, chase, "2026-08-19", "-18.50", "SQ *BLUE BOTTLE", null));
-        ids.put(
-                "paycheck",
-                spend(owner, chase, "2026-08-20", "2620.00", "Northwind Systems", "Salary"));
-        ids.put("wholeFoods", spend(owner, chase, "2026-08-20", "-94.10", "WHOLE FOODS", null));
-        ids.put("shell", spend(owner, chase, "2026-08-20", "-56.00", "Shell", "Fuel"));
-        ids.put(
-                "amc",
-                spend(owner, chase, "2026-08-21", "-38.00", "AMC Theatres", "Entertainment"));
-        ids.put("amazon", spend(owner, chase, "2026-08-21", "-81.40", "AMZN Mktp US", null));
-
-        // A charge rule exists only because a completed check-in wrote one (ADR-0041). The demo
-        // household's gym mapping predates the canvas month, so it is seeded as stored state. It is
-        // not a figure: every amount the week reports is still the application's arithmetic.
-        jdbc.update(
-                """
-                INSERT INTO charge_rules (id, household_id, bill_id, payee_id, account_id)
-                SELECT gen_random_uuid(), b.household_id, b.id, p.id, ?
-                  FROM bills b JOIN payees p ON p.household_id = b.household_id
-                 WHERE b.id = ? AND p.name = 'Mountain Strength Co'
-                """,
-                chase,
-                ids.get("gym"));
+        Map<String, UUID> ids = new CanvasWeek(household.owner(), jdbc, this::at, "GBP").build();
         return new Canvas(household, ids);
     }
 
     /** Answers the canvas week as the canvas does, and returns the week after the last answer. */
     protected JsonNode answerTheCanvas(Canvas canvas, ApiClient client) {
         ok(client.put(W34, null), 201);
-        answer(client, "odd." + canvas.id("gymCharge"), "{\"choice\":\"PREPAID\"}");
-        answer(
-                client,
-                "cat." + canvas.id("blueBottle"),
-                "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\",\"remember\":true}"
-                        .formatted(seededCategoryId("Eating Out")));
-        answer(
-                client,
-                "cat." + canvas.id("wholeFoods"),
-                "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\"}"
-                        .formatted(seededCategoryId("Groceries")));
-        answer(
-                client,
-                "cat." + canvas.id("amazon"),
-                "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\"}"
-                        .formatted(seededCategoryId("Shopping")));
-        return answer(
-                client,
-                "chg." + canvas.id("comcast"),
-                "{\"choice\":\"ATTACH\",\"billId\":\"%s\",\"dueDate\":\"2026-08-25\",\"remember\":true}"
-                        .formatted(canvas.id("internet")));
+        JsonNode last = null;
+        for (Map.Entry<String, String> answer :
+                CanvasWeek.answers(canvas.ids(), this::seededCategoryId).entrySet()) {
+            last = answer(client, answer.getKey(), answer.getValue());
+        }
+        return last;
     }
 
     protected JsonNode answer(ApiClient client, String itemKey, String body) {

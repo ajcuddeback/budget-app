@@ -130,7 +130,7 @@ class CheckInCompletionIT extends CheckInTestBase {
         JsonNode done = json(ok(complete(owner), 200));
 
         assertThat(done.get("status").asString()).isEqualTo("COMPLETED");
-        assertThat(categoryOf(canvas.id("amazon"))).isNull();
+        assertThat(categoryOf(canvas.id("ride"))).isNull();
         assertThat(categoryOf(canvas.id("blueBottle"))).isNull();
         assertThat(count("SELECT count(*) FROM bill_occurrences WHERE transaction_id IS NOT NULL"))
                 .isZero();
@@ -218,7 +218,7 @@ class CheckInCompletionIT extends CheckInTestBase {
     private void assertNothingWasWritten(Canvas canvas) {
         assertThat(categoryOf(canvas.id("blueBottle"))).isNull();
         assertThat(categoryOf(canvas.id("wholeFoods"))).isNull();
-        assertThat(categoryOf(canvas.id("amazon"))).isNull();
+        assertThat(categoryOf(canvas.id("ride"))).isNull();
         assertThat(
                         count(
                                 "SELECT count(*) FROM bill_occurrences WHERE bill_id = '"

@@ -852,6 +852,126 @@ class DemoFixtureIT extends ApiTestBase {
         return UUID.fromString(created.stringField("id"));
     }
 
+    // ------------------------------------------------------------ weekly check-in (slice 14)
+
+    private static final Path COMMITTED_CHECK_INS =
+            Path.of("..", "tools", "ui", "fixtures", "check-in-api.generated.ts");
+
+    private static final Path REGENERATED_CHECK_INS =
+            Path.of("target", "check-in-api.generated.ts");
+
+    /**
+     * The demo categories' stable ids, by the names the seeded defaults share with them. The
+     * category picker on the check-in page lists {@code DEMO_CATEGORIES}, so an answer the guide
+     * gives carries one of these ids, and the generated keys have to carry the same one.
+     */
+    private static final Map<String, String> DEMO_CATEGORY_IDS =
+            Map.of(
+                    "Income", "cat-0001",
+                    "Salary", "cat-0002",
+                    "Bills", "cat-0003",
+                    "Utilities", "cat-0005",
+                    "Groceries", "cat-0006",
+                    "Transport", "cat-0007",
+                    "Eating Out", "cat-0008");
+
+    /**
+     * The canvas's own week (docs/features/weekly-check-in.md), <b>from the real application</b>,
+     * as the user guide walks it: not started, started, each answer in the guide's order, the
+     * surplus to the emergency fund, finished — and the rule lists and history after.
+     *
+     * <p>Built by {@link CanvasWeek}, the same builder {@code CheckInIT} asserts the canvas's
+     * figures against, so the guide and the test cannot describe two different weeks. Every figure
+     * here — 550, 487, 63, 480, 543, 2,340 → 2,403 — is the application's arithmetic.
+     *
+     * <p>Keys carry each request's body in the form the mock rebuilds from what it receives (sorted
+     * keys, {@code k=v&…}), so a capture can only show a response this run produced, and anything
+     * else is a loud 501.
+     */
+    @Test
+    void the_committed_check_in_fixtures_are_what_the_application_returns() throws IOException {
+        clock.moveTo(Instant.now());
+        Household household = seedDemoHousehold();
+        ApiClient owner = household.owner();
+        Map<String, UUID> ids = new CanvasWeek(owner, jdbc, clock::moveTo, "USD").build();
+        Map<UUID, String> stable = new LinkedHashMap<>();
+        for (Map.Entry<String, String> category : new TreeMap<>(DEMO_CATEGORY_IDS).entrySet()) {
+            stable.put(seededCategoryId(category.getKey()), category.getValue());
+        }
+
+        Map<String, String> generated = new LinkedHashMap<>();
+        generated.put("GET /api/check-ins/current", owner.get("/api/check-ins/current").body());
+        generated.put(
+                "GET /api/check-ins/current VIEWER",
+                household.viewer().get("/api/check-ins/current").body());
+        generated.put("PUT /api/check-ins/2026-W34", owner.put(CanvasWeek.W34, null).body());
+        // Bodies carry the real ids; canonicalising maps each seeded category to its demo id, in
+        // the keys and the responses alike.
+        Map<String, String> answers = CanvasWeek.answers(ids, this::seededCategoryId);
+        answers.put(
+                "alloc",
+                "{\"amount\":\"63.00\",\"choice\":\"GOAL\",\"goalId\":\"%s\"}"
+                        .formatted(ids.get("fund")));
+        for (Map.Entry<String, String> answer : answers.entrySet()) {
+            ApiResponse answered =
+                    owner.put(CanvasWeek.W34 + "/answers/" + answer.getKey(), answer.getValue());
+            if (answered.status() != 200) {
+                throw new AssertionError("could not answer the demo week: " + answered.body());
+            }
+            generated.put(
+                    "PUT /api/check-ins/2026-W34/answers/"
+                            + answer.getKey()
+                            + " "
+                            + previewLabel(answer.getValue()),
+                    answered.body());
+        }
+        generated.put(
+                "GET /api/check-ins/2026-W34 VIEWER",
+                household.viewer().get(CanvasWeek.W34).body());
+        tools.jackson.databind.JsonNode week = CanvasWeek.json(owner.get(CanvasWeek.W34));
+        ApiResponse completed =
+                owner.post(
+                        CanvasWeek.W34 + "/complete",
+                        "{\"version\":%d,\"basis\":\"%s\"}"
+                                .formatted(
+                                        week.get("version").asLong(),
+                                        week.get("basis").asString()));
+        if (completed.status() != 200) {
+            throw new AssertionError("could not complete the demo week: " + completed.body());
+        }
+        generated.put("POST /api/check-ins/2026-W34/complete", completed.body());
+        generated.put("GET /api/check-ins", owner.get("/api/check-ins").body());
+        generated.put("GET /api/payee-rules", owner.get("/api/payee-rules").body());
+        generated.put("GET /api/charge-rules", owner.get("/api/charge-rules").body());
+
+        String document =
+                pinBases(
+                        pinTimestamps(
+                                canonicalise(
+                                        render(generated, "CHECK_IN_API"),
+                                        new Fixture(Map.of(), null, stable))));
+        compareOrWrite(document, COMMITTED_CHECK_INS, REGENERATED_CHECK_INS);
+    }
+
+    /**
+     * Replaces each distinct basis with a stable stand-in of the same shape. A basis is a digest
+     * over the week, ids included, so it differs every run although nothing a person sees does.
+     */
+    private static String pinBases(String document) {
+        java.util.regex.Matcher bases =
+                java.util.regex.Pattern.compile("\"basis\":\"([0-9a-f]{64})\"").matcher(document);
+        Map<String, String> pinned = new LinkedHashMap<>();
+        while (bases.find()) {
+            pinned.computeIfAbsent(
+                    bases.group(1), digest -> String.format("%064d", pinned.size() + 1));
+        }
+        String out = document;
+        for (Map.Entry<String, String> basis : pinned.entrySet()) {
+            out = out.replace(basis.getKey(), basis.getValue());
+        }
+        return out;
+    }
+
     // ---------------------------------------------------------------- reports (slice 13)
 
     private static final Path COMMITTED_REPORTS =

@@ -163,7 +163,7 @@ class CheckInConstraintsIT extends CheckInTestBase {
     void a_category_answer_without_a_category_is_refused() {
         assertRefusedBy(
                 "ck_check_in_answers_categorize",
-                () -> answer("CATEGORIZE", "CATEGORY", canvas.id("amazon"), null, null, null));
+                () -> answer("CATEGORIZE", "CATEGORY", canvas.id("ride"), null, null, null));
     }
 
     @Test
@@ -199,15 +199,15 @@ class CheckInConstraintsIT extends CheckInTestBase {
     void a_choice_another_kind_takes_is_refused() {
         assertRefusedBy(
                 "ck_check_in_answers_categorize",
-                () -> answer("CATEGORIZE", "ATTACH", canvas.id("amazon"), null, null, null));
+                () -> answer("CATEGORIZE", "ATTACH", canvas.id("ride"), null, null, null));
     }
 
     @Test
     void two_answers_to_one_item_are_refused() {
-        answer("CATEGORIZE", "LEAVE", canvas.id("amazon"), null, null, null);
+        answer("CATEGORIZE", "LEAVE", canvas.id("ride"), null, null, null);
         assertRefusedBy(
                 "ux_check_in_answers_transaction_item",
-                () -> answer("CATEGORIZE", "LEAVE", canvas.id("amazon"), null, null, null));
+                () -> answer("CATEGORIZE", "LEAVE", canvas.id("ride"), null, null, null));
     }
 
     // --------------------------------------------------------- composite foreign keys
@@ -216,7 +216,7 @@ class CheckInConstraintsIT extends CheckInTestBase {
     void an_answer_cannot_name_another_households_transaction() {
         assertRefusedBy(
                 "fk_check_in_answers_transaction",
-                () -> otherAnswer(canvas.id("amazon"), "CATEGORIZE", "LEAVE"));
+                () -> otherAnswer(canvas.id("ride"), "CATEGORIZE", "LEAVE"));
     }
 
     @Test
@@ -294,8 +294,7 @@ class CheckInConstraintsIT extends CheckInTestBase {
     @Test
     void a_rule_cannot_name_another_households_payee_category_bill_or_account() {
         UUID payee =
-                jdbc.queryForObject(
-                        "SELECT id FROM payees WHERE name = 'AMZN Mktp US'", UUID.class);
+                jdbc.queryForObject("SELECT id FROM payees WHERE name = 'UBER *TRIP'", UUID.class);
         assertRefusedBy(
                 "fk_payee_rules_payee",
                 () ->
@@ -328,9 +327,9 @@ class CheckInConstraintsIT extends CheckInTestBase {
 
     @Test
     void deleting_an_answered_transaction_takes_the_answer_with_it() {
-        answer("CATEGORIZE", "LEAVE", canvas.id("amazon"), null, null, null);
+        answer("CATEGORIZE", "LEAVE", canvas.id("ride"), null, null, null);
 
-        jdbc.update("DELETE FROM transactions WHERE id = ?", canvas.id("amazon"));
+        jdbc.update("DELETE FROM transactions WHERE id = ?", canvas.id("ride"));
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM check_in_answers", Long.class))
                 .isZero();
@@ -351,7 +350,7 @@ class CheckInConstraintsIT extends CheckInTestBase {
                 """,
                 ours,
                 ourCheckIn(),
-                canvas.id("amazon"),
+                canvas.id("ride"),
                 grace);
 
         jdbc.update("DELETE FROM users WHERE id = ?", grace);

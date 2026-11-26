@@ -37,7 +37,7 @@ class CheckInDisclosureIT extends CheckInTestBase {
                     "Mountain Strength",
                     "COMCAST",
                     "WHOLE FOODS",
-                    "AMZN",
+                    "UBER",
                     "Northwind",
                     "Emergency fund",
                     "Eating Out",
@@ -118,23 +118,23 @@ class CheckInDisclosureIT extends CheckInTestBase {
         // Refusals log through different code from a success.
         canvas.household()
                 .viewer()
-                .put(W34 + "/answers/cat." + canvas.id("amazon"), "{\"choice\":\"LEAVE\"}");
+                .put(W34 + "/answers/cat." + canvas.id("ride"), "{\"choice\":\"LEAVE\"}");
         owner.put(W34 + "/answers/alloc", "{\"choice\":\"ROLL_OVER\",\"amount\":\"5000.00\"}");
         owner.put(W34 + "/answers/alloc", "{\"choice\":\"ROLL_OVER\",\"amount\":63.00}");
         owner.put(W34 + "/answers/cat." + UUID.randomUUID(), "{\"choice\":\"LEAVE\"}");
         ok(
                 owner.patch(
-                        "/api/transactions/" + canvas.id("amazon"),
+                        "/api/transactions/" + canvas.id("ride"),
                         "{\"note\":\"moved\",\"version\":0}"),
                 200);
         assertThat(owner.post(W34 + "/complete", body).status()).isEqualTo(409);
         // The re-read and the re-answer the refusal asks for: the row moved, so it is asked again.
         JsonNode reread = json(owner.get(W34));
         long answerVersion =
-                item(reread, "cat." + canvas.id("amazon")).get("answer").get("version").asLong();
+                item(reread, "cat." + canvas.id("ride")).get("answer").get("version").asLong();
         answer(
                 owner,
-                "cat." + canvas.id("amazon"),
+                "cat." + canvas.id("ride"),
                 "{\"choice\":\"CATEGORY\",\"categoryId\":\"%s\",\"version\":%d}"
                         .formatted(seededCategoryId("Shopping"), answerVersion));
 

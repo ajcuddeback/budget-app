@@ -70,6 +70,12 @@ public class CheckInController {
                 found.totalPages());
     }
 
+    /** This week, by the server's clock. */
+    @GetMapping("/current")
+    WeekResponse current(TransportAuthentication caller) {
+        return WeekResponse.of(checkIns.current(caller.userId()));
+    }
+
     @GetMapping("/{week}")
     WeekResponse one(TransportAuthentication caller, @PathVariable String week) {
         return WeekResponse.of(checkIns.get(caller.userId(), week(week)));

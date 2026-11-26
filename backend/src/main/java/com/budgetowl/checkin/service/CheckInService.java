@@ -167,6 +167,16 @@ public class CheckInService {
                 .view();
     }
 
+    /**
+     * The week that contains today on the server's clock: what {@code /check-in} and the ledger's
+     * prompt open. The server is the authority on which weeks are in range (decision 8), so the
+     * browser's clock is never asked which week it is.
+     */
+    @Transactional(readOnly = true)
+    public WeekView current(UUID actorId) {
+        return get(actorId, IsoWeek.containing(today()));
+    }
+
     // ----------------------------------------------------------------------------------- writes
 
     /**
