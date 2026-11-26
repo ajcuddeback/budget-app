@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import tools.jackson.databind.JsonNode;
 
 /**
  * V20's constraints, each proved by writing straight to the table past every service check: the
@@ -81,6 +82,37 @@ class CheckInConstraintsIT extends CheckInTestBase {
         jdbc.update("DELETE FROM households WHERE id = ?", other);
         jdbc.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_households_singleton ON households ((true))");
+    }
+
+    // ----------------------------------------------------------------------- through the API
+
+    /**
+     * The other household has an uncategorised outflow in this very window, in the same currency,
+     * and a draft for this very week. None of it may reach our check-in, and its row's key is a
+     * {@code 404} like any key that is not ours.
+     */
+    @Test
+    void another_households_rows_and_draft_never_reach_ours() {
+        ApiClient owner = canvas.household().owner();
+        String before = owner.get(W34).body();
+
+        ApiResponse started = owner.put(W34, null);
+        JsonNode week = json(started);
+
+        assertThat(started.status()).as("their draft does not block ours").isEqualTo(201);
+        assertThat(before).doesNotContain(otherTransaction.toString());
+        assertThat(week.toString()).doesNotContain(otherTransaction.toString());
+        assertThat(
+                        owner.put(
+                                        W34 + "/answers/cat." + otherTransaction,
+                                        "{\"choice\":\"LEAVE\"}")
+                                .status())
+                .isEqualTo(404);
+        String withTheirs = amount(figures(week).get("weekSpending"));
+        jdbc.update("DELETE FROM transactions WHERE id = ?", otherTransaction);
+        assertThat(amount(figures(json(owner.get(W34))).get("weekSpending")))
+                .as("their $1.00 was never our spending")
+                .isEqualTo(withTheirs);
     }
 
     // ------------------------------------------------------------------------------- check_ins
