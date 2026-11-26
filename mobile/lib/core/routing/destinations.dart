@@ -1,4 +1,7 @@
+import 'package:budget_owl/features/accounts/presentation/accounts_screen.dart';
+import 'package:budget_owl/features/categories/presentation/categories_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
+import 'package:budget_owl/features/envelopes/presentation/envelopes_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
@@ -54,7 +57,7 @@ final List<Destination> tabs = [
     path: '/accounts',
     label: (l) => l.nav_accounts,
     icon: Icons.account_balance_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_accounts),
+    screen: (_) => const AccountsScreen(),
   ),
 ];
 
@@ -78,14 +81,14 @@ final List<Destination> moreEntries = [
     path: '/more/envelopes',
     label: (l) => l.nav_envelopes,
     icon: Icons.mail_outline,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_envelopes),
+    screen: (_) => const EnvelopesScreen(),
   ),
 
   Destination(
     path: '/more/categories',
     label: (l) => l.nav_categories,
     icon: Icons.category_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_categories),
+    screen: (_) => const CategoriesScreen(),
   ),
 
   Destination(

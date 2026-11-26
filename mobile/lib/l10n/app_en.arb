@@ -37,6 +37,10 @@
   "@accounts_archiveMessage": {
     "description": "Web en.json \"accounts.archiveMessage\"."
   },
+  "accounts_archiveMessagePhone": "It keeps its history, hides it from lists, and stops taking new transactions. You can bring it back whenever you like.",
+  "@accounts_archiveMessagePhone": {
+    "description": "Mobile only (l10n/mobile.en.json \"accounts.archiveMessagePhone\")."
+  },
   "accounts_archivedHeading": "Archived",
   "@accounts_archivedHeading": {
     "description": "Web en.json \"accounts.archivedHeading\"."

@@ -140,6 +140,12 @@ abstract class AppLocalizations {
   /// **'It keeps its history, hides it from lists, and stops taking new transactions. Its balance leaves the subtotal for its currency, so that figure will change. You can bring it back whenever you like.'**
   String get accounts_archiveMessage;
 
+  /// Mobile only (l10n/mobile.en.json "accounts.archiveMessagePhone").
+  ///
+  /// In en, this message translates to:
+  /// **'It keeps its history, hides it from lists, and stops taking new transactions. You can bring it back whenever you like.'**
+  String get accounts_archiveMessagePhone;
+
   /// Web en.json "accounts.archivedHeading".
   ///
   /// In en, this message translates to:

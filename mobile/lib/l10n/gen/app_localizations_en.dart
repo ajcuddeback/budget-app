@@ -37,6 +37,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'It keeps its history, hides it from lists, and stops taking new transactions. Its balance leaves the subtotal for its currency, so that figure will change. You can bring it back whenever you like.';
 
   @override
+  String get accounts_archiveMessagePhone =>
+      'It keeps its history, hides it from lists, and stops taking new transactions. You can bring it back whenever you like.';
+
+  @override
   String get accounts_archivedHeading => 'Archived';
 
   @override

@@ -45,6 +45,8 @@
 
   "noHousehold.bodyPhone": "You are signed in, but nobody has added you to a household. Ask the person who runs this server for an invitation link, then paste it on the connect screen.",
 
+  "accounts.archiveMessagePhone": "It keeps its history, hides it from lists, and stops taking new transactions. You can bring it back whenever you like.",
+
   "nav.more": "More",
   "nav.import": "Import",
 

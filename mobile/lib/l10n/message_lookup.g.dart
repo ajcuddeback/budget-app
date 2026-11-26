@@ -23,6 +23,7 @@ String? lookupMessage(
     'accounts.archive' => l.accounts_archive,
     'accounts.archiveHeading' => l.accounts_archiveHeading(a('name')),
     'accounts.archiveMessage' => l.accounts_archiveMessage,
+    'accounts.archiveMessagePhone' => l.accounts_archiveMessagePhone,
     'accounts.archivedHeading' => l.accounts_archivedHeading,
     'accounts.archivedNote' => l.accounts_archivedNote,
     'accounts.archivedNoteWritable' => l.accounts_archivedNoteWritable,
