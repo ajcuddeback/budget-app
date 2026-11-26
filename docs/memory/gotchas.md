@@ -1308,3 +1308,29 @@ or match your path before any catch-all. When a mocked write seems to do nothing
 and the responses from the page — `calls` from `mockApi` shows which handler's answer came back.
 
 _Added 2026-11-25 — slice 12._
+
+## A logged debt payment carries a whole month of interest, so a small extra one raises the balance
+
+**Symptom.** The check-in's debt choice said paying the $63 surplus to the Visa moved its payoff
+month **later**. `DebtPaymentService` splits every logged payment as `interest = balance × APR ÷
+12`: $117.94 on the canvas Visa, so a $63 payment had a principal of −$54.94 and the balance went
+up. The payoff projection then charges the same month's interest again.
+
+**What to do.** A payment that is an *extra* on top of the month's plan must not carry a month of
+interest. The check-in's `CHECK_IN` payment is principal only (`weekly-check-in.md`, What slice 14
+has built). A hand-logged extra payment still has the problem; it is a debt-plan known gap. When a
+preview says paying more makes something later, suspect a double-counted period before the solver.
+
+_Added 2026-11-26 — slice 14._
+
+## An entity's `@Version` does not move if `updatedAt` is all that changed and the clock is stopped
+
+**Symptom.** Answering a check-in must bump the draft's version, and the draft's only change is
+`updatedAt`. Under the tests' stopped clock the timestamp was identical, Hibernate saw no dirty
+field, and the version stayed put, so "whoever finishes has seen every answer" silently failed.
+
+**What to do.** `CheckIn.touch(Instant)` moves `updatedAt` strictly forward by at least a
+microsecond (PostgreSQL's resolution). Any entity whose version is the contract must change a
+field that is guaranteed to differ, not one that usually does.
+
+_Added 2026-11-26 — slice 14._

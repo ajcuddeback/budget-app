@@ -10,7 +10,9 @@ tiebreaker. Add with `/remember`.
 | **Balance** | Derived: opening balance plus the sum of an account's transactions. Never a stored mutable column. |
 | **Bill** | A named obligation that recurs — rent, a subscription. First-class since ADR-0025. Its per-period instance is a **BillOccurrence**, which carries the due date, the expected amount, a status, and what was actually paid. |
 | **BillOccurrence** | One instance of a bill in one period. Planned and actual are both kept. Not a `Transaction` — it contributes to the plan, never to the ledger (ADR-0025). |
-| **ChargeRule** | The mapping from a bill to the real charge that pays it. Lets a status set itself where an account is connected; entirely optional. |
+| **ChargeRule** | The mapping from a bill to the `(payee, account)` whose charge pays it. Created only by completing a weekly check-in, removed with **Unmap** on Bills & income. It only pre-answers a later check-in; nothing matches at import (ADR-0041). Entirely optional. |
+| **PayeeRule** | "Always file {payee} here": one category per payee, created only by completing a weekly check-in. It only pre-answers a later check-in, marked *your rule*; import never sets a category (ADR-0041). Listed and removable on the categories page. |
+| **Surplus** (check-in) | Last week's target minus the week's unbudgeted spending. When positive, it goes to one place: a debt, a goal, or next week. A debt payment or goal contribution it makes has provenance `CHECK_IN` and moves no money. |
 | **Category** | A classification for spending or income. Two levels maximum. |
 | **Cleared** | A transaction the bank has actually processed, as opposed to `PENDING`. |
 | **Envelope** | An amount you decided on and spend down — groceries, fuel, adhoc. First-class, and the primary planning tool for variable spending. Entries are logged by hand; remaining is computed live. Not a `Bill`: a bill is owed on a date, an envelope is chosen. |
@@ -32,7 +34,7 @@ tiebreaker. Add with `/remember`.
 | **Reconciled** | A transaction confirmed against a bank statement. Stronger than `CLEARED`. |
 | **Debt** | A balance being reduced, with terms. Where the month's bills figure already carries that minimum (`debts.bill_id` names a bill with an unskipped occurrence in the period), it is the bill's row and is counted once; where it does not — no link, or a link to a bill that is retired, not due this month, or skipped — the minimum is what Bills & Income subtracts. The balance is an **anchor** plus the payments after it, never a stored total. |
 | **Balance source** | Where a debt's balance came from: a linked statement, a figure the user confirmed, or Owl's estimate. Never presented identically — an inferred number and a confirmed one are different claims. |
-| **Check-in** | The weekly four-step pass: what's new, categorize, bills, next week. Steps with nothing to answer are skipped. Persisted as a draft; nothing takes effect until it is finished. |
+| **Check-in** | The weekly four-step pass: what's new, categorize, bills, next week. Steps with nothing to answer are skipped. Persisted as a draft on the server (answers saved as given, nowhere in the browser); nothing takes effect until it is finished, and a finished one is read-only. Next week's figure is built from **Left over** (ADR-0040). |
 | **Owl** | The optional assistant. Runs in a self-hosted sidecar or does not exist on that instance (ADR-0027). |
 | **Operator** | The person running the instance. Same person as the household `OWNER` (ADR-0026) — not a separate role. |
 | **Safe to spend** | Money on hand minus bills still due minus what envelopes still hold, over the days remaining. Derived, never stored. |

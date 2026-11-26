@@ -1246,6 +1246,83 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       return json(route, 200, found);
     }
 
+    // ---- the weekly check-in (slice 14) ------------------------------------------------------
+    // Served from check-in-api.generated.ts, which `DemoFixtureIT` GENERATES from the real
+    // application by answering the canvas week in the canvas's order, and guards against drift.
+    // Each answer is keyed on exactly what the page sent and answered with what the real server
+    // returned for it; anything it was not generated for is a loud 501. The mock keeps the week
+    // the last write returned, because the page shows the server's answer after every write.
+    // Above the household section, whose DELETE catch-all would otherwise answer a discard.
+    // Answer in the canvas's order: each generated week carries every answer before it.
+    if (/^\/api\/(check-ins|payee-rules|charge-rules)(\/|$)/.test(url.pathname)) {
+      if (session === 'anonymous') {
+        return problem(route, DEMO_PROBLEMS.notAuthenticated);
+      }
+      if (session === 'no-household') {
+        return problem(route, DEMO_PROBLEMS.notAMember);
+      }
+      const notGenerated = (key: string) =>
+        json(
+          route,
+          501,
+          {
+            title: 'Not generated',
+            status: 501,
+            detail: `No generated check-in response for "${key}". Add it to DemoFixtureIT and regenerate.`,
+          },
+          'application/problem+json',
+        );
+      if (session === 'viewer') {
+        if (method !== 'GET') {
+          // The server checks the role before it looks anything up, so a VIEWER's write is a 403
+          // whatever it names. The page shows no write control; this is the backstop it relies on.
+          return json(
+            route,
+            403,
+            { title: 'Read-only role', status: 403, code: 'read-only-role' },
+            'application/problem+json',
+          );
+        }
+        const key = `${at} VIEWER`;
+        const answer = generatedCheckIn(key) ?? generatedCheckIn(at);
+        return answer === undefined ? notGenerated(key) : json(route, 200, answer);
+      }
+      if (at === 'GET /api/check-ins/current' || at === 'GET /api/check-ins/2026-W34') {
+        return json(route, 200, checkInWeek ?? generatedCheckIn('GET /api/check-ins/current'));
+      }
+      if (at === 'PUT /api/check-ins/2026-W34') {
+        const created = checkInWeek === null;
+        checkInWeek ??= generatedCheckIn(at) ?? null;
+        return json(route, created ? 201 : 200, checkInWeek);
+      }
+      if (at === 'DELETE /api/check-ins/2026-W34') {
+        // Discarding writes nothing outside the check-in: the week reads as it did before it began.
+        checkInWeek = null;
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'PUT' && url.pathname.startsWith('/api/check-ins/2026-W34/answers/')) {
+        const key = `${at} ${checkInLabel(body)}`;
+        const answer = generatedCheckIn(key);
+        if (answer === undefined) {
+          return notGenerated(key);
+        }
+        checkInWeek = answer;
+        return json(route, 200, answer);
+      }
+      if (at === 'POST /api/check-ins/2026-W34/complete') {
+        checkInWeek = generatedCheckIn(at) ?? null;
+        return json(route, 200, checkInWeek);
+      }
+      if (method === 'DELETE' && /^\/api\/(payee|charge)-rules\/[^/]+$/.test(url.pathname)) {
+        return route.fulfill({ status: 204 });
+      }
+      if (method === 'GET') {
+        const answer = generatedCheckIn(at);
+        return answer === undefined ? notGenerated(at) : json(route, 200, answer);
+      }
+      return notGenerated(`${at} ${checkInLabel(body)}`);
+    }
+
     // ---- household ------------------------------------------------------------------------
     if (url.pathname.startsWith('/api/households/current') && session === 'no-household') {
       return problem(route, DEMO_PROBLEMS.notAMember);
@@ -1417,7 +1494,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     // application and guards against drift. Keyed on exactly what was asked — the range, the month
     // and the representation — and loudly refused for anything it was not generated for: a report
     // for a range nobody asked the server about would be arithmetic the application never did.
-    const report = url.pathname.match(/^\/api\/reports\/(income-and-spending|spending-by-category)$/);
+    const report = url.pathname.match(
+      /^\/api\/reports\/(income-and-spending|spending-by-category)$/,
+    );
     if (report) {
       if (session === 'anonymous') {
         return problem(route, DEMO_PROBLEMS.notAuthenticated);
@@ -1512,82 +1591,6 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
         ? json(route, 404, DEMO_PROBLEMS.notFound, 'application/problem+json')
         : json(route, 200, found);
     }
-    // ---- the weekly check-in (slice 14) ------------------------------------------------------
-    // Served from check-in-api.generated.ts, which `DemoFixtureIT` GENERATES from the real
-    // application by answering the canvas week in the canvas's order, and guards against drift.
-    // Each answer is keyed on exactly what the page sent and answered with what the real server
-    // returned for it; anything it was not generated for is a loud 501. The mock keeps the week
-    // the last write returned, because the page shows the server's answer after every write.
-    // Answer in the canvas's order: each generated week carries every answer before it.
-    if (/^\/api\/(check-ins|payee-rules|charge-rules)(\/|$)/.test(url.pathname)) {
-      if (session === 'anonymous') {
-        return problem(route, DEMO_PROBLEMS.notAuthenticated);
-      }
-      if (session === 'no-household') {
-        return problem(route, DEMO_PROBLEMS.notAMember);
-      }
-      const notGenerated = (key: string) =>
-        json(
-          route,
-          501,
-          {
-            title: 'Not generated',
-            status: 501,
-            detail: `No generated check-in response for "${key}". Add it to DemoFixtureIT and regenerate.`,
-          },
-          'application/problem+json',
-        );
-      if (session === 'viewer') {
-        if (method !== 'GET') {
-          // The server checks the role before it looks anything up, so a VIEWER's write is a 403
-          // whatever it names. The page shows no write control; this is the backstop it relies on.
-          return json(
-            route,
-            403,
-            { title: 'Read-only role', status: 403, code: 'read-only-role' },
-            'application/problem+json',
-          );
-        }
-        const key = `${at} VIEWER`;
-        const answer = generatedCheckIn(key) ?? generatedCheckIn(at);
-        return answer === undefined ? notGenerated(key) : json(route, 200, answer);
-      }
-      if (at === 'GET /api/check-ins/current' || at === 'GET /api/check-ins/2026-W34') {
-        return json(route, 200, checkInWeek ?? generatedCheckIn('GET /api/check-ins/current'));
-      }
-      if (at === 'PUT /api/check-ins/2026-W34') {
-        const created = checkInWeek === null;
-        checkInWeek ??= generatedCheckIn(at) ?? null;
-        return json(route, created ? 201 : 200, checkInWeek);
-      }
-      if (at === 'DELETE /api/check-ins/2026-W34') {
-        // Discarding writes nothing outside the check-in: the week reads as it did before it began.
-        checkInWeek = null;
-        return route.fulfill({ status: 204 });
-      }
-      if (method === 'PUT' && url.pathname.startsWith('/api/check-ins/2026-W34/answers/')) {
-        const key = `${at} ${checkInLabel(body)}`;
-        const answer = generatedCheckIn(key);
-        if (answer === undefined) {
-          return notGenerated(key);
-        }
-        checkInWeek = answer;
-        return json(route, 200, answer);
-      }
-      if (at === 'POST /api/check-ins/2026-W34/complete') {
-        checkInWeek = generatedCheckIn(at) ?? null;
-        return json(route, 200, checkInWeek);
-      }
-      if (method === 'DELETE' && /^\/api\/(payee|charge)-rules\/[^/]+$/.test(url.pathname)) {
-        return route.fulfill({ status: 204 });
-      }
-      if (method === 'GET') {
-        const answer = generatedCheckIn(at);
-        return answer === undefined ? notGenerated(at) : json(route, 200, answer);
-      }
-      return notGenerated(`${at} ${checkInLabel(body)}`);
-    }
-
     // ---- everything else ------------------------------------------------------------------
     // Writes succeed without persisting: a guide screenshot shows the confirmation, and the
     // next navigation re-reads the unchanged fixtures. Deterministic by construction.

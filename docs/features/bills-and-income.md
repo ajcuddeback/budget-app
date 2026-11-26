@@ -74,6 +74,25 @@ goalsSetAside(P) = Σ max(planned(g, P), recorded(g, P))   over unarchived, base
   unchanged for it. That is the property that made this a safe change to a shipped figure, as it was
   for slice 10.
 
+**Slice 14 changed the fifth term again** (`weekly-check-in.md`, decision 6). A contribution a
+completed weekly check-in records carries provenance `CHECK_IN` and counts **on top of** the plan:
+
+```
+goalsSetAside(P) = Σ ( max(planned(g, P), recordedOther(g, P)) + recordedCheckIn(g, P) )
+```
+
+With the slice 11 rule, a $63 surplus against a $110 plan with nothing yet recorded would still
+count $110, so the surplus would not leave the figure until the rest of the plan was recorded.
+**A household with no `CHECK_IN` contributions gets a fifth term unchanged to the cent**:
+`GoalProjectionTest` proves it for every recorded figure, withdrawals included, and the whole
+slice 11 suite passes unchanged. A `CHECK_IN` debt payment does not touch `left`; it comes off the
+check-in's own `free(M)` instead.
+
+**Bill rows show their mappings.** `GET /api/bills` gains `mappings` per bill (a charge rule's
+`ruleId`, `payeeName`, `accountId`, `accountName`, `accountLastFour`), and the page shows each as
+*"Mapped · COMCAST XFINITY · Chase •4412 · exact match"* with **Unmap** for an `OWNER` or
+`MEMBER`.
+
 The two halves read one object. `PeriodSummaryService` asks `GoalService.setAsideFor` once, and the
 `goalsSetAside` it reports is the same `Money` it subtracts. `GoalService` computes each goal's
 share with `GoalLedger.monthContribution`, which is also what `/goals` reads for "this month". So

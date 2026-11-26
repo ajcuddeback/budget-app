@@ -22,10 +22,7 @@ test.describe('the weekly check-in, as an owner', () => {
     await mockApi(page, { session: 'owner' });
   });
 
-  test('opens the current week, not started, with the items it would ask', async ({
-    page,
-    ui,
-  }) => {
+  test('opens the current week, not started, with the items it would ask', async ({ page, ui }) => {
     await page.goto('/check-in');
 
     await expect(
@@ -104,7 +101,9 @@ test.describe('the weekly check-in, as an owner', () => {
     const figure = page.locator('[aria-live="polite"]');
     await expect(figure).toContainText('$480.00');
     await expect(figure).toContainText('≈ $68.57/day');
-    await expect(page.getByText('Emergency fund · $2,340.00 → $2,403.00 of $6,000.00')).toBeVisible();
+    await expect(
+      page.getByText('Emergency fund · $2,340.00 → $2,403.00 of $6,000.00'),
+    ).toBeVisible();
     await expect(page.getByText('Weekly target becomes $543.00.')).toBeVisible();
     await expect(page.getByText(/Budget Owl never moves money/).first()).toBeVisible();
 
@@ -153,6 +152,30 @@ test.describe('the weekly check-in, as an owner', () => {
     await ui.shot('check-in-draft');
     expect(await ui.a11y('check-in, a fresh draft')).toBe(0);
     await ui.noOverflow();
+    ui.noErrors();
+  });
+
+  test('discards a draft after asking, and the week reads as not started', async ({
+    page,
+    ui,
+    viewport,
+  }) => {
+    const phone = (viewport?.width ?? 1280) < 640;
+    await page.goto('/check-in');
+    await page.getByRole('button', { name: 'Start check-in' }).click();
+    if (phone) {
+      for (const next of ['Next: categorize', 'Next: bills', 'Next: next week']) {
+        await page.getByRole('button', { name: next }).click();
+      }
+    }
+    await page.getByRole('button', { name: 'Discard this draft' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Discard this check-in?' });
+    await expect(dialog).toBeVisible();
+    await ui.shot('check-in-discard');
+    await dialog.getByRole('button', { name: 'Discard this draft' }).click();
+
+    await expect(page.getByText('The draft was discarded.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Not started yet' })).toBeVisible();
     ui.noErrors();
   });
 

@@ -181,9 +181,13 @@ Three consequences worth stating plainly:
   this model invites.
 
 A `ChargeRule` maps a bill to the **real charge** that pays it — the bit that turns a list of
-intentions into a reconciled ledger. It carries the matched `payeeId`/descriptor, the
-`accountId` it lands on, a `matchKind` (`EXACT` | `VARIES_WITHIN_TOLERANCE`), and a
-`standing` flag meaning "label this every month without asking again".
+intentions into a reconciled ledger. As built in slice 14 (`docs/features/weekly-check-in.md`) it
+is `(billId, payeeId, accountId)`, one per payee and account. There is no `matchKind`: whether a
+charge matches is derived from the bill's own `amountVaries` and tolerance. There is no `standing`
+flag, because every rule is standing. **A rule acts only through a completed check-in**
+(ADR-0041): nothing matches at import or at sync, and a match the check-in applies is recorded
+`AUTO_MATCHED`. Rules are created only by completing a check-in and removed with **Unmap** on Bills
+& income.
 
 An unmapped bill is a **first-class state**, not an error: the designs show "Not mapped" beside
 a suggestion ("COMCAST XFINITY $71.99 looks likely") with `Link` / `Different bill` actions. A
@@ -263,9 +267,25 @@ are computed and **compared**, never one silently chosen — the designs present
 and say "Either is a good answer."
 
 ### CheckIn
-The weekly pass: `period` (week), `status`, and per-step outcomes. Four steps — what's new,
-categorize, bills, next week — each of which **writes something** (income confirmed, a category
-and payee rule, a bill↔charge mapping, an allocation and weekly target).
+The weekly pass (`docs/features/weekly-check-in.md`, slice 14): an ISO `week_start` (a Monday),
+`status` (`DRAFT` | `COMPLETED`), a `window_start`, who started and completed it, and, once
+completed, a snapshot (`week_target`, `week_spending`, `rolled_over`, `next_week_target`,
+`debt_free_month`). Four steps — what's new, categorize, bills, next week — each of which **writes
+something** at completion (an occurrence's status, a category and a `PayeeRule`, a bill↔charge
+attach and a `ChargeRule`, a `CHECK_IN` debt payment or goal contribution and the weekly target).
+
+**Items are derived, answers are stored.** The questions are recomputed from the ledger on every
+read; a `CheckInAnswer` is keyed by the item it answers and carries the version of the row it was
+given against. Completion re-derives everything, compares a digest of it (the `basis`) and each
+answer's version, and refuses the whole check-in if anything moved. It never moves money and never
+creates, deletes or splits a transaction.
+
+A **`PayeeRule`** is `(payeeId, categoryId)`, one per payee. Like a `ChargeRule`, it only
+pre-answers a later check-in, which applies it when completed (ADR-0041). Import never sets a
+category.
+
+**Next week's figure is built from the plan** (ADR-0040): `free(M) = left(M) − unbudgeted
+spending so far in M − CHECK_IN debt payments in M`, spread over the month's remaining days.
 
 A step with nothing to answer is **skipped, not shown empty**, which is why a quiet week is
 much shorter than four steps implies. Only "next week" is never skipped.
@@ -300,8 +320,9 @@ A goal takes `max(planned, recorded)` out of a month's left-over figure. That is
 The projection walks forward from `saved` at the plan in force, capped at 600 months, with no
 interest or growth. It gives the projected month and the smallest monthly amount, rounded up at the
 currency's minor unit, that reaches the target by `targetMonth`. Goals are not ranked against debts
-and never enter the payoff ladder. The weekly check-in (slice 14) will record a contribution when
-surplus goes to a goal, and the assistant's *"Japan trip: $110 → $165 per month, starting Sep 1"*
+and never enter the payoff ladder. The weekly check-in (slice 14) records a contribution with
+provenance `CHECK_IN` when surplus goes to a goal, and that counts on top of the month's plan:
+`max(planned, recordedOther) + recordedByCheckIn`, and the assistant's *"Japan trip: $110 → $165 per month, starting Sep 1"*
 (slice 17) is a proposal that reaches the same plan endpoint a person uses.
 
 ## Derived figures

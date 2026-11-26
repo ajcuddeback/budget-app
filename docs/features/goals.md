@@ -157,6 +157,12 @@ recorded against it.**
 
 `monthContribution(g, P) = max(planned(g, P), recorded(g, P))`
 
+**Amended by slice 14** (`weekly-check-in.md`, decision 6): contributions now carry a `provenance`
+(`USER_LOGGED` | `CHECK_IN`), and one a completed check-in recorded counts on top of the plan:
+`max(planned(g, P), recordedOther(g, P)) + recordedByCheckIn(g, P)`. `stillToCome` uses
+`recordedOther`, so a check-in's surplus never reads as part of the month's plan. A goal with no
+`CHECK_IN` contribution is exactly as below.
+
 Here `planned` is the step in force, and `recorded` is the sum of the contributions labelled `P`,
 withdrawals included. `planned` is treated as **zero** for any month that began with the goal
 already reached, that is, when `startingAmount + Σ contributions labelled before P ≥ targetAmount`.
