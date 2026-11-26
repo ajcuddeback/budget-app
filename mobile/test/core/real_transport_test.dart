@@ -9,7 +9,6 @@ import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
 /// The two transport controls proved against **real sockets** with the app's own adapter, not a
@@ -155,7 +154,7 @@ void main() {
     final shared = platformHttpAdapter();
     addTearDown(shared.close);
     final tokens = TokenStore(MemorySecureStore());
-    await tokens.save('fixture-token-owner', origin: testServerOrigin);
+    await tokens.save('fixture-token-owner', origin: address.stored);
     final api = ApiClient(
       server: address,
       adapter: shared,
@@ -200,7 +199,7 @@ void main() {
 
     final store = MemorySecureStore();
     final tokens = TokenStore(store);
-    await tokens.save('fixture-token-owner', origin: testServerOrigin);
+    await tokens.save('fixture-token-owner', origin: 'http://127.0.0.1:${server.port}');
     final api = ApiClient(
       server: (ServerAddress.parse(
         'http://127.0.0.1:${server.port}',

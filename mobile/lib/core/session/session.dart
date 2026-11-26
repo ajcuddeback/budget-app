@@ -132,24 +132,36 @@ final class SessionController extends Notifier<SessionState> {
       return;
     }
     ref.read(currentServerProvider.notifier).set(server);
-    unawaited(_checkVersion(server));
-    // Only a token this server issued (audit L3).
-    await _tokens.load(origin: server.stored);
-    if (!_tokens.hasToken) {
-      state = SessionSignedOut(server);
-      return;
+    // Only a token this server issued (audit L3). Anything another origin's token left behind —
+    // the cache and its key — goes with it (audit N2).
+    if (await _tokens.load(origin: server.stored) == TokenLoad.foreign) {
+      await _local.wipe();
     }
 
-    final cached = await _cachedMe();
-    if (cached != null) {
-      state = SessionSignedIn(server, cached, ++_epoch);
-      unawaited(_refreshMe(server));
+    // The version check runs in this sequence, never beside it (audit H-b): each step below
+    // finishes before the next decides the state, so nothing overwrites anything. It waits only
+    // where the network is needed anyway; a member with a cached copy sees it first.
+    // The app can be torn down part-way (ref.mounted): nothing is written after that.
+    if (!_tokens.hasToken) {
+      state = SessionSignedOut(server);
+      await _checkVersion(server);
       return;
     }
+    final cached = await _cachedMe();
+    if (!ref.mounted) return;
+    if (cached != null) {
+      state = SessionSignedIn(server, cached, ++_epoch);
+      if (await _checkVersion(server) || !ref.mounted) return;
+      await _refreshMe(server);
+      return;
+    }
+    if (await _checkVersion(server) || !ref.mounted) return;
     try {
       final me = await _fetchMe();
+      if (!ref.mounted) return;
       state = SessionSignedIn(server, me, ++_epoch);
     } on AppError catch (failure) {
+      if (!ref.mounted) return;
       // A 401 is the server ending the session: sessionEnded() wipes and routes to sign-in with
       // the notice (audit L2). Anything else leaves the token for a retry.
       if (failure.status == 401 || state is SessionSignedOut) return;
@@ -158,15 +170,18 @@ final class SessionController extends Notifier<SessionState> {
   }
 
   /// Asks the server who it is, on launch. Only a version mismatch changes anything: the app
-  /// does not guess at an API it was not written for.
-  Future<void> _checkVersion(ServerAddress server) async {
+  /// does not guess at an API it was not written for. Returns whether it did. Unreachable, busy or
+  /// anything else: the launch carries on with what the phone has.
+  Future<bool> _checkVersion(ServerAddress server) async {
     try {
       await ServerCheck(ref.read(httpAdapterProvider)).check(server);
     } on ConnectFailure catch (failure) {
-      if (failure.problem == ConnectProblem.versionMismatch) {
+      if (failure.problem == ConnectProblem.versionMismatch && ref.mounted) {
         state = SessionUnsupported(server, failure);
+        return true;
       }
     }
+    return false;
   }
 
   /// Checks [address] with `GET /api/meta` and, if it is a Budget Owl server this app can talk
@@ -213,7 +228,7 @@ final class SessionController extends Notifier<SessionState> {
       // The token was issued; end it on the server too, not only here (audit L4).
       _ending = true;
       try {
-        await _revokeBestEffort();
+        await _endToken();
         await _local.wipe();
       } finally {
         _ending = false;
@@ -243,8 +258,8 @@ final class SessionController extends Notifier<SessionState> {
     _ending = true;
     try {
       // Whenever a token is held — signed in, or stopped at the unsupported-version screen
-      // (audit L4) — ask the server to end it before the wipe.
-      await _revokeBestEffort();
+      // (audit L4) — it is taken out of storage first, then the server is asked to end it.
+      await _endToken();
       await _local.wipe(forgetServer: forgetServer);
       if (forgetServer || server == null) {
         ref.read(currentServerProvider.notifier).set(null);
@@ -257,17 +272,23 @@ final class SessionController extends Notifier<SessionState> {
     }
   }
 
-  /// `POST /api/auth/logout` with the held token, if there is one and a server to send it to.
-  /// Best effort: unreachable, already revoked or slow, the caller wipes regardless.
-  Future<void> _revokeBestEffort() async {
+  /// Ends the held token: **out of secure storage and memory first** (audit N1), then
+  /// `POST /api/auth/logout` with the copy, best effort. If the app is killed while the logout is
+  /// in flight, the next launch finds no token and is signed out. Unreachable, already revoked or
+  /// slow, the caller wipes the rest regardless.
+  Future<void> _endToken() async {
+    final token = await _tokens.take();
     final api = ref.read(apiClientProvider);
-    if (api == null || !_tokens.hasToken) return;
+    if (api == null || token == null) return;
     try {
-      await api.write('POST', '/api/auth/logout').timeout(const Duration(seconds: 8));
+      await api.revoke(token).timeout(revokeTimeout);
     } on Object {
       // The wipe that follows happens regardless.
     }
   }
+
+  /// How long a sign-out waits for the server to confirm the revocation.
+  static const Duration revokeTimeout = Duration(seconds: 8);
 
   /// Any `401` on a request that carried the token: wipe once, route to sign-in once, with "Your
   /// session ended". Idempotent — a burst of failing requests ends the session one time. Also while
@@ -299,6 +320,7 @@ final class SessionController extends Notifier<SessionState> {
   Future<void> _refreshMe(ServerAddress server) async {
     try {
       final me = await _fetchMe();
+      if (!ref.mounted) return;
       final current = state;
       if (current is SessionSignedIn && current.server == server) {
         state = SessionSignedIn(server, me, current.epoch);
@@ -310,6 +332,8 @@ final class SessionController extends Notifier<SessionState> {
 
   Future<CurrentUser> _fetchMe() async {
     final body = await _api.getText('/api/auth/me');
+    // Torn down while the read was in flight: there is no session left to cache it for.
+    if (!ref.mounted) throw const AppError.unexpected();
     final CurrentUser me;
     try {
       me = CurrentUser.fromJson(decodeObject(body));

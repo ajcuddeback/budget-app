@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:budget_owl/app.dart';
+import 'package:budget_owl/core/auth/token_store.dart';
 import 'package:budget_owl/core/cache/cache_holder.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
 import 'package:budget_owl/core/session/local_state.dart';
 import 'package:budget_owl/core/session/session.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -300,8 +303,8 @@ void main() {
 
     test('L4: leaving the unsupported-version screen still ends the token on the server', () async {
       final adapter = ScriptedAdapter((o) async {
+        // No delay anywhere: the order is resume()'s, not the network's (audit H-b).
         if (o.path.endsWith('/api/meta')) {
-          await Future<void>.delayed(const Duration(milliseconds: 30));
           return json(200, {'app': 'budget-owl', 'apiVersion': 2, 'minimumClientApiVersion': 2});
         }
         if (o.path.endsWith('/api/auth/logout')) return json(204, null);
@@ -342,6 +345,134 @@ void main() {
       final logout = adapter.requests.where((o) => o.path.endsWith('/api/auth/logout'));
       expect(logout, hasLength(1));
       expect(logout.single.headers['Authorization'], 'Bearer fixture-token-new');
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('H-b: the launch version check runs before the member is read, never beside it', () async {
+      // Both answers are immediate. With the check racing resume(), /api/auth/me went out and its
+      // answer could overwrite the unsupported state; in sequence it is never asked.
+      final adapter = ScriptedAdapter((o) async {
+        if (o.path.endsWith('/api/meta')) {
+          return json(200, {'app': 'budget-owl', 'apiVersion': 2, 'minimumClientApiVersion': 2});
+        }
+        return json(503, {'code': 'unavailable'});
+      });
+      final phone = TestPhone(server: adapter)..signedIn('owner');
+      final c = containerFor(phone);
+
+      await until<SessionUnsupported>(c);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(c.read(sessionProvider), isA<SessionUnsupported>());
+      expect(adapter.requests.map((o) => o.path), ['/api/meta']);
+    });
+
+    test('N1: while the logout is in flight, no token is left in storage or memory', () async {
+      final answer = Completer<ResponseBody>();
+      Map<String, String>? storedDuringLogout;
+      String? heldDuringLogout = 'not read';
+      late TestPhone phone;
+      late ProviderContainer c;
+      final adapter = ScriptedAdapter((o) {
+        if (o.path.endsWith('/api/meta')) {
+          return Future.value(
+            json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1}),
+          );
+        }
+        if (o.path.endsWith('/api/auth/logout')) {
+          storedDuringLogout = Map.of(phone.store.values);
+          heldDuringLogout = c.read(tokenStoreProvider).current;
+          return answer.future; // never answers until the test says so
+        }
+        return Future.value(json(200, fixtureBody('demo', state: 'demo', path: '/api/auth/me')));
+      });
+      phone = TestPhone(server: adapter)..signedIn('owner');
+      c = containerFor(phone);
+      await until<SessionSignedIn>(c);
+
+      final signingOut = c.read(sessionProvider.notifier).signOut();
+      for (var i = 0; i < 200 && storedDuringLogout == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      expect(storedDuringLogout, isNotNull, reason: 'the logout was sent');
+      expect(storedDuringLogout!.containsKey('budget_owl.bearer_token'), isFalse);
+      expect(storedDuringLogout!.containsKey('budget_owl.token_origin'), isFalse);
+      expect(heldDuringLogout, isNull);
+      final logout = adapter.requests.singleWhere((o) => o.path.endsWith('/api/auth/logout'));
+      expect(logout.headers['Authorization'], 'Bearer fixture-token-owner');
+
+      answer.complete(json(204, null));
+      await signingOut;
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('N1: killed while the logout is in flight, the next launch is signed out', () async {
+      late TestPhone phone;
+      var logoutSent = false;
+      final adapter = ScriptedAdapter((o) {
+        if (o.path.endsWith('/api/meta')) {
+          return Future.value(
+            json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1}),
+          );
+        }
+        if (o.path.endsWith('/api/auth/logout')) {
+          logoutSent = true;
+          return Completer<ResponseBody>().future; // offline: no answer, ever
+        }
+        return Future.value(json(200, fixtureBody('demo', state: 'demo', path: '/api/auth/me')));
+      });
+      phone = TestPhone(server: adapter)..signedIn('owner');
+      final first = ProviderContainer(overrides: phone.overrides, retry: noRetry);
+      while (first.read(sessionProvider) is! SessionSignedIn) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      unawaited(first.read(sessionProvider.notifier).signOut().catchError((Object _) {}));
+      while (!logoutSent) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      first.dispose(); // the app is killed here
+
+      final again = containerFor(phone);
+
+      await until<SessionSignedOut>(again);
+    });
+
+    test("N1: the revocation's own 401 does not end the session a second time", () async {
+      final adapter = ScriptedAdapter((o) async {
+        if (o.path.endsWith('/api/meta')) {
+          return json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1});
+        }
+        if (o.path.endsWith('/api/auth/logout')) return json(401, {'code': 'unauthenticated'});
+        return json(200, fixtureBody('demo', state: 'demo', path: '/api/auth/me'));
+      });
+      final phone = TestPhone(server: adapter)..signedIn('owner');
+      final c = containerFor(phone);
+      await until<SessionSignedIn>(c);
+
+      await c.read(sessionProvider.notifier).signOut();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(c.read(localStateProvider).wipes, 1);
+      expect((c.read(sessionProvider) as SessionSignedOut).notice, isNull);
+    });
+
+    test("N2: another origin's token takes the cache file and its key with it", () async {
+      final server = FixtureServer.load('demo', state: 'demo');
+      final phone = TestPhone(server: server)..signedIn('owner');
+      final first = ProviderContainer(overrides: phone.overrides, retry: noRetry);
+      while (first.read(sessionProvider) is! SessionSignedIn) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      first.dispose();
+      expect(phone.cacheFile.existsSync(), isTrue);
+      expect(phone.store.values.containsKey('budget_owl.cache_key'), isTrue);
+      phone.store.values['budget_owl.token_origin'] = 'https://old.example.test';
+
+      final again = containerFor(phone);
+      await until<SessionSignedOut>(again);
+
+      expect(phone.cacheFile.existsSync(), isFalse);
       expect(phone.store.values.keys, ['budget_owl.server']);
     });
 

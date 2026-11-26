@@ -18,8 +18,9 @@ import 'package:flutter/foundation.dart';
 ///   whatever path a caller builds.
 /// - **Redirects are not followed** (`followRedirects: false`, `maxRedirects: 0`): a `3xx` is an
 ///   error, so a server cannot bounce the token to another host (attack 4).
-/// - **The bearer is attached by [AuthInterceptor]** and only there; any `401` on a request that
-///   carried it ends the session through `onSessionEnded`, once, with no retry.
+/// - **The bearer is attached by [AuthInterceptor]** and only there, and only to a request for the
+///   origin that issued it (audit H-a); any `401` on a request that carried it ends the session
+///   through `onSessionEnded`, once, with no retry.
 /// - **Nothing is logged** but method, a redacted path and a status — in a debug build only.
 /// - **Errors leave as [AppError]**: a problem response's code and params, or which kind of
 ///   connection failure it was. Never the server's title or detail.
@@ -90,6 +91,20 @@ final class ApiClient {
     }
   }
 
+  /// `POST /api/auth/logout` carrying [token] — one the session has already taken out of storage
+  /// (audit N1). It passes the origin guard and the token's own origin check like any request; its
+  /// `401` (already revoked) ends nothing, because the session it belonged to is already over.
+  Future<void> revoke(IssuedToken token) async {
+    try {
+      await _dio.request<String>(
+        '/api/auth/logout',
+        options: Options(method: 'POST', extra: {_revokingKey: token}),
+      );
+    } on DioException catch (failure) {
+      throw toAppError(failure);
+    }
+  }
+
   /// A raw exchange, for the few callers that need a response header (the CSRF cookie).
   Future<Response<String>> exchange(
     String method,
@@ -155,6 +170,7 @@ final class ApiClient {
 
 const String _publicKey = 'budget_owl.public';
 const String _bearerKey = 'budget_owl.bearer';
+const String _revokingKey = 'budget_owl.revoking';
 
 /// Refuses a request to any origin but the chosen server's, before any header is attached.
 final class _OriginGuard extends Interceptor {
@@ -194,11 +210,31 @@ final class AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final token = _tokens.current;
-    if (token != null && options.extra[_publicKey] != true) {
-      options.headers['Authorization'] = 'Bearer $token';
-      options.extra[_bearerKey] = true;
+    if (options.extra[_publicKey] == true) {
+      handler.next(options);
+      return;
     }
+    final revoking = options.extra[_revokingKey];
+    final token = revoking is IssuedToken ? revoking : _tokens.held;
+    if (token == null) {
+      handler.next(options);
+      return;
+    }
+    // The token goes only to the origin that issued it — checked here, on every request, not only
+    // when it is loaded (audit H-a). A mismatch sends nothing at all.
+    if (!token.isFor(options.uri)) {
+      handler.reject(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.cancel,
+          message: 'refused: the token was not issued by this origin',
+        ),
+      );
+      return;
+    }
+    options.headers['Authorization'] = 'Bearer ${token.value}';
+    // A revocation's 401 ends nothing: its session is already over (audit N1).
+    if (revoking == null) options.extra[_bearerKey] = true;
     handler.next(options);
   }
 

@@ -58,6 +58,44 @@ void main() {
     expect(adapter.requests.single.headers['Authorization'], 'Bearer fixture-token-owner');
   });
 
+  test(
+    'refuses, and sends nothing, when the token was issued by another origin (audit H-a)',
+    () async {
+      // The client is for owl.example.test, so the origin guard lets the request through; the token
+      // in the store is another server's. Every request is checked, not only the load.
+      await tokens.save('fixture-token-owner', origin: 'https://old.example.test');
+      final adapter = ScriptedAdapter((_) async => json(200, {'ok': true}));
+
+      final error = await failure(client(adapter).getJson('/api/auth/me'));
+
+      expect(adapter.requests, isEmpty);
+      expect(error.status, isNull);
+      expect(ended, 0, reason: 'a refusal on the phone is not the server ending the session');
+    },
+  );
+
+  test('a revocation carries the token it is given, and its 401 ends nothing (audit N1)', () async {
+    final taken = await tokens.take();
+    final adapter = ScriptedAdapter((_) async => json(401, {'code': 'unauthenticated'}));
+
+    await failure(client(adapter).revoke(taken!));
+
+    expect(adapter.requests.single.method, 'POST');
+    expect(adapter.requests.single.path, '/api/auth/logout');
+    expect(adapter.requests.single.headers['Authorization'], 'Bearer fixture-token-owner');
+    expect(ended, 0);
+  });
+
+  test('a revocation is refused for any origin but the one that issued the token', () async {
+    final adapter = ScriptedAdapter((_) async => json(204, null));
+
+    await failure(
+      client(adapter).revoke(IssuedToken('fixture-token-owner', 'https://old.example.test')),
+    );
+
+    expect(adapter.requests, isEmpty);
+  });
+
   test('sends no bearer on a public request', () async {
     final adapter = ScriptedAdapter((_) async => json(200, {'ok': true}));
 
