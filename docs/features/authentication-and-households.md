@@ -234,8 +234,13 @@ constrained to an encoded form for the same reason.
 | `DELETE` | `/api/auth/me` | Delete own user | authenticated; refused while owning a household — **not built**, see below |
 | `DELETE` | `/api/households/current/members/{id}` | Remove, or leave | `OWNER`, or self |
 
-The only public routes in the entire application are the setup pair, login, token issue, and
-invitation acceptance. Everything else denies by default (ADR-0016 non-negotiable 2).
+The only public routes in the entire application are the setup pair, login, token issue,
+invitation acceptance, and `GET /api/meta` (slice 15, ADR-0042) — six in all. Everything else
+denies by default (ADR-0016 non-negotiable 2).
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| `GET` | `/api/meta` | `{"app":"budget-owl","apiVersion":1,"minimumClientApiVersion":1}` and nothing else, so the mobile app can identify a server before it sends a password | public, rate-limited per address (`MetaRateLimiter`, 60 a minute), `Cache-Control: no-store`; `MetaIT` pins the exact body |
 
 ## UI
 
@@ -327,7 +332,8 @@ listed as ruled out — that is what stops this analysis being redone.
   until at least one `OWNER` has completed a successful OIDC login; a CLI command re-enables it.
 - *An unauthenticated caller enumerates members via `GET /api/households/current/members`.* →
   authenticated and member-only; the only public routes in the entire application are the setup
-  pair, login, token issue, and invitation acceptance.
+  pair, login, token issue, invitation acceptance, and `GET /api/meta` (which says only "this is
+  Budget Owl, API 1").
 
 **Ruled out, with reasons:**
 
@@ -347,7 +353,7 @@ listed as ruled out — that is what stops this analysis being redone.
 
 | Control | Layer |
 |---|---|
-| Deny by default; four public routes, explicitly listed | `SecurityConfig` |
+| Deny by default; six public routes, explicitly listed (`GET /api/meta` since slice 15) | `SecurityConfig`; `AuthorizationIT.publicEndpoints` |
 | Unauthenticated → `401` (not `403`) | `HttpStatusEntryPoint`, already in place from slice 1 |
 | Role checks (`OWNER` / `MEMBER` / `VIEWER`) | service layer, never the controller |
 | Household resolved from verified membership | service layer |

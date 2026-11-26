@@ -3,6 +3,7 @@ package com.budgetowl.api;
 import com.budgetowl.auth.service.AuthRateLimiter;
 import com.budgetowl.debt.service.TermsSolveRateLimiter;
 import com.budgetowl.imports.service.ImportRateLimiter;
+import com.budgetowl.instance.service.MetaRateLimiter;
 import com.budgetowl.smoke.PostgresTestBase;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -65,6 +66,9 @@ public abstract class ApiTestBase extends PostgresTestBase {
     /** File import's limiter, for the same reason (slice 12). */
     @Autowired private ImportRateLimiter importRateLimiter;
 
+    /** {@code GET /api/meta}'s limiter, for the same reason (slice 15): {@code MetaIT} fills it. */
+    @Autowired private MetaRateLimiter metaRateLimiter;
+
     protected JdbcTemplate jdbc;
 
     @BeforeEach
@@ -73,6 +77,7 @@ public abstract class ApiTestBase extends PostgresTestBase {
         jdbc = new JdbcTemplate(dataSource);
         solveRateLimiter.clearAll();
         importRateLimiter.clearAll();
+        metaRateLimiter.clearAll();
         jdbc.execute(
                 """
                 TRUNCATE debt_payments, debts, payoff_plan_snapshots, payoff_plans,

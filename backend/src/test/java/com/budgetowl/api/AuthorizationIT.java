@@ -206,10 +206,12 @@ class AuthorizationIT extends ApiTestBase {
                         "GET", "/api/reports/spending-by-category?from=2026-08&to=2026-08", null));
     }
 
-    /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */
+    /** The six exceptions, listed here so that a seventh cannot appear unnoticed. */
     static List<Endpoint> publicEndpoints() {
         return List.of(
                 new Endpoint("GET", "/api/setup/status", null),
+                // ADR-0042: the phone identifies the server before it sends a password.
+                new Endpoint("GET", "/api/meta", null),
                 new Endpoint("POST", "/api/setup/first-user", "{}"),
                 new Endpoint("POST", "/api/auth/login", "{}"),
                 new Endpoint("POST", "/api/auth/token", "{}"),

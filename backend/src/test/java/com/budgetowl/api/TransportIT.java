@@ -355,8 +355,10 @@ class TransportIT extends ApiTestBase {
         assertThat(cookie).contains("Path=/");
     }
 
-    @Test
-    void setsTheSecurityHeadersOnEveryResponse() {
+    /** Every public read, including the mobile app's {@code /api/meta} (ADR-0042). */
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/setup/status", "/api/meta"})
+    void setsTheSecurityHeadersOnEveryResponse(String publicRead) {
         List<String> headers =
                 List.of(
                         "Content-Security-Policy",
@@ -365,7 +367,7 @@ class TransportIT extends ApiTestBase {
                         "X-Frame-Options",
                         "Cache-Control");
 
-        ApiResponse response = anonymous().get("/api/setup/status");
+        ApiResponse response = anonymous().get(publicRead);
 
         for (String header : headers) {
             assertThat(response.header(header)).as(header).isPresent();
