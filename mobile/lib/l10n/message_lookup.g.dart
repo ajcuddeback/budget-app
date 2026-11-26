@@ -1442,6 +1442,7 @@ String? lookupMessage(
     'offline.noCopy' => l.offline_noCopy,
     'offline.staleNoAnswer' => l.offline_staleNoAnswer(a('ago')),
     'offline.staleOffline' => l.offline_staleOffline(a('ago')),
+    'offline.versionUnconfirmed' => l.offline_versionUnconfirmed,
     'offline.write' => l.offline_write,
     'pairing.account' => l.pairing_account,
     'pairing.allAccounts' => l.pairing_allAccounts,

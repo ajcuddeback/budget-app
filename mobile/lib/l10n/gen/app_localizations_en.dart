@@ -5172,6 +5172,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get offline_versionUnconfirmed =>
+      'Changes are off until the server confirms it runs a version this app works with. Refresh to check again.';
+
+  @override
   String get offline_write => 'You\'re offline — this needs a connection';
 
   @override

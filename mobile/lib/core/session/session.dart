@@ -86,7 +86,14 @@ final apiClientProvider = Provider<ApiClient?>((ref) {
     adapter: ref.watch(httpAdapterProvider),
     tokens: ref.watch(tokenStoreProvider),
     onSessionEnded: () => unawaited(ref.read(sessionProvider.notifier).sessionEnded()),
-    onOutcome: (outcome) => ref.read(reachabilityProvider.notifier).record(outcome),
+    onOutcome: (outcome) {
+      ref.read(reachabilityProvider.notifier).record(outcome);
+      // A request got through while the version is unconfirmed: the next refresh retries the check.
+      if (outcome == Reachability.reached) {
+        ref.read(sessionProvider.notifier).recheckVersionIfNeeded();
+      }
+    },
+    versionConfirmed: () => ref.read(reachabilityProvider.notifier).versionConfirmed,
   );
 });
 
@@ -111,6 +118,12 @@ final class SessionController extends Notifier<SessionState> {
     return api;
   }
 
+  /// The version check in flight, start-up's or a retry: at most one at a time, so the reads a
+  /// screen sends while it is out do not each start another.
+  Future<bool>? _checking;
+
+  ReachabilityNotifier get _gate => ref.read(reachabilityProvider.notifier);
+
   @override
   SessionState build() {
     scheduleMicrotask(resume);
@@ -119,30 +132,56 @@ final class SessionController extends Notifier<SessionState> {
 
   /// Start-up: the stored server and token, then the member — from the cache first, so a phone on
   /// a train opens to what it last knew, and refreshed when the server can be reached.
+  ///
+  /// **It never fails silently.** Whatever goes wrong in here — storage that cannot be read, a
+  /// cache that cannot be opened, anything — the phone's local state is wiped and the person is
+  /// shown the signed-out state with a message (or the connect screen, when not even the server
+  /// is known), never a spinner that turns forever. This runs unawaited from [build], so nothing
+  /// else would ever see the error.
   Future<void> resume() async {
+    try {
+      await _resume();
+    } on Object {
+      await _recoverFromFailedStart();
+    }
+  }
+
+  Future<void> _resume() async {
+    // Writes wait for this launch's version check, whatever an earlier start had seen.
+    _gate.unconfirmVersion();
     // A new installation reads nothing an earlier one left in the Keychain (audit L5).
+    var wiped = false;
     final marker = ref.read(installMarkerProvider);
     if (!await marker.present) {
       await _local.wipe(forgetServer: true);
+      wiped = true;
       await marker.place();
     }
     final server = await _servers.read(allowLocalCleartext: _allowCleartext);
     if (server == null) {
+      // No server, no session: nothing a session left may outlive it, an unreadable address
+      // included. A sign-in can only follow connect(), which wipes again; this makes it so on disk.
+      if (!wiped) await _local.wipe(forgetServer: true);
+      if (!ref.mounted) return;
       state = const SessionNoServer();
       return;
     }
     ref.read(currentServerProvider.notifier).set(server);
     // Only a token this server issued (audit L3). Anything another origin's token left behind —
-    // the cache and its key — goes with it (audit N2).
-    if (await _tokens.load(origin: server.stored) == TokenLoad.foreign) {
+    // the cache and its key — goes with it (audit N2). **No token at all means the same** (R1): a
+    // sign-out killed after the token was taken but before the wipe left the cache file and its
+    // key, and the next sign-in would have reopened them. So with no token, everything goes.
+    if (await _tokens.load(origin: server.stored) != TokenLoad.loaded && !wiped) {
       await _local.wipe();
     }
 
     // The version check runs in this sequence, never beside it (audit H-b): each step below
     // finishes before the next decides the state, so nothing overwrites anything. It waits only
-    // where the network is needed anyway; a member with a cached copy sees it first.
+    // where the network is needed anyway; a member with a cached copy sees it first — with writes
+    // off until the check passes (reachability.dart).
     // The app can be torn down part-way (ref.mounted): nothing is written after that.
     if (!_tokens.hasToken) {
+      if (!ref.mounted) return;
       state = SessionSignedOut(server);
       await _checkVersion(server);
       return;
@@ -169,19 +208,74 @@ final class SessionController extends Notifier<SessionState> {
     }
   }
 
-  /// Asks the server who it is, on launch. Only a version mismatch changes anything: the app
-  /// does not guess at an API it was not written for. Returns whether it did. Unreachable, busy or
-  /// anything else: the launch carries on with what the phone has.
-  Future<bool> _checkVersion(ServerAddress server) async {
+  /// Asks the server who it is: on launch, and again on the next request that reaches it while the
+  /// answer is still unknown. **Only a pass opens writes** (`Reachability`); anything else keeps
+  /// them off and **fails closed**. A version mismatch also stops the app talking to the server —
+  /// it does not guess at an API it was not written for — and returns true. Unreachable, busy,
+  /// timed out or anything else: reads carry on with what the phone has, writes stay off.
+  Future<bool> _checkVersion(ServerAddress server) {
+    final running = _versionCheck(server);
+    _checking = running;
+    // _versionCheck catches everything, so neither callback sees an error.
+    unawaited(running.then((_) => _checkDone(running), onError: (Object _) => _checkDone(running)));
+    return running;
+  }
+
+  void _checkDone(Future<bool> running) {
+    if (identical(_checking, running)) _checking = null;
+  }
+
+  Future<bool> _versionCheck(ServerAddress server) async {
+    bool current() => ref.mounted && ref.read(currentServerProvider) == server;
     try {
       await ServerCheck(ref.read(httpAdapterProvider)).check(server);
+      if (current()) _gate.confirmVersion();
     } on ConnectFailure catch (failure) {
-      if (failure.problem == ConnectProblem.versionMismatch && ref.mounted) {
+      if (!current()) return false;
+      _gate.unconfirmVersion();
+      if (failure.problem == ConnectProblem.versionMismatch) {
         state = SessionUnsupported(server, failure);
         return true;
       }
+    } on Object {
+      // Not a recognised failure: still not a pass.
+      if (current()) _gate.unconfirmVersion();
     }
     return false;
+  }
+
+  /// Retries the version check when a request has just reached the server and the version is not
+  /// yet confirmed this launch — "on the next refresh". At most one check at a time (start-up's
+  /// included), and only while there is a server to talk to.
+  void recheckVersionIfNeeded() {
+    if (!ref.mounted || _checking != null || _gate.versionConfirmed) return;
+    final server = ref.read(currentServerProvider);
+    final current = state;
+    if (server == null || (current is! SessionSignedIn && current is! SessionSignedOut)) return;
+    unawaited(_checkVersion(server));
+  }
+
+  /// [resume] failed: wipe what the phone holds, best effort, and show the signed-out state with
+  /// "Your session ended. Sign in again to continue." — or the connect screen when no server was
+  /// read. Never leaves the app on its starting spinner.
+  Future<void> _recoverFromFailedStart() async {
+    if (!ref.mounted) return;
+    final server = ref.read(currentServerProvider);
+    _ending = true;
+    try {
+      await _local.wipe(forgetServer: server == null);
+    } on Object {
+      // Every step was attempted (LocalState.wipe); what storage refused, it refused.
+    } finally {
+      _ending = false;
+    }
+    if (!ref.mounted) return;
+    _gate.unconfirmVersion();
+    if (server == null) {
+      state = const SessionNoServer();
+    } else {
+      state = SessionSignedOut(server, notice: SignInNotice.expired);
+    }
   }
 
   /// Checks [address] with `GET /api/meta` and, if it is a Budget Owl server this app can talk
@@ -190,10 +284,13 @@ final class SessionController extends Notifier<SessionState> {
   /// Everything the phone held for the previous server is wiped first, so no token, cache or
   /// member can ever be carried to a second origin (audit L3).
   Future<void> connect(ServerAddress address) async {
+    _gate.unconfirmVersion();
     await ServerCheck(ref.read(httpAdapterProvider)).check(address);
     await _local.wipe(forgetServer: true);
     await _servers.save(address);
     ref.read(currentServerProvider.notifier).set(address);
+    // The check above was this server's, this launch: writes (sign-in, setup, join) may follow.
+    _gate.confirmVersion();
     state = SessionSignedOut(address);
   }
 
@@ -206,6 +303,12 @@ final class SessionController extends Notifier<SessionState> {
   }) async {
     final current = state;
     if (current is! SessionSignedOut) throw StateError('already signed in');
+    // The password goes only to a server whose version was confirmed this launch (attack 4). If
+    // the launch check failed — busy, timed out — it is tried once more here, now.
+    if (!_gate.versionConfirmed) {
+      if (await (_checking ?? _checkVersion(current.server))) throw const AppError.unexpected();
+      if (!_gate.versionConfirmed) throw const AppError.noAnswer();
+    }
     final issued = await _api.write(
       'POST',
       '/api/auth/token',
@@ -263,6 +366,7 @@ final class SessionController extends Notifier<SessionState> {
       await _local.wipe(forgetServer: forgetServer);
       if (forgetServer || server == null) {
         ref.read(currentServerProvider.notifier).set(null);
+        _gate.unconfirmVersion();
         state = const SessionNoServer();
       } else {
         state = SessionSignedOut(server);

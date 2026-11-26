@@ -25,13 +25,30 @@ final class LocalState {
   /// How many wipes have run. Tests assert that a burst of `401`s wipes exactly once.
   int wipes = 0;
 
+  ///
+  /// **Every step is attempted**, even when one before it fails: a secure-storage error deleting
+  /// the token must not leave the cache file and its key behind. The first failure is rethrown
+  /// once all of them have run. Idempotent, and cheap when there is nothing to delete: a few
+  /// secure-storage deletes and a file delete that finds no file.
   Future<void> wipe({bool forgetServer = false}) async {
     wipes++;
+    Object? failure;
+    StackTrace? trace;
+    Future<void> step(Future<void> Function() run) async {
+      try {
+        await run();
+      } on Object catch (error, stack) {
+        failure ??= error;
+        trace ??= stack;
+      }
+    }
+
     // The token first: whatever fails after this, the phone can no longer act as the member.
-    await _tokens.clear();
-    await _cache.destroy();
-    await _keys.clear();
-    if (forgetServer) await _servers.clear();
+    await step(_tokens.clear);
+    await step(_cache.destroy);
+    await step(_keys.clear);
+    if (forgetServer) await step(_servers.clear);
+    if (failure != null) Error.throwWithStackTrace(failure!, trace!);
   }
 }
 

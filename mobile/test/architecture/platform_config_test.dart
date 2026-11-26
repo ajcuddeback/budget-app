@@ -79,6 +79,35 @@ void main() {
       expect(activity, isNot(contains('FLAG_SECURE')), reason: "the user's own screenshots work");
     });
 
+    test(
+      'AND1: the trust channel hands Dart exactly the user CAs the config trusts, read-only',
+      () {
+        // Dart trusts what MainActivity returns only because the app's own network security config
+        // already trusts user CAs, in release and debug alike.
+        for (final config in [
+          '$main/res/xml/network_security_config.xml',
+          '$debug/res/xml/network_security_config.xml',
+        ]) {
+          expect(_xml(config), contains('<certificates src="user" />'), reason: config);
+        }
+        final activity = File('$main/kotlin/app/budgetowl/budget_owl/MainActivity.kt')
+            .readAsStringSync()
+            .replaceAll(RegExp('//.*'), '')
+            .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '');
+        final dart = File('lib/core/http/user_trust.dart').readAsStringSync();
+        expect(activity, contains('KeyStore.getInstance("AndroidCAStore")'));
+        expect(activity, contains('USER_ALIAS_PREFIX = "user:"'));
+        expect(activity, contains('.filter { it.startsWith(USER_ALIAS_PREFIX) }'));
+        expect(activity, contains('TRUST_CHANNEL = "app.budgetowl/trust"'));
+        expect(dart, contains("MethodChannel('app.budgetowl/trust')"), reason: 'the same channel');
+        expect(activity, contains('USER_CA_CERTIFICATES = "userCaCertificates"'));
+        expect(dart, contains("invokeListMethod<Object?>('userCaCertificates')"));
+        for (final write in ['setCertificateEntry', 'setEntry', 'deleteEntry', 'store(']) {
+          expect(activity, isNot(contains(write)), reason: 'the store is only read');
+        }
+      },
+    );
+
     test('the app asks for the network and for nothing else', () {
       final permissions = RegExp('<uses-permission android:name="([^"]+)"')
           .allMatches(manifest)

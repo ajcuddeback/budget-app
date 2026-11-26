@@ -161,6 +161,7 @@ void main() {
       tokens: tokens,
       onSessionEnded: () {},
       onOutcome: (_) {},
+      versionConfirmed: () => true,
       logRequests: false,
     );
 
@@ -209,6 +210,7 @@ void main() {
       tokens: tokens,
       onSessionEnded: () {},
       onOutcome: (_) {},
+      versionConfirmed: () => true,
       logRequests: false,
     );
 
