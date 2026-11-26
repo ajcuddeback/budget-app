@@ -1,8 +1,11 @@
 # Feature: Weekly check-in
 
 - **Slice:** 14
-- **Status:** Planned — slice 14. Nothing is built. **All nine decisions are settled** (owner,
-  2026-11-26): every recommendation below is taken. See
+- **Status:** Done (slice 14). The migration, the API, the Angular screens at both viewports in
+  light and dark, the ledger prompt, the rules lists, the generated demo fixtures and the user
+  guide have shipped. See [What slice 14 has built](#what-slice-14-has-built), which lists every
+  place the build departs from the text below and why. All nine decisions were settled on
+  2026-11-26 (every recommendation taken); see
   [Open questions: decisions needed](#open-questions-decisions-needed).
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-26
@@ -1262,3 +1265,90 @@ write, and the money cases. Beyond that, what must be proven for this to be trus
   listed items, the `aria-live` figure, a bidi and an HTML payee rendered inert, and a `VIEWER`
   with every figure and no control). `tools/ui/specs/app/check-in.spec.ts` covers both
   viewports, light and dark, with axe, and the screenshots are read (non-negotiable #8).
+
+## What slice 14 has built
+
+Everything above, with the departures below. Each one is additive to the API, a narrowing of the
+text, or a correction the build forced; none was taken silently.
+
+**Backend** (`com.budgetowl.checkin`): `V20__weekly_check_in.sql` (the four tables, the two
+provenance changes, every composite foreign key and per-kind `CHECK`). The domain holds `IsoWeek`,
+`ItemKeys`, `AnswerShape` (the Java statement of the per-kind `CHECK`s) and the entities.
+`CheckInPictures` derives the items, pre-answers and figures; `WeeklyFigure`,
+`UnbudgetedSpending` and `ChargeDetection` are pure and unit-tested; `CheckInCompletion` locks,
+re-derives, re-checks and applies through the owning services in the order the text gives.
+`CheckInLedgerRepository` is select-only over `Transaction`. ADR-0040 (next week's figure from the
+plan) and ADR-0041 (rules act only through a completed check-in) are recorded.
+
+**Owning services, changed additively**: `TransactionService.recategorise` (locks the row, refuses a
+transfer leg, checks the version), `BillService.recordFromCheckIn`, `GoalService.contributeFromCheckIn`
+with `GoalContribution.provenance`, `DebtPaymentService.logFromCheckIn` with `PaymentProvenance.CHECK_IN`,
+`PayoffPlanService.oneOffPayment` (the debt choice's preview), and `GET /api/bills` gains `mappings`.
+
+**Frontend**: `/check-in` and `/check-in/:week`, a **Check-in** nav item after Transactions, the
+ledger prompt (`CheckInPromptComponent`), the categories page's **Payee rules**
+(`PayeeRulesComponent`) and each bill row's mapping with **Unmap**. One template serves both
+viewports: every section is in the DOM in the same order, and below 40rem the stylesheet shows the
+current one with a progress bar and a *Next: …* footer.
+
+**Fixtures and guide**: `CanvasWeek` builds the canvas week through the real API for the IT suite
+and for `DemoFixtureIT`, which generates `tools/ui/fixtures/check-in-api.generated.ts` and fails
+the gate if it drifts. The mock serves each answer keyed on exactly what the page sent and 501s
+anything else. The guide is `userguide/features/do-your-weekly-check-in.md`; every guide image was
+recaptured because the nav changed.
+
+### Departures from the text above
+
+| Where | The text says | What was built | Why |
+| ----- | ------------- | -------------- | --- |
+| API | `/check-in` opens the current week | **Added `GET /api/check-ins/current`**: the week containing the server's today | The browser's clock decides nothing, and the UI harness can serve it from a generated key without a fixed browser clock |
+| Answer `PUT` | `200` with the answer and the draft's new version | **`200` with the whole week** | The figure must change from the server's answer after each write, never from browser arithmetic. One request instead of two |
+| `check_in_answers` | One `UNIQUE NULLS NOT DISTINCT (check_in_id, item_kind, transaction_id, bill_id, due_date)` | **Three partial unique indexes**: per transaction item, per overdue occurrence, and one allocation | Each kind's identity is a different column set. Partial indexes say exactly that, with no reliance on NULL equality |
+| `check_in_answers` | No such column | **`by_rule`** (boolean) | A pre-answer is derived, but at completion the summary must say *"filed by your rules"* and the charge attach must record `AUTO_MATCHED`. The column records which answers a rule supplied |
+| `itemKey` errors | Any key that does not derive to an item is `404` | **A malformed key is `400` at the edge**; a well-formed key that is not ours is `404` as stated | The shape is validated before anything is looked up, as every other path parameter is. Nothing is disclosed: both are refused before any household data is read |
+| Answers per draft | Not bounded | **At most 1,000**, `409 conflict` | Every write is bounded before insert: 200 items per step across four steps, with room to spare. `CheckInLimitsIT` |
+| `base` | `Σ daily(d)` | **Rounded `HALF_EVEN` to the currency's minor unit** before *per day* and *rolled over* | The canvas's $480 is `7 × 548.57 ÷ 8 = 479.99875`. A figure a person is told to spend is in cents; per day is then rounded down as stated |
+| Overdue items | `DUE` on or before the window's last day | Read from **the window's months** (the month of the window's end and of its start) | Bounded: an occurrence projected years back is not a weekly question. Bills & Income still shows every overdue one |
+| Goal `stillToCome` | Unchanged by decision 6 | **Uses `recordedOther`** | Otherwise a check-in's $63 would read as part of the month's plan having been paid |
+| Debt payment from the surplus | "through the same logging path … (interest split, balance after)" | Same path, **principal only: interest 0** | The shipped split charges every payment a month of interest. On the canvas Visa (22.9%) that is $117.94 against a $63 surplus, so recording the surplus raised the balance and the preview said the payoff month moved **later**. The surplus is an extra on top of the month the plan already pays. Hand-logged payments are unchanged; see Known gaps |
+| Debt preview balance | — | `balanceAfterCheckInPayment` checks **membership only**, not write access | It is a read, used to build a `VIEWER`'s figures too. It writes nothing |
+| Income line | *"$40 less than expected"* | **"As expected", or "Your plan expects $2,620.00"** | The browser does no money arithmetic, even a difference. The comparison is an exact equality of the two strings' values |
+| Step 3 statuses | *"In 3 days"* | **"Due Aug 24, 2026"** | A count of days needs today's date in the browser, and a screenshot of it would change every day |
+| Category picker on a phone | A sheet | **The same `<select>`** at both viewports | Same field, same order (`design/README.md` rule 1). The native picker is a sheet on phones already |
+| `PayeeRule`/`ChargeRule` limit mapping | `limit-reached` | Goal, payee-rule and charge-rule codes map directly; the **debt-payment and occurrence caps** shipped with the generic `conflict` code, so their fixed detail text tells a cap from a duplicate | Those codes are part of shipped contracts and were not changed |
+| Demo week | The canvas's rows | **"AMZN Mktp" became "UBER \*TRIP", answered Transport** | The guide's categories come from `demo-data.ts`, which has no Shopping to file the canvas's Amazon row under. The same $81.40 under Transport leaves every figure identical |
+| The gym's charge rule | Created by completing a check-in | **Seeded by SQL in `CanvasWeek`** | Rules have no create endpoint (decisions 3 and 4). The prepaid offer needs one to exist before week 34, and completing a whole earlier check-in to make it would hide what the test sets up |
+| Integration tests | Testcontainers | Run **against a local PostgreSQL 16** in this environment, via a local-only patch to `PostgresTestBase` that is not committed | The Docker daemon was unavailable. The committed tests are unchanged and use Testcontainers |
+
+### Proving each control can fail
+
+Each control was broken, the tests that guard it were run and seen to fail, and the file was
+restored from git and confirmed clean.
+
+| Control | Broken how | Failed | Restored |
+| ------- | ---------- | ------ | -------- |
+| `VIEWER` refused before lookup | `answer` called `requireMembership` instead of `requireWriteAccess` | `CheckInIT`: the three viewer write tests (session and bearer, draft and empty week) | clean |
+| Answers per draft capped at 1,000 | Cap compared against `Integer.MAX_VALUE` | `CheckInLimitsIT.a_draft_takes_at_most_a_thousand_answers` | clean |
+| Completion compares the `basis` | Comparison short-circuited to false | `CheckInStaleIT`: seven tests, from `basis-changed` to `subject-changed` | clean |
+| Ledger rows scoped to the household | `t.householdId` predicate alone made always-true | **Nothing failed**: the account join's own `a.householdId` predicate still excluded the other household's row. Each table carries its own predicate on purpose | clean |
+| Ledger rows scoped to the household | Both the `t` and the `a` predicates made always-true | `CheckInConstraintsIT.another_households_rows_and_draft_never_reach_ours`: the other household's $1.00 row appeared as an item in ours | clean |
+| A completed check-in is read-only | `lockDraft`'s completed check short-circuited | `CheckInCompletionIT.a_retry_after_completion_is_check_in_completed_and_writes_nothing`. The concurrent-completion test still passed: the row lock and the version check hold it on their own | clean |
+| A surplus debt payment is principal only | `CHECK_IN` given the shipped interest split | `CheckInIT`: `a_surplus_paid_to_a_debt_is_principal_only…` and the canvas test's "never later" payoff assertion | clean |
+
+Every restore was confirmed with `git diff --quiet` on the file.
+
+### Known gaps
+
+- **A hand-logged debt payment made in the same month as the plan's payment is charged a second
+  month of interest.** The check-in's own payment no longer is (above), but the shipped split in
+  `debt-plan.md` still treats every logged payment as a month's. That is a debt-plan question.
+- **There is no history screen.** `GET /api/check-ins` exists and is tested; nothing lists it yet.
+- **The completed summary does not say what was left** (*"1 charge left uncategorised"*). The
+  completed view returns what was written, not what was skipped.
+- **The bills page's mappings are not in the guide's screenshots.** The demo bills fixture is
+  hand-written and carries none; the rendering and **Unmap** are covered by the UI only through
+  types and the categories page's equivalent. A generated bills fixture would close it.
+- **The UI harness answers in the generator's order.** Each generated week carries every answer
+  before it, so a capture that answers in another order gets a 501, never a wrong figure.
+- **No dark check-in artboard exists**; dark mode is the role tokens, checked with axe and read in
+  the screenshots.
