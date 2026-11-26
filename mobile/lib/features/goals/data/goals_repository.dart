@@ -103,7 +103,8 @@ Future<ContributionPage> readContributionsPage(Ref ref, String goalId, int page)
 }
 
 final contributionsPageReader = Provider<Future<ContributionPage> Function(String, int)>(
-  (ref) => (goalId, page) => readContributionsPage(ref, goalId, page),
+  (ref) =>
+      (goalId, page) => readContributionsPage(ref, goalId, page),
 );
 
 /// Every write the goal screens make, each sent only when writes are on. **Nothing is queued**;

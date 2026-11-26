@@ -2,6 +2,7 @@ import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/features/bills/data/bills_repository.dart';
 import 'package:budget_owl/features/bills/domain/bill.dart';
 import 'package:budget_owl/features/bills/domain/requests.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -14,13 +15,7 @@ import '../plans_harness.dart';
 /// chain recorded it from and must leave the server in the state that write produced.
 void main() {
   Future<Plans> bills(WidgetTester tester, {String state = 'plans', String who = 'owner'}) =>
-      Plans.open(
-        tester,
-        file: 'bills',
-        state: state,
-        who: who,
-        on: (p) => p.tap('Bills'),
-      );
+      Plans.open(tester, file: 'bills', state: state, who: who, on: (p) => p.tap('Bills'));
 
   /// Chooses [item] from the open drop-down menu, which builds its items lazily.
   Future<void> pick(WidgetTester tester, String item) async {
@@ -290,6 +285,22 @@ void main() {
   });
 
   group('with writes off', () {
+    testWidgets('the writer itself refuses, offline or unconfirmed, and sends nothing', (
+      tester,
+    ) async {
+      final p = await bills(tester);
+      final before = p.server.served.length;
+      Future<void> write(ProviderContainer c) => c
+          .read(billsWriterProvider)
+          .record('bil-0003', CalendarDate.parse('2026-08-18'), statusBody(OccurrenceStatus.paid));
+
+      await p.unconfirm();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      await p.goOffline();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      expect(p.server.served.length, before);
+    });
+
     testWidgets('offline, Mark paid says it needs a connection and sends nothing', (tester) async {
       final p = await bills(tester);
       await p.goOffline();
@@ -316,9 +327,7 @@ void main() {
       expect(p.server.served.length, before);
     });
 
-    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (
-      tester,
-    ) async {
+    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (tester) async {
       final p = await bills(tester);
       await p.unconfirm();
       final before = p.server.served.length;

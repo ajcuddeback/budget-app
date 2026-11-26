@@ -10,7 +10,7 @@ import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
 /// Shared steps for the Bills & income, debt plan and goals widget tests: the whole app against
-/// the recorded exchanges of one fixture file, signed in as [who], opened on a screen.
+/// the recorded exchanges of one fixture file, signed in as , opened on a screen.
 final class Plans {
   Plans._(this.server, this.phone, this.tester);
 
@@ -57,7 +57,10 @@ final class Plans {
   Future<void> press(String label) => tapVisible(
     tester,
     find
-        .ancestor(of: find.text(label), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton))
+        .ancestor(
+          of: find.text(label),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        )
         .first,
   );
 

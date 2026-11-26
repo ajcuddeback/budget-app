@@ -1,6 +1,7 @@
 import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/features/goals/data/goals_repository.dart';
 import 'package:budget_owl/features/goals/domain/requests.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -24,9 +25,8 @@ void main() {
         },
       );
 
-  Finder openGoal(String name) => find.byWidgetPredicate(
-    (w) => w is Semantics && w.properties.label == 'Open $name',
-  );
+  Finder openGoal(String name) =>
+      find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Open $name');
 
   Future<Plans> goalPage(
     WidgetTester tester,
@@ -98,9 +98,7 @@ void main() {
       expect(p.writes, isEmpty);
     });
 
-    testWidgets("a contribution, if one is ever sent, is the API's translated 403", (
-      tester,
-    ) async {
+    testWidgets("a contribution, if one is ever sent, is the API's translated 403", (tester) async {
       final p = await goals(tester, state: 'viewer', who: 'viewer');
       final japan = p.container
           .read(goalsProvider)
@@ -237,7 +235,9 @@ void main() {
       expect(find.text('Your goals'), findsOneWidget);
       expect(openGoal('Bike'), findsNothing);
       expect(
-        p.server.served.skipWhile((s) => !s.startsWith('DELETE')).where((s) => s.contains('gol-0005')),
+        p.server.served
+            .skipWhile((s) => !s.startsWith('DELETE'))
+            .where((s) => s.contains('gol-0005')),
         ['DELETE /api/goals/gol-0005'],
         reason: 'nothing asks after the deleted goal',
       );
@@ -245,6 +245,34 @@ void main() {
   });
 
   group('with writes off', () {
+    testWidgets('the writer itself refuses, offline or unconfirmed, and sends nothing', (
+      tester,
+    ) async {
+      final p = await goals(tester);
+      final japan = p.container
+          .read(goalsProvider)
+          .data!
+          .content
+          .firstWhere((g) => g.id == 'gol-0001');
+      final before = p.server.served.length;
+      Future<void> write(ProviderContainer c) => c
+          .read(goalsWriterProvider)
+          .contribute(
+            japan,
+            contributionBody(
+              amount: '110',
+              date: CalendarDate.parse('2026-08-20'),
+              direction: ContributionDirection.into,
+            ),
+          );
+
+      await p.unconfirm();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      await p.goOffline();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      expect(p.server.served.length, before);
+    });
+
     testWidgets('offline, no sheet opens and nothing is sent', (tester) async {
       final p = await goalPage(tester, 'Japan');
       await p.goOffline();
@@ -271,9 +299,7 @@ void main() {
       expect(p.server.served.length, before);
     });
 
-    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (
-      tester,
-    ) async {
+    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (tester) async {
       final p = await goalPage(tester, 'Japan');
       await p.unconfirm();
       final before = p.server.served.length;

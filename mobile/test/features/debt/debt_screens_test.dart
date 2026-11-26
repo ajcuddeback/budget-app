@@ -1,6 +1,7 @@
 import 'package:budget_owl/features/debt/data/debt_repository.dart';
 import 'package:budget_owl/features/debt/domain/debt.dart';
 import 'package:budget_owl/features/debt/domain/requests.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -203,6 +204,21 @@ void main() {
   });
 
   group('with writes off', () {
+    testWidgets('the writer itself refuses, offline or unconfirmed, and sends nothing', (
+      tester,
+    ) async {
+      final p = await plan(tester);
+      final before = p.server.served.length;
+      Future<void> write(ProviderContainer c) =>
+          c.read(debtWriterProvider).updatePlan(strategyBody(0, Strategy.snowball));
+
+      await p.unconfirm();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      await p.goOffline();
+      expect((await p.forced(write))?.isConnectivity, isTrue);
+      expect(p.server.served.length, before);
+    });
+
     testWidgets('offline, logging a payment is refused before a sheet opens', (tester) async {
       final p = await detail(tester);
       await p.goOffline();
@@ -228,9 +244,7 @@ void main() {
       expect(p.server.served.length, before);
     });
 
-    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (
-      tester,
-    ) async {
+    testWidgets('with the version unconfirmed, the refusal says so, not "offline"', (tester) async {
       final p = await plan(tester);
       await p.unconfirm();
       final before = p.server.served.length;

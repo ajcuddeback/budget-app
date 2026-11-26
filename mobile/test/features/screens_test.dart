@@ -4,7 +4,6 @@ import 'package:budget_owl/core/errors/error_text.dart';
 import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/money/money.dart';
 import 'package:budget_owl/core/privacy/privacy_cover.dart';
-import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/features/transactions/data/transactions_repository.dart';
 import 'package:budget_owl/features/transactions/domain/requests.dart';
 import 'package:budget_owl/l10n/gen/app_localizations_en.dart';
@@ -533,17 +532,6 @@ void main() {
 
       expect(find.text('Admin'), findsNothing);
       expect(find.text('Devices'), findsOneWidget);
-    });
-
-    testWidgets('a screen not built yet says so plainly', (tester) async {
-      await signedIn(tester);
-      await tapText(tester, 'More');
-      await tapText(tester, 'Goals');
-
-      expect(find.textContaining('coming to the app in the next update'), findsOneWidget);
-      expect(find.byType(Scaffold), findsWidgets);
-      expect(SessionSignedIn, isNotNull);
-      expect(Money, isNotNull);
     });
   });
 }

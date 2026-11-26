@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/reachability.dart';

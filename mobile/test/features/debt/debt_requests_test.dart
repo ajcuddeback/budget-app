@@ -28,7 +28,12 @@ void main() {
     test('absent keeps, null releases, a value enters — and nothing else is sent', () {
       expect(termsPatch(3), {'version': 3});
       expect(
-        termsPatch(3, apr: const Released(), payment: const Entered('445'), monthsLeft: const Entered(17)),
+        termsPatch(
+          3,
+          apr: const Released(),
+          payment: const Entered('445'),
+          monthsLeft: const Entered(17),
+        ),
         {'version': 3, 'apr': null, 'payment': '445', 'monthsLeft': 17},
       );
       expect(termsPatch(3, payoffMonth: const Entered('2027-12')), {
@@ -54,7 +59,10 @@ void main() {
         accountId: form.accountId,
         billId: form.billId,
       );
-      expect(debtPatch(visa, edited), recorded.sent('payment-logged', 'PATCH', '/api/debts/deb-0001'));
+      expect(
+        debtPatch(visa, edited),
+        recorded.sent('payment-logged', 'PATCH', '/api/debts/deb-0001'),
+      );
     });
 
     test('the form as it opens changes nothing', () {
@@ -152,10 +160,7 @@ void main() {
 
     test('a preview puts the amount in a body, not a URL', () {
       expect(previewBody('445'), {'amount': '445'});
-      expect(
-        recorded.writesIn('plans'),
-        contains('POST /api/debts/deb-0001/payments/preview'),
-      );
+      expect(recorded.writesIn('plans'), contains('POST /api/debts/deb-0001/payments/preview'));
     });
 
     test('a statement figure sends the balance and its date', () {
@@ -192,10 +197,7 @@ void main() {
       final p = plan('custom');
       final list = debts('custom');
       final moved = movedOrder(p, list, p.currency, 'deb-0005', 1, f);
-      expect(
-        customOrderBody(p.version, moved!),
-        recorded.sent('custom', 'PUT', '/api/debt-plan'),
-      );
+      expect(customOrderBody(p.version, moved!), recorded.sent('custom', 'PUT', '/api/debt-plan'));
       expect(movedOrder(p, list, p.currency, 'deb-0005', -1, f), isNull, reason: 'top rung');
     });
 

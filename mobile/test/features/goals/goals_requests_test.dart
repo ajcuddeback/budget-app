@@ -46,7 +46,9 @@ void main() {
       expect(body['accountId'], 'acc-0002');
       expect(body.containsKey('currency'), isFalse);
       expect(
-        createGoalBody(const GoalForm(name: 'Fund', targetAmount: '900', currency: 'eur'))['currency'],
+        createGoalBody(
+          const GoalForm(name: 'Fund', targetAmount: '900', currency: 'eur'),
+        )['currency'],
         'EUR',
       );
     });
@@ -100,9 +102,13 @@ void main() {
 
     test('previews ask with only what was changed', () {
       final japan = goal('plans', 'gol-0001');
-      expect(editPreviewBody(japan, formOf(japan)), {});
+      expect(editPreviewBody(japan, formOf(japan)), <String, Object?>{});
       expect(editPreviewBody(japan, formOf(japan, targetAmount: '4000')), {'targetAmount': '4000'});
-      expect(editPreviewBody(japan, formOf(japan, targetAmount: '40.')), isNull, reason: 'half-typed');
+      expect(
+        editPreviewBody(japan, formOf(japan, targetAmount: '40.')),
+        isNull,
+        reason: 'half-typed',
+      );
       expect(
         draftPreviewBody(const GoalForm(name: '', targetAmount: '900')),
         recorded.sent('plans', 'POST', '/api/goals/projection-preview'),
@@ -111,8 +117,14 @@ void main() {
     });
 
     test('archiving and restoring carry an empty body', () {
-      expect(recorded.sent('contribution-removed', 'POST', '/api/goals/gol-0003/archive'), {});
-      expect(recorded.sent('archived', 'POST', '/api/goals/gol-0003/unarchive'), {});
+      expect(
+        recorded.sent('contribution-removed', 'POST', '/api/goals/gol-0003/archive'),
+        <String, Object?>{},
+      );
+      expect(
+        recorded.sent('archived', 'POST', '/api/goals/gol-0003/unarchive'),
+        <String, Object?>{},
+      );
     });
   });
 

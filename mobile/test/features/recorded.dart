@@ -20,8 +20,7 @@ final class Recorded {
 
   Map<String, Object?> _one(String state, String method, String path, {String who = 'owner'}) {
     final found = _exchanges.where(
-      (e) =>
-          e['state'] == state && e['method'] == method && e['path'] == path && e['auth'] == who,
+      (e) => e['state'] == state && e['method'] == method && e['path'] == path && e['auth'] == who,
     );
     if (found.isEmpty) throw StateError('nothing recorded for $state $method $path');
     return found.first;

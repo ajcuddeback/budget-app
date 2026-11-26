@@ -35,9 +35,8 @@ Future<TestPhone> goalPhone(
 }
 
 /// The list's *Open ›* for the goal called [name]: its accessible name carries the goal's.
-Finder openGoal(String name) => find.byWidgetPredicate(
-  (w) => w is Semantics && w.properties.label == 'Open $name',
-);
+Finder openGoal(String name) =>
+    find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Open $name');
 
 final List<Scenario> scenarios = [
   const Scenario('goals', everyWay, goalsPhone),
