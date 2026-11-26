@@ -220,21 +220,29 @@ been removed; someone reading a bug report or crash log.
    class; an architecture test forbids `SharedPreferences` from touching auth.
 2. **Cached data read off a stolen or backed-up phone.** SQLCipher with a Keystore/Keychain key;
    excluded from backups; wiped on sign-out and on any `401`.
-3. **Cleartext on hostile Wi-Fi.** HTTPS only; release builds refuse `http` in code and in the
-   platform network config. No certificate bypass button.
+3. **Cleartext on hostile Wi-Fi.** HTTPS only. `ServerAddress.parse` refuses an `http` address
+   before anything is sent, the API client's origin guard sends only to the chosen origin,
+   redirects are not followed, and a release build runs inside the zone value
+   `#flutter.io.allow_http: false`, so Flutter's engine refuses an `http://` connection at the
+   socket. The platform network configs declare the same policy but do not govern Dart's sockets.
+   No certificate bypass button.
 4. **A server that is not ours to trust.** The app sends the password only to the address the
    user typed, only after `/api/meta` answered over verified TLS. Redirects are not followed for
    API calls (a `3xx` is an error), so a server cannot bounce the bearer token to another host.
 5. **A revoked or removed member keeps using the phone.** Server-side revocation is immediate;
    the next request's `401` wipes the phone. Offline, the cache stays readable only until then;
    that window is the accepted risk below.
-6. **Crash and log disclosure.** No third-party crash reporting (ADR-0016). `debugPrint` is
-   stripped from release; the HTTP client never logs bodies or headers; a Dio interceptor that
-   logs is debug-only and redacts `Authorization`, `password` and every amount field.
+6. **Crash and log disclosure.** No third-party crash reporting (ADR-0016). `debugPrint` is **not**
+   stripped from release builds, so the app's only call to it, the API client's one-line request
+   log, is installed only in a debug build (`logRequests: kDebugMode`), and an architecture test
+   forbids `print` and `debugPrint` anywhere else. That line is the method, the path with long
+   segments redacted, and the status: never a body, a header or a query string.
 7. **Screenshots in the app switcher.** Android `FLAG_SECURE` is **not** set (it also blocks the
-   user's own screenshots); instead, the app blurs its content when it goes to the background
+   user's own screenshots); instead, the app covers its content when it goes to the background
    (iOS and Android), so the task switcher shows no balances. This is the privacy option with the
-   smaller cost; see out of scope.
+   smaller cost; see out of scope. On Android 13 (API 33) and later, `MainActivity` also calls
+   `setRecentsScreenshotEnabled(false)`, so the system takes no recents screenshot at all; the
+   cover stays for older versions and for iOS.
 8. **Invitation links for another host.** A pasted link whose host differs from the server
    entered is refused rather than switching servers silently.
 9. **Exported CSV left on the phone.** Written to the temporary directory, shared, then deleted;
@@ -251,12 +259,12 @@ been removed; someone reading a bug report or crash log.
 | Control | Where |
 |---|---|
 | Token only in secure storage | `lib/core/auth/token_store.dart`; test + architecture test |
-| HTTPS only, debug-only local exception | `ServerAddress.parse`; Android `network_security_config.xml`; iOS `Info.plist` |
+| HTTPS only, debug-only local exception | `ServerAddress.parse`; the API client's origin guard; no redirects; release zone `#flutter.io.allow_http: false` (`cleartext_policy.dart`, around `runApp`); tests. Android `network_security_config.xml` and iOS `Info.plist` declare the same policy but do not govern Dart's sockets |
 | No redirects on API calls | Dio `followRedirects: false`; test |
 | 401 → wipe → sign-in, once | `AuthInterceptor`; test |
 | Encrypted cache, no backup | `lib/core/cache/`; `AndroidManifest.xml`; iOS exclusion; test that the file is unreadable without the key |
 | No amount in a `double` | `analysis_options.yaml` custom lint / grep test; money tests |
-| App-switcher privacy | `PrivacyCover` widget on `AppLifecycleState.inactive` |
+| App-switcher privacy | `PrivacyCover` widget on `AppLifecycleState.inactive`; Android 13+ `setRecentsScreenshotEnabled(false)` in `MainActivity` |
 | `/api/meta` reveals nothing extra | `MetaIT` asserts the exact body |
 
 ### Accepted risks

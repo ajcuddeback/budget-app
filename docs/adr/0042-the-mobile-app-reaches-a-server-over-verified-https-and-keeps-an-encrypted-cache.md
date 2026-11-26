@@ -51,6 +51,17 @@ it keep on the phone, and how? What happens to an edit made with no signal?
   a real setup step, and the user guide gets a page for it ("Give your server an HTTPS address":
   a reverse proxy with a public certificate, or a private CA installed on the phone, or a
   tailnet's HTTPS name).
+- **What enforces decision 1** (corrected 2026-11-26, after the phase-1 security audit). The
+  "platform network configuration" governs the platform's own networking, not the Dart sockets
+  the app uses: Android's `network_security_config.xml` and iOS's ATS do not, on their own, stop
+  a `dart:io` connection. HTTPS is enforced by `ServerAddress.parse` (an `http` address is refused
+  before anything is sent), the API client's origin guard (requests go only to the chosen origin),
+  no redirects (decision 3), and, in a release build, the zone value `#flutter.io.allow_http:
+  false`, which makes Flutter's engine refuse an `http://` connection at the socket unless the host
+  is loopback (`lib/core/http/cleartext_policy.dart`, wrapped around `runApp`). The platform files
+  stay, as declarations of the same policy. Likewise, Android's user-installed CAs are trusted by
+  that config but not by Dart's TLS, so a private CA works on iOS and fails closed on Android
+  (a known gap in `mobile-app.md`).
 - `/api/meta` becomes the sixth public route, rate-limited and pinned to an exact body by a test.
 - The cache adds a native dependency (SQLCipher) to both platforms' builds.
 - Because the cache is wiped on any `401`, a revoked phone loses its data the next time it is

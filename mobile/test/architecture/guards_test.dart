@@ -58,6 +58,19 @@ void main() {
     expect(sources['lib/core/server/server_check.dart'], contains('followRedirects: false'));
   });
 
+  test('a release build runs the app inside the zone that refuses http:// at the socket', () {
+    expect(
+      sources['lib/main.dart'],
+      matches(RegExp(r'runWithCleartextPolicy\(\s*\(\)\s*=>\s*runApp\(')),
+    );
+    expect(sources['lib/main.dart'], contains('allowLocalCleartext: kDebugMode'));
+    expect(offending(RegExp(r'\brunApp\(')), ['lib/main.dart']);
+  });
+
+  test('no transport is closed: the app has one, shared (security audit H1)', () {
+    expect(offending(RegExp(r'\b(dio|_dio|adapter|_adapter)\s*\.\s*close\s*\(')), isEmpty);
+  });
+
   test('nothing prints: a log line is how a token or a balance leaves the phone', () {
     expect(offending(RegExp(r'(^|[^.\w])print\s*\(')), isEmpty);
     expect(
