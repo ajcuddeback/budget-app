@@ -1,6 +1,6 @@
 # Feature: Mobile app (Flutter)
 
-- **Status:** In progress — slice 15
+- **Status:** In progress — slice 15 (phase 1 built; see the end of this doc)
 - **Owner:** repository owner
 - **Last updated:** 2026-11-26
 - **Related:** ADR-0006 (money), ADR-0016 (self-hosted), ADR-0017 (households and roles),
@@ -301,3 +301,108 @@ been removed; someone reading a bug report or crash log.
   transaction, see the balance change, go offline, see the stale label, sign out, cache gone.
 - The security tests named in the controls table, each with a sabotage proof.
 - A debug APK built (`flutter build apk --debug`) as part of the slice's final check.
+
+## What phase 1 of slice 15 has built
+
+Phase 1 is the app's skeleton and its reference feature; phase 2 fills in the screens that are
+placeholders today. Everything above applies, with the departures below. None was taken silently.
+
+**Backend**: `GET /api/meta` (`instance/web/MetaController`, `InstanceMetaService`,
+`MetaRateLimiter`: 60 requests a minute per client address, then `429` with `Retry-After`),
+public in `SecurityConfig`, `AuthorizationIT` and `TransportIT`, and listed in
+`authentication-and-households.md`. `MetaIT` pins the exact body and headers. `DemoFixtureIT`
+drives the real API as the phone does and writes
+`mobile/test/fixtures/{demo,first-run}.generated.json`.
+
+**The app** (`mobile/`; `mobile/README.md` says how to add to it):
+
+- `lib/core/`: server address rules and the `/api/meta` check with a distinct error for each
+  failure; the Dio client (no redirects, bearer interceptor, any `401` wipes once and routes to
+  sign-in, problem bodies translated from ARB, a debug-only log line that never carries a body, a
+  header or a query); the token, server address and cache key in `flutter_secure_storage` only;
+  the SQLCipher cache (32 random bytes of key, cache-first reads, stale labels, first page only,
+  50 MB cap); reachability from the last request; `Decimal`-only money; tokens and fonts generated
+  from the web's; ARB generated from the web's `en.json` plus `mobile/l10n/mobile.en.json`;
+  go_router with the five tabs and More in the web's order; `PrivacyCover`.
+- **Built screens**: Connect, Sign in (device label editable), Setup (only on a fresh server),
+  Join (other hosts refused, disclosure above the button), Not in a household (sign out),
+  Transactions in full (list, account chips, filters, search, add, edit, delete, categorise,
+  move money, transfer edit and delete, split, pair), Devices (this phone marked; signing it out
+  is `POST /api/auth/logout` then the wipe, whatever the server said), More.
+- **Placeholders**: Check-in, Bills, Accounts, and every More entry except Devices. Each says
+  plainly that it is coming in the next update.
+- **Platform**: Android `network_security_config` (no cleartext; system and user CAs; a debug-only
+  file adds `localhost`, `127.0.0.1`, `10.0.2.2`), `allowBackup="false"`, `dataExtractionRules`
+  and `fullBackupContent` excluding every domain. iOS: no ATS key (defaults), Podfile
+  `platform :ios, '15.0'` matching the project. `test/architecture/platform_config_test.dart`
+  reads each file the build uses.
+- **Gate**: `tools/verify.sh mobile` (part of `all`) runs `pub get --enforce-lockfile`, format,
+  the token and string generators' `--check`, analyze, the architecture guards, the suite with
+  coverage, a **lib/core line floor of 80%** (`tools/mobile-coverage.sh`, which counts a
+  never-loaded file as uncovered; 94.9% at the end of phase 1), and **`flutter build apk
+  --debug`** in the same stage, not a separate target, when `ANDROID_HOME` points at an SDK
+  (without one it is `missing`, which fails in CI).
+- **Goldens**: `tools/mobile-check.sh` renders 80 PNGs (28 scenarios in light and dark, and the
+  main ones in RTL and at text 2.0) at 390×844 with the bundled fonts, from the generated
+  fixtures, and lists them. Each was read; what reading them changed is below.
+
+### Departures from the text above
+
+| Where | The text says | What was built | Why |
+| ----- | ------------- | -------------- | --- |
+| SQLCipher | (implied) `sqlcipher_flutter_libs` | **`sqlite3` 3.x build hooks** (`hooks: user_defines: sqlite3: source: sqlcipher` in `pubspec.yaml`); the cache refuses to open if `PRAGMA cipher_version` is empty | `sqlcipher_flutter_libs` is end-of-life for `sqlite3` 3.x. The refusal means a build that lost SQLCipher fails closed instead of caching in plaintext |
+| Drift | Drift tables | **Drift's `GeneratedDatabase` with one table in custom SQL**, no code generation | One key–value table; build_runner would be the only generated code in the app |
+| iOS backup | `isExcludedFromBackup` | The cache lives in **`Library/Caches`** (`getApplicationCacheDirectory`) | iOS never backs that directory up, and no platform channel is needed. The key is in the Keychain with `first_unlock_this_device`, which is not migrated either |
+| Device label | *"Pixel 8 · Android"* | **"Phone · Android"** / **"iPhone · iOS"**, editable | A model name needs a device-information plugin; not worth a dependency in phase 1 |
+| Theme override | Kept on the device; shared prefs in Data model | **Follows the system only**; `shared_preferences` is not a dependency | The override belongs to the Preferences screen (phase 2). One fewer place anything could be written |
+| Public writes | — | **Setup and accepting an invitation send the double-submit CSRF pair**, read from the `XSRF-TOKEN` cookie of a fresh `GET /api/setup/status` (`csrfForPublicWrite`) | Those two routes are public but CSRF-protected for the web. The phone has no cookie jar; it sends the pair it was just given and keeps nothing |
+| Session-ended notice | *"Your session ended. Sign in again."* | The web's `login.notice.expired`: *"Your session ended. Sign in again to continue."* | A mobile key may not fork a web text (the generator refuses) |
+| Signed out | — | A signed-out phone lands on **Connect** (its server shown, sign-in one tap away); only an ended session lands on **Sign in** with the notice | Setup and Join are reached from Connect too |
+| Type scale | Tokens from `design/` | **Constants in the token generator** (`TypeScaleTokens`) | The web's token sheet has no type-scale variables; the sizes are written once, in the generator, not in widgets |
+| Fixture order | — | Same-date ledger rows keep the committed file's order; a regeneration that differs only by such a flip writes nothing | The API orders same-date rows by random id, so goldens drawn from the file would churn on every regeneration |
+| Revoking another device | "the screens that depend on it refresh" | Re-reads **only the devices list** | No household data changed |
+
+### Proving each control can fail
+
+Each control was broken, its tests run and seen to fail, and the file restored from git and
+confirmed clean (`git diff` empty, the sabotage absent).
+
+| Control | Broken how | Failed |
+| ------- | ---------- | ------ |
+| Token only in secure storage | The token's storage key added as a constant in `api_client.dart` | `guards_test`: the token's storage key appears only in TokenStore |
+| HTTPS only | `ServerAddress.parse` let `http` through; the release `network_security_config` set `cleartextTrafficPermitted="true"` | `server_address_test` (release refusal, debug-only local hosts, stored address re-checked); `platform_config_test`: no cleartext |
+| No redirects | `followRedirects: true` in the API client and the server check | `real_transport_test`: a redirect is an error and the token never reaches the other host (real local servers); `api_client_test`; `server_check_test`; `guards_test` |
+| 401 → wipe → sign-in, once | The interceptor matched `499` instead of `401` | `api_client_test`: a 401 ends the session without a retry; `session_test`: a burst of 401s wipes once |
+| Encrypted cache, no backup | `PRAGMA key` removed; `allowBackup="true"` | `cache_test` (no figure in the clear, unreadable without the key, a different key reads nothing); `platform_config_test`: nothing backed up |
+| No amount in a `double` | `parseWireAmount` went through `double.parse` | Only `guards_test` at first, so a test was **added**: the largest `NUMERIC(19,4)` amount keeps all 19 digits. It then failed too |
+| App-switcher privacy | The cover reacted to `paused` only; separately, `PrivacyCover` removed from `app.dart` | `core_rules_test`: the cover on `inactive`; `screens_test`: the running app is covered (added: the widget test alone would not notice the unwiring) |
+| `/api/meta` reveals nothing extra | A fourth field on `MetaResponse`; the limiter removed; `Cache-Control` removed; the permit path changed | `MetaIT` (exact body ×3, rate limit, no-store); `AuthorizationIT` public routes |
+| The phone talks only to Budget Owl | The `app` name check removed | **Nothing failed**: "another app's JSON" lacked `minimumClientApiVersion` and was refused for that. Fixed, then it failed. Ignoring `minimumClientApiVersion`: the version-mismatch test failed |
+| Invitation for another host | The host comparison removed | `invitation_link_test`; `screens_test`: refused and nothing sent |
+| `VIEWER` sees no write control | `Role.canWrite` returned `true` | `core_rules_test` roles; `screens_test`: a VIEWER sees no write control |
+
+### What reading the screenshots changed
+
+Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
+Long titles clipped at text 2.0: app-bar titles take two lines and screen headers wrap. In RTL a
+negative amount's sign moved to the wrong end: amounts keep their own direction, and the minus is
+U+2212 joined by a word joiner so it never wraps away from its figure. At text 2.0 the ledger row
+squeezed the payee to a few letters a line: past 1.5× it stacks the amount under the payee. The
+floating button had a black ring (the test binding's disabled shadows): goldens draw real
+shadows. Sign-in, Setup and Join had no way back to Connect: each has one.
+
+### Known gaps
+
+- **Android user-installed CAs are not trusted by the app's requests.** The network security
+  config trusts them, but Dart's TLS stack reads only the system store, so a server whose CA the
+  user installed fails as "certificate not trusted". It fails closed. The remedy (a platform
+  channel, or a CA the user pastes in) is a phase-2 decision. iOS honours an enabled CA profile.
+- **"→" draws as a box in goldens only.** The bundled Figtree subset has no U+2192 (category
+  paths such as "Bills → Utilities"); on a phone the system font supplies it.
+- **Pairing offers candidates from the ledger's first page only**, because only the first page is
+  read and cached. A transfer's other half older than 50 rows cannot be picked yet.
+- **Release signing** still uses Flutter's debug keys (`android/app/build.gradle.kts`). Store
+  publishing is out of scope, but a release build must not ship like this.
+- **`PlatformSecureStore` is not exercised by tests** (2 of its 8 lines): it is the platform
+  channel itself. Its `first_unlock_this_device` option is asserted by `guards_test`.
+- Every placeholder screen above, CSV export and import are phase 2.

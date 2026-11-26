@@ -1334,3 +1334,35 @@ microsecond (PostgreSQL's resolution). Any entity whose version is the contract 
 field that is guaranteed to differ, not one that usually does.
 
 _Added 2026-11-26 — slice 14._
+
+## Riverpod 3 retries a failed provider on its own, up to ten times
+
+**Symptom.** A provider whose read throws is re-run with backoff by default, so one failed
+request becomes several — against a server that is down, or that has already said `401`.
+
+**What to do.** The app's `ProviderScope` and every test `ProviderContainer` pass
+`retry: noRetry` (`mobile/lib/app.dart`). A failure is shown, and the person retries.
+
+_Added 2026-11-26 — slice 15._
+
+## On Android, Dart's TLS ignores user-installed CAs whatever the network security config says
+
+**Symptom.** A self-hosted server whose CA was installed on the phone works in Chrome and fails in
+the app as "certificate not trusted". `network_security_config.xml` governs the platform's Java
+networking; `dart:io` reads the system store only.
+
+**What to do.** Nothing silently: it fails closed, and it is a recorded known gap in
+`mobile-app.md`. Never add a `badCertificateCallback` to "fix" it — the guards refuse one.
+
+_Added 2026-11-26 — slice 15._
+
+## A public write from a client with no cookie jar still needs the CSRF pair
+
+**Symptom.** The phone's `POST /api/setup/first-user` and invitation accept came back `403`:
+public, but CSRF-protected for the web, and a bearer client keeps no cookies.
+
+**What to do.** Read `XSRF-TOKEN` from the `Set-Cookie` of a fresh `GET /api/setup/status` and send
+it as both `X-XSRF-TOKEN` and `Cookie: XSRF-TOKEN=…` (`csrfForPublicWrite` in
+`mobile/lib/core/session/session.dart`). `DemoFixtureIT` records exactly that exchange.
+
+_Added 2026-11-26 — slice 15._
