@@ -1,3 +1,5 @@
+import 'package:budget_owl/features/bills/presentation/bills_screen.dart';
+import 'package:budget_owl/features/debt/presentation/debt_plan_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
@@ -47,7 +49,7 @@ final List<Destination> tabs = [
     path: '/bills',
     label: (l) => l.nav_bills,
     icon: Icons.event_repeat_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_bills),
+    screen: (_) => const BillsScreen(),
   ),
 
   Destination(
@@ -64,7 +66,7 @@ final List<Destination> moreEntries = [
     path: '/more/debt-plan',
     label: (l) => l.nav_debtPlan,
     icon: Icons.trending_down_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_debtPlan),
+    screen: (_) => const DebtPlanScreen(),
   ),
 
   Destination(
