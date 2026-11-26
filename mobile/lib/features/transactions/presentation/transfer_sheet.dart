@@ -11,6 +11,7 @@ import 'package:budget_owl/features/transactions/data/transactions_repository.da
 import 'package:budget_owl/features/transactions/domain/requests.dart';
 import 'package:budget_owl/features/transactions/domain/transaction.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -52,7 +53,7 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
   String? _from;
   String? _to;
   late CalendarDate _date;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   List<Account> get _open => widget.accounts.where((a) => !a.archived).toList();
@@ -138,7 +139,7 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
       }
     } on AppError catch (error) {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -175,7 +176,7 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[NoticeBanner(text: context.errorMessage(error)), gap],
+              if (error != null) ...[NoticeBanner(text: error), gap],
               Text(
                 editing == null ? l.transfers_noCategoryNote : l.transfers_editBothHalves,
                 style: text.bodyMedium,

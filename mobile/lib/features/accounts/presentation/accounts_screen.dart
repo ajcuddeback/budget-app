@@ -11,6 +11,7 @@ import 'package:budget_owl/features/accounts/presentation/account_sheet.dart';
 import 'package:budget_owl/shared/widgets/grouped_row.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -39,7 +40,7 @@ enum _Action { edit, archive, unarchive, delete }
 class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   bool _showArchived = false;
   String? _notice;
-  AppError? _actionError;
+  String? _actionError;
 
   /// Which account [_actionError] is about: the banner sits above the list, so it names it.
   String? _actionSubject;
@@ -57,7 +58,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   void _offline() => setState(() {
     _notice = null;
     _actionSubject = null;
-    _actionError = const AppError.offline();
+    _actionError = writesOffNow(context, ref);
   });
 
   Future<void> _run(Account account, Future<void> Function() action, String notice) async {
@@ -74,7 +75,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
       if (mounted) {
         setState(() {
-          _actionError = error;
+          _actionError = writeFailureText(context, ref, error);
           _actionSubject = account.name;
         });
       }
@@ -175,14 +176,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           Lede(l.accounts_lede),
           if (_notice != null) Gutter(child: NoticeBanner(text: _notice!, success: true)),
           if (error != null)
-            Gutter(
-              child: NoticeBanner(
-                text: subjectAndMessage(
-                  _actionSubject,
-                  error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                ),
-              ),
-            ),
+            Gutter(child: NoticeBanner(text: subjectAndMessage(_actionSubject, error))),
           SnapshotView<AccountList>(
             snapshot: snapshot,
             onRetry: () => ref.read(accountsProvider.notifier).refresh(),

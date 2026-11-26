@@ -13,6 +13,7 @@ import 'package:budget_owl/features/categories/presentation/category_sheet.dart'
 import 'package:budget_owl/shared/widgets/grouped_row.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show Bidi;
 import 'package:material_ui/material_ui.dart';
@@ -41,12 +42,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool _showArchived = false;
   bool _showRules = false;
   String? _notice;
-  AppError? _actionError;
+  String? _actionError;
   String? _actionSubject;
 
   /// The rules section's own outcome, said beside it as the web does.
   bool _ruleRemoved = false;
-  AppError? _ruleError;
+  String? _ruleError;
   String? _busyRule;
 
   void _clear() {
@@ -68,7 +69,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   void _offline() => setState(() {
     _clear();
-    _actionError = const AppError.offline();
+    _actionError = writesOffNow(context, ref);
   });
 
   Future<void> _run(Category category, Future<void> Function() action, String notice) async {
@@ -80,7 +81,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
       if (mounted) {
         setState(() {
-          _actionError = error;
+          _actionError = writeFailureText(context, ref, error);
           _actionSubject = category.name;
         });
       }
@@ -157,7 +158,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       await ref.read(categoriesWriterProvider).removeRule(rule);
       if (mounted) setState(() => _ruleRemoved = true);
     } on AppError catch (error) {
-      if (mounted) setState(() => _ruleError = error);
+      if (mounted) setState(() => _ruleError = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busyRule = null);
     }
@@ -196,14 +197,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           Lede(l.categories_lede),
           if (_notice != null) Gutter(child: NoticeBanner(text: _notice!, success: true)),
           if (error != null)
-            Gutter(
-              child: NoticeBanner(
-                text: subjectAndMessage(
-                  _actionSubject,
-                  error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                ),
-              ),
-            ),
+            Gutter(child: NoticeBanner(text: subjectAndMessage(_actionSubject, error))),
           SnapshotView<List<Category>>(
             snapshot: snapshot,
             onRetry: () => ref.read(categoriesProvider.notifier).refresh(),
@@ -226,7 +220,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       ? _removeRule
                       : (_) => setState(() {
                           _clear();
-                          _ruleError = const AppError.offline();
+                          _ruleError = writesOffNow(context, ref);
                         }),
                 ),
               ],
@@ -372,7 +366,7 @@ class _RulesSection extends StatelessWidget {
   final bool open;
   final String? busyRule;
   final bool removed;
-  final AppError? error;
+  final String? error;
   final VoidCallback onToggle;
   final void Function(PayeeRule rule) onRemove;
 
@@ -387,12 +381,7 @@ class _RulesSection extends StatelessWidget {
         Overline(l.checkIn_rules_payeeHeading),
         Lede(l.checkIn_rules_payeeBody),
         if (removed) Gutter(child: NoticeBanner(text: l.checkIn_rules_removed, success: true)),
-        if (failure != null)
-          Gutter(
-            child: NoticeBanner(
-              text: failure.isConnectivity ? l.offline_write : context.errorMessage(failure),
-            ),
-          ),
+        if (failure != null) Gutter(child: NoticeBanner(text: failure)),
         SnapshotView<PayeeRules>(
           snapshot: snapshot,
           builder: (context, page, stale) {

@@ -8,6 +8,7 @@ import 'package:budget_owl/features/accounts/domain/requests.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -60,7 +61,7 @@ class _AccountSheetState extends ConsumerState<AccountSheet> {
   /// The copy the form is editing against: the one it opened with, or the server's after a
   /// conflict the person chose to resolve.
   Account? _target;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   /// Fields the server named in a refusal, marked until they are edited.
@@ -142,7 +143,7 @@ class _AccountSheetState extends ConsumerState<AccountSheet> {
         await _explainConflict(target);
       } else if (mounted) {
         setState(() {
-          _error = error;
+          _error = writeFailureText(context, ref, error);
           _refused = error.fields.toSet();
         });
       }
@@ -162,7 +163,7 @@ class _AccountSheetState extends ConsumerState<AccountSheet> {
       });
     } on AppError catch (error) {
       // The re-read failed too (it may have been deleted). Say that rather than invent a diff.
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     }
   }
 
@@ -224,12 +225,7 @@ class _AccountSheetState extends ConsumerState<AccountSheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[
-                NoticeBanner(
-                  text: error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                ),
-                gap,
-              ],
+              if (error != null) ...[NoticeBanner(text: error), gap],
               if (conflict != null && _latest != null) ...[
                 _ConflictPanel(
                   latest: _latest!,

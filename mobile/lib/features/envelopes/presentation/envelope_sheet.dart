@@ -8,6 +8,7 @@ import 'package:budget_owl/features/envelopes/domain/envelope.dart';
 import 'package:budget_owl/features/envelopes/domain/requests.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -59,7 +60,7 @@ class _EnvelopeSheetState extends ConsumerState<EnvelopeSheet> {
   final _amount = TextEditingController();
   late String _period;
   late String _categoryId;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   @override
@@ -106,7 +107,7 @@ class _EnvelopeSheetState extends ConsumerState<EnvelopeSheet> {
       }
     } on AppError catch (error) {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -138,12 +139,7 @@ class _EnvelopeSheetState extends ConsumerState<EnvelopeSheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[
-                NoticeBanner(
-                  text: error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                ),
-                gap,
-              ],
+              if (error != null) ...[NoticeBanner(text: error), gap],
               TextFormField(
                 controller: _name,
                 maxLength: 60,

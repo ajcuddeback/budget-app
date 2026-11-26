@@ -15,6 +15,7 @@ import 'package:budget_owl/features/transactions/domain/requests.dart';
 import 'package:budget_owl/features/transactions/domain/transaction.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -79,7 +80,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
   TransactionStatus _status = TransactionStatus.cleared;
   List<String> _suggestions = const [];
   Timer? _debounce;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   Transaction? get _editing => widget.editing;
@@ -184,7 +185,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
     } on AppError catch (error) {
       // A 409 is shown, and the ledger behind the sheet re-reads (mobile-app.md, Writes).
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -220,7 +221,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[NoticeBanner(text: context.errorMessage(error)), gap],
+              if (error != null) ...[NoticeBanner(text: error), gap],
               if (editing == null)
                 DropdownButtonFormField<String>(
                   initialValue: _accountId,

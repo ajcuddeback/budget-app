@@ -9,6 +9,7 @@ import 'package:budget_owl/features/envelopes/domain/envelope.dart';
 import 'package:budget_owl/features/envelopes/domain/requests.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -48,7 +49,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   final _payee = TextEditingController();
   final _note = TextEditingController();
   late CalendarDate _date;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   @override
@@ -108,7 +109,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
       }
     } on AppError catch (error) {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -140,12 +141,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
           child: ListView(
             padding: const EdgeInsetsDirectional.all(SpaceTokens.s4),
             children: [
-              if (error != null) ...[
-                NoticeBanner(
-                  text: error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                ),
-                gap,
-              ],
+              if (error != null) ...[NoticeBanner(text: error), gap],
               TextFormField(
                 controller: _amount,
                 autofocus: editing == null,

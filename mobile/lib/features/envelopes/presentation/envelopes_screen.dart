@@ -16,6 +16,7 @@ import 'package:budget_owl/features/envelopes/presentation/envelope_sheet.dart';
 import 'package:budget_owl/shared/widgets/grouped_row.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -49,7 +50,7 @@ class _EnvelopesScreenState extends ConsumerState<EnvelopesScreen> {
   /// The envelope whose log is open. One at a time: this is a list, not a grid.
   String? _openLog;
   String? _notice;
-  AppError? _actionError;
+  String? _actionError;
   String? _actionSubject;
 
   void _clear() {
@@ -69,7 +70,7 @@ class _EnvelopesScreenState extends ConsumerState<EnvelopesScreen> {
 
   void _offline() => setState(() {
     _clear();
-    _actionError = const AppError.offline();
+    _actionError = writesOffNow(context, ref);
   });
 
   void _shift(String period, int step) => setState(() {
@@ -87,7 +88,7 @@ class _EnvelopesScreenState extends ConsumerState<EnvelopesScreen> {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
       if (mounted) {
         setState(() {
-          _actionError = error;
+          _actionError = writeFailureText(context, ref, error);
           _actionSubject = subject;
         });
       }
@@ -250,14 +251,7 @@ class _EnvelopesScreenState extends ConsumerState<EnvelopesScreen> {
             ),
             if (_notice != null) Gutter(child: NoticeBanner(text: _notice!, success: true)),
             if (error != null)
-              Gutter(
-                child: NoticeBanner(
-                  text: subjectAndMessage(
-                    _actionSubject,
-                    error.isConnectivity ? l.offline_write : context.errorMessage(error),
-                  ),
-                ),
-              ),
+              Gutter(child: NoticeBanner(text: subjectAndMessage(_actionSubject, error))),
             SnapshotView<EnvelopePage>(
               snapshot: ref.watch(envelopesProvider(period)),
               onRetry: () => ref.read(envelopesProvider(period).notifier).refresh(),

@@ -16,6 +16,7 @@ import 'package:budget_owl/features/transactions/presentation/transaction_sheet.
 import 'package:budget_owl/features/transactions/presentation/transfer_sheet.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -45,7 +46,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   LedgerQuery _query = const LedgerQuery();
   final _search = TextEditingController();
   String? _notice;
-  AppError? _actionError;
+  String? _actionError;
 
   @override
   void dispose() {
@@ -77,7 +78,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _said(notice);
     } on AppError catch (error) {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _actionError = error);
+      if (mounted) setState(() => _actionError = writeFailureText(context, ref, error));
     }
   }
 
@@ -135,7 +136,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           if (!mounted) return;
           _said(await showTransferSheet(context, accounts: accounts, editing: transfer));
         } on AppError catch (error) {
-          if (mounted) setState(() => _actionError = error);
+          if (mounted) setState(() => _actionError = writeFailureText(context, ref, error));
         }
       case _RowAction.split:
         final id = row.actionableTransferId;
@@ -151,7 +152,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           );
           if (confirmed) await _run(() => writer.split(transfer), l.pairing_splitDone);
         } on AppError catch (error) {
-          if (mounted) setState(() => _actionError = error);
+          if (mounted) setState(() => _actionError = writeFailureText(context, ref, error));
         }
       case _RowAction.deleteTransfer:
         final id = row.actionableTransferId;
@@ -206,7 +207,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         defaultAccountId: _query.accountId,
                       ),
                     )
-                  : () => setState(() => _actionError = const AppError.offline()),
+                  : () => setState(() => _actionError = writesOffNow(context, ref)),
               icon: const Icon(Icons.add),
               label: Text(l.transactions_add),
             ),
@@ -224,7 +225,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           TextButton(
             onPressed: online
                 ? () async => _said(await showTransferSheet(context, accounts: accounts))
-                : () => setState(() => _actionError = const AppError.offline()),
+                : () => setState(() => _actionError = writesOffNow(context, ref)),
             style: online ? null : TextButton.styleFrom(foregroundColor: c.muted),
             child: Text(l.transfers_move),
           ),
@@ -296,14 +297,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
           if (selected != null) _BalanceCard(account: selected),
           if (_notice != null) Gutter(child: NoticeBanner(text: _notice!, success: true)),
-          if (_actionError != null)
-            Gutter(
-              child: NoticeBanner(
-                text: _actionError!.isConnectivity
-                    ? l.offline_write
-                    : context.errorMessage(_actionError!),
-              ),
-            ),
+          if (_actionError != null) Gutter(child: NoticeBanner(text: _actionError!)),
           // No standing "you're offline" banner: the stale label says the copy is old, and the
           // needs-a-connection sentence appears when a write is attempted (_actionError).
           SnapshotView<Ledger>(

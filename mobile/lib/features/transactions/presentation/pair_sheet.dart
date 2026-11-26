@@ -5,6 +5,7 @@ import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/features/transactions/data/transactions_repository.dart';
 import 'package:budget_owl/features/transactions/domain/transaction.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:budget_owl/shared/widgets/write_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -37,7 +38,7 @@ class PairSheet extends ConsumerStatefulWidget {
 
 class _PairSheetState extends ConsumerState<PairSheet> {
   Transaction? _chosen;
-  AppError? _error;
+  String? _error;
   bool _busy = false;
 
   List<Transaction> get _candidates =>
@@ -56,7 +57,7 @@ class _PairSheetState extends ConsumerState<PairSheet> {
       if (mounted) Navigator.of(context).pop(l.pairing_paired);
     } on AppError catch (error) {
       if (error.status == 409) ref.read(dataRevisionProvider.notifier).bump();
-      if (mounted) setState(() => _error = error);
+      if (mounted) setState(() => _error = writeFailureText(context, ref, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -112,7 +113,7 @@ class _PairSheetState extends ConsumerState<PairSheet> {
             NoticeBanner(text: l.pairing_loss),
             if (error != null) ...[
               const SizedBox(height: SpaceTokens.s3),
-              NoticeBanner(text: context.errorMessage(error)),
+              NoticeBanner(text: error),
             ],
             const SizedBox(height: SpaceTokens.s4),
             FilledButton(
