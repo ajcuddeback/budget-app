@@ -8659,6 +8659,12 @@ abstract class AppLocalizations {
   /// **'Last updated {ago} — you\'re offline'**
   String offline_staleOffline(String ago);
 
+  /// Mobile only (l10n/mobile.en.json "offline.versionUnconfirmed").
+  ///
+  /// In en, this message translates to:
+  /// **'Changes are off until the server confirms it runs a version this app works with. Refresh to check again.'**
+  String get offline_versionUnconfirmed;
+
   /// Mobile only (l10n/mobile.en.json "offline.write").
   ///
   /// In en, this message translates to:

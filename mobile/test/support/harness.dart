@@ -20,11 +20,23 @@ final DateTime demoNow = DateTime.utc(2026, 8, 20, 12);
 final class MemorySecureStore implements SecureStore {
   final Map<String, String> values = {};
 
-  @override
-  Future<void> delete(String key) async => values.remove(key);
+  /// Keys whose read throws, as a Keystore that cannot decrypt a value does.
+  final Set<String> unreadable = {};
+
+  /// Keys whose delete throws.
+  final Set<String> undeletable = {};
 
   @override
-  Future<String?> read(String key) async => values[key];
+  Future<void> delete(String key) async {
+    if (undeletable.contains(key)) throw StateError('secure storage could not delete $key');
+    values.remove(key);
+  }
+
+  @override
+  Future<String?> read(String key) async {
+    if (unreadable.contains(key)) throw StateError('secure storage could not read $key');
+    return values[key];
+  }
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
