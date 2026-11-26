@@ -3,7 +3,7 @@
 - **Status:** Shipped — API, web UI (validated in both viewports and in dark mode), and the
   user guide: [Add an account](../../userguide/features/add-an-account.md) and
   [Archive or delete an account](../../userguide/features/archive-or-delete-an-account.md),
-  captured by `tools/ui/specs/docs/accounts.spec.ts`. Mobile app: not started (slice 15).
+  captured by `tools/ui/specs/docs/accounts.spec.ts`. Mobile app: built in slice 15, phase 2 (`mobile-app.md`, "Phase 2 — Accounts, categories, envelopes").
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-16
 - **Related:** [ADR-0006](../adr/0006-money-representation.md) (money),

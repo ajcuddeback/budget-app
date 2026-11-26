@@ -1,6 +1,6 @@
 # Feature: Envelopes
 
-- **Status:** Shipped — slice 6
+- **Status:** Shipped — slice 6. Mobile app: slice 15, phase 2 (`mobile-app.md`)
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-20
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0023 (i18n),

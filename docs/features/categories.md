@@ -1,7 +1,7 @@
 # Feature: Categories
 
 - **Slice:** 4
-- **Status:** Shipped
+- **Status:** Shipped. Mobile app, with payee rules: slice 15, phase 2 (`mobile-app.md`)
 - **Depends on:** authentication-and-households (slice 1)
 - **Depended on by:** transactions (slice 5), envelopes (slice 6), bills (slice 7), reporting (slice 13)
 

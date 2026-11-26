@@ -531,3 +531,94 @@ through (now opaque).
 - **`PlatformSecureStore` is not exercised by tests** (2 of its 8 lines): it is the platform
   channel itself. Its `first_unlock_this_device` option is asserted by `guards_test`.
 - Every placeholder screen above, CSV export and import are phase 2.
+
+### Phase 2 — Accounts, categories, envelopes
+
+Built on the Transactions pattern (`mobile/README.md`, "Adding a feature"): cache-first reads,
+writers that refuse unless `reachabilityProvider.canWrite` and never queue, `version` in every
+`PATCH` with only the changed fields, sheets on the root navigator, and a `VIEWER` offered no write
+control. Every amount is the server's string held as `Money`; **the phone adds nothing**.
+
+- **Accounts** (tab): active accounts grouped by currency (a heading only from the second currency
+  on), each balance the server's; archived ones in their own section behind a toggle, muted; "N
+  more accounts are not shown" when the page holds back rows. A row opens its actions: Edit and
+  Archive, Bring back when archived, and **Delete only when the server said `empty`**. The add/edit
+  sheet has the web's five fields; the currency is shown disabled with its reason once the account
+  has history; a field the server refused is marked until edited (`forceErrorText`); a
+  `409 stale-version` re-reads the account, names each field that moved with its new value,
+  disables Save, and offers *Use theirs* (reload the form) or *Keep mine and save* (the same form
+  at the version just shown).
+- **Categories** (More): income then spending, each parent followed by its children drawn with a
+  rule at the start; a child whose parent is archived is promoted. Archived categories behind a
+  disclosure with their count. Row actions: Add a sub-category (top-level rows only), Edit,
+  Archive, Restore, Delete — whose message says the transactions are kept and, with children, how
+  many go too. The sheet's parent picker offers unarchived top-level categories of the kind; a
+  category with children is told why it cannot move; a locked kind is a disabled field with its
+  reason. **Payee rules** follow: listed with "files under …", the archived-category note, and
+  Remove (none for a `VIEWER`).
+- **Envelopes** (More): `GET /api/envelopes/periods` decides the month (this one, or the latest
+  that has envelopes); arrows move a month either way. The month's totals are the server's. Each
+  card has the remaining figure as its headline (negative and in the accent text colour when
+  overspent, with "over"), a meter, "Spent so far x / y", **Log spend**, the log toggle (absent with
+  nothing logged), and an actions button (Edit, Archive, Delete). The log marks every row *Typed*
+  or *From a transaction*; a row opens Edit and Delete. Archived envelopes sit behind a toggle.
+  Quick add opens on the amount with the decimal keypad; payee, date and note are optional.
+- **Shared**: `shared/widgets/grouped_row.dart` (the ledger row's card strip for any row, and
+  `showRowActions`), `shared/widgets/write_failure.dart` (below).
+- **Refused writes say why** (core 5e0fd95): every write failure on these screens, and on the
+  Transactions screen and its three sheets, is said through `writesOffText()` at the moment it
+  fails — *offline* or *the version is not confirmed yet* — never a fixed "offline" sentence.
+- **Fixtures**: `MobileAccountsFixtureIT` writes `accounts`, `categories` and `envelopes
+  .generated.json`, one story each against the real API (viewer reads and a refused viewer write in
+  each). `DemoFixtureIT` changed only nine modifiers, private to package-private.
+
+#### Departures from the web
+
+| Where | The web | The phone | Why |
+| ----- | ------- | --------- | --- |
+| Per-currency subtotal | Summed in the browser | **None**; rows grouped by currency only | The phone never adds amounts, and the API sends no subtotal. An API gap if one is wanted |
+| Currency group heading | "US Dollar (USD)" | "USD" | `intl` has no currency display names |
+| Currency field | A select of ISO codes | A three-letter field, upper-cased, validated (as Setup) | No list of codes without a new dependency; the server validates the code and its refusal marks the field |
+| Archive confirmation | Mentions the subtotal changing | Mobile key `accounts.archiveMessagePhone`, without that sentence | There is no subtotal to change |
+| Import link on a row | Opens Import with the account chosen | Not offered | Import is another area's screen, with no "preselect an account" entry yet |
+| Untouched account edit | Sends `{version}` | Sends nothing | README rule; the web's own categories and envelopes pages do the same |
+| Category trail | "Bills → Phone" | "Bills › Phone" (`transactions.categoryTrail`) | The bundled font has no arrow (phase 1) |
+| Add a sub-category | Also on a promoted orphan | Only on a true top-level row | The server would refuse a third level |
+| Envelope periods | Read through the client | Read **uncached**; offline the screen opens on the current month | `CachedResource` decodes objects only and the body is an array; no core change for it |
+| Envelope meter | `Number(spent) / Number(amount)` | A `Decimal` ratio rounded to a whole percent | No `double` is made from an amount |
+| Envelope card | Five buttons | Log spend, the log toggle, and an actions sheet | Width |
+| Envelope month on create | `<input type="month">` | Previous / next arrows inside the field | Material has no month picker |
+| A malformed amount from the server | — | `UnexpectedJson`, the generic error | `Money.fromWire` throws `FormatException`, which `CachedResource` does not catch; these models convert it (`wireMoney`). Phase 1's ledger models still let it escape |
+
+#### Proving each control can fail
+
+Each was broken, its tests run and seen to fail, then restored with `git checkout` and `git diff`
+confirmed empty.
+
+| Control | Broken how | Failed |
+| ------- | ---------- | ------ |
+| `VIEWER` offered no write | `canWrite = true` on all three screens | The three VIEWER widget tests (the forced-write 403 tests still passed, as they should) |
+| Offline refusal before sending | The `reachabilityProvider` check removed from all three writers, the server still answering | The three offline tests: accounts and envelopes wrote for real, categories sent a `DELETE` the fixture did not record. First run hung on the fake clock instead of failing, so direct writer calls in tests now run under `tester.runAsync` |
+| The refusal says why | `writeFailureText` / `writesOffNow` always say "offline" | The four version-unconfirmed tests (accounts, categories, envelopes, transactions) |
+| No household id in a path | The id added to the account create query and the envelope entry path | "adding sends the web's body" and "quick add" (fixture miss, and the household-id assertion) |
+
+#### What reading the screenshots changed
+
+At text 2.0 the form hints were cut off with an ellipsis (now up to ten lines) and the dropdowns cut
+the chosen value mid-word (`isDense: false`, which lets it wrap). A server-refused field was not
+marked: a validator re-run after the round trip did not stick, so the mark is `forceErrorText`. A
+locked kind drawn as a disabled segmented button looked enabled in light mode: it is now a disabled
+field with its reason. The archived and payee-rule goldens scroll to what they are about, and a
+`VIEWER` payee-rules golden was added.
+
+#### Known gaps
+
+- **No per-currency subtotal** (above). It needs a server figure.
+- **These fixtures record the Transactions tab's launch reads** (`/api/auth/me`, accounts,
+  categories, the ledger) in every state, because every scenario starts there. If another area
+  changes what that tab reads at launch, `MobileAccountsFixtureIT` must be regenerated.
+- **Payee rules are seeded as stored state** in the fixture (SQL, as `CanvasWeek` seeds a charge
+  rule); the API creates them only by completing a check-in.
+- An envelope's log shows its **first 50 entries**, as the web's does; there is no paging.
+- More's child screens have **no back arrow** (as Devices in phase 1): the More tab and the system
+  back gesture return.
