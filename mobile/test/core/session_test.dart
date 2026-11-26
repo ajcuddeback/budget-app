@@ -476,6 +476,52 @@ void main() {
       expect(phone.store.values.keys, ['budget_owl.server']);
     });
 
+    test("S2: a late /api/auth/me from the last sign-in never lands on the next one's", () async {
+      final late = Completer<ResponseBody>();
+      var ownerReads = 0;
+      final owner = fixtureBody('demo', state: 'demo', path: '/api/auth/me');
+      final other = fixtureBody('demo', state: 'viewer', path: '/api/auth/me');
+      final adapter = ScriptedAdapter((o) {
+        if (o.path.endsWith('/api/meta')) {
+          return Future.value(
+            json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1}),
+          );
+        }
+        if (o.path.endsWith('/api/auth/logout')) return Future.value(json(204, null));
+        if (o.path.endsWith('/api/auth/token')) {
+          return Future.value(json(201, {'token': 'fixture-token-viewer'}));
+        }
+        if (o.headers['Authorization'] == 'Bearer fixture-token-owner') {
+          // The first read answers; the refresh's is slow, and answers only after the next sign-in.
+          return ownerReads++ == 0 ? Future.value(json(200, owner)) : late.future;
+        }
+        return Future.value(json(200, other));
+      });
+      final phone = TestPhone(server: adapter)..signedIn('owner');
+      final c = containerFor(phone);
+      await until<SessionSignedIn>(c);
+
+      final refreshing = c.read(sessionProvider.notifier).refreshMe();
+      // The refresh is on the wire with the owner's token before the sign-out takes it.
+      for (var i = 0; i < 400 && ownerReads < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(ownerReads, 2, reason: "the owner's refresh is in flight");
+      await c.read(sessionProvider.notifier).signOut();
+      await c
+          .read(sessionProvider.notifier)
+          .signIn(email: 'alan@example.com', password: _wrongGuess, deviceLabel: 'Phone');
+      expect((c.read(sessionProvider) as SessionSignedIn).user.email, 'alan@example.com');
+
+      late.complete(json(200, owner));
+      await refreshing;
+
+      expect((c.read(sessionProvider) as SessionSignedIn).user.email, 'alan@example.com');
+      final cached = await (await c.read(cacheHolderProvider).obtain()).read(meCacheKey);
+      expect(cached?.body, contains('alan@example.com'), reason: 'nor cached into it');
+      expect(cached?.body, isNot(contains('ada@example.com')));
+    });
+
     test('L5: a new installation reads nothing an earlier one left in the Keychain', () async {
       final server = FixtureServer.load('demo', state: 'demo');
       final phone = TestPhone(server: server, freshInstall: true)..signedIn('owner');

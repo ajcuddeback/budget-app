@@ -168,8 +168,8 @@ final class SessionController extends Notifier<SessionState> {
     }
     // Trust only what this server was pinned to when it was connected to (Android): the system
     // roots, plus its one user CA while that is still on the phone. Before anything is sent to it.
-    final transport = ref.read(httpAdapterProvider);
-    if (transport is ServerTrust) transport.pinTo(await _servers.readCaPin());
+    final trust = serverTrustOf(ref.read(httpAdapterProvider));
+    if (trust != null) trust.pinTo(await _servers.readCaPin());
     ref.read(currentServerProvider.notifier).set(server);
     // Only a token this server issued (audit L3). Anything another origin's token left behind —
     // the cache and its key — goes with it (audit N2). **No token at all means the same** (R1): a
@@ -193,9 +193,10 @@ final class SessionController extends Notifier<SessionState> {
     final cached = await _cachedMe();
     if (!ref.mounted) return;
     if (cached != null) {
-      state = SessionSignedIn(server, cached, ++_epoch);
+      final epoch = ++_epoch;
+      state = SessionSignedIn(server, cached, epoch);
       if (await _checkVersion(server) || !ref.mounted) return;
-      await _refreshMe(server);
+      await _refreshMe(server, epoch: epoch);
       return;
     }
     if (await _checkVersion(server) || !ref.mounted) return;
@@ -322,15 +323,16 @@ final class SessionController extends Notifier<SessionState> {
     // On Android the check also decides which user-installed CA, if any, this server is trusted
     // through from now on: none when the system roots verify it, else the one that does (pinned).
     final transport = ref.read(httpAdapterProvider);
+    final trust = serverTrustOf(transport);
     String? caPin;
-    if (transport is ServerTrust) {
-      caPin = await transport.checkAndPin(address);
+    if (trust != null) {
+      caPin = await trust.checkAndPin(address);
     } else {
       await ServerCheck(transport).check(address);
     }
     await _local.wipe(forgetServer: true);
     await _servers.save(address, caPin: caPin);
-    if (transport is ServerTrust) transport.pinTo(caPin);
+    trust?.pinTo(caPin);
     ref.read(currentServerProvider.notifier).set(address);
     // The check above was this server's, this launch: writes (sign-in, setup, join) may follow.
     _gate.confirmVersion();
@@ -457,14 +459,17 @@ final class SessionController extends Notifier<SessionState> {
   /// Re-reads who the member is (a role may have changed on the web).
   Future<void> refreshMe() async {
     final current = state;
-    if (current is SessionSignedIn) await _refreshMe(current.server);
+    if (current is SessionSignedIn) await _refreshMe(current.server, epoch: current.epoch);
   }
 
   /// Re-reads the member once it is already on screen. What the server sent is shown **first**;
   /// caching it is best effort. A cache that cannot be written (sealed by a sign-out meanwhile, a
   /// full disk, anything) is logged in a debug build and costs nothing else: it never reaches
   /// start-up's catch-all, which would sign a working session out.
-  Future<void> _refreshMe(ServerAddress server) async {
+  ///
+  /// The answer belongs to the sign-in that asked ([epoch]): one that arrives after a sign-out and
+  /// another sign-in — another member, perhaps — is dropped, neither shown nor cached.
+  Future<void> _refreshMe(ServerAddress server, {required int epoch}) async {
     final ({CurrentUser me, String body}) fetched;
     try {
       fetched = await _fetchMeFromServer();
@@ -477,7 +482,9 @@ final class SessionController extends Notifier<SessionState> {
     }
     if (!ref.mounted) return;
     final current = state;
-    if (current is! SessionSignedIn || current.server != server) return;
+    if (current is! SessionSignedIn || current.server != server || current.epoch != epoch) {
+      return;
+    }
     state = SessionSignedIn(server, fetched.me, current.epoch);
     try {
       await _cacheMe(fetched.body);

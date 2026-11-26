@@ -7,6 +7,8 @@ import 'package:budget_owl/core/http/api_client.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/harness.dart';
@@ -151,8 +153,10 @@ void main() {
       'http://127.0.0.1:${server.port}',
       allowLocalCleartext: true,
     ) as AddressAccepted).address;
-    final shared = platformHttpAdapter();
-    addTearDown(shared.close);
+    // The app's own: what httpAdapterProvider hands every client. Nothing may close it.
+    final providers = ProviderContainer();
+    addTearDown(providers.dispose);
+    final shared = providers.read(httpAdapterProvider);
     final tokens = TokenStore(MemorySecureStore());
     await tokens.save('fixture-token-owner', origin: address.stored);
     final api = ApiClient(
@@ -177,6 +181,18 @@ void main() {
       'GET /api/meta null',
       'GET /api/auth/me Bearer fixture-token-owner',
     ]);
+  });
+
+  test('the shared transport refuses to be closed, whatever holds it (H1)', () {
+    final providers = ProviderContainer();
+    addTearDown(providers.dispose);
+    final shared = providers.read(httpAdapterProvider);
+
+    expect(shared, isA<SharedTransport>());
+    expect(shared.close, throwsStateError, reason: 'a debug build, as every test is');
+    expect(() => shared.close(force: true), throwsStateError);
+    final dio = Dio()..httpClientAdapter = shared;
+    expect(dio.close, throwsStateError, reason: 'Dio.close() closes its adapter');
   });
 
   test('a redirect is an error, and the token never reaches the host it points at', () async {

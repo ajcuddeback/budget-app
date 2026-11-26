@@ -66,9 +66,6 @@ final localStateProvider = Provider<LocalState>(
     ref.watch(cacheHolderProvider),
     ref.watch(cacheKeyStoreProvider),
     ref.watch(serverStoreProvider),
-    forgetTrust: () {
-      final transport = ref.read(httpAdapterProvider);
-      if (transport is ServerTrust) transport.pinTo(null);
-    },
+    forgetTrust: () => serverTrustOf(ref.read(httpAdapterProvider))?.pinTo(null),
   ),
 );
