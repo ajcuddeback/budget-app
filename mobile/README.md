@@ -95,7 +95,8 @@ final accountsProvider = NotifierProvider.autoDispose<AccountsResource, Snapshot
 ### 3. Repository: writes
 
 Copy `TransactionsWriter`: refuse with `AppError.offline()` unless `reachabilityProvider` says the
-last request reached the server, send through `ApiClient.write`, then bump `dataRevisionProvider`
+last request reached the server and the version check passed (`.canWrite`), send through
+`ApiClient.write` (which refuses a write before that check besides), then bump `dataRevisionProvider`
 so every screen re-reads. **Never queue, retry or patch a cached figure.** Send exactly the body the
 web sends, `version` included; build it in `domain/requests.dart` with a unit test of the body,
 and send a `PATCH` only with the fields that changed.
@@ -107,7 +108,8 @@ and send a `PATCH` only with the fields that changed.
 - **Roles decide what is offered**: `ref.watch(signedInProvider)?.membership?.role?.canWrite ??
 false`, and do not build a write control for a `VIEWER`. The API refuses anyway; that is why a viewer's forced write
   must still show the translated `403`.
-- Disable writes offline with `canWriteNow(ref)` and show `OfflineNote` / the offline message.
+- Disable writes with `canWriteNow(ref)` and show `OfflineNote`, which says why: offline, or the
+  server's version not yet confirmed (`writesOffText` for a message of your own).
 - Sheets and dialogs open on the **root** navigator (`Navigator.of(context, rootNavigator: true)`,
   `useRootNavigator: true`), above the tab bar.
 - Colours from `context.colors` (the `Palette`), sizes from `SpaceTokens` / `RadiusTokens` /
@@ -167,8 +169,18 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
 
 - **Riverpod 3 retries a failed provider by default** (up to ten times with backoff). The app's
   `ProviderScope` passes `retry: noRetry`; a test container must too, or a 401 becomes a burst.
-- **`dart:io` on Android ignores user-installed CAs**, whatever the network security config says.
-  A server with a private CA fails as "not trusted" (fails closed). Known gap.
+- **`dart:io` on Android ignores user-installed CAs by itself**, whatever the network security
+  config says. `MainActivity`'s `app.budgetowl/trust` channel reads them and `user_trust.dart`
+  adds them to the system roots for the one transport, read once before the first request; any
+  failure means system roots only. Never add a `badCertificateCallback` instead. Needs checking on
+  a device.
+- **No write before this launch's version check.** A request that reached the server counts for
+  writes (`Reachability.reached`) only once `/api/meta` has passed; until then it is
+  `Reachability.unconfirmed`, `canWriteNow` is false, and `ApiClient` refuses any non-`GET`. Show
+  `OfflineNote` (or `writesOffText`) for the reason; a test that writes must let the launch check
+  answer first, as `FixtureServer`'s recorded `/api/meta` does.
+- **A test container builds a provider only when something reads it.** Waiting on the network
+  without reading `sessionProvider` waits for a start-up that never began.
 - **Public writes need the CSRF pair.** Setup and accepting an invitation are public but CSRF-
   protected; `csrfForPublicWrite` reads `XSRF-TOKEN` from a fresh `GET /api/setup/status`.
 - **The ledger's order among same-date rows is random** (by UUID) on the server. Do not assert
