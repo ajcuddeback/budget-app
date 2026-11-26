@@ -70,6 +70,11 @@ public class MetaRateLimiter {
         windows.clear();
     }
 
+    /** How many addresses have a window. For the bound's test; no route reaches it. */
+    int trackedCallers() {
+        return windows.size();
+    }
+
     private void prune(Instant now) {
         if (windows.size() < MAXIMUM_TRACKED_CALLERS) {
             return;
