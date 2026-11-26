@@ -12,6 +12,9 @@ environment:
 # privacy defect, not a dependency choice (ADR-0016) — test/architecture/guards_test.dart
 # ("no package that phones home is in the lockfile") fails the build on the usual suspects.
 dependencies:
+  # SHA-256 of the one user CA a server is pinned to (user_trust.dart). Already in the lockfile,
+  # through Flutter's own tooling; declared because the app now uses it directly.
+  crypto: ^3.0.8
   decimal: ^3.2.7
   dio: ^5.11.1
   drift: ^2.35.4

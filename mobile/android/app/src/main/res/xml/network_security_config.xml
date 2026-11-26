@@ -6,9 +6,10 @@
   domain-config and no pinning. A self-hoster with their own certificate authority installs it on
   the phone; "user" below trusts it for this app (docs/features/mobile-app.md, Connecting).
   Dart's own TLS stack does not read these trust anchors by itself, so MainActivity hands it the
-  same user CAs (AndroidCAStore, "user:" aliases) through a platform channel, and the app's one
-  transport adds them to the system roots (lib/core/http/user_trust.dart). "user" below is what
-  makes that the declared policy: platform_config_test fails if it goes.
+  user CAs (AndroidCAStore, "user:" aliases) through a platform channel, and the app's one
+  transport trusts at most one of them per server: the one the server was verified through when
+  it was connected to, pinned by fingerprint (lib/core/http/user_trust.dart). Dart never trusts
+  more than "user" below declares: platform_config_test fails if it goes.
   The cleartext ban is also enforced in code, by ServerAddress.parse and the API client.
 
   A debug build replaces this file with src/debug/res/xml/network_security_config.xml.
