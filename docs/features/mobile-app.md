@@ -531,3 +531,101 @@ through (now opaque).
 - **`PlatformSecureStore` is not exercised by tests** (2 of its 8 lines): it is the platform
   channel itself. Its `first_unlock_this_device` option is asserted by `guards_test`.
 - Every placeholder screen above, CSV export and import are phase 2.
+
+### Phase 2 — Bills & income, debt plan, goals
+
+Built to the web's behaviour, screen by screen, from `bills-and-income.md`, `debt-plan.md` and
+`goals.md`, following the phase-2 recipe in `mobile/README.md` (Transactions is the reference).
+
+**What was built**
+
+- **Bills & income** (bottom-nav tab, replaces its placeholder). A month bar (previous/next
+  month, each a read of that month). Cards: *Left this month* (the server's summary: income,
+  bills, envelopes, debt minimums, goals, short/left), *Income* (sources, each arrival, retired
+  sources with Restore), *Your bills* (each occurrence: budgeted/paid, overdue, surprising, not
+  counted; *Mark paid* one tap; *Correct this* opens Mark paid / Paid a different amount… / Skip /
+  Mark as due / Forget; mappings with *Unmap*; retired bills with Restore and Delete), *Owed*
+  (links to the debt plan) and *Envelopes*. Row actions (Edit, Record a payment for an irregular
+  bill, Retire, Delete) sit behind a ⋮ sheet. Sheets: add/edit bill (the schedule editor shows
+  only the kind's own parameters), add/edit income source, record a payment.
+- **Debt plan** (More). Monthly amount with an inline edit, Avalanche / Snowball / *Your own
+  order*, the *Balance to zero* chart, the two strategy cards side by side with the comparison
+  sentence and the what-if (*"Adding $50.00 a month…"*), the ladder (rung cards with Open, Edit
+  terms, and Move up/down under your own order), debts outside the ladder, the empty state, and
+  the *extra exceeds what is left* and *below the minimums* states. Sheets: add a debt, edit terms
+  (the three-way rate: *Work the rate out for me* releases it with an explicit `null`).
+- **Debt detail** (`/more/debt-plan/:id`, the id, never a name). Previous/Next stepper, Log a
+  payment, Edit terms, Confirm the balance; the terms grid with each figure's source (Solved,
+  From your plan); the balance card (confirmed, estimated or stale); *Balance over time* (what you
+  are paying against the minimum, with what the extra buys); payment history with each split.
+  Sheets: log a payment (scheduled and +50 quick amounts, a server preview of the split, debounced
+  350 ms, late answers dropped, a failed preview never blocks the save), confirm an estimate
+  (confirm, correct it, stop estimating, log a payment instead).
+- **Goals** (More). Goals grouped by currency, each with its progress bar and the projection in
+  words; archived goals behind a toggle; the empty and read-only states. Sheet: add a goal, with
+  a server preview of the projection as it is typed.
+- **Goal detail** (`/more/goals/:id`). Set money aside (opens with this month's still-to-come),
+  Take money out (its own sheet, unsigned field), Edit (with preview), the plan (*Change*: this
+  month or next, with preview), the history with Remove and **Show more** (the web's paging,
+  50 a page, read live and not cached), Archive / Restore and Delete.
+
+Charts are `CustomPaint` over the server's series (`shared/widgets/months_line_chart.dart`): no
+charting dependency, no figure computed on the phone, mirrored in RTL, with a semantics
+description. **No dependency was added.**
+
+**Fixtures.** `MobilePlansFixtureIT` (its own class; `DemoFixtureIT` only had ten members made
+package-private, nothing restructured) seeds a plans household through the API and records three
+linear state chains, so each write's re-reads reflect only the writes before it:
+`bills.generated.json`, `debt.generated.json` and `goals.generated.json`. Every write the screens
+send is recorded in the state it is sent from, with the 403 a VIEWER gets and a 409 for an edit
+that lost a race.
+
+### Phase 2 (plans) — departures
+
+| Where | The web | What was built | Why |
+| ----- | ------- | -------------- | --- |
+| Debt ladder | A table on desktop, cards on narrow screens | **Cards only** | The phone is the narrow layout |
+| Row actions | Buttons on each row | **A ⋮ sheet** per bill / source; occurrence corrections behind *Correct this* | Five buttons per weekly bill do not fit a phone row; *Mark paid* stays one tap |
+| Currency field | A list of currencies | A **typed three-letter code**, optional, offered only when no account sets it | `intl` has no list of currency names to offer; the server validates the code |
+| Debt edit, balance | The form shows balance and date, and the `PATCH` ignores them | **Read-only on edit**, with *"the balance is never worked out…"* | A field that silently does nothing is a lie; the balance moves only through *Confirm the balance* |
+| Goal links | *"Open →"*, *"← All goals"* | Mobile strings **`goals.openTrail`** *"Open ›"*, **`goals.openNamed`** *"Open {name}"* (its accessible name), **`goals.backToAll`** | The bundled Figtree has no U+2192/U+2190 (it drew as a box), as in phase 1 |
+| Record-payment amount | Prefilled with the expected figure | Prefilled **trimmed** (`45`, not `45.0000`) | The wire's scale is not what anyone types |
+| Charts in RTL | — | **Mirrored**: time runs right to left | The reading direction of the page |
+| Deleting a goal | Navigates to the list | The page **stops reading the goal, then leaves, then** every screen re-reads | Otherwise the page, still mounted while it animates away, re-read a goal that no longer exists (three 404s) |
+| Phase-1 tests | — | The `placeholder` golden scenario, its two PNGs and the *"a screen not built yet"* test are **deleted** (by the coordinator's decision) | They tapped Bills and Goals, now built; after phase 2 no placeholder screen remains. `PlaceholderScreen` itself stays until every area is merged |
+| Charge-rule fixture | — | The one mapping is a **direct SQL row** in `MobilePlansFixtureIT`, against a payee the API made | Rules are written only by completing a check-in (ADR-0041); no route creates one. The fixture records the API reading it back |
+
+### Phase 2 (plans) — proving each control can fail
+
+Each was broken, its tests run and seen to fail, then restored with `git checkout` and the tree
+confirmed clean.
+
+| Control | Broken how | Failed |
+| ------- | ---------- | ------ |
+| VIEWER sees no write control | `canWrite` true for anyone signed in, in each of the five screens in turn | The VIEWER test of that screen, each time (*"Add a bill"*, *"Add a debt"*, *"Log a payment"*, *"Add a goal"*, *"Set money aside"* found) |
+| Offline refusal before a sheet or confirmation | Each screen's `_offline()` never refusing (bills, debt plan, debt detail, goal detail, goals list) | The *"with writes off"* test of that screen: a sheet opened, or the wrong sentence |
+| The writer's own refusal | `if (!canWrite) throw` disabled in each of the three writers | *"the writer itself refuses"*: a request reached the server while the phone believed it was offline. (The first version of this test ran with the network down too, and passed with the check removed. It now proves the writer's own check, not the transport's) |
+| No household id in a request | A `householdId` in the bills query; `/api/households/…` in the goal paths; a `household` in the debts query | The *"none naming a household"* reading test of each area (a fixture miss and the assertion) |
+| Goals routed by id, never by name | The list opening `/more/goals/<name>` | *"by id and never by name"* |
+| Every `PATCH` carries its version | The version dropped from the bill, income, debt and goal patch builders | 12 request tests across the three areas, against the bodies the real API accepted |
+| The refusal says why | `writeErrorText` always saying *"offline"* | The three *"with the version unconfirmed"* tests |
+
+### Phase 2 (plans) — what reading the screenshots changed
+
+The goal row's *"Open →"* drew its arrow as a box (now *"Open ›"*). The goal sheet's empty month
+field floated its label over nothing (now `isEmpty`). Sentences that begin with a figure
+reordered in RTL (the `Sentence` widget keeps language direction and layout-start alignment).
+An error state rendered against the wrong fixture state. Accepted: in the RTL variant an English
+sentence's final full stop sits at its left end, as an English string laid out RTL does; real RTL
+translations do not have this.
+
+### Phase 2 (plans) — known gaps
+
+- **Debt payment history shows its first 50 payments** and then the web's own note (*"Showing the
+  most recent 50…"*), as the web does; only the goal history pages.
+- **No multi-currency debt or goals fixture.** The screens group by currency as the server does,
+  but every recorded household is in USD, so no golden shows two ladders.
+- **Charts have no touch read-out.** They state their figures in the sentences beneath them and
+  in a semantics description; there is no tap-for-value.
+- **The month bar reads any month** the user steps to; only July, August and September 2026 are
+  recorded, so tests do not step further.
