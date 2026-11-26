@@ -49,7 +49,8 @@ class SchemaMigrationIT extends PersistenceTestBase {
                         "V16__instance_settings_version.sql",
                         "V17__debts_and_payments.sql",
                         "V18__goals.sql",
-                        "V19__file_import.sql");
+                        "V19__file_import.sql",
+                        "V20__weekly_check_in.sql");
 
         Integer failures =
                 jdbc.queryForObject(

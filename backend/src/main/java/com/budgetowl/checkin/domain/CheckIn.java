@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.Currency;
 import java.util.Objects;
 import java.util.Optional;
@@ -206,7 +207,13 @@ public class CheckIn implements HouseholdOwned {
      */
     public void touch(Instant now) {
         requireDraft();
-        this.updatedAt = Objects.requireNonNull(now, "now");
+        Objects.requireNonNull(now, "now");
+        // Strictly later than before, by at least the microsecond PostgreSQL stores. Two answers in
+        // the same instant (a coarse clock, a fast client, a test's stopped clock) would otherwise
+        // write the same value, leave the row clean, and NOT move the version — and a finisher who
+        // had not seen the second answer would be let through (CheckInIT found it).
+        Instant floor = updatedAt == null ? now : updatedAt.plus(1, ChronoUnit.MICROS);
+        this.updatedAt = now.isAfter(floor) ? now : floor;
     }
 
     /**
