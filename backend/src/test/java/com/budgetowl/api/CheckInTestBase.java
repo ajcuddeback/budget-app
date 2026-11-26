@@ -99,14 +99,19 @@ abstract class CheckInTestBase extends ApiTestBase {
         ids.put("gym", bill(owner, "Gym", "42.00", 18, seededCategoryId("Health")));
         income(owner, "Northwind Systems", "2620.00", 20, chase);
         income(owner, "Rivera Design", "2000.00", 5, chase);
-        ok(
-                owner.post(
-                        "/api/envelopes",
-                        """
-                        {"name":"Groceries","period":"2026-08","amount":"600.00","categoryId":"%s"}
-                        """
-                                .formatted(seededCategoryId("Groceries"))),
-                201);
+        ids.put(
+                "groceries",
+                UUID.fromString(
+                        ok(
+                                        owner.post(
+                                                "/api/envelopes",
+                                                """
+                                                {"name":"Groceries","period":"2026-08","amount":"600.00",
+                                                 "categoryId":"%s"}
+                                                """
+                                                        .formatted(seededCategoryId("Groceries"))),
+                                        201)
+                                .stringField("id")));
         UUID fund =
                 UUID.fromString(
                         ok(

@@ -56,7 +56,20 @@ class AuthorizationIT extends ApiTestBase {
                                                                         "\\{[a-z]+\\}",
                                                                         any.toString())))
                         .toList();
-        return Stream.of(fixedEndpoints(any), goals, imports).flatMap(List::stream).toList();
+        // The check-in's eleven routes likewise, from CheckInIT's own list (slice 14). Any week
+        // will do: a 401 comes before the week is parsed, let alone looked up.
+        List<Endpoint> checkIns =
+                CheckInIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path().replace("{week}", "2026-W34"),
+                                                route.body()))
+                        .toList();
+        return Stream.of(fixedEndpoints(any), goals, imports, checkIns)
+                .flatMap(List::stream)
+                .toList();
     }
 
     private static List<Endpoint> fixedEndpoints(UUID any) {

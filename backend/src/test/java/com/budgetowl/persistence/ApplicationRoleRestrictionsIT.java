@@ -395,6 +395,167 @@ class ApplicationRoleRestrictionsIT {
                 });
     }
 
+    /**
+     * The weekly check-in's four tables, and the two provenance columns V20 changes, as the
+     * restricted role (slice 14). V20 adds no grant and relies on V10's default privileges; this is
+     * what proves that was enough — every statement the check-in's write path issues, including the
+     * row lock completion takes.
+     */
+    @Test
+    void canWriteTheCheckInTables() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        UUID user = UUID.randomUUID();
+        UUID household = UUID.randomUUID();
+        UUID account = UUID.randomUUID();
+        UUID payee = UUID.randomUUID();
+        UUID category = UUID.randomUUID();
+        UUID bill = UUID.randomUUID();
+        UUID row = UUID.randomUUID();
+        UUID checkIn = UUID.randomUUID();
+
+        assertThatCode(
+                        () ->
+                                transaction.executeWithoutResult(
+                                        status -> {
+                                            jdbc.update(
+                                                    "INSERT INTO users (id, email, display_name)"
+                                                            + " VALUES (?, ?, 'Ada')",
+                                                    user,
+                                                    "ada-check-in@example.com");
+                                            jdbc.update(
+                                                    "INSERT INTO households (id, name,"
+                                                            + " base_currency) VALUES (?, 'Home',"
+                                                            + " 'GBP')",
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO household_members (id,"
+                                                            + " household_id, user_id, role)"
+                                                            + " VALUES (?, ?, ?, 'OWNER')",
+                                                    UUID.randomUUID(),
+                                                    household,
+                                                    user);
+                                            jdbc.update(
+                                                    "INSERT INTO accounts (id, household_id, name,"
+                                                            + " type, currency, opening_balance)"
+                                                            + " VALUES (?, ?, 'Current',"
+                                                            + " 'CHECKING', 'GBP', 0)",
+                                                    account,
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO payees (id, household_id, name)"
+                                                            + " VALUES (?, ?, 'Corner shop')",
+                                                    payee,
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO categories (id, household_id,"
+                                                            + " name, kind) VALUES (?, ?, 'Food',"
+                                                            + " 'EXPENSE')",
+                                                    category,
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO bills (id, household_id, name,"
+                                                            + " expected_amount, schedule,"
+                                                            + " day_of_month) VALUES (?, ?,"
+                                                            + " 'Internet', 71.9900, 'MONTHLY', 25)",
+                                                    bill,
+                                                    household);
+                                            jdbc.update(
+                                                    "INSERT INTO transactions (id, household_id,"
+                                                            + " account_id, date, amount, payee_id)"
+                                                            + " VALUES (?, ?, ?, DATE '2026-08-19',"
+                                                            + " -71.9900, ?)",
+                                                    row,
+                                                    household,
+                                                    account,
+                                                    payee);
+                                            jdbc.update(
+                                                    "INSERT INTO check_ins (id, household_id,"
+                                                            + " week_start, status, window_start,"
+                                                            + " started_by) VALUES (?, ?, DATE"
+                                                            + " '2026-08-17', 'DRAFT', DATE"
+                                                            + " '2026-08-17', ?)",
+                                                    checkIn,
+                                                    household,
+                                                    user);
+                                            jdbc.update(
+                                                    "INSERT INTO check_in_answers (id,"
+                                                            + " household_id, check_in_id,"
+                                                            + " item_kind, choice, transaction_id,"
+                                                            + " bill_id, due_date, remember,"
+                                                            + " answered_by) VALUES"
+                                                            + " (gen_random_uuid(), ?, ?,"
+                                                            + " 'BILL_CHARGE', 'ATTACH', ?, ?, DATE"
+                                                            + " '2026-08-25', true, ?)",
+                                                    household,
+                                                    checkIn,
+                                                    row,
+                                                    bill,
+                                                    user);
+                                            jdbc.queryForList(
+                                                    "SELECT id FROM check_ins WHERE id = ? FOR"
+                                                            + " UPDATE",
+                                                    checkIn);
+                                            jdbc.update(
+                                                    "INSERT INTO payee_rules (id, household_id,"
+                                                            + " payee_id, category_id) VALUES"
+                                                            + " (gen_random_uuid(), ?, ?, ?)",
+                                                    household,
+                                                    payee,
+                                                    category);
+                                            jdbc.update(
+                                                    "INSERT INTO charge_rules (id, household_id,"
+                                                            + " bill_id, payee_id, account_id)"
+                                                            + " VALUES (gen_random_uuid(), ?, ?, ?,"
+                                                            + " ?)",
+                                                    household,
+                                                    bill,
+                                                    payee,
+                                                    account);
+                                            jdbc.update(
+                                                    "UPDATE check_ins SET status = 'COMPLETED',"
+                                                            + " completed_at = now(), completed_by"
+                                                            + " = ?, currency = 'GBP',"
+                                                            + " week_spending = 487,"
+                                                            + " next_week_target = 480 WHERE id ="
+                                                            + " ?",
+                                                    user,
+                                                    checkIn);
+                                        }))
+                .doesNotThrowAnyException();
+
+        transaction.executeWithoutResult(
+                status -> {
+                    assertThat(
+                                    jdbc.update(
+                                            "DELETE FROM charge_rules WHERE household_id = ?",
+                                            household))
+                            .isEqualTo(1);
+                    assertThat(
+                                    jdbc.update(
+                                            "DELETE FROM payee_rules WHERE household_id = ?",
+                                            household))
+                            .isEqualTo(1);
+                    assertThat(jdbc.update("DELETE FROM check_ins WHERE id = ?", checkIn))
+                            .isEqualTo(1);
+                    jdbc.update("DELETE FROM transactions WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM bills WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM categories WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM payees WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM accounts WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM household_members WHERE household_id = ?", household);
+                    jdbc.update("DELETE FROM households WHERE id = ?", household);
+                    jdbc.update("DELETE FROM users WHERE id = ?", user);
+                });
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM check_in_answers WHERE household_id = ?",
+                                Long.class,
+                                household))
+                .as("answers cascade from their check-in")
+                .isZero();
+    }
+
     @Test
     void andTheConstraintsItCannotDropStillRefuseBadData() {
         // The point of the whole arrangement, in one assertion: a CHECK the connection cannot drop
