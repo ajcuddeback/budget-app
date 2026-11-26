@@ -134,6 +134,28 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
             @Param("debtId") UUID debtId,
             @Param("date") java.time.LocalDate date);
 
+    /**
+     * What completed weekly check-ins recorded against debts in one currency between two dates. The
+     * term next week's figure takes off {@code free(M)} (docs/features/weekly-check-in.md, decision
+     * 1). Null for none, rather than zero.
+     */
+    @Query(
+            """
+            select sum(p.amount) from DebtPayment p, Debt d
+            where d.id = p.debtId
+              and d.householdId = :householdId
+              and p.householdId = :householdId
+              and d.currency = :currency
+              and p.provenance = com.budgetowl.debt.domain.PaymentProvenance.CHECK_IN
+              and p.paidDate >= :from
+              and p.paidDate <= :to
+            """)
+    java.math.BigDecimal checkInPaymentsBetween(
+            @Param("householdId") UUID householdId,
+            @Param("currency") String currency,
+            @Param("from") java.time.LocalDate from,
+            @Param("to") java.time.LocalDate to);
+
     /** When each debt was last paid, and how many times, for every debt at once. */
     @Query(
             """

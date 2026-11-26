@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Response bodies for the bill endpoints. The entity never appears in one. */
@@ -83,6 +84,7 @@ public final class BillResponses {
             BigDecimal tolerance,
             boolean active,
             List<OccurrenceResponse> occurrences,
+            List<MappingResponse> mappings,
             Instant createdAt,
             Instant updatedAt,
             long version) {
@@ -94,6 +96,15 @@ public final class BillResponses {
         }
 
         static BillResponse of(BillView view) {
+            return of(view, List.of());
+        }
+
+        /**
+         * @param mappings this bill's charge rules (slice 14), for <em>"Mapped · COMCAST XFINITY ·
+         *     Chase •4412"</em> without a request per bill. Only the list fills them; a write
+         *     answers with none, as it answers with no occurrences
+         */
+        static BillResponse of(BillView view, List<MappingResponse> mappings) {
             return new BillResponse(
                     view.id(),
                     view.name(),
@@ -107,9 +118,28 @@ public final class BillResponses {
                     view.tolerance(),
                     view.active(),
                     view.occurrences().stream().map(OccurrenceResponse::of).toList(),
+                    List.copyOf(mappings),
                     view.createdAt(),
                     view.updatedAt(),
                     view.version());
+        }
+    }
+
+    /**
+     * One charge rule mapping a {@code (payee, account)} to this bill. The match kind is the bill's
+     * own {@code amountVaries} and {@code tolerance}, so it is not repeated here.
+     */
+    public record MappingResponse(
+            UUID ruleId,
+            String payeeName,
+            UUID accountId,
+            String accountName,
+            String accountLastFour) {
+
+        /** Redacted: which payee settles which bill is sensitive. */
+        @Override
+        public String toString() {
+            return "MappingResponse[ruleId=" + ruleId + "]";
         }
     }
 
@@ -133,8 +163,18 @@ public final class BillResponses {
         }
 
         static BillsResponse of(BillsForPeriod found) {
+            return of(found, Map.of());
+        }
+
+        static BillsResponse of(BillsForPeriod found, Map<UUID, List<MappingResponse>> mappings) {
             return new BillsResponse(
-                    found.bills().stream().map(BillResponse::of).toList(),
+                    found.bills().stream()
+                            .map(
+                                    bill ->
+                                            BillResponse.of(
+                                                    bill,
+                                                    mappings.getOrDefault(bill.id(), List.of())))
+                            .toList(),
                     found.total().amount(),
                     found.outstanding().amount(),
                     found.overdue().amount(),

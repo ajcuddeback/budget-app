@@ -30,15 +30,30 @@ import java.util.TreeMap;
  * @param startingAmount what was already set aside when tracking started. Counts towards {@link
  *     #saved()}; never towards any month's contribution
  * @param steps the plan, any order; held oldest first
- * @param recorded what was recorded against each month, withdrawals included. A month that is
- *     absent recorded nothing
+ * @param recorded what was recorded against each month, withdrawals included, <b>whatever its
+ *     provenance</b>. A month that is absent recorded nothing
+ * @param recordedByCheckIn the part of {@code recorded} that completed weekly check-ins put there
+ *     (slice 14). Counted on top of the month's plan rather than towards it — see {@link
+ *     #monthContribution}. Empty for every household that has never allocated a surplus, which is
+ *     what keeps their figures unchanged to the cent
  */
 public record GoalLedger(
         Money target,
         Money startingAmount,
         YearMonth targetMonth,
         List<PlanStep> steps,
-        Map<YearMonth, Money> recorded) {
+        Map<YearMonth, Money> recorded,
+        Map<YearMonth, Money> recordedByCheckIn) {
+
+    /** A ledger with no check-in contributions: every figure exactly as slice 11 shipped it. */
+    public GoalLedger(
+            Money target,
+            Money startingAmount,
+            YearMonth targetMonth,
+            List<PlanStep> steps,
+            Map<YearMonth, Money> recorded) {
+        this(target, startingAmount, targetMonth, steps, recorded, Map.of());
+    }
 
     public GoalLedger {
         Objects.requireNonNull(target, "target");
@@ -63,6 +78,14 @@ public record GoalLedger(
             byMonth.put(month.getKey(), month.getValue());
         }
         recorded = java.util.Collections.unmodifiableSortedMap(byMonth);
+        TreeMap<YearMonth, Money> byCheckIn = new TreeMap<>();
+        for (Map.Entry<YearMonth, Money> month : recordedByCheckIn.entrySet()) {
+            if (!month.getValue().currency().equals(currency)) {
+                throw new IllegalArgumentException("a goal's contributions are in its currency");
+            }
+            byCheckIn.put(month.getKey(), month.getValue());
+        }
+        recordedByCheckIn = java.util.Collections.unmodifiableSortedMap(byCheckIn);
     }
 
     public Currency currency() {
@@ -133,18 +156,36 @@ public record GoalLedger(
         return beganReached(period) ? Money.zero(currency()) : inForce(period);
     }
 
+    /** What completed weekly check-ins put towards this goal in {@code period}. Zero for none. */
+    public Money recordedByCheckIn(YearMonth period) {
+        return recordedByCheckIn.getOrDefault(period, Money.zero(currency()));
+    }
+
+    /** What was recorded against {@code period} other than by a check-in. */
+    public Money recordedOther(YearMonth period) {
+        return recorded(period).minus(recordedByCheckIn(period));
+    }
+
     /**
      * <b>The rule</b>: what this goal takes out of {@code period}'s left-over figure.
      *
-     * <p>{@code max(planned, recorded)}. Recording £50 against a £110 plan still counts £110,
-     * because the other £60 is still spoken for; a £200 top-up counts £200, because money moved
-     * towards a goal is not free to spend; and a withdrawal never raises it, because the spending a
-     * withdrawal pays for is not in the left-over figure either.
+     * <p>{@code max(planned, recordedOther) + recordedByCheckIn}. Recording £50 against a £110 plan
+     * still counts £110, because the other £60 is still spoken for; a £200 top-up counts £200,
+     * because money moved towards a goal is not free to spend; and a withdrawal never raises it,
+     * because the spending a withdrawal pays for is not in the left-over figure either.
+     *
+     * <p><b>A check-in's contribution counts on top</b> (docs/features/weekly-check-in.md, decision
+     * 6). It is a week's surplus moved out of the month, not part of the month's plan: under {@code
+     * max(planned, recorded)} a $63 surplus against a $110 plan with nothing yet recorded would
+     * still count $110, so the surplus would never leave the figure and next week's target would
+     * offer the same money again. With no check-in contributions the second term is zero and the
+     * first is slice 11's rule exactly — unchanged to the cent.
      */
     public Money monthContribution(YearMonth period) {
         Money planned = planned(period);
-        Money recordedThen = recorded(period);
-        return recordedThen.compareTo(planned) > 0 ? recordedThen : planned;
+        Money other = recordedOther(period);
+        Money towardsPlan = other.compareTo(planned) > 0 ? other : planned;
+        return towardsPlan.plus(recordedByCheckIn(period));
     }
 
     /**
@@ -158,7 +199,9 @@ public record GoalLedger(
      * GoalProjectionTest}; recorded in the feature doc's Decisions.
      */
     public Money stillToCome(YearMonth period) {
-        Money towardsPlan = recorded(period);
+        // A check-in's contribution is on top of the plan, so it does not shorten what the plan
+        // still expects: the two halves of the page read one rule (decision 6).
+        Money towardsPlan = recordedOther(period);
         if (towardsPlan.isNegative()) {
             towardsPlan = Money.zero(currency());
         }
@@ -191,7 +234,8 @@ public record GoalLedger(
 
     /** This ledger with another plan, for a preview and for {@code GoalProjection}'s search. */
     public GoalLedger withSteps(List<PlanStep> otherSteps) {
-        return new GoalLedger(target, startingAmount, targetMonth, otherSteps, recorded);
+        return new GoalLedger(
+                target, startingAmount, targetMonth, otherSteps, recorded, recordedByCheckIn);
     }
 
     /** The month after which the plan no longer changes, or empty for a plan with no steps. */

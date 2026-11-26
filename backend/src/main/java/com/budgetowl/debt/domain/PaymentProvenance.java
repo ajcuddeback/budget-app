@@ -24,5 +24,11 @@ public enum PaymentProvenance {
      * <p>Routinely runs the other way to a payment: a correction that raises the balance is a
      * negative amount, which is why no sign constraint exists on these columns.
      */
-    STATEMENT_CORRECTION
+    STATEMENT_CORRECTION,
+
+    /**
+     * A completed weekly check-in put the week's surplus here (slice 14, decision 5). A plan record
+     * like any other — nothing moved — and the one provenance next week's figure subtracts.
+     */
+    CHECK_IN
 }

@@ -241,6 +241,46 @@ public class TransactionService {
     }
 
     /**
+     * Files one row under a category, and changes nothing else about it.
+     *
+     * <p><b>The only transaction write the weekly check-in may make</b> (docs/features/
+     * weekly-check-in.md, "What a check-in never does"; {@code CheckInArchitectureTest}). It takes
+     * the row lock, refuses a transfer leg, refuses a row whose version is not the one the answer
+     * was given against, and refuses an archived category, which the check-in's picker never
+     * offers. Amount, date, account, payee, note and status are not parameters, so they cannot
+     * move.
+     *
+     * @param expectedVersion the version the person saw when they answered
+     * @throws ConflictException {@code stale-version} if the row moved since; {@code
+     *     transfer-leg-not-separate} for a transfer leg
+     * @throws NotFoundException if the row or the category is not this household's
+     */
+    @Transactional
+    public void recategorise(
+            UUID actorId, UUID transactionId, UUID categoryId, long expectedVersion) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        UUID householdId = membership.household().id();
+        Transaction transaction =
+                transactions
+                        .findByIdAndHouseholdIdForUpdate(transactionId, householdId)
+                        .orElseThrow(() -> new NotFoundException("no such transaction"));
+        requireNotHalfOfATransfer(transaction);
+        requireCurrentVersion(transaction, expectedVersion);
+        Category category = requireCategory(categoryId, householdId);
+        if (category.isArchived()) {
+            throw new ConflictException(
+                    ErrorCode.CONFLICT, "an archived category takes no new transactions");
+        }
+        transaction.fileUnder(category.id());
+        transactions.saveAndFlush(transaction);
+        log.info(
+                "transaction recategorised householdId={} transactionId={} byUserId={}",
+                householdId,
+                transactionId,
+                actorId);
+    }
+
+    /**
      * Deletes a transaction outright.
      *
      * <p>A real delete, not a tombstone: a household that typed the wrong amount needs the wrong

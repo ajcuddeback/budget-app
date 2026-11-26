@@ -295,30 +295,7 @@ public class BillService {
         Bill bill = require(billId, household.id());
         Currency currency = household.baseCurrency();
 
-        BillOccurrence occurrence =
-                occurrences.findOne(household.id(), billId, dueDate).orElse(null);
-
-        if (occurrence == null) {
-            if (!bill.isActive()) {
-                throw new ConflictException(
-                        ErrorCode.BILL_INACTIVE,
-                        "this bill is retired; restore it to record against it");
-            }
-            if (!projects(bill, dueDate)) {
-                throw new NotFoundException("this bill has no occurrence on that date");
-            }
-            if (occurrences.countForBill(household.id(), billId) >= MAXIMUM_OCCURRENCES_PER_BILL) {
-                throw new ConflictException(
-                        ErrorCode.CONFLICT,
-                        "this bill already has the most recorded occurrences we allow");
-            }
-            occurrence =
-                    BillOccurrence.recordedFor(
-                            bill,
-                            YearMonth.from(dueDate),
-                            dueDate,
-                            Money.of(bill.expectedAmount(), currency));
-        }
+        BillOccurrence occurrence = occurrenceToRecord(household, bill, dueDate);
 
         switch (recorded.status()) {
             case DUE -> occurrence.markDue();
@@ -345,6 +322,108 @@ public class BillService {
                 saved.status(),
                 actorId);
         return occurrenceView(bill, new ProjectedOccurrence(saved.dueDate(), saved), currency);
+    }
+
+    /**
+     * What a completed weekly check-in records about one occurrence: paid (with the charge that
+     * paid it, when there is one) or skipped.
+     *
+     * <p><b>The same path as {@link #record}</b> — the same role check, the same retired-bill and
+     * projection gates, the same per-bill cap and identity index — with the two things the
+     * occurrence {@code PUT} does not carry: the transaction, and whether a person said so ({@code
+     * MANUAL}) or a charge rule did ({@code AUTO_MATCHED}, the value bills reserved for exactly
+     * this). It refuses an occurrence that is no longer {@code DUE}: the check-in only ever settles
+     * what was still owed when it was shown.
+     *
+     * @param actual the amount paid, for {@code PAID}; null for "what was budgeted"
+     * @param transactionId the charge, or null. {@code ux_bill_occurrences_transaction_id} refuses
+     *     one that already settles another occurrence
+     * @return the occurrence's row id, for a debt payment that names it
+     * @throws ConflictException {@code bill-inactive}; {@code conflict} for an occurrence already
+     *     settled, or a charge already attached
+     */
+    @Transactional
+    public UUID recordFromCheckIn(
+            UUID actorId,
+            UUID billId,
+            LocalDate dueDate,
+            OccurrenceStatus status,
+            Money actual,
+            LocalDate paidDate,
+            UUID transactionId,
+            StatusSource source) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        Household household = membership.household();
+        Bill bill = require(billId, household.id());
+        Currency currency = household.baseCurrency();
+        if (!bill.isActive()) {
+            throw new ConflictException(
+                    ErrorCode.BILL_INACTIVE,
+                    "this bill is retired; restore it to record against it");
+        }
+
+        BillOccurrence occurrence = occurrenceToRecord(household, bill, dueDate);
+        if (occurrence.status() != OccurrenceStatus.DUE) {
+            throw new ConflictException(ErrorCode.CONFLICT, "this occurrence is already recorded");
+        }
+        switch (status) {
+            case SKIPPED -> occurrence.markSkipped();
+            case PAID ->
+                    occurrence.markPaid(
+                            actual == null
+                                    ? Money.of(occurrence.expectedAmount(), currency)
+                                    : actual,
+                            paidDate,
+                            transactionId,
+                            source,
+                            currency);
+            case DUE -> throw new IllegalArgumentException("a check-in settles an occurrence");
+        }
+        BillOccurrence saved = saveOccurrenceDistinctly(occurrence);
+        log.info(
+                "bill occurrence recorded from a check-in householdId={} billId={} dueDate={}"
+                        + " status={} source={} byUserId={}",
+                household.id(),
+                billId,
+                dueDate,
+                saved.status(),
+                saved.statusSource(),
+                actorId);
+        return saved.id();
+    }
+
+    /**
+     * The row to record against: the existing one, or a new one where the schedule projects the
+     * date. Shared by both writers so the gates cannot drift apart.
+     */
+    private BillOccurrence occurrenceToRecord(Household household, Bill bill, LocalDate dueDate) {
+        Currency currency = household.baseCurrency();
+        UUID billId = bill.id();
+        BillOccurrence occurrence =
+                occurrences.findOne(household.id(), billId, dueDate).orElse(null);
+
+        if (occurrence == null) {
+            if (!bill.isActive()) {
+                throw new ConflictException(
+                        ErrorCode.BILL_INACTIVE,
+                        "this bill is retired; restore it to record against it");
+            }
+            if (!projects(bill, dueDate)) {
+                throw new NotFoundException("this bill has no occurrence on that date");
+            }
+            if (occurrences.countForBill(household.id(), billId) >= MAXIMUM_OCCURRENCES_PER_BILL) {
+                throw new ConflictException(
+                        ErrorCode.CONFLICT,
+                        "this bill already has the most recorded occurrences we allow");
+            }
+            occurrence =
+                    BillOccurrence.recordedFor(
+                            bill,
+                            YearMonth.from(dueDate),
+                            dueDate,
+                            Money.of(bill.expectedAmount(), currency));
+        }
+        return occurrence;
     }
 
     /**
@@ -584,6 +663,12 @@ public class BillService {
             if (mentions(violation, "ux_bill_occurrences_bill_due_date")) {
                 throw new ConflictException(
                         ErrorCode.CONFLICT, "this occurrence was recorded a moment ago");
+            }
+            if (mentions(violation, "ux_bill_occurrences_transaction_id")) {
+                // Only the check-in's attach sets a transaction (slice 14). One charge settles at
+                // most one occurrence, and a second attach is told so rather than given a 500.
+                throw new ConflictException(
+                        ErrorCode.CONFLICT, "this charge already settles another occurrence");
             }
             throw violation;
         }

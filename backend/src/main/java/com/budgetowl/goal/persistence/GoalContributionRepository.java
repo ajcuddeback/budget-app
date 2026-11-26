@@ -73,11 +73,11 @@ public interface GoalContributionRepository extends Repository<GoalContribution,
     @Query(
             """
             select new com.budgetowl.goal.persistence.GoalPeriodTotal(
-                       c.goalId, c.period, sum(c.amount))
+                       c.goalId, c.period, c.provenance, sum(c.amount))
             from GoalContribution c
             where c.householdId = :householdId
               and c.goalId in :goalIds
-            group by c.goalId, c.period
+            group by c.goalId, c.period, c.provenance
             """)
     List<GoalPeriodTotal> totalsByPeriod(
             @Param("householdId") UUID householdId, @Param("goalIds") Collection<UUID> goalIds);

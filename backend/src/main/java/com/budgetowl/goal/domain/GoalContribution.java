@@ -4,6 +4,8 @@ import com.budgetowl.common.HouseholdOwned;
 import com.budgetowl.common.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -71,6 +73,13 @@ public class GoalContribution implements HouseholdOwned {
     @Column(name = "transaction_id")
     private UUID transactionId;
 
+    /**
+     * Fixed at creation. See {@link ContributionProvenance}: it changes how the month counts it.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provenance", nullable = false, updatable = false)
+    private ContributionProvenance provenance = ContributionProvenance.USER_LOGGED;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -101,6 +110,23 @@ public class GoalContribution implements HouseholdOwned {
         contribution.on(on);
         contribution.correctAmount(amount, goal);
         return contribution;
+    }
+
+    /**
+     * A completed weekly check-in's allocation of the week's surplus. Positive, and counted on top
+     * of the month's plan (docs/features/weekly-check-in.md, decision 6).
+     */
+    public static GoalContribution fromCheckIn(Goal goal, LocalDate on, Money amount) {
+        if (!Objects.requireNonNull(amount, "amount").isPositive()) {
+            throw new IllegalArgumentException("a check-in allocates a positive surplus");
+        }
+        GoalContribution contribution = to(goal, on, amount);
+        contribution.provenance = ContributionProvenance.CHECK_IN;
+        return contribution;
+    }
+
+    public ContributionProvenance provenance() {
+        return provenance;
     }
 
     public UUID id() {

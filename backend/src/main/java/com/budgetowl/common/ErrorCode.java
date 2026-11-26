@@ -306,6 +306,33 @@ public enum ErrorCode {
     TRANSFER_LEG_IN_ENVELOPE(
             "transfer-leg-in-envelope", 409, "One of these rows is logged against an envelope"),
 
+    /**
+     * A check-in can be started, answered and completed only for the current ISO week or the one
+     * before, by the server's clock with a day's slack (weekly-check-in.md, decision 8).
+     */
+    CHECK_IN_WEEK_OUT_OF_RANGE(
+            "check-in-week-out-of-range", 422, "That week cannot be checked in now"),
+
+    /** Another week's draft is open. {@code params.week} names it, so the screen can offer it. */
+    CHECK_IN_DRAFT_OPEN("check-in-draft-open", 409, "Another week's check-in is still open"),
+
+    /** The check-in is completed, and a completed check-in is read-only. */
+    CHECK_IN_COMPLETED("check-in-completed", 409, "This check-in is already finished"),
+
+    /**
+     * What the person answered, or saw, has changed since (decision 9). {@code params.items} lists
+     * each affected item with its reason. Nothing was written.
+     */
+    CHECK_IN_STALE("check-in-stale", 409, "Something in this check-in changed"),
+
+    /** A surplus is offered and step 4 has no answer. */
+    CHECK_IN_INCOMPLETE("check-in-incomplete", 422, "Choose where the surplus goes"),
+
+    PAYEE_RULE_LIMIT_REACHED(
+            "payee-rule-limit-reached", 409, "This household has too many payee rules"),
+    CHARGE_RULE_LIMIT_REACHED(
+            "charge-rule-limit-reached", 409, "This household has too many charge rules"),
+
     RATE_LIMITED("rate-limited", 429, "Too many attempts"),
     INTERNAL_ERROR("internal-error", 500, "Internal error");
 

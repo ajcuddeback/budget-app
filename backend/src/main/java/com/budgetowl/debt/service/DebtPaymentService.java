@@ -166,6 +166,55 @@ public class DebtPaymentService {
     }
 
     /**
+     * Records a completed weekly check-in's surplus against a debt, dated today, with provenance
+     * {@code CHECK_IN} (docs/features/weekly-check-in.md, decision 5).
+     *
+     * <p><b>The same path as {@link #log}</b>: the role first, the debt through the household, the
+     * paid-off refusal, the shared cap, the same {@link #draft} split and the same
+     * settle-or-reopen. Nothing moves at a bank; this is a plan record (ADR-0035).
+     *
+     * @throws ConflictException {@code debt-paid-off}, or {@code conflict} at the payment cap
+     */
+    @Transactional
+    public DebtPaymentView logFromCheckIn(UUID actorId, UUID debtId, Money amount) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        Household household = membership.household();
+        Debt debt = require(debtId, household.id());
+        requireNotSettled(debt);
+        requireRoomForAPayment(payments, household.id(), debt.id());
+        if (!amount.currency().equals(debt.currency()) || !amount.isPositive()) {
+            throw new IllegalArgumentException("a check-in pays a positive amount in the debt's");
+        }
+        DebtPayment saved = save(draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN));
+        settleOrReopen(debt);
+        log.info(
+                "debt payment recorded from a check-in householdId={} debtId={} paymentId={}"
+                        + " byUserId={}",
+                household.id(),
+                debtId,
+                saved.id(),
+                actorId);
+        return view(saved, debt.currency());
+    }
+
+    /**
+     * What completed check-ins recorded against base-currency debts in a month: the term next
+     * week's figure takes off {@code free(M)} (decision 1). A {@code VIEWER} may read it.
+     */
+    @Transactional(readOnly = true)
+    public Money checkInPaymentsIn(UUID actorId, java.time.YearMonth period) {
+        Household household = memberships.requireMembership(actorId).household();
+        Currency base = household.baseCurrency();
+        java.math.BigDecimal total =
+                payments.checkInPaymentsBetween(
+                        household.id(),
+                        base.getCurrencyCode(),
+                        period.atDay(1),
+                        period.atEndOfMonth());
+        return total == null ? Money.zero(base) : Money.of(total, base);
+    }
+
+    /**
      * Corrects a payment somebody recorded.
      *
      * <p>The stored interest stands and the principal takes the difference — see {@code
@@ -289,6 +338,22 @@ public class DebtPaymentService {
                 Money.of(unsaved.balanceAfter(), currency));
     }
 
+    /**
+     * The balance a payment of {@code amount} would leave, built by {@link #draft} and discarded:
+     * the weekly check-in's debt choice, which every member reads. <b>Membership, not write
+     * access</b>, unlike {@link #preview}: the amount is the server's own surplus, never a figure a
+     * caller supplied, so a {@code VIEWER} reading the week learns nothing they could not already
+     * read on the debt's page.
+     */
+    @Transactional(readOnly = true)
+    public Money balanceAfterCheckInPayment(UUID actorId, UUID debtId, Money amount) {
+        HouseholdMember membership = memberships.requireMembership(actorId);
+        Debt debt = require(debtId, membership.household().id());
+        return Money.of(
+                draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN).balanceAfter(),
+                debt.currency());
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     /**
@@ -299,6 +364,11 @@ public class DebtPaymentService {
      * commits is the figure it gets after.
      */
     private DebtPayment draft(Debt debt, LocalDate paidDate, Money amount) {
+        return draft(debt, paidDate, amount, PaymentProvenance.USER_LOGGED);
+    }
+
+    private DebtPayment draft(
+            Debt debt, LocalDate paidDate, Money amount, PaymentProvenance provenance) {
         DebtFacts facts = balances.factsFor(debt);
         Money balanceBefore = facts.balance();
         return DebtPayment.of(
@@ -307,7 +377,7 @@ public class DebtPaymentService {
                 amount,
                 interestOn(balanceBefore, facts),
                 balanceBefore,
-                PaymentProvenance.USER_LOGGED);
+                provenance);
     }
 
     /**

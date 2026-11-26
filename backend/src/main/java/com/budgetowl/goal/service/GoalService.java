@@ -10,6 +10,7 @@ import com.budgetowl.common.InvalidRequestException;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.NotFoundException;
 import com.budgetowl.common.web.PageResponse;
+import com.budgetowl.goal.domain.ContributionProvenance;
 import com.budgetowl.goal.domain.Goal;
 import com.budgetowl.goal.domain.GoalContribution;
 import com.budgetowl.goal.domain.GoalContributionStep;
@@ -497,6 +498,39 @@ public class GoalService {
     }
 
     /**
+     * Records a completed weekly check-in's surplus against a goal, dated today, with provenance
+     * {@code CHECK_IN} (docs/features/weekly-check-in.md, decision 5).
+     *
+     * <p><b>The same path as {@link #contribute}</b>: the role checked first, the goal resolved
+     * through the household, the archived refusal and the per-goal cap. Positive only, with no note
+     * and no transaction: a surplus is money the household decided to set aside, not a charge.
+     *
+     * @throws ConflictException {@code goal-archived}, {@code goal-limit-reached}
+     */
+    @Transactional
+    public ContributionView contributeFromCheckIn(UUID actorId, UUID goalId, Money amount) {
+        Household household = memberships.requireWriteAccess(actorId).household();
+        Goal goal = require(goalId, household.id());
+        requireNotArchived(goal);
+        if (contributions.countByHouseholdIdAndGoalId(household.id(), goal.id())
+                >= MAXIMUM_CONTRIBUTIONS_PER_GOAL) {
+            throw new ConflictException(
+                    ErrorCode.GOAL_LIMIT_REACHED,
+                    "a goal is limited to " + MAXIMUM_CONTRIBUTIONS_PER_GOAL + " contributions");
+        }
+        GoalContribution saved =
+                saveContribution(GoalContribution.fromCheckIn(goal, LocalDate.now(clock), amount));
+        log.info(
+                "goal contribution recorded from a check-in householdId={} goalId={}"
+                        + " contributionId={} byUserId={}",
+                household.id(),
+                goalId,
+                saved.id(),
+                actorId);
+        return contributionView(goal, saved);
+    }
+
+    /**
      * Corrects a contribution. Three-way on {@code note} and {@code transactionId}. A contribution
      * of the right household but another goal is a {@code 404} (threat model, attack 4).
      */
@@ -610,7 +644,9 @@ public class GoalService {
                                         currency,
                                         AmountText.Sign.NOT_NEGATIVE,
                                         "monthlyAmount"));
-        GoalLedger substituted = new GoalLedger(target, start, month, plan, ledger.recorded());
+        GoalLedger substituted =
+                new GoalLedger(
+                        target, start, month, plan, ledger.recorded(), ledger.recordedByCheckIn());
 
         return new GoalView(
                 goal.id(),
@@ -759,10 +795,12 @@ public class GoalService {
         Map<UUID, Goal> byId = new HashMap<>();
         Map<UUID, List<PlanStep>> plans = new HashMap<>();
         Map<UUID, Map<YearMonth, Money>> recorded = new HashMap<>();
+        Map<UUID, Map<YearMonth, Money>> byCheckIn = new HashMap<>();
         for (Goal goal : found) {
             byId.put(goal.id(), goal);
             plans.put(goal.id(), new ArrayList<>());
             recorded.put(goal.id(), new HashMap<>());
+            byCheckIn.put(goal.id(), new HashMap<>());
         }
         for (GoalContributionStep step : steps.findForGoals(householdId, ids)) {
             Goal goal = byId.get(step.goalId());
@@ -774,8 +812,14 @@ public class GoalService {
         }
         for (GoalPeriodTotal total : contributions.totalsByPeriod(householdId, ids)) {
             Goal goal = byId.get(total.goalId());
-            recorded.get(goal.id())
-                    .put(YearMonth.from(total.period()), Money.of(total.total(), goal.currency()));
+            YearMonth month = YearMonth.from(total.period());
+            Money sum = Money.of(total.total(), goal.currency());
+            // One row per provenance: `recorded` holds every one of them, as `saved` always has,
+            // and the check-in's part is also held apart for the fifth term (decision 6).
+            recorded.get(goal.id()).merge(month, sum, Money::plus);
+            if (total.provenance() == ContributionProvenance.CHECK_IN) {
+                byCheckIn.get(goal.id()).merge(month, sum, Money::plus);
+            }
         }
         for (Goal goal : found) {
             ledgers.put(
@@ -785,7 +829,8 @@ public class GoalService {
                             goal.startingAmount(),
                             goal.targetMonth().orElse(null),
                             plans.get(goal.id()),
-                            recorded.get(goal.id())));
+                            recorded.get(goal.id()),
+                            byCheckIn.get(goal.id())));
         }
         return ledgers;
     }

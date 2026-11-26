@@ -288,6 +288,99 @@ public class PayoffPlanService {
         return strategyOf(plans.findByHouseholdId(householdId).orElse(null)).name();
     }
 
+    /** Whether the household has set a plan at all. A {@code VIEWER} may read this. */
+    @Transactional(readOnly = true)
+    public boolean hasPlan(UUID actorId) {
+        Household household = memberships.requireMembership(actorId).household();
+        return plans.findByHouseholdId(household.id()).isPresent();
+    }
+
+    /**
+     * What a one-off payment against one base-currency debt would do to its payoff month and to the
+     * debt-free month, under the selected strategy — <b>computed, never stored</b>.
+     *
+     * <p>For the weekly check-in's debt choice (<em>"Moves Visa •8823 from Apr 2027 to Mar
+     * 2027"</em>). The caller passes the balance the payment would leave, which it takes from
+     * {@link DebtPaymentService#preview} — the real write path's split, discarded — so this cannot
+     * disagree with what recording the payment then reports. The ladder is the one every other
+     * projection uses.
+     *
+     * @param balanceAfter what the debt would owe after the payment, in its currency
+     * @return the months, each null where a ladder does not clear or the debt is not in it
+     */
+    @Transactional(readOnly = true)
+    public OneOffPayoff oneOffPayment(UUID actorId, UUID debtId, Money balanceAfter) {
+        Household household = memberships.requireMembership(actorId).household();
+        Currency base = household.baseCurrency();
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        PayoffStrategy strategy = strategyOf(plan);
+        List<DebtFacts> now = new ArrayList<>();
+        for (DebtFacts facts : balances.factsFor(household.id(), false)) {
+            if (facts.isInThePlan() && facts.debt().currency().equals(base)) {
+                now.add(facts);
+            }
+        }
+        if (now.isEmpty()) {
+            return new OneOffPayoff(null, null, null, null);
+        }
+        List<DebtFacts> with = new ArrayList<>(now.size());
+        for (DebtFacts facts : now) {
+            if (!facts.id().equals(debtId)) {
+                with.add(facts);
+            } else if (balanceAfter.isPositive()) {
+                with.add(
+                        new DebtFacts(
+                                facts.debt(),
+                                balanceAfter,
+                                facts.anchoredBalance(),
+                                facts.balanceSource(),
+                                facts.balanceAsOf(),
+                                facts.estimatedMonths(),
+                                facts.stale(),
+                                facts.apr(),
+                                facts.aprSource(),
+                                facts.aprDerivable(),
+                                facts.paymentCount() + 1,
+                                facts.lastPaidDate(),
+                                facts.firstPaymentMonth()));
+            }
+        }
+        Money amount = groupAmount(plan, base, base, now);
+        PayoffProjection before = ladder.project(strategy, amount, ladderDebts(now), firstMonth());
+        PayoffProjection after =
+                with.isEmpty()
+                        ? null
+                        : ladder.project(strategy, amount, ladderDebts(with), firstMonth());
+        boolean clearedByIt = with.size() < now.size();
+        return new OneOffPayoff(
+                payoffMonthOf(before, debtId),
+                clearedByIt ? firstMonth() : payoffMonthOf(after, debtId),
+                debtFreeMonthOf(before),
+                after == null ? firstMonth() : debtFreeMonthOf(after));
+    }
+
+    /** The months a one-off payment moves. Months, never days: payoff dates are months. */
+    public record OneOffPayoff(
+            YearMonth payoffMonthNow,
+            YearMonth payoffMonthWith,
+            YearMonth debtFreeMonthNow,
+            YearMonth debtFreeMonthWith) {}
+
+    private static YearMonth payoffMonthOf(PayoffProjection projection, UUID debtId) {
+        if (projection instanceof PayoffProjection.Ranked ranked) {
+            for (PayoffProjection.Rung rung : ranked.rungs()) {
+                if (rung.debt().id().equals(debtId)) {
+                    return rung.payoffMonth();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static YearMonth debtFreeMonthOf(PayoffProjection projection) {
+        return projection instanceof PayoffProjection.Ranked ranked ? ranked.debtFreeMonth() : null;
+    }
+
     // ------------------------------------------------------------------------------- internals
 
     private PlanView view(

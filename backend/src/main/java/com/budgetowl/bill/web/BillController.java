@@ -4,6 +4,7 @@ import com.budgetowl.auth.service.TransportAuthentication;
 import com.budgetowl.bill.service.BillChanges;
 import com.budgetowl.bill.service.BillService;
 import com.budgetowl.bill.service.BillView;
+import com.budgetowl.bill.service.BillsForPeriod;
 import com.budgetowl.bill.service.NewBill;
 import com.budgetowl.bill.service.StatusRecord;
 import com.budgetowl.bill.web.BillRequests.CreateBillRequest;
@@ -11,11 +12,19 @@ import com.budgetowl.bill.web.BillRequests.RecordStatusRequest;
 import com.budgetowl.bill.web.BillRequests.UpdateBillRequest;
 import com.budgetowl.bill.web.BillResponses.BillResponse;
 import com.budgetowl.bill.web.BillResponses.BillsResponse;
+import com.budgetowl.bill.web.BillResponses.MappingResponse;
 import com.budgetowl.bill.web.BillResponses.OccurrenceResponse;
+import com.budgetowl.checkin.service.ChargeRuleService;
+import com.budgetowl.checkin.service.CheckInViews.ChargeRuleView;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,9 +60,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class BillController {
 
     private final BillService bills;
+    private final ChargeRuleService chargeRules;
 
-    public BillController(BillService bills) {
+    public BillController(BillService bills, ChargeRuleService chargeRules) {
         this.bills = bills;
+        this.chargeRules = chargeRules;
     }
 
     /**
@@ -67,7 +78,30 @@ public class BillController {
             TransportAuthentication caller,
             @RequestParam YearMonth period,
             @RequestParam(defaultValue = "false") boolean includeInactive) {
-        return BillsResponse.of(bills.list(caller.userId(), period, includeInactive));
+        BillsForPeriod found = bills.list(caller.userId(), period, includeInactive);
+        // Each bill's charge rules (slice 14), in one more query for the whole list. Both services
+        // resolve the household from the caller; neither trusts the other's ids.
+        Set<UUID> ids = new HashSet<>();
+        for (BillView bill : found.bills()) {
+            ids.add(bill.id());
+        }
+        Map<UUID, List<MappingResponse>> mappings = new HashMap<>();
+        for (Map.Entry<UUID, List<ChargeRuleView>> rules :
+                chargeRules.forBills(caller.userId(), ids).entrySet()) {
+            mappings.put(
+                    rules.getKey(),
+                    rules.getValue().stream()
+                            .map(
+                                    rule ->
+                                            new MappingResponse(
+                                                    rule.id(),
+                                                    rule.payeeName(),
+                                                    rule.accountId(),
+                                                    rule.accountName(),
+                                                    rule.accountLastFour()))
+                            .toList());
+        }
+        return BillsResponse.of(found, mappings);
     }
 
     /** {@code OWNER} or {@code MEMBER}, enforced in the service. */
