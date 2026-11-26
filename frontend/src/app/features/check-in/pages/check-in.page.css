@@ -76,6 +76,10 @@
 /* ---- a step ------------------------------------------------------------------------------ */
 
 .step {
+  /* The step's parts (heading, info cards, the item list, the week's line, the footer) are
+     siblings; without a gap they touched each other (slice-14 browser pass). */
+  display: grid;
+  gap: var(--space-3);
   scroll-margin-block-start: var(--space-4);
 }
 
