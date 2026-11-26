@@ -59,9 +59,25 @@ it keep on the phone, and how? What happens to an edit made with no signal?
   no redirects (decision 3), and, in a release build, the zone value `#flutter.io.allow_http:
   false`, which makes Flutter's engine refuse an `http://` connection at the socket unless the host
   is loopback (`lib/core/http/cleartext_policy.dart`, wrapped around `runApp`). The platform files
-  stay, as declarations of the same policy. Likewise, Android's user-installed CAs are trusted by
-  that config but not by Dart's TLS, so a private CA works on iOS and fails closed on Android
-  (a known gap in `mobile-app.md`).
+  stay, as declarations of the same policy.
+- **A private CA on Android** (updated 2026-11-26, slice 15 phase 2). Android's user-installed
+  CAs are trusted by `network_security_config.xml` but not, on their own, by Dart's TLS, which
+  reads only the system store; for phase 1 a private CA worked on iOS and failed closed on
+  Android. Now `MainActivity` reads the user-installed CAs (`AndroidCAStore`, aliases `user:…`)
+  through a read-only platform channel, and on Android the app's one transport builds its
+  `HttpClient` with a `SecurityContext` that keeps the system roots and adds those certificates
+  as trust anchors (`lib/core/http/user_trust.dart`). This trusts exactly the set the app's own
+  network security config already declares (`<certificates src="user" />`, pinned by a test); it
+  adds no `badCertificateCallback`, and the chain and host name are verified as for any server.
+  The set is read once per launch, before the first request: a CA installed while the app runs
+  is trusted from its next launch, and one the person removes is no longer trusted from then
+  either. A store that cannot be read means the system roots alone (fails closed). Real-socket
+  tests prove it with a per-run test CA through the same code path; **the channel itself needs
+  checking on a device**, since no test here runs Android.
+- **Writes wait for this launch's version check** (2026-11-26, slice 15 phase 2). Decision 2's
+  `/api/meta` is checked at every launch, and until it has passed, the app sends no write — sign-in
+  included — whatever else has reached the server; a check that fails (busy, timed out) keeps
+  writes off and reads on, and is retried on the next request that reaches the server.
 - `/api/meta` becomes the sixth public route, rate-limited and pinned to an exact body by a test.
 - The cache adds a native dependency (SQLCipher) to both platforms' builds.
 - Because the cache is wiped on any `401`, a revoked phone loses its data the next time it is

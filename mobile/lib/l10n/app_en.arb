@@ -7722,6 +7722,10 @@
       }
     }
   },
+  "offline_versionUnconfirmed": "Changes are off until the server confirms it runs a version this app works with. Refresh to check again.",
+  "@offline_versionUnconfirmed": {
+    "description": "Mobile only (l10n/mobile.en.json \"offline.versionUnconfirmed\")."
+  },
   "offline_write": "You're offline — this needs a connection",
   "@offline_write": {
     "description": "Mobile only (l10n/mobile.en.json \"offline.write\")."

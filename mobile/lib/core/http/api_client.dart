@@ -24,6 +24,10 @@ import 'package:flutter/foundation.dart';
 /// - **Nothing is logged** but method, a redacted path and a status — in a debug build only.
 /// - **Errors leave as [AppError]**: a problem response's code and params, or which kind of
 ///   connection failure it was. Never the server's title or detail.
+/// - **No write before the version check has passed this launch** ([versionConfirmed]): anything
+///   but a `GET` is refused before it is sent, whoever calls. The screens disable their write
+///   controls on the same fact (`Reachability.unconfirmed`); this is the backstop for a caller that
+///   forgets. A revocation is not a write in this sense and is never held back.
 final class ApiClient {
   ApiClient({
     required this.server,
@@ -31,6 +35,7 @@ final class ApiClient {
     required TokenStore tokens,
     required void Function() onSessionEnded,
     required void Function(Reachability) onOutcome,
+    required this.versionConfirmed,
     bool logRequests = kDebugMode,
   }) : _dio = Dio(
          BaseOptions(
@@ -55,6 +60,10 @@ final class ApiClient {
 
   final ServerAddress server;
   final Dio _dio;
+
+  /// Whether `/api/meta` has confirmed this server's version this launch. Until it says so, only
+  /// reads are sent.
+  final bool Function() versionConfirmed;
 
   /// A `GET` whose body is a JSON object.
   Future<JsonMap> getJson(String path, {Map<String, String> query = const {}}) async =>
@@ -125,6 +134,9 @@ final class ApiClient {
     Map<String, String> headers = const {},
     bool public = false,
   }) async {
+    // Fails closed: until /api/meta has confirmed the version this launch, nothing but a read
+    // leaves the phone. Refused as "offline", the message every write control already shows.
+    if (method.toUpperCase() != 'GET' && !versionConfirmed()) throw const AppError.offline();
     try {
       return await _dio.request<String>(
         path,

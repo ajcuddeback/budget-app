@@ -1351,10 +1351,30 @@ _Added 2026-11-26 — slice 15._
 the app as "certificate not trusted". `network_security_config.xml` governs the platform's Java
 networking; `dart:io` reads the system store only.
 
-**What to do.** Nothing silently: it fails closed, and it is a recorded known gap in
-`mobile-app.md`. Never add a `badCertificateCallback` to "fix" it — the guards refuse one.
+**What to do.** Hand Dart the same set, never relax the check. `MainActivity` reads the
+user-installed CAs (`KeyStore.getInstance("AndroidCAStore")`, aliases starting `user:`) through
+the read-only `app.budgetowl/trust` channel, and `mobile/lib/core/http/user_trust.dart` adds them
+to a `SecurityContext(withTrustedRoots: true)` that the app's one transport is built with, once,
+before its first request. Any failure reading them means the system roots only (fails closed).
+It is only right because the app's `network_security_config.xml` already trusts
+`<certificates src="user" />` (a test pins it). Never add a `badCertificateCallback` to "fix" a
+certificate error — the guards refuse one. The channel needs checking on a device.
 
-_Added 2026-11-26 — slice 15._
+_Added 2026-11-26 — slice 15; updated the same day in phase 2, when the channel closed the gap._
+
+## Uri.parse is not a validator, and `Uri.origin` throws
+
+**Symptom.** A stored token origin of `''` or `owl.lan` hung the phone on its starting spinner:
+`Uri.parse('')` and `Uri.parse('owl.lan')` both succeed (a relative path), and `.origin` then
+throws `StateError` inside an unawaited start-up that nothing caught. `Uri.tryParse` alone does
+not help: it returns the same parsed relative URI.
+
+**What to do.** Check the scheme is `http` or `https` and the host is not empty before calling
+`.origin` (`TokenStore.originOf`), and treat anything else as a value storage was not trusted to
+hold. A future run with `unawaited`/`scheduleMicrotask` needs its own `catch`, or its failure is
+invisible.
+
+_Added 2026-11-26 — slice 15 phase 2._
 
 ## A public write from a client with no cookie jar still needs the CSRF pair
 
