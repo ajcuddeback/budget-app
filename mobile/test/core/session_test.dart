@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/cache/cache_holder.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
@@ -228,6 +230,141 @@ void main() {
     final state = c.read(sessionProvider) as SessionSignedOut;
     expect(state.notice, SignInNotice.joined);
     expect(state.email, 'grace@example.com');
+  });
+
+  group('security audit fixes', () {
+    test(
+      'L2: a token revoked while the phone was off is wiped at start-up, with the notice',
+      () async {
+        final server = FixtureServer.load('demo', state: 'revoked');
+        final phone = TestPhone(server: server)..signedIn('owner');
+        final c = containerFor(phone);
+
+        final state = await until<SessionSignedOut>(c);
+
+        expect(state.notice, SignInNotice.expired);
+        expect(c.read(localStateProvider).wipes, 1);
+        expect(phone.store.values.keys, ['budget_owl.server']);
+        expect(server.served, contains('GET /api/auth/me'));
+      },
+    );
+
+    test('L3: connecting to a new server wipes what the previous one left', () async {
+      final server = FixtureServer.load('demo', state: 'connect');
+      final phone = TestPhone(server: server);
+      phone.store.values
+        ..['budget_owl.server'] = 'http://owl.lan'
+        ..['budget_owl.bearer_token'] = 'fixture-token-owner'
+        ..['budget_owl.token_origin'] = 'http://owl.lan';
+      final c = containerFor(phone);
+      await until<SessionNoServer>(c);
+
+      await c.read(sessionProvider.notifier).connect(testServer());
+
+      expect(phone.store.values, {'budget_owl.server': testServerOrigin});
+    });
+
+    test('L3: after that, a relaunch sends no request carrying the old token', () async {
+      final server = FixtureServer.load('demo', state: 'connect');
+      final phone = TestPhone(server: server);
+      phone.store.values
+        ..['budget_owl.server'] = 'http://owl.lan'
+        ..['budget_owl.bearer_token'] = 'fixture-token-owner'
+        ..['budget_owl.token_origin'] = 'http://owl.lan';
+      final first = ProviderContainer(overrides: phone.overrides, retry: noRetry);
+      while (first.read(sessionProvider) is! SessionNoServer) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      await first.read(sessionProvider.notifier).connect(testServer());
+      first.dispose();
+
+      final again = containerFor(phone);
+      await until<SessionSignedOut>(again);
+
+      expect(server.authorizations, everyElement(isNull));
+    });
+
+    test('L3: a token issued by another origin is never sent, whatever else is stored', () async {
+      final server = FixtureServer.load('demo', state: 'connect');
+      final phone = TestPhone(server: server)..connected();
+      phone.store.values
+        ..['budget_owl.bearer_token'] = 'fixture-token-owner'
+        ..['budget_owl.token_origin'] = 'https://old.example.test';
+      final c = containerFor(phone);
+
+      await until<SessionSignedOut>(c);
+
+      expect(server.authorizations, everyElement(isNull));
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('L4: leaving the unsupported-version screen still ends the token on the server', () async {
+      final adapter = ScriptedAdapter((o) async {
+        if (o.path.endsWith('/api/meta')) {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          return json(200, {'app': 'budget-owl', 'apiVersion': 2, 'minimumClientApiVersion': 2});
+        }
+        if (o.path.endsWith('/api/auth/logout')) return json(204, null);
+        return json(503, {'code': 'unavailable'});
+      });
+      final phone = TestPhone(server: adapter)..signedIn('owner');
+      final c = containerFor(phone);
+      await until<SessionUnsupported>(c);
+
+      await c.read(sessionProvider.notifier).signOut(forgetServer: true);
+
+      final logout = adapter.requests.where((o) => o.path.endsWith('/api/auth/logout'));
+      expect(logout, hasLength(1));
+      expect(logout.single.headers['Authorization'], 'Bearer fixture-token-owner');
+      expect(phone.store.values, isEmpty);
+    });
+
+    test('L4: a sign-in whose follow-up read fails ends the new token on the server', () async {
+      final adapter = ScriptedAdapter((o) async {
+        if (o.path.endsWith('/api/meta')) {
+          return json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1});
+        }
+        if (o.path.endsWith('/api/auth/token')) return json(201, {'token': 'fixture-token-new'});
+        if (o.path.endsWith('/api/auth/logout')) return json(204, null);
+        return json(500, {'code': 'internal-error'});
+      });
+      final phone = TestPhone(server: adapter)..connected();
+      final c = containerFor(phone);
+      await until<SessionSignedOut>(c);
+
+      await expectLater(
+        c
+            .read(sessionProvider.notifier)
+            .signIn(email: 'ada@example.com', password: _wrongGuess, deviceLabel: 'Phone'),
+        throwsA(isA<AppError>()),
+      );
+
+      final logout = adapter.requests.where((o) => o.path.endsWith('/api/auth/logout'));
+      expect(logout, hasLength(1));
+      expect(logout.single.headers['Authorization'], 'Bearer fixture-token-new');
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('L5: a new installation reads nothing an earlier one left in the Keychain', () async {
+      final server = FixtureServer.load('demo', state: 'demo');
+      final phone = TestPhone(server: server, freshInstall: true)..signedIn('owner');
+      final c = containerFor(phone);
+
+      await until<SessionNoServer>(c);
+
+      expect(phone.store.values, isEmpty);
+      expect(server.served, isEmpty);
+      expect(File(phone.installMarker).existsSync(), isTrue);
+    });
+
+    test('L5: the next launch of the same installation keeps what it stored', () async {
+      final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))..signedIn('owner');
+      final c = containerFor(phone);
+
+      await until<SessionSignedIn>(c);
+
+      expect(phone.store.values['budget_owl.bearer_token'], 'fixture-token-owner');
+    });
   });
 }
 

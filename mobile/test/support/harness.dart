@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
+import 'package:budget_owl/core/storage/install_marker.dart';
 import 'package:budget_owl/core/storage/secure_store.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,13 +36,25 @@ final class TestPhone {
     required this.server,
     MemorySecureStore? store,
     Directory? cacheDirectory,
+    Directory? supportDirectory,
     this.allowLocalCleartext = false,
+    bool freshInstall = false,
   }) : store = store ?? MemorySecureStore(),
-       cacheDirectory = cacheDirectory ?? Directory.systemTemp.createTempSync('budget-owl-cache');
+       cacheDirectory = cacheDirectory ?? Directory.systemTemp.createTempSync('budget-owl-cache'),
+       supportDirectory =
+           supportDirectory ?? Directory.systemTemp.createTempSync('budget-owl-support') {
+    // Every phone has run the app before, unless a test says this launch is its first.
+    if (!freshInstall) File(installMarker).writeAsStringSync('');
+  }
 
   final HttpClientAdapter server;
   final MemorySecureStore store;
   final Directory cacheDirectory;
+
+  /// Application Support, where the install marker lives.
+  final Directory supportDirectory;
+
+  String get installMarker => '${supportDirectory.path}/${InstallMarker.fileName}';
   final bool allowLocalCleartext;
   DateTime now = demoNow;
 
@@ -52,12 +65,14 @@ final class TestPhone {
   void signedIn(String who) {
     connected();
     store.values['budget_owl.bearer_token'] = 'fixture-token-$who';
+    store.values['budget_owl.token_origin'] = testServerOrigin;
   }
 
   List<Override> get overrides => [
     httpAdapterProvider.overrideWithValue(server),
     secureStoreProvider.overrideWithValue(store),
     cacheDirectoryProvider.overrideWith((ref) async => cacheDirectory),
+    supportDirectoryProvider.overrideWith((ref) async => supportDirectory),
     clockProvider.overrideWithValue(() => now),
     allowLocalCleartextProvider.overrideWithValue(allowLocalCleartext),
     targetPlatformProvider.overrideWithValue(TargetPlatform.android),

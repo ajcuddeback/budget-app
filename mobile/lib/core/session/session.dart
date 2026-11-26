@@ -13,6 +13,7 @@ import 'package:budget_owl/core/server/server_check.dart';
 import 'package:budget_owl/core/session/current_user.dart';
 import 'package:budget_owl/core/session/local_state.dart';
 import 'package:budget_owl/core/session/server_store.dart';
+import 'package:budget_owl/core/storage/install_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Why the sign-in screen is showing, when it is not the first time.
@@ -119,6 +120,12 @@ final class SessionController extends Notifier<SessionState> {
   /// Start-up: the stored server and token, then the member — from the cache first, so a phone on
   /// a train opens to what it last knew, and refreshed when the server can be reached.
   Future<void> resume() async {
+    // A new installation reads nothing an earlier one left in the Keychain (audit L5).
+    final marker = ref.read(installMarkerProvider);
+    if (!await marker.present) {
+      await _local.wipe(forgetServer: true);
+      await marker.place();
+    }
     final server = await _servers.read(allowLocalCleartext: _allowCleartext);
     if (server == null) {
       state = const SessionNoServer();
@@ -126,7 +133,8 @@ final class SessionController extends Notifier<SessionState> {
     }
     ref.read(currentServerProvider.notifier).set(server);
     unawaited(_checkVersion(server));
-    await _tokens.load();
+    // Only a token this server issued (audit L3).
+    await _tokens.load(origin: server.stored);
     if (!_tokens.hasToken) {
       state = SessionSignedOut(server);
       return;
@@ -142,7 +150,9 @@ final class SessionController extends Notifier<SessionState> {
       final me = await _fetchMe();
       state = SessionSignedIn(server, me, ++_epoch);
     } on AppError catch (failure) {
-      if (state is SessionSignedOut) return; // a 401 already ended it
+      // A 401 is the server ending the session: sessionEnded() wipes and routes to sign-in with
+      // the notice (audit L2). Anything else leaves the token for a retry.
+      if (failure.status == 401 || state is SessionSignedOut) return;
       state = SessionStarting(failure: failure);
     }
   }
@@ -161,8 +171,12 @@ final class SessionController extends Notifier<SessionState> {
 
   /// Checks [address] with `GET /api/meta` and, if it is a Budget Owl server this app can talk
   /// to, makes it the server. Nothing else is sent to it first (attack 4).
+  ///
+  /// Everything the phone held for the previous server is wiped first, so no token, cache or
+  /// member can ever be carried to a second origin (audit L3).
   Future<void> connect(ServerAddress address) async {
     await ServerCheck(ref.read(httpAdapterProvider)).check(address);
+    await _local.wipe(forgetServer: true);
     await _servers.save(address);
     ref.read(currentServerProvider.notifier).set(address);
     state = SessionSignedOut(address);
@@ -191,12 +205,19 @@ final class SessionController extends Notifier<SessionState> {
       throw const AppError.unexpected();
     }
     ref.read(cacheHolderProvider).unseal();
-    await _tokens.save(token);
+    await _tokens.save(token, origin: current.server.stored);
     try {
       final me = await _fetchMe();
       state = SessionSignedIn(current.server, me, ++_epoch);
     } on Object {
-      await _local.wipe();
+      // The token was issued; end it on the server too, not only here (audit L4).
+      _ending = true;
+      try {
+        await _revokeBestEffort();
+        await _local.wipe();
+      } finally {
+        _ending = false;
+      }
       rethrow;
     }
   }
@@ -221,13 +242,9 @@ final class SessionController extends Notifier<SessionState> {
     };
     _ending = true;
     try {
-      if (current is SessionSignedIn) {
-        try {
-          await _api.write('POST', '/api/auth/logout').timeout(const Duration(seconds: 8));
-        } on Object {
-          // Unreachable, already revoked, timed out: the wipe below happens regardless.
-        }
-      }
+      // Whenever a token is held — signed in, or stopped at the unsupported-version screen
+      // (audit L4) — ask the server to end it before the wipe.
+      await _revokeBestEffort();
       await _local.wipe(forgetServer: forgetServer);
       if (forgetServer || server == null) {
         ref.read(currentServerProvider.notifier).set(null);
@@ -240,15 +257,34 @@ final class SessionController extends Notifier<SessionState> {
     }
   }
 
+  /// `POST /api/auth/logout` with the held token, if there is one and a server to send it to.
+  /// Best effort: unreachable, already revoked or slow, the caller wipes regardless.
+  Future<void> _revokeBestEffort() async {
+    final api = ref.read(apiClientProvider);
+    if (api == null || !_tokens.hasToken) return;
+    try {
+      await api.write('POST', '/api/auth/logout').timeout(const Duration(seconds: 8));
+    } on Object {
+      // The wipe that follows happens regardless.
+    }
+  }
+
   /// Any `401` on a request that carried the token: wipe once, route to sign-in once, with "Your
-  /// session ended". Idempotent — a burst of failing requests ends the session one time.
+  /// session ended". Idempotent — a burst of failing requests ends the session one time. Also while
+  /// starting: a phone whose token was revoked while it was off finds out from `/api/auth/me`
+  /// (audit L2).
   Future<void> sessionEnded() async {
     final current = state;
-    if (_ending || current is! SessionSignedIn) return;
+    final server = switch (current) {
+      SessionSignedIn(:final server) => server,
+      SessionStarting() => ref.read(currentServerProvider),
+      _ => null,
+    };
+    if (_ending || server == null) return;
     _ending = true;
     try {
       await _local.wipe();
-      state = SessionSignedOut(current.server, notice: SignInNotice.expired);
+      state = SessionSignedOut(server, notice: SignInNotice.expired);
     } finally {
       _ending = false;
     }

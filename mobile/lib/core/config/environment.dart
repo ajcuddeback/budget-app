@@ -18,5 +18,11 @@ final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 /// (Library/Caches) and Android's backup is switched off for anyway (`allowBackup="false"`).
 final cacheDirectoryProvider = FutureProvider<Directory>((ref) => getApplicationCacheDirectory());
 
+/// Application Support: kept for the life of the installation and removed with the app, on both
+/// platforms. Holds only the install marker (install_marker.dart).
+final supportDirectoryProvider = FutureProvider<Directory>(
+  (ref) => getApplicationSupportDirectory(),
+);
+
 /// Which platform's wording the device label takes. Overridden in tests.
 final targetPlatformProvider = Provider<TargetPlatform>((ref) => defaultTargetPlatform);

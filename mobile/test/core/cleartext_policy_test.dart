@@ -54,4 +54,4 @@ void main() {
 }
 
 /// flutter_test replaces HttpClient for widget tests; this needs the real one, and its hook.
-final class _RealSockets extends HttpOverrides {}
+final class _RealSockets extends HttpOverrides;

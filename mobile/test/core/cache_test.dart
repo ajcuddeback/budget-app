@@ -10,6 +10,7 @@ import 'package:budget_owl/core/session/server_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
 /// The encrypted, bounded, disposable cache (ADR-0042 decision 4; mobile-app.md attack 2).
@@ -153,11 +154,13 @@ void main() {
   test('a wipe removes the token, the database and its key, and keeps only the server', () async {
     final store = MemorySecureStore()
       ..values['budget_owl.server'] = 'https://owl.example.test'
-      ..values['budget_owl.bearer_token'] = 'fixture-token-owner';
+      ..values['budget_owl.bearer_token'] = 'fixture-token-owner'
+      ..values['budget_owl.token_origin'] = testServerOrigin;
     final keys = CacheKeyStore(store);
     final holder = CacheHolder(keys, () async => dir);
     final tokens = TokenStore(store);
-    await tokens.load();
+    await tokens.load(origin: testServerOrigin);
+    expect(tokens.current, 'fixture-token-owner');
     await (await holder.obtain()).write('a', 'h', marker, when);
     final local = LocalState(tokens, holder, keys, ServerStore(store));
 
@@ -177,20 +180,47 @@ void main() {
       final store = MemorySecureStore();
       final tokens = TokenStore(store);
 
-      await tokens.save('fixture-token-owner');
+      await tokens.save('fixture-token-owner', origin: testServerOrigin);
 
-      expect(store.values, {'budget_owl.bearer_token': 'fixture-token-owner'});
+      expect(store.values, {
+        'budget_owl.bearer_token': 'fixture-token-owner',
+        'budget_owl.token_origin': testServerOrigin,
+      });
       expect(tokens.current, 'fixture-token-owner');
       expect(tokens.hasToken, isTrue);
     });
 
     test('loads what was stored, and clears both copies', () async {
+      final store = MemorySecureStore()
+        ..values['budget_owl.bearer_token'] = 't'
+        ..values['budget_owl.token_origin'] = testServerOrigin;
+      final tokens = TokenStore(store);
+
+      await tokens.load(origin: testServerOrigin);
+      expect(tokens.current, 't');
+      await tokens.clear();
+
+      expect(tokens.current, isNull);
+      expect(store.values, isEmpty);
+    });
+
+    test('drops, rather than loads, a token another origin issued (audit L3)', () async {
+      final store = MemorySecureStore()
+        ..values['budget_owl.bearer_token'] = 't'
+        ..values['budget_owl.token_origin'] = 'https://old.example.test';
+      final tokens = TokenStore(store);
+
+      await tokens.load(origin: testServerOrigin);
+
+      expect(tokens.current, isNull);
+      expect(store.values, isEmpty);
+    });
+
+    test('drops a token stored with no origin at all', () async {
       final store = MemorySecureStore()..values['budget_owl.bearer_token'] = 't';
       final tokens = TokenStore(store);
 
-      await tokens.load();
-      expect(tokens.current, 't');
-      await tokens.clear();
+      await tokens.load(origin: testServerOrigin);
 
       expect(tokens.current, isNull);
       expect(store.values, isEmpty);

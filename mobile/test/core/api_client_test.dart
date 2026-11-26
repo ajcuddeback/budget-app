@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/adapters.dart';
+import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
 /// The wire controls that live in [ApiClient]: the bearer is attached by one interceptor and
@@ -26,7 +27,7 @@ void main() {
 
   setUp(() async {
     tokens = TokenStore(MemorySecureStore());
-    await tokens.save('fixture-token-owner');
+    await tokens.save('fixture-token-owner', origin: testServerOrigin);
     ended = 0;
     outcomes = [];
   });
