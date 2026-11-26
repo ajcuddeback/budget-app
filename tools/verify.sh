@@ -256,8 +256,29 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "mobile" ]; then
   elif ! command -v flutter >/dev/null 2>&1; then
     missing "mobile build" "flutter not on PATH"
   else
-    run "analyze"                 flutter analyze --no-pub
-    run "tests + coverage"        flutter test --coverage
+    # docs/features/mobile-app.md, Testing. Every step runs inside mobile/.
+    mob() { bash -c "cd mobile && $1"; }
+    run "dependencies, from the lockfile only" mob "flutter pub get --enforce-lockfile"
+    # Generated sources are left as their generators write them; everything else is formatted.
+    run "format (dart format)" mob "find lib test tool -name '*.dart' -not -path 'lib/l10n/*' \
+      -not -path 'lib/core/theme/tokens.dart' -print0 \
+      | xargs -0 dart format --output=none --set-exit-if-changed"
+    run "design tokens are current (tools/mobile-tokens.sh)" tools/mobile-tokens.sh --check
+    run "strings are current (tools/mobile-l10n.sh)"        tools/mobile-l10n.sh --check
+    run "analyze"                 mob "flutter analyze --no-pub"
+    # The guards: no double for money, the token only in TokenStore, no redirects, no cleartext,
+    # no trust-anyway, nothing printed, no address shipped, tokens-only styling, the platform
+    # configs. They also run in the suite below; named here so a failure says which rule broke.
+    run "architecture and platform guards" mob "flutter test --no-pub test/architecture"
+    run "tests + coverage"        mob "flutter test --no-pub --coverage"
+    run "lib/core line coverage >= 80%" tools/mobile-coverage.sh 80
+    # The real Android build: manifest, network security config and backup rules must compile into
+    # an APK, and the native SQLCipher build hook must succeed. Needs the Android SDK.
+    if [ -n "${ANDROID_HOME:-}" ] && [ -d "${ANDROID_HOME}" ]; then
+      run "Android debug build (flutter build apk --debug)" mob "flutter build apk --debug --no-pub"
+    else
+      missing "Android debug build" "ANDROID_HOME is not set to an Android SDK"
+    fi
   fi
 fi
 

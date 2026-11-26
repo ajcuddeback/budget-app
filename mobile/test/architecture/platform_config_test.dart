@@ -50,7 +50,7 @@ void main() {
     test('a debug build adds cleartext for the three development hosts and nothing else', () {
       final config = _xml('$debug/res/xml/network_security_config.xml');
       expect(config, contains('<base-config cleartextTrafficPermitted="false">'));
-      final domains = RegExp(r'<domain[^>]*>([^<]+)</domain>')
+      final domains = RegExp('<domain[^>]*>([^<]+)</domain>')
           .allMatches(config)
           .map((m) => m.group(1))
           .toList();
@@ -64,7 +64,7 @@ void main() {
     });
 
     test('the app asks for the network and for nothing else', () {
-      final permissions = RegExp(r'<uses-permission android:name="([^"]+)"')
+      final permissions = RegExp('<uses-permission android:name="([^"]+)"')
           .allMatches(manifest)
           .map((m) => m.group(1))
           .toList();
@@ -82,10 +82,10 @@ void main() {
 
     test('the Podfile and the Xcode project agree on the minimum iOS', () {
       final podfile = File('ios/Podfile').readAsStringSync();
-      final platform = RegExp(r"^platform :ios, '([0-9.]+)'", multiLine: true).firstMatch(podfile);
+      final platform = RegExp("^platform :ios, '([0-9.]+)'", multiLine: true).firstMatch(podfile);
       expect(platform, isNotNull, reason: 'the platform line is not commented out');
       final project = File('ios/Runner.xcodeproj/project.pbxproj').readAsStringSync();
-      final targets = RegExp(r'IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);')
+      final targets = RegExp('IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);')
           .allMatches(project)
           .map((m) => m.group(1))
           .toSet();
