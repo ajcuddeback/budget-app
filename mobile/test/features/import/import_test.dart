@@ -203,22 +203,52 @@ void main() {
     expect(find.text('Import 3 transactions into Everyday Checking •4417'), findsOneWidget);
   });
 
-  testWidgets('offline, nothing is previewed and the reason is said', (tester) async {
-    final picker = FakePicker(PickedStatement(bytes: recordedFile('OFX'), name: 'aug.ofx'));
-    final server = await openImport(tester, picker: picker);
-    await chooseAccountAndFile(tester);
-    server.offline = true;
-    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
-    container.read(reachabilityProvider.notifier).record(Reachability.offline);
-    await settle(tester);
+  // The network stays up throughout: only the phone's own knowledge says no, so what refuses is
+  // the control and the writer, never the server.
+  for (final (why, said) in [
+    ('offline', "You're offline — this needs a connection"),
+    (
+      "the server's version is not confirmed",
+      'Changes are off until the server confirms it runs a version this app works with. '
+          'Refresh to check again.',
+    ),
+  ]) {
+    testWidgets('$why, nothing is previewed and the reason is said', (tester) async {
+      final picker = FakePicker(PickedStatement(bytes: recordedFile('OFX'), name: 'aug.ofx'));
+      final server = await openImport(tester, picker: picker);
+      await chooseAccountAndFile(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      final reachability = container.read(reachabilityProvider.notifier);
+      if (why == 'offline') {
+        reachability.record(Reachability.offline);
+      } else {
+        reachability.unconfirmVersion();
+      }
+      await settle(tester);
 
-    final preview = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Preview the import'),
-    );
-    expect(preview.onPressed, isNull);
-    expect(find.text("You're offline — this needs a connection"), findsWidgets);
-    expect(writes(server), isEmpty);
-  });
+      final preview = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Preview the import'),
+      );
+      expect(preview.onPressed, isNull);
+      expect(find.text(said), findsWidgets);
+
+      // And the writer itself refuses, behind the disabled control.
+      final error = await tester.runAsync(() async {
+        try {
+          await container.read(importsWriterProvider).preview({
+            'accountId': 'acc-everyday-checking',
+            'format': 'OFX',
+            'file': 'T0ZY',
+          });
+          return null;
+        } on AppError catch (e) {
+          return e;
+        }
+      });
+      expect(error?.isConnectivity, isTrue);
+      expect(writes(server), isEmpty);
+    });
+  }
 
   testWidgets('a file over 5 MB is refused on the phone, as a courtesy, before anything is sent', (
     tester,

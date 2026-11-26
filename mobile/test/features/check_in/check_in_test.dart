@@ -282,34 +282,49 @@ void main() {
       expect(error?.code, 'read-only-role');
     });
 
-    testWidgets('offline, every answer is disabled, said, and nothing is sent', (tester) async {
-      final server = await openCheckIn(tester, state: 'started');
-      server.offline = true;
-      final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
-      container.read(reachabilityProvider.notifier).record(Reachability.offline);
-      await settle(tester);
-
-      expect(find.text("You're offline — this needs a connection"), findsOneWidget);
-      final prepaid = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Yes, prepaid'),
-      );
-      expect(prepaid.onPressed, isNull);
-
-      // And the writer itself refuses, behind the disabled control.
-      final week = container.read(checkInProvider(null)).data!;
-      final item = week.steps.first.items.first;
-      final error = await tester.runAsync(() async {
-        try {
-          await container
-              .read(checkInWriterProvider)
-              .answer(week.week, item, choiceOnly(AnswerChoice.prepaid));
-          return null;
-        } on AppError catch (e) {
-          return e;
+    // The network stays up: only the phone's own knowledge says no, so what refuses is the control
+    // and the writer, never the server.
+    for (final (why, said) in [
+      ('offline', "You're offline — this needs a connection"),
+      (
+        "the server's version is not confirmed",
+        'Changes are off until the server confirms it runs a version this app works with. '
+            'Refresh to check again.',
+      ),
+    ]) {
+      testWidgets('$why, every answer is disabled, said, and nothing is sent', (tester) async {
+        final server = await openCheckIn(tester, state: 'started');
+        final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+        final reachability = container.read(reachabilityProvider.notifier);
+        if (why == 'offline') {
+          reachability.record(Reachability.offline);
+        } else {
+          reachability.unconfirmVersion();
         }
+        await settle(tester);
+
+        expect(find.text(said), findsOneWidget);
+        final prepaid = tester.widget<OutlinedButton>(
+          find.widgetWithText(OutlinedButton, 'Yes, prepaid'),
+        );
+        expect(prepaid.onPressed, isNull);
+
+        // And the writer itself refuses, behind the disabled control.
+        final week = container.read(checkInProvider(null)).data!;
+        final item = week.steps.first.items.first;
+        final error = await tester.runAsync(() async {
+          try {
+            await container
+                .read(checkInWriterProvider)
+                .answer(week.week, item, choiceOnly(AnswerChoice.prepaid));
+            return null;
+          } on AppError catch (e) {
+            return e;
+          }
+        });
+        expect(error?.isConnectivity, isTrue);
+        expect(writes(server), isEmpty);
       });
-      expect(error?.isConnectivity, isTrue);
-      expect(writes(server), isEmpty);
-    });
+    }
   });
 }
