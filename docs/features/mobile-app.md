@@ -50,12 +50,16 @@ such, and says plainly that changes have to wait.
 - **HTTPS only.** An `http://` address is refused with an explanation and a link to the user
   guide's "Give your server an HTTPS address" page. The only exception is a **debug build**
   talking to `localhost`, `127.0.0.1` or `10.0.2.2` (the Android emulator's host), for
-  development; a release build has no such exception and the platform configs enforce it too
-  (Android `network_security_config` with `cleartextTrafficPermitted="false"`, iOS ATS defaults).
-- **Certificates are verified by the platform.** There is no "accept this certificate anyway"
-  button. A self-hosted server with its own certificate authority works when that CA is installed
-  on the phone (Android trusts user-installed CAs for this app through its network security
-  config; iOS trusts a CA profile the user has enabled). The error screen distinguishes, in its
+  development. A release build has no such exception. What enforces it is the app's own code:
+  the address parser, the origin guard, refused redirects, and a release-only
+  `flutter.io.allow_http: false` zone around the app. The platform configs (Android
+  `network_security_config`, iOS ATS defaults) declare the same policy but do not govern Dart's
+  sockets.
+- **Certificates are verified against the system's trusted CAs.** There is no "accept this
+  certificate anyway" button. On iOS, a self-hosted server with its own certificate authority
+  works once that CA profile is installed and enabled. **On Android it does not yet**: Dart's TLS
+  reads only the system store, so a user-installed CA fails closed as "certificate not trusted"
+  (see Known gaps). Until that is closed, Android needs a publicly trusted certificate. The error screen distinguishes, in its
   own words: host not found, connection refused or timed out, certificate not trusted,
   certificate for a different name, "this is not a Budget Owl server", and "this server's API is
   version N, this app needs M".
