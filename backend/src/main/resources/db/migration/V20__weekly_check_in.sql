@@ -246,6 +246,9 @@ CREATE UNIQUE INDEX ux_check_in_answers_allocation_item
 -- Every foreign key indexed (database-style.md): the cascades from transactions, categories,
 -- bills, goals and debts would otherwise each scan this table.
 CREATE INDEX ix_check_in_answers_check_in ON check_in_answers (check_in_id);
+-- The household foreign key, and the shape every answer query takes: household, then check-in.
+CREATE INDEX ix_check_in_answers_household_check_in
+    ON check_in_answers (household_id, check_in_id);
 CREATE INDEX ix_check_in_answers_transaction ON check_in_answers (transaction_id);
 CREATE INDEX ix_check_in_answers_category ON check_in_answers (category_id);
 CREATE INDEX ix_check_in_answers_bill ON check_in_answers (bill_id);
