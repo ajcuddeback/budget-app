@@ -32,12 +32,13 @@ void main() {
     outcomes = [];
   });
 
-  ApiClient client(ScriptedAdapter adapter) => ApiClient(
+  ApiClient client(ScriptedAdapter adapter, {bool versionConfirmed = true}) => ApiClient(
     server: server,
     adapter: adapter,
     tokens: tokens,
     onSessionEnded: () => ended++,
     onOutcome: outcomes.add,
+    versionConfirmed: () => versionConfirmed,
     logRequests: false,
   );
 
@@ -234,6 +235,29 @@ void main() {
 
     expect(result, isNull);
   });
+
+  test(
+    'R2: before the version is confirmed, no write leaves; a read and a revocation do',
+    () async {
+      final adapter = ScriptedAdapter((_) async => json(200, {'ok': true}));
+      final api = client(adapter, versionConfirmed: false);
+
+      for (final method in ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
+        final refused = await failure(api.write(method, '/api/transactions', body: {'a': 1}));
+        expect(refused.kind, AppErrorKind.offline, reason: method);
+      }
+      await failure(api.exchange('POST', '/api/setup/first-user', public: true));
+      expect(adapter.requests, isEmpty, reason: 'refused before anything was sent');
+
+      await api.getText('/api/transactions');
+      final taken = await tokens.take();
+      await api.revoke(taken!);
+      expect(adapter.requests.map((o) => '${o.method} ${o.path}'), [
+        'GET /api/transactions',
+        'POST /api/auth/logout',
+      ]);
+    },
+  );
 
   test('a body that is not JSON is "unexpected", not a crash', () async {
     final adapter = ScriptedAdapter((_) async => text(200, '<html>'));

@@ -64,20 +64,34 @@ final class TokenStore {
 
   /// Reads the stored token into memory, at start-up — only if it was issued by [origin]. A token
   /// for any other origin, or with no origin recorded, is deleted, not loaded.
+  ///
+  /// A stored origin that is not an `http(s)://host` origin at all — empty, `owl.lan`, garbage — is
+  /// treated exactly as another origin's: the token is deleted and the session wipes the rest. It
+  /// never throws (`Uri.parse('').origin` does, and once hung start-up on its spinner).
   Future<TokenLoad> load({required String origin}) async {
     final token = await _store.read(_key);
     if (token == null) {
       _held = null;
       return TokenLoad.none;
     }
-    final storedOrigin = await _store.read(_originKey);
-    final expected = IssuedToken(token, origin);
-    if (storedOrigin == null || Uri.parse(storedOrigin).origin != expected.origin) {
+    final stored = originOf(await _store.read(_originKey));
+    final expected = originOf(origin);
+    if (stored == null || expected == null || stored != expected) {
       await clear();
       return TokenLoad.foreign;
     }
-    _held = expected;
+    _held = IssuedToken(token, expected);
     return TokenLoad.loaded;
+  }
+
+  /// `scheme://host[:port]` for an `http` or `https` URL with a host, or null for anything else.
+  /// Storage is not trusted to hold only what this class once wrote.
+  static String? originOf(String? value) {
+    final uri = value == null ? null : Uri.tryParse(value);
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      return null;
+    }
+    return uri.origin;
   }
 
   /// Keeps [token], issued by [origin].

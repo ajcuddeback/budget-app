@@ -165,21 +165,30 @@ class SnapshotView<T> extends StatelessWidget {
 
 /// Whether a write may be sent now, and what to say when it may not.
 ///
-/// A write is sent only when the last request reached the server; otherwise its control is
-/// disabled with *"You're offline — this needs a connection"* and **nothing is queued**
-/// (mobile-app.md decision 3, ADR-0042).
+/// A write is sent only when the last request reached the server **and** the server's version was
+/// confirmed this launch (`Reachability.unconfirmed` until then); otherwise its control is
+/// disabled with *"You're offline — this needs a connection"*, or the version note, and **nothing
+/// is queued** (mobile-app.md decision 3, ADR-0042).
 bool canWriteNow(WidgetRef ref) => ref.watch(reachabilityProvider).canWrite;
 
-/// The offline note under a disabled write control.
+/// Why writes are off, in a sentence: offline, or the server's version not yet confirmed.
+String writesOffText(AppLocalizations l, Reachability reachability) =>
+    reachability == Reachability.unconfirmed ? l.offline_versionUnconfirmed : l.offline_write;
+
+/// The note under a disabled write control, saying why it is disabled.
 class OfflineNote extends ConsumerWidget {
   const OfflineNote({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (canWriteNow(ref)) return const SizedBox.shrink();
+    final reachability = ref.watch(reachabilityProvider);
+    if (reachability.canWrite) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: SpaceTokens.s2),
-      child: NoticeBanner(text: context.l10n.offline_write, icon: Icons.cloud_off_outlined),
+      child: NoticeBanner(
+        text: writesOffText(context.l10n, reachability),
+        icon: Icons.cloud_off_outlined,
+      ),
     );
   }
 }

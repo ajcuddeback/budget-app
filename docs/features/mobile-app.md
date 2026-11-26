@@ -55,11 +55,17 @@ such, and says plainly that changes have to wait.
   `flutter.io.allow_http: false` zone around the app. The platform configs (Android
   `network_security_config`, iOS ATS defaults) declare the same policy but do not govern Dart's
   sockets.
-- **Certificates are verified against the system's trusted CAs.** There is no "accept this
-  certificate anyway" button. On iOS, a self-hosted server with its own certificate authority
-  works once that CA profile is installed and enabled. **On Android it does not yet**: Dart's TLS
-  reads only the system store, so a user-installed CA fails closed as "certificate not trusted"
-  (see Known gaps). Until that is closed, Android needs a publicly trusted certificate. The error screen distinguishes, in its
+- **Certificates are verified against the system's trusted CAs and the CAs the person installed
+  on the phone.** There is no "accept this certificate anyway" button. On iOS, a self-hosted
+  server with its own certificate authority works once that CA profile is installed and enabled.
+  On Android it works once the CA is installed (Settings → Security → Encryption & credentials →
+  Install a certificate → CA certificate): Dart's TLS reads only the system store by itself, so
+  `MainActivity` hands it the user-installed CAs through a read-only platform channel, and the
+  app's transport adds them to the system roots — exactly the set its `network_security_config`
+  already trusts. The chain and the host name are still verified. The CAs are read once per
+  launch, so a CA installed while the app is open is trusted from the next launch; if the store
+  cannot be read, only the system roots are trusted (fails closed). This **needs checking on a
+  device** (Known gaps). The error screen distinguishes, in its
   own words: host not found, connection refused or timed out, certificate not trusted,
   certificate for a different name, "this is not a Budget Owl server", and "this server's API is
   version N, this app needs M".
@@ -122,9 +128,13 @@ The one new API route. Public, so the app can identify a server before anyone si
 
 ### Writes
 
-- A write is sent only when the last request reached the server; otherwise the control is
-  disabled with the offline message. A write that fails for lack of connection shows the same
-  message and is **not retried automatically**.
+- A write is sent only when the last request reached the server **and `GET /api/meta` has
+  confirmed the server's version this launch**; otherwise the control is disabled with the
+  offline message, or *"Changes are off until the server confirms it runs a version this app works
+  with. Refresh to check again."* A failed check (busy, timed out, anything) keeps writes off and
+  reads on, from the cache and the server, and is retried on the next request that reaches the
+  server. A write that fails for lack of connection shows the offline message and is **not
+  retried automatically**.
 - Every write carries the same body the web client sends, including `version` for optimistic
   locking. A `409`'s problem code is translated and shown; the screen then re-reads.
 - After a successful write, the screens that depend on it refresh (the app invalidates the
@@ -264,6 +274,9 @@ been removed; someone reading a bug report or crash log.
 |---|---|
 | Token only in secure storage | `lib/core/auth/token_store.dart`; test + architecture test |
 | HTTPS only, debug-only local exception | `ServerAddress.parse`; the API client's origin guard; no redirects; release zone `#flutter.io.allow_http: false` (`cleartext_policy.dart`, around `runApp`); tests. Android `network_security_config.xml` and iOS `Info.plist` declare the same policy but do not govern Dart's sockets |
+| Certificates verified; a private CA trusted only once installed on the phone | No `badCertificateCallback` (guards); Android: `MainActivity`'s read-only `app.budgetowl/trust` channel (`AndroidCAStore`, `user:` aliases) and `user_trust.dart`, whose `SecurityContext(withTrustedRoots: true)` the one transport (`platformHttpAdapter`) is built with, read once before the first request, system roots only on any failure; `platform_config_test` pins `<certificates src="user" />` and the channel; `user_trust_test` (real sockets, test CA) |
+| No write before this launch's version check | `Reachability.unconfirmed` (`canWriteNow`, every writer's `reachabilityProvider.canWrite`); `ApiClient` refuses any non-`GET` but the revocation until `/api/meta` has passed; `signIn` re-checks first; `version_gate_test`, `api_client_test` |
+| A start-up never leaves a session behind it, or hangs | `SessionController.resume`: no token or no server → full wipe; a malformed stored origin is another origin's (`TokenStore.originOf`); any error → best-effort wipe and sign-in with a notice; `start_up_test` |
 | No redirects on API calls | Dio `followRedirects: false`; test |
 | 401 → wipe → sign-in, once | `AuthInterceptor`; test |
 | Encrypted cache, no backup | `lib/core/cache/`; `AndroidManifest.xml`; iOS exclusion; test that the file is unreadable without the key |
@@ -428,6 +441,26 @@ After the re-audit:
 | H-b ordering | The version check put back beside start-up (`unawaited`) | `session_test` H-b (`/api/auth/me` was sent beside the check) and L4, which no longer has a delay in it |
 | N3 | Documentation only | — |
 
+### Phase 2, core security fixes
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| R1 no token, no cache | Start-up wipes the cache file and its key whenever there is no token (and no readable server); once on a fresh install. `LocalState.wipe` attempts every step even when one fails | The no-token wipe narrowed back to a foreign token only; separately, the no-server wipe removed; separately, the token step no longer best effort | `start_up_test` R1: a sign-out killed between `take()` and its wipe left the cache file and key (and the relaunch idempotence test); the unreadable-server test; "storage that cannot delete the token still loses the cache file and its key" |
+| R2 version gate fails closed | `Reachability.unconfirmed` until `/api/meta` passes this launch; `ApiClient` refuses non-`GET` before sending; a failure keeps writes off and reads on; retried, one at a time, on the next request that reaches the server; `signIn` re-checks; `OfflineNote` says why | `_publish` ignored the confirmation; separately, the transport refusal removed; a failed check confirmed (the old fail-open); the retry removed; the sign-in re-check removed | `version_gate_test` (8 of 11); `version_gate_test` (5) and `api_client_test` R2; 6; 4; `version_gate_test` sign-in ×2 **and** two existing `session_test` sign-ins, whose `POST` the transport then refused because they sign in before the launch check has answered |
+| R3 malformed origin, any start-up error | `TokenStore.originOf` (scheme and host checked): a bad origin is a foreign token, full wipe. `resume()` catches everything: best-effort wipe, then sign-in with "Your session ended", or Connect with no server | `Uri.parse(stored).origin` put back; separately, the `try`/`catch` in `resume()` removed | `start_up_test` R3 origin ×3 (the session-level pair because the notice showed the catch-all, not the foreign-token path, had cleaned up); the four catch-all tests, including the widget test that saw the spinner |
+| AND1 user CAs on Android | `MainActivity` channel `app.budgetowl/trust` → `user_trust.dart` → `platformHttpAdapter` on Android only | See the AND1 rows below | |
+
+| AND1 control | Broken how | Failed |
+| ------------ | ---------- | ------ |
+| The user CAs are added | `setTrustedCertificatesBytes` call removed | `user_trust_test`: the test-CA server trusted (direct and through the mocked channel), the read-once test, the host-name and redirect tests (which need the CA to get that far), the fallback test |
+| The transport uses that context | `createHttpClient` built with `null` | the same five real-socket tests |
+| A failed store read is the system roots | `phoneTrustContext`'s `try`/`catch` removed | `user_trust_test`: the fallback tests (direct and through the channel). The real-socket "fails closed, without a crash" test stayed green: the adapter's own `onError` is a second guard |
+| No "trust anyway" | `badCertificateCallback = (…) => true` added to the client | `guards_test`; `real_transport_test` untrusted and wrong-name; `user_trust_test` untrusted, store-failure and host-name tests |
+| System roots kept | `withTrustedRoots: false` | `user_trust_test` source check only: no test here can reach a public CA |
+| The config declares user CAs | `<certificates src="user" />` removed from the release config | `platform_config_test` ×2 |
+| Only `user:` aliases | The Kotlin filter removed (system aliases too) | `platform_config_test` AND1 |
+| One channel on both ends | The Dart channel renamed | `platform_config_test` AND1 |
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -443,10 +476,20 @@ through (now opaque).
 
 ### Known gaps
 
-- **Android user-installed CAs are not trusted by the app's requests.** The network security
-  config trusts them, but Dart's TLS stack reads only the system store, so a server whose CA the
-  user installed fails as "certificate not trusted". It fails closed. The remedy (a platform
-  channel, or a CA the user pastes in) is a phase-2 decision. iOS honours an enabled CA profile.
+- **Android user-installed CAs need checking on a device.** The channel (`MainActivity`,
+  `AndroidCAStore` `user:` aliases) compiles into the debug APK and its Dart side is proved on real
+  sockets with a test CA, but no test here runs Android, so no test shows `AndroidCAStore` itself
+  answering on a phone. Check on Android 7+ and 14+ (where the system store moved into an APEX):
+  install a private CA, connect, see the server trusted; remove it, relaunch, see it refused. The
+  set is read once per launch: a CA removed while the app is open stays trusted until the app is
+  next started.
+- **Two places still say "offline" when the real reason is the unconfirmed version**, both in
+  feature code this change did not touch: the Transactions screen's message after a tapped write
+  (`transactions_screen.dart`, `l.offline_write`) and every writer's `AppError.offline()`. The
+  write is refused either way; `writesOffText(l, reachability)` in `shared/widgets/status.dart`
+  gives the right sentence for a screen to show. After a failed start-up with no readable server
+  the Connect screen shows no message of its own (it has none to show); with one, sign-in shows
+  "Your session ended".
 - **The recents-screen behaviour on Android 13+ needs checking on a device.** No emulator or test
   here shows what the task switcher draws; the call and its version guard are pinned by a test.
 - **Every phone and browser shares one rate limit as shipped.** The API keys limits on the socket
