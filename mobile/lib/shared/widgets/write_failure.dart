@@ -15,8 +15,7 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// Called where the failure is caught, and the text kept, so a banner does not change its story
 /// when the phone's state does.
-String writeFailureText(BuildContext context, WidgetRef ref, AppError error) =>
-    error.isConnectivity
+String writeFailureText(BuildContext context, WidgetRef ref, AppError error) => error.isConnectivity
     ? writesOffText(context.l10n, ref.read(reachabilityProvider))
     : context.errorMessage(error);
 
