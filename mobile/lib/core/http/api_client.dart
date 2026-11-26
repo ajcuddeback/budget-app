@@ -310,6 +310,16 @@ final class _RedactedLog extends Interceptor {
   }
 }
 
+/// Debug builds only: one line saying which local step failed, and the error's **type** — never
+/// its message, which can carry a path, a key name or a figure (attack 6). The app's only other
+/// log line is [_RedactedLog]'s; both live in this file, which the guards hold to that.
+void debugLogFailure(String what, Object error) {
+  if (kDebugMode) debugPrint(failureLine(what, error));
+}
+
+/// The line [debugLogFailure] prints. Public for its test.
+String failureLine(String what, Object error) => 'local $what failed (${error.runtimeType})';
+
 final RegExp _uuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
 /// The log line for an exchange. Public for its test.

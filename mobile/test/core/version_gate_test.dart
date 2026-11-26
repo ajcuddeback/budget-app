@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
@@ -48,7 +47,7 @@ void main() {
 
   /// A phone that signed in once (so it has a cached member), relaunched against [meta]'s answers
   /// for `/api/meta` and the fixture's for everything else.
-  Future<(ProviderContainer, _MetaGate)> relaunch(
+  Future<(ProviderContainer, MetaGate)> relaunch(
     Future<ResponseBody> Function(RequestOptions) meta, {
     bool cached = true,
   }) async {
@@ -62,7 +61,7 @@ void main() {
       first.dispose();
       fixture.served.clear();
     }
-    final gate = _MetaGate(fixture, meta);
+    final gate = MetaGate(fixture, meta);
     final again = TestPhone(
       server: gate,
       store: phone.store,
@@ -75,7 +74,7 @@ void main() {
   }
 
   /// Until no check has been out for a few turns: the launch check, and any retry it provoked.
-  Future<void> settleChecks(_MetaGate gate) async {
+  Future<void> settleChecks(MetaGate gate) async {
     var quiet = 0;
     for (var i = 0; i < 400 && quiet < 10; i++) {
       quiet = gate.metaInFlight ? 0 : quiet + 1;
@@ -196,11 +195,11 @@ void main() {
   });
 
   group('signing in', () {
-    Future<(ProviderContainer, _MetaGate)> signedOutPhone(
+    Future<(ProviderContainer, MetaGate)> signedOutPhone(
       Future<ResponseBody> Function(RequestOptions) meta,
     ) async {
       final fixture = FixtureServer.load('demo', state: 'connect');
-      final gate = _MetaGate(fixture, meta);
+      final gate = MetaGate(fixture, meta);
       final c = containerFor(TestPhone(server: gate)..connected());
       await eventually(() => c.read(sessionProvider) is SessionSignedOut, 'signed out');
       await settleChecks(gate);
@@ -238,6 +237,29 @@ void main() {
       expect(c.read(sessionProvider), isA<SessionSignedIn>());
       expect(gate.writes, ['POST /api/auth/token']);
     });
+
+    test(
+      'P1: a check already out that fails is not the last word: the tap asks once more',
+      () async {
+        final stillBusy = Completer<ResponseBody>();
+        var calls = 0;
+        final (c, gate) = await signedOutPhone((o) {
+          calls++;
+          if (calls == 1) return Future.value(json(429, {'code': 'rate-limited'})); // launch
+          if (calls == 2) return stillBusy.future; // a re-check sent while still busy
+          return passes(o);
+        });
+        final session = c.read(sessionProvider.notifier)..recheckVersionIfNeeded();
+        await eventually(() => gate.metaInFlight, 'the re-check is out');
+
+        final ensured = session.ensureVersionConfirmed();
+        stillBusy.complete(json(429, {'code': 'rate-limited'}));
+        await ensured;
+
+        expect(c.read(reachabilityProvider.notifier).versionConfirmed, isTrue);
+        expect(gate.metaRequests, 3);
+      },
+    );
   });
 
   group('the note under a disabled write control says why', () {
@@ -291,39 +313,4 @@ void main() {
     expect(c.read(reachabilityProvider), Reachability.unconfirmed);
     expect(Reachability.unconfirmed.canWrite, isFalse);
   });
-}
-
-/// The fixture server, with `/api/meta` answered by the test, recording what was written.
-final class _MetaGate implements HttpClientAdapter {
-  _MetaGate(this._fixture, this._meta);
-
-  final FixtureServer _fixture;
-  final Future<ResponseBody> Function(RequestOptions) _meta;
-  int metaRequests = 0;
-  bool metaInFlight = false;
-  final List<String> writes = [];
-
-  List<String> get served => _fixture.served;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    if (options.path.endsWith('/api/meta')) {
-      metaRequests++;
-      metaInFlight = true;
-      try {
-        return await _meta(options);
-      } finally {
-        metaInFlight = false;
-      }
-    }
-    if (options.method != 'GET') writes.add('${options.method} ${options.uri.path}');
-    return await _fixture.fetch(options, requestStream, cancelFuture);
-  }
-
-  @override
-  void close({bool force = false}) => _fixture.close(force: force);
 }

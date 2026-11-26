@@ -1,12 +1,18 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/auth/token_store.dart';
+import 'package:budget_owl/core/cache/cache_holder.dart';
 import 'package:budget_owl/core/session/local_state.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/l10n/gen/app_localizations_en.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/adapters.dart';
 import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
@@ -16,6 +22,8 @@ import '../support/harness.dart';
 ///   (audit N1) but before its wipe left the cache file and its key; the next sign-in reopened them.
 /// - **R3**: a malformed stored origin is another origin's token (a full wipe), and **any** failure
 ///   while resuming wipes and shows the signed-out state — never a spinner that turns forever.
+/// - **P3**: that wipe first ends a loaded token on the server too, and a cache that cannot be
+///   written after the member is shown never reaches it.
 void main() {
   const tokenKey = 'budget_owl.bearer_token';
   const originKey = 'budget_owl.token_origin';
@@ -228,6 +236,57 @@ void main() {
 
       expect(find.text(AppLocalizationsEn().login_notice_expired), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+  });
+
+  group('P3: a failed start-up ends its token; a failed cache write ends nothing', () {
+    test('a token that was loaded is revoked on the server before the wipe', () async {
+      final server = FixtureServer.load('demo', state: 'demo');
+      // The cache directory is a file: nothing can be opened or written under it.
+      final notADirectory = File('${Directory.systemTemp.createTempSync('budget-owl-p3').path}/x')
+        ..writeAsStringSync('');
+      addTearDown(() => notADirectory.parent.deleteSync(recursive: true));
+      final phone = TestPhone(server: server, cacheDirectory: Directory(notADirectory.path))
+        ..signedIn('owner');
+
+      final c = containerFor(phone);
+      final state = await until<SessionSignedOut>(c);
+
+      expect(state.notice, SignInNotice.expired);
+      expect(server.served, contains('POST /api/auth/logout'));
+      final logout = server.served.indexOf('POST /api/auth/logout');
+      expect(server.authorizations[logout], 'Bearer fixture-token-owner');
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('a cache write that fails after the member is shown keeps the session', () async {
+      final (fixture, first) = await phoneWithACache();
+      fixture.served.clear();
+      final answer = Completer<ResponseBody>();
+      final gate = MetaGate(fixture, (_) => answer.future);
+      final phone = TestPhone(
+        server: gate,
+        store: first.store,
+        cacheDirectory: first.cacheDirectory,
+        supportDirectory: first.supportDirectory,
+      );
+      final c = containerFor(phone);
+      await until<SessionSignedIn>(c);
+
+      // Anything that makes the write fail: here the cache is sealed under the refresh.
+      await c.read(cacheHolderProvider).destroy();
+      answer.complete(
+        json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1}),
+      );
+      for (var i = 0; i < 400 && !fixture.served.contains('GET /api/auth/me'); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(c.read(sessionProvider), isA<SessionSignedIn>(), reason: 'the fetched member shows');
+      expect(c.read(localStateProvider).wipes, 0);
+      expect(fixture.served, isNot(contains('POST /api/auth/logout')));
+      expect(phone.store.values[tokenKey], 'fixture-token-owner');
     });
   });
 }
