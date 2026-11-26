@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release (and profile) network policy: HTTPS only, for every host.
+
+  The server address is the user's own and is not known at build time, so there is no
+  domain-config and no pinning. A self-hoster with their own certificate authority installs it on
+  the phone; "user" below trusts it for this app (docs/features/mobile-app.md, Connecting).
+  Dart's own TLS stack does not read these trust anchors, so a user-installed CA is not yet
+  honoured by the app's requests and such a connection fails closed (a known gap, recorded there).
+  The cleartext ban is also enforced in code, by ServerAddress.parse and the API client.
+
+  A debug build replaces this file with src/debug/res/xml/network_security_config.xml.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -26,7 +26,6 @@ dependencies:
   material_ui: ^1.1.0
   meta: ^1.19.0
   path_provider: ^2.1.6
-  shared_preferences: ^2.5.6
   # SQLite itself, bundled through build hooks. The user define below selects the SQLCipher
   # build, which is what encrypts the cache (ADR-0042). sqlcipher_flutter_libs is end-of-life and
   # replaced by exactly this option.

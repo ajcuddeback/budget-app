@@ -1,8 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app talks to the user's own server, and only to it. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!--
+      Security (docs/features/mobile-app.md, Threat model):
+      - allowBackup/fullBackupContent/dataExtractionRules: nothing the app stores is backed up or
+        transferred to another device.
+      - networkSecurityConfig: HTTPS only; a debug build adds the local development hosts.
+      - usesCleartextTraffic is false as well, for anything that reads only the manifest.
+    -->
     <application
-        android:label="budget_owl"
+        android:label="Budget Owl"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
