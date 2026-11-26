@@ -63,6 +63,22 @@ void main() {
       );
     });
 
+    test('Android 13+ takes no recents screenshot of the app (audit L6)', () {
+      final activity = File('android/app/src/main/kotlin/app/budgetowl/budget_owl/MainActivity.kt')
+          .readAsStringSync()
+          .replaceAll(RegExp(r'//.*'), '');
+      expect(
+        activity,
+        matches(
+          RegExp(
+            r'SDK_INT\s*>=\s*Build\.VERSION_CODES\.TIRAMISU\s*\)\s*\{\s*'
+            r'setRecentsScreenshotEnabled\(false\)',
+          ),
+        ),
+      );
+      expect(activity, isNot(contains('FLAG_SECURE')), reason: "the user's own screenshots work");
+    });
+
     test('the app asks for the network and for nothing else', () {
       final permissions = RegExp('<uses-permission android:name="([^"]+)"')
           .allMatches(manifest)
