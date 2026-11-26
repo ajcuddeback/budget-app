@@ -218,14 +218,13 @@ public class CheckInCompletion {
                 return StaleReason.TARGET_ARCHIVED;
             }
         }
-        if (answer.choice() == AnswerChoice.PREPAID) {
-            if (item.target() == null
-                    || !item.target().billId().equals(answer.billId().orElse(null))
-                    || !item.target().dueDate().equals(answer.dueDate().orElse(null))) {
-                return picture.activeBills().contains(answer.billId().orElseThrow())
-                        ? StaleReason.ALREADY_RECORDED
-                        : StaleReason.BILL_INACTIVE;
-            }
+        if (answer.choice() == AnswerChoice.PREPAID
+                && (item.target() == null
+                        || !item.target().billId().equals(answer.billId().orElse(null))
+                        || !item.target().dueDate().equals(answer.dueDate().orElse(null)))) {
+            return picture.activeBills().contains(answer.billId().orElseThrow())
+                    ? StaleReason.ALREADY_RECORDED
+                    : StaleReason.BILL_INACTIVE;
         }
         return null;
     }

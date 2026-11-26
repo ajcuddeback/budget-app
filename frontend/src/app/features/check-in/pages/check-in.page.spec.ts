@@ -356,4 +356,302 @@ describe('CheckInPage', () => {
     }
     expect(root(fixture).querySelector('[aria-live="polite"]')?.textContent).toContain('$480.00');
   });
+
+  describe('every kind of question', () => {
+    const ODD: Item = {
+      ...ITEM,
+      itemKey: 'odd.t2',
+      kind: 'UNUSUAL_CHARGE',
+      payeeName: 'Mountain Strength Co',
+      amount: usd('-126.0000'),
+      billId: 'b-gym',
+      billName: 'Gym',
+      usual: usd('42.0000'),
+      multiple: 3,
+      skips: 2,
+    };
+    const OVERDUE: Item = {
+      ...ITEM,
+      itemKey: 'bill.b-store.2026-08-19',
+      kind: 'OVERDUE_BILL',
+      transactionId: null,
+      payeeName: null,
+      amount: null,
+      billId: 'b-store',
+      billName: 'Store card',
+      dueDate: '2026-08-19',
+      expected: usd('25.0000'),
+      debtPrompt: { debtId: 'd-store', debtName: 'Store card' },
+    };
+    const CHARGE: Item = {
+      ...ITEM,
+      itemKey: 'chg.t3',
+      kind: 'BILL_CHARGE',
+      payeeName: 'COMCAST XFINITY',
+      amount: usd('-71.9900'),
+      billId: 'b-net',
+      billName: 'Internet',
+      dueDate: '2026-08-25',
+      expected: usd('71.9900'),
+      reason: 'RECURRING',
+      suggestedBillId: 'b-net',
+      suggestedDueDate: '2026-08-25',
+    };
+    const FULL: Week = {
+      ...DRAFT,
+      steps: [
+        step('WHATS_NEW', { questions: 2, items: [ODD, OVERDUE] }),
+        DRAFT.steps[0],
+        step('BILLS', {
+          questions: 1,
+          items: [CHARGE],
+          bills: [
+            {
+              billId: 'b-net',
+              billName: 'Internet',
+              dueDate: '2026-08-25',
+              status: 'DUE',
+              amount: usd('71.9900'),
+              overdue: false,
+            },
+          ],
+          stillToPay: usd('71.9900'),
+          billChoices: [
+            {
+              billId: 'b-net',
+              name: 'Internet',
+              expected: usd('71.9900'),
+              amountVaries: false,
+              tolerance: null,
+              dueDates: ['2026-08-25'],
+            },
+            {
+              billId: 'b-car',
+              name: 'Car payment',
+              expected: usd('342.0000'),
+              amountVaries: false,
+              tolerance: null,
+              dueDates: ['2026-08-24'],
+            },
+          ],
+        }),
+        NEXT_WEEK,
+      ],
+    };
+
+    const sent = (): unknown[] => service.answer.mock.calls.map((call) => [call[1], call[2]]);
+
+    it('sends each answer in exactly the shape its kind takes', async () => {
+      const fixture = await render({ week: FULL });
+      service.answer.mockReturnValue(of(FULL));
+      const page = root(fixture);
+
+      buttonNamed(page, 'Yes, prepaid').click();
+      await settle(fixture);
+      const prompt = page.querySelector<HTMLInputElement>(
+        `#item-bill-b-store-2026-08-19 input[type="checkbox"]`,
+      );
+      prompt?.click();
+      await settle(fixture);
+      buttonNamed(page, 'Mark paid').click();
+      await settle(fixture);
+      buttonNamed(page, 'Skip this month').click();
+      await settle(fixture);
+      buttonNamed(page, 'Yes, map it').click();
+      await settle(fixture);
+      buttonNamed(page, 'Not a bill').click();
+      await settle(fixture);
+
+      expect(sent()).toEqual([
+        ['odd.t2', { choice: 'PREPAID' }],
+        ['bill.b-store.2026-08-19', { choice: 'MARK_PAID', recordDebtPayment: true }],
+        ['bill.b-store.2026-08-19', { choice: 'SKIP' }],
+        [
+          'chg.t3',
+          {
+            choice: 'ATTACH',
+            billId: 'b-net',
+            dueDate: '2026-08-25',
+            remember: true,
+            recordDebtPayment: false,
+          },
+        ],
+        ['chg.t3', { choice: 'NOT_A_BILL' }],
+      ]);
+      expect(text(fixture)).toContain('Still to leave this month');
+    });
+
+    it('attaches a charge to a different bill, chosen with its date', async () => {
+      const fixture = await render({ week: FULL });
+      service.answer.mockReturnValue(of(FULL));
+      const page = root(fixture);
+
+      buttonNamed(page, 'Different bill').click();
+      await settle(fixture);
+      const bill = page.querySelector<HTMLSelectElement>('#item-chg-t3-bill');
+      expect(bill).not.toBeNull();
+      if (bill) {
+        bill.value = 'b-car';
+        bill.dispatchEvent(new Event('change'));
+      }
+      await settle(fixture);
+      const remember = page.querySelector<HTMLInputElement>('#item-chg-t3-picker input');
+      remember?.click();
+      await settle(fixture);
+      buttonNamed(page, 'Attach to this bill').click();
+      await settle(fixture);
+
+      expect(sent()).toEqual([
+        [
+          'chg.t3',
+          {
+            choice: 'ATTACH',
+            billId: 'b-car',
+            dueDate: '2026-08-24',
+            remember: false,
+            recordDebtPayment: false,
+          },
+        ],
+      ]);
+    });
+
+    it('files a row, remembers it, leaves another, and clears an answer', async () => {
+      const answered: Week = {
+        ...FULL,
+        steps: FULL.steps.map((s) =>
+          s.step === 'CATEGORIZE'
+            ? {
+                ...s,
+                items: [
+                  {
+                    ...ITEM,
+                    answer: {
+                      choice: 'CATEGORY',
+                      categoryId: 'c8',
+                      categoryName: 'Eating Out',
+                      billId: null,
+                      billName: null,
+                      dueDate: null,
+                      goalId: null,
+                      debtId: null,
+                      amount: null,
+                      remember: false,
+                      recordDebtPayment: false,
+                      byRule: false,
+                      answeredBy: { id: 'u1', name: 'Ada' },
+                      version: 2,
+                    },
+                  },
+                ],
+              }
+            : s,
+        ),
+      };
+      const fixture = await render({ week: answered });
+      service.answer.mockReturnValue(of(answered));
+      service.clearAnswer.mockReturnValue(of(undefined));
+      const page = root(fixture);
+
+      expect(text(fixture)).toContain('Answered by Ada');
+      page.querySelector<HTMLInputElement>('#item-cat-t1 input[type="checkbox"]')?.click();
+      await settle(fixture);
+      const select = page.querySelector<HTMLSelectElement>('#item-cat-t1-category');
+      if (select) {
+        select.value = '';
+        select.dispatchEvent(new Event('change'));
+      }
+      await settle(fixture);
+      page.querySelector<HTMLButtonElement>('#item-cat-t1 .choices, #item-cat-t1 button')?.click();
+      await settle(fixture);
+
+      expect(sent()[0]).toEqual([
+        'cat.t1',
+        { choice: 'CATEGORY', categoryId: 'c8', remember: true, version: 2 },
+      ]);
+      expect(service.clearAnswer).toHaveBeenCalledWith('2026-W34', 'cat.t1');
+      expect(sent()[1]).toEqual(['cat.t1', { choice: 'LEAVE', version: 2 }]);
+    });
+
+    it('tells the person when someone else answered first, and re-reads', async () => {
+      const fixture = await render({ week: FULL });
+      service.answer.mockReturnValue(throwError(() => apiError(409, 'stale-version')));
+
+      buttonNamed(root(fixture), 'Yes, prepaid').click();
+      await settle(fixture);
+
+      expect(text(fixture)).toContain('Someone else answered this first.');
+      expect(service.current).toHaveBeenCalledTimes(2);
+    });
+
+    it('moves between screens with Back and Next, naming the next step', async () => {
+      const fixture = await render({ week: FULL });
+      const page = root(fixture);
+
+      buttonNamed(page, 'Next: categorize').click();
+      await settle(fixture);
+      expect(page.querySelector('#step-categorize')?.classList).toContain('is-current');
+      buttonNamed(page, 'Next: bills').click();
+      await settle(fixture);
+      expect(page.querySelector('#step-bills')?.classList).toContain('is-current');
+      buttonNamed(page.querySelector('#step-bills') as HTMLElement, 'Back').click();
+      await settle(fixture);
+      expect(page.querySelector('#step-categorize')?.classList).toContain('is-current');
+    });
+  });
+
+  it('discards a draft only after asking, and reads the week again', async () => {
+    const fixture = await render();
+    service.discard.mockReturnValue(of(undefined));
+
+    buttonNamed(root(fixture), 'Discard this draft').click();
+    await settle(fixture);
+    expect(service.discard).not.toHaveBeenCalled();
+    const dialog = root(fixture).querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    buttonNamed(dialog as HTMLElement, 'Discard this draft').click();
+    await settle(fixture);
+
+    expect(service.discard).toHaveBeenCalledWith('2026-W34');
+    expect(text(fixture)).toContain('The draft was discarded.');
+  });
+
+  it('discards the other week’s blocking draft when asked', async () => {
+    const fixture = await render({ week: { ...DRAFT, status: 'NOT_STARTED', version: null } });
+    service.start.mockReturnValue(
+      throwError(() => apiError(409, 'check-in-draft-open', { week: '2026-W33' })),
+    );
+    service.discard.mockReturnValue(of(undefined));
+
+    buttonNamed(root(fixture), 'Start check-in').click();
+    await settle(fixture);
+    buttonNamed(root(fixture), 'Discard it').click();
+    await settle(fixture);
+
+    expect(service.discard).toHaveBeenCalledWith('2026-W33');
+    expect(text(fixture)).toContain('The draft was discarded.');
+  });
+
+  it('shows what a completed week wrote, each line linking to where it lives', async () => {
+    const fixture = await render({
+      week: {
+        ...DRAFT,
+        status: 'COMPLETED',
+        steps: [],
+        completedAt: '2026-08-21T12:00:00Z',
+        completedBy: { id: 'u1', name: 'Ada' },
+        snapshot: {
+          weekTarget: usd('550.0000'),
+          weekSpending: usd('487.0000'),
+          rolledOver: null,
+          nextWeekTarget: usd('480.0000'),
+          debtFreeMonth: null,
+        },
+        outcome: [],
+      },
+    });
+
+    expect(text(fixture)).toContain('Check-in done');
+    expect(text(fixture)).toContain('Finished by Ada');
+    expect(text(fixture)).toContain('Next week: $480.00.');
+  });
 });

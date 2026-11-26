@@ -244,7 +244,7 @@ public class CheckInPictures {
             long otherCurrency = ledger.countInOtherCurrencies(householdId, code, from, to);
             fingerprint.add("other", otherCurrency);
 
-            Figures figures = figures(outflows);
+            Figures figures = figures();
             Map<String, Item> all = new LinkedHashMap<>();
             for (List<Item> step : List.of(overdue, unusual, categorize, charges)) {
                 for (Item item : step) {
@@ -830,7 +830,7 @@ public class CheckInPictures {
 
         // -------------------------------------------------------------------------- step 4
 
-        private Figures figures(List<LedgerRow> outflows) {
+        private Figures figures() {
             LocalDate monday = week.monday();
             LocalDate nextMonday = monday.plusDays(7);
             YearMonth first = YearMonth.from(nextMonday);
@@ -842,8 +842,7 @@ public class CheckInPictures {
             spanned.add(endMonth);
             UnbudgetedSpending rule = new UnbudgetedSpending(base, categories, budgetedIn(spanned));
 
-            Money weekSpending =
-                    applyAnswers(rule, rule.between(groups, monday, to), monday, to, outflows);
+            Money weekSpending = applyAnswers(rule, rule.between(groups, monday, to), monday, to);
             LocalDate monthFrom = first.atDay(1);
             LocalDate monthTo = to.isBefore(first.atEndOfMonth()) ? to : first.atEndOfMonth();
             Money unbudgetedMonth =
@@ -853,8 +852,7 @@ public class CheckInPictures {
                                     rule,
                                     rule.between(groups, monthFrom, monthTo),
                                     monthFrom,
-                                    monthTo,
-                                    outflows);
+                                    monthTo);
 
             List<WeeklyFigure.MonthTerms> months = new ArrayList<>();
             months.add(
@@ -915,11 +913,7 @@ public class CheckInPictures {
          * "Dining" counts as Dining, and a row attached in step 1 or 3 drops out.
          */
         private Money applyAnswers(
-                UnbudgetedSpending rule,
-                Money total,
-                LocalDate rangeFrom,
-                LocalDate rangeTo,
-                List<LedgerRow> outflows) {
+                UnbudgetedSpending rule, Money total, LocalDate rangeFrom, LocalDate rangeTo) {
             Map<UUID, LedgerRow> rows = new HashMap<>();
             Map<UUID, UUID> categoryAfter = new HashMap<>();
             Set<UUID> attachedAfter = new HashSet<>();

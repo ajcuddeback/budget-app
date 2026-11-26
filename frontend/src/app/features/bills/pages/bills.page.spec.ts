@@ -16,6 +16,7 @@ import {
   settle,
 } from '../../../testing/helpers';
 import { AccountsService } from '../../accounts/data/accounts.service';
+import { CheckInService } from '../../check-in/data/check-in.service';
 import { CategoriesService } from '../../categories/data/categories.service';
 import {
   Bill,
@@ -838,5 +839,47 @@ describe('BillsPage', () => {
     expect(link?.getAttribute('href')).toBe('/envelopes');
     // The figure comes from the summary, so it cannot disagree with the headline's third term.
     expect(text(fixture)).toContain('£380.00');
+  });
+
+  // ---- mappings a weekly check-in remembered (slice 14) ---------------------------------------
+
+  const MAPPED: Bill = {
+    ...RENT,
+    mappings: [
+      {
+        ruleId: 'rule-1',
+        payeeName: 'COMCAST XFINITY',
+        accountId: 'acc-1',
+        accountName: 'Chase',
+        accountLastFour: '4412',
+      },
+    ],
+  };
+
+  it('shows a bill’s mapping, its payee in its own dir="auto" element, and unmaps it', async () => {
+    const fixture = await render({ bills: [MAPPED] });
+    const checkIns = TestBed.inject(CheckInService);
+    const remove = vi.spyOn(checkIns, 'removeChargeRule').mockReturnValue(of(undefined));
+
+    expect(text(fixture)).toContain('Mapped');
+    expect(text(fixture)).toContain('Chase •4412');
+    expect(text(fixture)).toContain('exact match');
+    const payee = Array.from(root(fixture).querySelectorAll('.mapping [dir="auto"]')).find(
+      (node) => node.textContent?.trim() === 'COMCAST XFINITY',
+    );
+    expect(payee).toBeDefined();
+
+    buttonNamedOrNull(root(fixture), /Unmap/)?.click();
+    await settle(fixture);
+
+    expect(remove).toHaveBeenCalledWith('rule-1');
+    expect(text(fixture)).toContain('The mapping was removed.');
+  });
+
+  it('gives a viewer the mapping with no Unmap', async () => {
+    const fixture = await render({ bills: [MAPPED], role: 'VIEWER' });
+
+    expect(text(fixture)).toContain('Mapped');
+    expect(buttonNamedOrNull(root(fixture), /Unmap/)).toBeNull();
   });
 });
