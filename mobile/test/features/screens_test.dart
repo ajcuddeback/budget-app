@@ -325,10 +325,16 @@ void main() {
       container.read(reachabilityProvider.notifier).record(Reachability.offline);
       await settle(tester);
       final before = server.served.length;
+      // Nothing was attempted yet: no standing banner (only the stale label, once it is stale).
+      expect(find.text("You're offline — this needs a connection"), findsNothing);
+      // The button stays readable over the rows: opaque, not the translucent divider colour.
+      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
+      expect(fab.backgroundColor?.a, 1.0);
+      expect(fab.onPressed, isNotNull, reason: 'a tap explains, rather than doing nothing');
 
       await tapVisible(tester, find.text('Record a transaction'));
 
-      expect(find.text("You're offline — this needs a connection"), findsWidgets);
+      expect(find.text("You're offline — this needs a connection"), findsOneWidget);
       expect(find.text('Record a transaction'), findsOneWidget, reason: 'no sheet opened');
       expect(server.served.length, before);
     });

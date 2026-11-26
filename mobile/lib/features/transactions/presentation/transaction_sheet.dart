@@ -316,7 +316,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
                       child: Text(
                         cat.parentName == null
                             ? cat.name
-                            : l.transactions_categoryPath(cat.parentName!, cat.name),
+                            : l.transactions_categoryTrail(cat.parentName!, cat.name),
                       ),
                     ),
                   // A row filed under a category since archived keeps it: it is offered so the

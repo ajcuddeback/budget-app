@@ -216,7 +216,7 @@ class _TransferSheetState extends ConsumerState<TransferSheet> {
                     helperText: l.transfers_accountsFixedHint,
                   ),
                   child: Text(
-                    l.transfers_accountsFixed(editing.fromAccountName, editing.toAccountName),
+                    l.transfers_accountsTrail(editing.fromAccountName, editing.toAccountName),
                   ),
                 ),
               ],

@@ -189,9 +189,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ? null
         : Semantics(
             enabled: online,
+            // Offline it stays tappable (a tap says why it cannot record) and opaque: the
+            // divider token is translucent, so a FAB drawn with it let the row beneath show
+            // through and both became unreadable. Surface and muted are the design's own
+            // quiet pair; there is no disabled-colour token.
             child: FloatingActionButton.extended(
-              backgroundColor: online ? null : c.divider,
+              backgroundColor: online ? null : c.surface,
               foregroundColor: online ? null : c.muted,
+              shape: online ? null : StadiumBorder(side: BorderSide(color: c.fieldBorder)),
               onPressed: online
                   ? () async => _said(
                       await showTransactionSheet(
@@ -219,7 +224,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           TextButton(
             onPressed: online
                 ? () async => _said(await showTransferSheet(context, accounts: accounts))
-                : null,
+                : () => setState(() => _actionError = const AppError.offline()),
+            style: online ? null : TextButton.styleFrom(foregroundColor: c.muted),
             child: Text(l.transfers_move),
           ),
         IconButton(
@@ -298,7 +304,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     : context.errorMessage(_actionError!),
               ),
             ),
-          if (canWrite && !online) const Gutter(child: OfflineNote()),
+          // No standing "you're offline" banner: the stale label says the copy is old, and the
+          // needs-a-connection sentence appears when a write is attempted (_actionError).
           SnapshotView<Ledger>(
             snapshot: ledger,
             onRetry: () => ref.read(ledgerProvider(_query).notifier).refresh(),
@@ -590,7 +597,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     child: Text(
                       c.parentName == null
                           ? c.name
-                          : l.transactions_categoryPath(c.parentName!, c.name),
+                          : l.transactions_categoryTrail(c.parentName!, c.name),
                     ),
                   ),
               ],

@@ -9169,6 +9169,12 @@ abstract class AppLocalizations {
   /// **'{parent} → {name}'**
   String transactions_categoryPath(String parent, String name);
 
+  /// Mobile only (l10n/mobile.en.json "transactions.categoryTrail").
+  ///
+  /// In en, this message translates to:
+  /// **'{parent} › {name}'**
+  String transactions_categoryTrail(String parent, String name);
+
   /// Mobile only (l10n/mobile.en.json "transactions.chooseCategory").
   ///
   /// In en, this message translates to:
@@ -9504,6 +9510,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Accounts'**
   String get transfers_accountsLabel;
+
+  /// Mobile only (l10n/mobile.en.json "transfers.accountsTrail").
+  ///
+  /// In en, this message translates to:
+  /// **'{from} › {to}'**
+  String transfers_accountsTrail(String from, String to);
 
   /// Web en.json "transfers.addTitle".
   ///

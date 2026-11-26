@@ -8073,6 +8073,18 @@
       }
     }
   },
+  "transactions_categoryTrail": "{parent} › {name}",
+  "@transactions_categoryTrail": {
+    "description": "Mobile only (l10n/mobile.en.json \"transactions.categoryTrail\").",
+    "placeholders": {
+      "parent": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "transactions_chooseCategory": "Choose a category",
   "@transactions_chooseCategory": {
     "description": "Mobile only (l10n/mobile.en.json \"transactions.chooseCategory\")."
@@ -8320,6 +8332,18 @@
   "transfers_accountsLabel": "Accounts",
   "@transfers_accountsLabel": {
     "description": "Web en.json \"transfers.accountsLabel\"."
+  },
+  "transfers_accountsTrail": "{from} › {to}",
+  "@transfers_accountsTrail": {
+    "description": "Mobile only (l10n/mobile.en.json \"transfers.accountsTrail\").",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "transfers_addTitle": "Move money between your accounts",
   "@transfers_addTitle": {

@@ -19,7 +19,8 @@ String rowCategory(BuildContext context, Transaction t) {
   final name = t.categoryName;
   if (name == null) return l.transactions_needsCategory;
   final parent = t.categoryParentName;
-  return parent == null ? name : l.transactions_categoryPath(parent, name);
+  // "›", not the web's "→": the bundled Figtree has no U+2192, and "›" mirrors in RTL.
+  return parent == null ? name : l.transactions_categoryTrail(parent, name);
 }
 
 /// One ledger row, as the mobile artboard draws it: an initial on a circle, the payee and its

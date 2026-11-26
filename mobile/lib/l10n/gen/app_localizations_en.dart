@@ -5452,6 +5452,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String transactions_categoryTrail(String parent, String name) {
+    return '$parent › $name';
+  }
+
+  @override
   String get transactions_chooseCategory => 'Choose a category';
 
   @override
@@ -5635,6 +5640,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transfers_accountsLabel => 'Accounts';
+
+  @override
+  String transfers_accountsTrail(String from, String to) {
+    return '$from › $to';
+  }
 
   @override
   String get transfers_addTitle => 'Move money between your accounts';
