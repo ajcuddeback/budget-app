@@ -218,7 +218,8 @@ public class DebtController {
             TransportAuthentication caller,
             @PathVariable UUID id,
             @Valid @RequestBody PreviewPaymentRequest body) {
-        return PaymentPreviewResponse.of(payments.preview(caller.userId(), id, body.amount()));
+        return PaymentPreviewResponse.of(
+                payments.preview(caller.userId(), id, body.amount(), body.paidDate()));
     }
 
     /**

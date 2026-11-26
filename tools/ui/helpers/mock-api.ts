@@ -1305,6 +1305,11 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
       // What logging an amount WOULD record. Keyed on the debt and the amount actually sent, for
       // the same reason the what-if is: answering an amount nobody generated with a plausible
       // split is a screenshot of arithmetic the application never did.
+      //
+      // The `paidDate` the sheet also sends is NOT part of the key. Every generated preview is
+      // taken at the demo's today, 20 August, with August not yet paid, so each one carries
+      // August's interest. A capture that back-dates into a month that already carries interest
+      // would need a generated preview at that date (ADR-0040).
       const amount = canonicalAmount(String(field('amount') ?? ''));
       const answer = generated(`POST /api/debts/${preview[1]}/payments/preview ${amount}`);
       return answer === undefined
@@ -1390,7 +1395,9 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Ap
     // application and guards against drift. Keyed on exactly what was asked — the range, the month
     // and the representation — and loudly refused for anything it was not generated for: a report
     // for a range nobody asked the server about would be arithmetic the application never did.
-    const report = url.pathname.match(/^\/api\/reports\/(income-and-spending|spending-by-category)$/);
+    const report = url.pathname.match(
+      /^\/api\/reports\/(income-and-spending|spending-by-category)$/,
+    );
     if (report) {
       if (session === 'anonymous') {
         return problem(route, DEMO_PROBLEMS.notAuthenticated);

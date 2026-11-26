@@ -1308,3 +1308,28 @@ or match your path before any catch-all. When a mocked write seems to do nothing
 and the responses from the page — `calls` from `mockApi` shows which handler's answer came back.
 
 _Added 2026-11-25 — slice 12._
+
+## A debt payment's split depends on the other payments in its month
+
+**Symptom.** Two `$445` payments to the same debt, logged the same way, come back with different
+splits: the first carries `117.94` of interest, the second `0.0000`. Separately, a test that logs
+a payment dated today and reads `payoffMonth` before and after sees no change. That is correct
+too, and it used to move a month early.
+
+**Why.** A debt is charged interest **once per calendar month** (ADR-0040). The first payment in a
+month (on or after the anchor date) carries it, and later ones are all principal. The projection's
+first month is pushed past the latest month a payment charged. Before this, a payment dated today
+matched "the next payment date is today", so the projection charged the month just paid again.
+
+**What to do.**
+
+- A test that expects a full month's interest needs a month nobody has paid yet. A test that
+  back-dates by a whole month also gets an **estimated** month of interest and minimum on top
+  (`DebtBalanceService.estimate`), so derive the expected figure from the response's balance
+  rather than writing it down (`DebtIT.a_payment_in_a_month_nobody_has_paid_yet_…`).
+- Fixtures that "log a payment today" must not already have one this month. `DemoFixtureIT` pays
+  the Visa February–July for exactly this reason.
+- Any new code path that writes a `DebtPayment` (the slice-14 `CHECK_IN` one included) goes through
+  `DebtPaymentService.draft`. Don't add a provenance special case.
+
+_Added 2026-11-26._

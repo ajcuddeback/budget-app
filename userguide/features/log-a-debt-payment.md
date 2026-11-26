@@ -47,6 +47,11 @@ well, [record it as a transaction](record-a-transaction.md).
    The interest stays at $117.94, because it's worked out on the balance you owe now. All of the
    extra $50.00 comes off the balance.
 
+   **A second payment in the same month carries no interest.** Budget Owl charges a debt one
+   month's interest per calendar month, on the first payment you log in that month. Pay the card
+   again in the same month and the split reads **$0.00 interest**: every cent comes off the
+   balance.
+
 5. Change **Date paid** if it wasn't today.
 
 6. Choose the account the money left, in **Paid from**.
@@ -103,7 +108,10 @@ your lender will charge to the penny."_
 ## Recording a payment you made a while ago
 
 **Add a past payment**, at the top of **Payment history**, opens the same window. Set **Date paid**
-to the day it went, and Budget Owl works the split out against the balance as it stood then.
+to the day it went, and the split under **Amount paid** updates for that date. If you've already
+logged a payment in that month, the past one carries no interest. Otherwise it carries that
+month's interest, worked out on the balance you owe now. Budget Owl doesn't keep a day-by-day
+record of the balance, so it can't use the balance as it stood on that day.
 
 ## What the rest of the page tells you
 
@@ -150,6 +158,14 @@ balance, [record a transaction](record-a-transaction.md).
 **"The balance went down by less than I paid."**
 The rest went on interest. The **Interest** and **Principal** columns in the history show the split
 for every payment, and the two always add up to exactly what you paid.
+
+**"My extra payment shows $0.00 interest."**
+That's right. You've already logged a payment against this debt this month, and that one carried
+the month's interest, so all of the extra payment comes off the balance. Until 26 November 2026,
+Budget Owl charged every payment a whole month's interest. A small extra payment could then look
+as if it made the balance go up. Payments you logged before that keep the split they were
+recorded with. If your balance looks too high because of one, enter the figure from your next
+statement — [Confirm what you owe](confirm-what-you-owe.md).
 
 **"I can't see the split."**
 It's the line just under **Amount paid** and its two buttons. If the box is empty or holds something that isn't an amount yet, such as `4.`,

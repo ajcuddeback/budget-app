@@ -780,9 +780,15 @@ class DemoFixtureIT extends ApiTestBase {
      * show. It is a {@code STATEMENT_CORRECTION} rather than a payment, which is what the
      * provenance column on every row exists to keep apart: an inferred figure must never be shown
      * as one somebody asserted.
+     *
+     * <p><b>February to July, and not August.</b> The demo's today is 20 August, and the user
+     * guide's walkthrough logs a payment on it. With August already paid, that payment was a second
+     * one in the month, so the guide showed it charged a second month of interest — the defect
+     * ADR-0040 removes. With August unpaid, the walkthrough logs August's payment and carries
+     * August's interest, which is what it describes.
      */
     private void payDownTheVisa(Household household, UUID visa) {
-        for (int month = 3; month <= 8; month++) {
+        for (int month = 2; month <= 7; month++) {
             LocalDate paidOn = LocalDate.of(2026, month, 20);
             ApiResponse logged =
                     household

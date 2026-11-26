@@ -379,6 +379,257 @@ class DebtIT extends ApiTestBase {
                 .isZero();
     }
 
+    // ------------------------------------------- a month's interest is charged once (ADR-0040)
+
+    private static ApiResponse logPayment(ApiClient client, UUID debt, String date, String amount) {
+        ApiResponse logged =
+                client.post(
+                        "/api/debts/" + debt + "/payments",
+                        "{\"paidDate\":\"%s\",\"amount\":\"%s\"}".formatted(date, amount));
+        assertThat(logged.status()).as("logging %s: %s", amount, logged.body()).isEqualTo(201);
+        return logged;
+    }
+
+    private static java.math.BigDecimal balanceOf(ApiClient client, UUID debt) {
+        return new java.math.BigDecimal(client.get("/api/debts/" + debt).stringField("balance"));
+    }
+
+    private static YearMonth payoffMonthOf(ApiClient client, UUID debt) {
+        return YearMonth.parse(client.get("/api/debts/" + debt).stringField("payoffMonth"));
+    }
+
+    private static YearMonth debtFreeMonthOf(ApiClient client) {
+        return YearMonth.parse(client.get("/api/debt-plan").stringField("debtFreeMonth"));
+    }
+
+    @Test
+    void an_extra_payment_in_the_same_month_is_all_principal() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        logPayment(household.owner(), debt, TODAY, "445.00");
+
+        ApiResponse extra = logPayment(household.owner(), debt, TODAY, "63.00");
+
+        // The defect this replaces: every payment was treated as a whole month's payment, so the
+        // $63 was charged 5852.94 × 22.9 ÷ 1200 = $111.69 of interest, had a principal of
+        // −$48.69, and RAISED the balance to $5,901.63. The month's interest went with the $445.
+        assertThat(extra.stringField("interest")).isEqualTo("0.0000");
+        assertThat(extra.stringField("principal")).isEqualTo("63.0000");
+        assertThat(extra.stringField("balanceAfter")).isEqualTo("5789.9400");
+        assertThat(balanceOf(household.owner(), debt)).isEqualByComparingTo("5789.94");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.01", "1.00", "63.00", "117.94", "500.00", "5000.00"})
+    void an_extra_payment_never_raises_the_balance_and_never_moves_the_payoff_month_later(
+            String extra) {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        household
+                .owner()
+                .put(
+                        "/api/debt-plan",
+                        """
+                        {"strategy":"AVALANCHE","monthlyAmount":"445.0000","version":0}
+                        """);
+        logPayment(household.owner(), debt, TODAY, "445.00");
+        java.math.BigDecimal balanceBefore = balanceOf(household.owner(), debt);
+        YearMonth payoffBefore = payoffMonthOf(household.owner(), debt);
+        YearMonth debtFreeBefore = debtFreeMonthOf(household.owner());
+
+        ApiResponse logged = logPayment(household.owner(), debt, TODAY, extra);
+
+        // Every cent of an extra payment comes off the balance, and the split still adds up.
+        java.math.BigDecimal interest = new java.math.BigDecimal(logged.stringField("interest"));
+        java.math.BigDecimal principal = new java.math.BigDecimal(logged.stringField("principal"));
+        assertThat(interest).isEqualByComparingTo("0");
+        assertThat(interest.add(principal)).isEqualByComparingTo(extra);
+        java.math.BigDecimal balanceAfter = balanceOf(household.owner(), debt);
+        assertThat(balanceAfter)
+                .as("an extra payment of %s must not raise the balance", extra)
+                .isLessThan(balanceBefore);
+        assertThat(balanceAfter).isEqualByComparingTo(balanceBefore.subtract(principal));
+        // And the projections built on that balance move the right way, or not at all.
+        assertThat(payoffMonthOf(household.owner(), debt)).isBeforeOrEqualTo(payoffBefore);
+        assertThat(debtFreeMonthOf(household.owner())).isBeforeOrEqualTo(debtFreeBefore);
+    }
+
+    @Test
+    void logging_the_months_scheduled_payment_leaves_the_payoff_month_where_it_was() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        // No plan and no entered payment, so the projection pays the $185 minimum, starting with
+        // this month's.
+        YearMonth projected = payoffMonthOf(household.owner(), debt);
+
+        logPayment(household.owner(), debt, TODAY, "185.00");
+
+        // The payment just logged IS month 1 of that projection, so the projection now starts
+        // next month from the balance it left and arrives at the same month. It used to start
+        // this month again — "the next payment is today" — charging the month's interest a
+        // second time and counting its payment a second time, which pulled the date a month early.
+        assertThat(payoffMonthOf(household.owner(), debt)).isEqualTo(projected);
+    }
+
+    @Test
+    void the_preview_of_an_extra_payment_is_exactly_what_logging_it_records() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        logPayment(household.owner(), debt, TODAY, "445.00");
+
+        ApiResponse preview =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments/preview",
+                                "{\"amount\":\"63.00\",\"paidDate\":\"%s\"}".formatted(TODAY));
+        ApiResponse logged = logPayment(household.owner(), debt, TODAY, "63.00");
+
+        assertThat(preview.status()).isEqualTo(200);
+        assertThat(preview.stringField("interest")).isEqualTo("0.0000");
+        assertThat(preview.stringField("interest")).isEqualTo(logged.stringField("interest"));
+        assertThat(preview.stringField("principal")).isEqualTo(logged.stringField("principal"));
+        assertThat(preview.stringField("balanceAfter"))
+                .isEqualTo(logged.stringField("balanceAfter"));
+    }
+
+    @Test
+    void a_preview_dated_in_the_future_is_refused_as_logging_would_be() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments/preview",
+                                "{\"amount\":\"63.00\",\"paidDate\":\"%s\"}"
+                                        .formatted(LocalDate.now(ZoneOffset.UTC).plusDays(1)));
+
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.body()).contains("paidDate");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2026-02-30", "nope", "2026-13-01", "26/11/2026"})
+    void a_preview_date_that_is_not_a_date_is_refused_rather_than_failing(String date) {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+
+        ApiResponse refused =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts/" + debt + "/payments/preview",
+                                "{\"amount\":\"63.00\",\"paidDate\":\"%s\"}".formatted(date));
+
+        assertThat(refused.status()).isEqualTo(400);
+    }
+
+    @Test
+    void two_members_logging_the_months_first_payment_at_once_charge_the_month_once()
+            throws Exception {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        String body = "{\"paidDate\":\"%s\",\"amount\":\"445.00\"}".formatted(TODAY);
+        List<java.util.concurrent.Callable<ApiResponse>> both =
+                List.of(
+                        () -> household.owner().post("/api/debts/" + debt + "/payments", body),
+                        () -> household.member().post("/api/debts/" + debt + "/payments", body));
+
+        // Each round races two members against an uncharged month. Without the lock on the debt
+        // row both read "no payment carries interest yet" before either inserts, and the month is
+        // charged twice. With it, whichever commits second sees the first.
+        for (int round = 0; round < 5; round++) {
+            jdbc.update("DELETE FROM debt_payments WHERE debt_id = ?", debt);
+            java.util.concurrent.ExecutorService pool =
+                    java.util.concurrent.Executors.newFixedThreadPool(2);
+            try {
+                for (java.util.concurrent.Future<ApiResponse> outcome : pool.invokeAll(both)) {
+                    assertThat(outcome.get().status()).isEqualTo(201);
+                }
+            } finally {
+                pool.shutdownNow();
+            }
+
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT count(*) FROM debt_payments"
+                                            + " WHERE debt_id = ? AND interest <> 0",
+                                    Long.class,
+                                    debt))
+                    .as("round %d: one month, one charge", round)
+                    .isEqualTo(1L);
+        }
+    }
+
+    @Test
+    void a_payment_in_a_month_nobody_has_paid_yet_carries_that_months_interest() {
+        Household household = seedHousehold();
+        LocalDate lastMonth = YearMonth.now(ZoneOffset.UTC).minusMonths(1).atDay(1);
+        ApiResponse created =
+                household
+                        .owner()
+                        .post(
+                                "/api/debts",
+                                """
+                                {"name":"Visa","kind":"CREDIT_CARD","balance":"6180.00",
+                                 "balanceDate":"%s","apr":"22.900","minimumPayment":"185.00"}
+                                """
+                                        .formatted(lastMonth));
+        UUID debt = UUID.fromString(created.stringField("id"));
+        logPayment(household.owner(), debt, lastMonth.toString(), "445.00");
+
+        ApiResponse thisMonth = logPayment(household.owner(), debt, TODAY, "445.00");
+
+        // Last month's payment charged last month. This month has not been charged, so this one
+        // carries a month's interest on the balance it was taken against. That balance depends on
+        // the day the suite runs — a whole month between the two dates is ESTIMATED forward at the
+        // minimum — so the expectation is derived from it rather than written down.
+        java.math.BigDecimal interest = new java.math.BigDecimal(thisMonth.stringField("interest"));
+        java.math.BigDecimal principal =
+                new java.math.BigDecimal(thisMonth.stringField("principal"));
+        java.math.BigDecimal balanceBefore =
+                new java.math.BigDecimal(thisMonth.stringField("balanceAfter")).add(principal);
+        assertThat(interest).isPositive();
+        assertThat(interest)
+                .isEqualByComparingTo(
+                        balanceBefore
+                                .multiply(new java.math.BigDecimal("22.900"))
+                                .divide(
+                                        new java.math.BigDecimal("1200"),
+                                        2,
+                                        java.math.RoundingMode.HALF_EVEN));
+        assertThat(interest.add(principal)).isEqualByComparingTo("445.00");
+    }
+
+    @Test
+    void deleting_the_payment_that_carried_the_months_interest_lets_the_next_one_carry_it() {
+        Household household = seedHousehold();
+        UUID debt = createDebt(household.owner(), "Visa", "6180.00", "22.900", "185.00", null);
+        UUID typo =
+                UUID.fromString(
+                        logPayment(household.owner(), debt, TODAY, "44.50").stringField("id"));
+        logPayment(household.owner(), debt, TODAY, "63.00");
+
+        assertThat(household.owner().delete("/api/debts/" + debt + "/payments/" + typo).status())
+                .isEqualTo(204);
+        ApiResponse retyped = logPayment(household.owner(), debt, TODAY, "445.00");
+
+        // The $63 stays principal-only (a stored split is never rewritten), and the month's
+        // interest is charged once, by the payment logged in place of the typo:
+        // (6180.00 − 63.00) × 22.9 ÷ 1200 = 116.73275, half-even to the cent, 116.73.
+        assertThat(retyped.stringField("interest")).isEqualTo("116.7300");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM debt_payments"
+                                        + " WHERE debt_id = ? AND interest <> 0",
+                                Long.class,
+                                debt))
+                .as("one month, one charge")
+                .isEqualTo(1L);
+    }
+
     @Test
     void a_statement_correction_reconciles_the_balance_and_is_recorded_rather_than_applied() {
         Household household = seedHousehold();

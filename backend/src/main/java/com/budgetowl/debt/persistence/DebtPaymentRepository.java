@@ -134,6 +134,56 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
             @Param("debtId") UUID debtId,
             @Param("date") java.time.LocalDate date);
 
+    /**
+     * How many of one debt's payments dated {@code from}…{@code to} already carry interest.
+     *
+     * <p><b>A month's interest is charged once</b> (ADR-0040). The first payment counted against
+     * the balance in a calendar month carries that month's interest; any later one in the same
+     * month is principal only. This is the look-up that tells the two apart. It asks whether a row
+     * <em>carries</em> interest rather than whether one exists, so a {@code STATEMENT_CORRECTION}
+     * (always zero interest) never counts, and deleting the row that carried the month's interest
+     * lets the next payment in that month carry it instead.
+     *
+     * <p>The caller passes {@code from} no earlier than the anchor date: a payment before the
+     * anchor does not count against the balance, so it cannot have charged the balance anything.
+     */
+    @Query(
+            """
+            select count(p) from DebtPayment p
+            where p.householdId = :householdId
+              and p.debtId = :debtId
+              and p.paidDate >= :from
+              and p.paidDate <= :to
+              and p.interest <> 0
+            """)
+    long countCarryingInterestBetween(
+            @Param("householdId") UUID householdId,
+            @Param("debtId") UUID debtId,
+            @Param("from") java.time.LocalDate from,
+            @Param("to") java.time.LocalDate to);
+
+    /**
+     * The latest payment date that charged each debt a month's interest, for every debt at once.
+     *
+     * <p>What the projection needs so that it never starts in a month whose interest has already
+     * been charged (ADR-0040): month 1 is the month after this one at the earliest. The same
+     * two-sided household scope as {@link #principalPaidSinceAnchor}, and the same bound: only a
+     * payment on or after the anchor date counts against the balance, so only one of those can have
+     * charged it.
+     */
+    @Query(
+            """
+            select new com.budgetowl.debt.persistence.LatestCharge(p.debtId, max(p.paidDate))
+            from DebtPayment p, Debt d
+            where d.id = p.debtId
+              and d.householdId = :householdId
+              and p.householdId = :householdId
+              and p.paidDate >= d.anchorDate
+              and p.interest <> 0
+            group by p.debtId
+            """)
+    List<LatestCharge> latestCharges(@Param("householdId") UUID householdId);
+
     /** When each debt was last paid, and how many times, for every debt at once. */
     @Query(
             """

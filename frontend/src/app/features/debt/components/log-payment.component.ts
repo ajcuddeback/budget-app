@@ -19,11 +19,14 @@ import { FieldErrorComponent } from '../../../shared/components/field-error.comp
 import { ModalDirective } from '../../../shared/components/modal.directive';
 import { applyServerFieldErrors } from '../../../shared/forms/validators';
 import { Account } from '../../accounts/data/account.models';
-import { Debt, PaymentPreview } from '../data/debt.models';
+import { Debt, PaymentPreview, PreviewPaymentRequest } from '../data/debt.models';
 import { PaymentFormValue } from '../data/debt-patch';
 
 /** Unsigned: a payment is a magnitude. Mirrors `DebtRequests.AMOUNT`. */
 const AMOUNT = /^\d{1,15}(\.\d{1,4})?$/;
+
+/** What a date input holds once a whole date is in it. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The one-tap alternative the designs offer beside what is scheduled. */
 const EXTRA_STEP = '50';
@@ -108,8 +111,14 @@ export class LogPaymentComponent {
 
   readonly submitted = output<PaymentFormValue>();
 
-  /** An amount worth asking the server about, or `''` for one it cannot answer yet. */
-  readonly amountChanged = output<string>();
+  /**
+   * A payment worth asking the server about — the amount and the date it would be logged with — or
+   * an `amount` of `''` for one it cannot answer yet.
+   *
+   * The date is part of the question because it changes the answer: a second payment in a month
+   * that has already been charged its interest is all principal (ADR-0040).
+   */
+  readonly previewAsked = output<PreviewPaymentRequest>();
 
   readonly closed = output<void>();
 
@@ -148,13 +157,17 @@ export class LogPaymentComponent {
     this.accounts().filter((account) => !account.archived),
   );
 
-  /** The last amount asked about, so setting a field does not ask the same question twice. */
+  /** The last question asked, so setting a field does not ask the same question twice. */
   private asked = '';
 
   constructor() {
     this.form.controls.amount.valueChanges
       .pipe(debounceTime(PREVIEW_SETTLES_AFTER_MS), takeUntilDestroyed())
       .subscribe((amount) => this.ask(amount));
+    // A date is picked, not typed, so there is nothing to wait for.
+    this.form.controls.paidDate.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.ask(this.form.controls.amount.value));
 
     effect(() => {
       const scheduled = this.scheduled();
@@ -192,19 +205,25 @@ export class LogPaymentComponent {
   }
 
   /**
-   * Asks what this amount would record.
+   * Asks what this amount, on the date in the form, would record.
    *
    * A figure the field cannot yet carry — empty, or a half-typed `4.` — asks nothing and shows
    * nothing, rather than sending a request the server would refuse and the sheet would report as
-   * a failure.
+   * a failure. A date that is not yet a whole date is left out, and the server takes today.
    */
   private ask(amount: string): void {
     const figure = isAmount(amount.trim()) ? amount.trim() : '';
-    if (figure === this.asked) {
+    const date = this.form.controls.paidDate.value;
+    const question: PreviewPaymentRequest =
+      figure !== '' && ISO_DATE.test(date)
+        ? { amount: figure, paidDate: date }
+        : { amount: figure };
+    const key = `${question.amount}|${question.paidDate ?? ''}`;
+    if (key === this.asked) {
       return;
     }
-    this.asked = figure;
-    this.amountChanged.emit(figure);
+    this.asked = key;
+    this.previewAsked.emit(question);
   }
 
   protected submit(): void {

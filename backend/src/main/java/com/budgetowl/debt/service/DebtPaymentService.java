@@ -16,6 +16,7 @@ import com.budgetowl.household.domain.Household;
 import com.budgetowl.household.domain.HouseholdMember;
 import com.budgetowl.household.service.MembershipService;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
@@ -40,13 +41,16 @@ import org.springframework.transaction.annotation.Transactional;
  * account balance that is too high — the same gap bills have, for the same reason, and it is
  * visible rather than hidden.
  *
- * <p>Four rules are specific to this service:
+ * <p>Five rules are specific to this service:
  *
  * <ul>
  *   <li><b>The split is computed once and stored.</b> {@code interest = round(balance × apr ÷ 100 ÷
  *       12, minor unit, HALF_EVEN)} at the time, the principal takes the remainder, so {@code
  *       interest + principal = amount} exactly and no payment loses or invents a cent — and a
  *       payment in cents splits into two cent figures that each display exactly.
+ *   <li><b>A month's interest is charged once</b> (ADR-0040). The first payment counted against the
+ *       balance in a calendar month carries that month's interest. A second payment in the same
+ *       month is principal only, so an extra payment can never raise the balance.
  *   <li><b>A correction keeps the interest.</b> Recomputing it against today's rate would rewrite
  *       history to agree with the present.
  *   <li><b>Overpaying is not clamped.</b> A payment whose principal exceeds the balance takes it
@@ -126,7 +130,9 @@ public class DebtPaymentService {
     public DebtPaymentView log(UUID actorId, UUID debtId, NewDebtPayment requested) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
-        Debt debt = require(debtId, household.id());
+        // Locked: the split depends on the month's other payments (ADR-0040), and two members
+        // logging at once must not both find the month uncharged.
+        Debt debt = requireForUpdate(debtId, household.id());
         requireNotSettled(debt);
 
         requireRoomForAPayment(payments, household.id(), debt.id());
@@ -236,7 +242,8 @@ public class DebtPaymentService {
     public void delete(UUID actorId, UUID debtId, UUID paymentId) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         UUID householdId = membership.household().id();
-        Debt debt = require(debtId, householdId);
+        // Locked for the same reason as logging: this may remove the row that charged its month.
+        Debt debt = requireForUpdate(debtId, householdId);
         payments.delete(requirePayment(householdId, debt.id(), paymentId));
         settleOrReopen(debt);
         log.info(
@@ -265,23 +272,32 @@ public class DebtPaymentService {
      * <p><b>Write access, although it writes nothing.</b> It is served as a {@code POST}, to keep
      * the amount out of URLs that every layer logs, and this repository treats a non-{@code GET} as
      * a write a {@code VIEWER} is refused. It exists only to serve the log-a-payment sheet, which a
-     * {@code VIEWER} never sees, so least privilege costs nobody anything. The split is taken
-     * against today's balance whatever date the payment will carry, exactly as {@code log} does (a
-     * known gap, recorded in the feature doc).
+     * {@code VIEWER} never sees, so least privilege costs nobody anything.
+     *
+     * <p><b>It takes the date the sheet will log</b>, defaulting to today, because the date decides
+     * whether the payment carries its month's interest (ADR-0040). Without it, a back-dated payment
+     * into a month that already carries interest would preview with interest and be logged without
+     * it. The split is still taken against today's balance whatever the date, exactly as {@code
+     * log} does (a known gap, recorded in the feature doc).
      *
      * @throws com.budgetowl.common.ForbiddenException for a {@code VIEWER}
      * @throws NotFoundException if the debt is not this household's
      * @throws ConflictException {@code debt-paid-off}, as logging would be
+     * @throws InvalidRequestException for a date in the future, as logging would
      */
     @Transactional(readOnly = true)
-    public PaymentPreview preview(UUID actorId, UUID debtId, String amountText) {
+    public PaymentPreview preview(
+            UUID actorId, UUID debtId, String amountText, LocalDate paidDateOrNull) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Debt debt = require(debtId, membership.household().id());
         requireNotSettled(debt);
 
         Currency currency = debt.currency();
         Money amount = AmountText.parse(amountText, currency, AmountText.Sign.POSITIVE, "amount");
-        DebtPayment unsaved = draft(debt, balances.today(), amount);
+        LocalDate paidDate =
+                requireNotInTheFuture(
+                        paidDateOrNull == null ? balances.today() : paidDateOrNull, "paidDate");
+        DebtPayment unsaved = draft(debt, paidDate, amount);
         return new PaymentPreview(
                 Money.of(unsaved.interest(), currency),
                 Money.of(unsaved.principal(), currency),
@@ -297,17 +313,42 @@ public class DebtPaymentService {
      * <p>The single place a payment's split is decided. {@link #log} saves what this returns and
      * {@link #preview} reads it and discards it, so the figure a household is shown before it
      * commits is the figure it gets after.
+     *
+     * <p><b>Interest is charged once per calendar month</b> (ADR-0040). If the month this payment
+     * is dated in already has a payment that carries interest, this one carries none and all of it
+     * comes off the balance. Before this, every logged payment was treated as a whole month's
+     * payment: on a $6,180 card at 22.9%, a $63 extra payment after the month's $445 was charged
+     * another $111.69 of interest, had a principal of −$48.69, and <em>raised</em> the balance.
      */
     private DebtPayment draft(Debt debt, LocalDate paidDate, Money amount) {
         DebtFacts facts = balances.factsFor(debt);
         Money balanceBefore = facts.balance();
+        Money interest =
+                monthAlreadyCharged(debt, paidDate)
+                        ? Money.zero(balanceBefore.currency())
+                        : interestOn(balanceBefore, facts);
         return DebtPayment.of(
-                debt,
-                paidDate,
-                amount,
-                interestOn(balanceBefore, facts),
-                balanceBefore,
-                PaymentProvenance.USER_LOGGED);
+                debt, paidDate, amount, interest, balanceBefore, PaymentProvenance.USER_LOGGED);
+    }
+
+    /**
+     * Whether a payment already counted against this debt's balance has charged it this month's
+     * interest.
+     *
+     * <p>Counted from the anchor date when the anchor falls inside the month. A payment before the
+     * anchor does not count against the balance, and a confirmed statement is a fresh start: the
+     * first payment after it charges interest on the confirmed figure, as it always has.
+     */
+    private boolean monthAlreadyCharged(Debt debt, LocalDate paidDate) {
+        YearMonth month = YearMonth.from(paidDate);
+        LocalDate from = month.atDay(1);
+        if (debt.anchorDate().isAfter(from)) {
+            from = debt.anchorDate();
+        }
+        LocalDate to = month.atEndOfMonth();
+        return !from.isAfter(to)
+                && payments.countCarryingInterestBetween(debt.householdId(), debt.id(), from, to)
+                        > 0;
     }
 
     /**
@@ -414,6 +455,11 @@ public class DebtPaymentService {
 
     private Debt require(UUID debtId, UUID householdId) {
         return debts.findByIdAndHouseholdId(debtId, householdId)
+                .orElseThrow(() -> new NotFoundException("no such debt"));
+    }
+
+    private Debt requireForUpdate(UUID debtId, UUID householdId) {
+        return debts.findByIdAndHouseholdIdForUpdate(debtId, householdId)
                 .orElseThrow(() -> new NotFoundException("no such debt"));
     }
 

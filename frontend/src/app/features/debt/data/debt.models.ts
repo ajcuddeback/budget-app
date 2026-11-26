@@ -463,9 +463,15 @@ export interface UpdateDebtRequest {
   customOrder?: number | null;
 }
 
-/** The amount a sheet is about to record, asked about before it is. */
+/**
+ * The amount a sheet is about to record, asked about before it is.
+ *
+ * `paidDate` is the date the sheet will log, and it matters: a payment dated in a month that has
+ * already been charged its interest carries none (ADR-0040). Absent, the server takes today.
+ */
 export interface PreviewPaymentRequest {
   amount: string;
+  paidDate?: string;
 }
 
 /** A payment to log. `transactionId` is evidence of a real movement, not authority for it. */

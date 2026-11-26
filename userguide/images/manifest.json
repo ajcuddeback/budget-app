@@ -1111,8 +1111,8 @@
     "file": "userguide/images/log-a-debt-payment--balance.png",
     "guide": "log-a-debt-payment",
     "caption": "The Balance now card: the figure, when it was confirmed, and how much has been paid off so far.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1120,8 +1120,8 @@
     "file": "userguide/images/log-a-debt-payment--history.png",
     "guide": "log-a-debt-payment",
     "caption": "The Payment history table: date, paid, interest, principal, balance after and how each row got here, with the compounding rule underneath.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1129,8 +1129,8 @@
     "file": "userguide/images/log-a-debt-payment--log-button.png",
     "guide": "log-a-debt-payment",
     "caption": "The two buttons under the debt name: Log a payment and Edit terms.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1138,8 +1138,8 @@
     "file": "userguide/images/log-a-debt-payment--note.png",
     "guide": "log-a-debt-payment",
     "caption": "The Note box at the foot of the window, above Record it and Cancel.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1147,8 +1147,8 @@
     "file": "userguide/images/log-a-debt-payment--over-time.png",
     "guide": "log-a-debt-payment",
     "caption": "The Balance over time card: what you are paying against the at-the-minimum comparison line, with the sentence saying what the extra is buying.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1156,8 +1156,8 @@
     "file": "userguide/images/log-a-debt-payment--page.png",
     "guide": "log-a-debt-payment",
     "caption": "The page for one debt: its name, the loan terms, the balance now, the balance over time and the payment history.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1165,8 +1165,8 @@
     "file": "userguide/images/log-a-debt-payment--paid-from.png",
     "guide": "log-a-debt-payment",
     "caption": "The Paid from box, with the note that nothing is recorded against that account and no transaction is created.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1174,8 +1174,8 @@
     "file": "userguide/images/log-a-debt-payment--preview.png",
     "guide": "log-a-debt-payment",
     "caption": "The line under Amount paid giving the interest, the principal and the balance after for the amount in the box.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1183,8 +1183,8 @@
     "file": "userguide/images/log-a-debt-payment--preview-extra.png",
     "guide": "log-a-debt-payment",
     "caption": "Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1201,8 +1201,8 @@
     "file": "userguide/images/log-a-debt-payment--recorded.png",
     "guide": "log-a-debt-payment",
     "caption": "The banner after recording a payment, naming how much went on interest, how much came off the balance, and the balance now.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1210,8 +1210,8 @@
     "file": "userguide/images/log-a-debt-payment--sheet.png",
     "guide": "log-a-debt-payment",
     "caption": "The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, the split that amount would record, Date paid, Paid from and Note.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {
@@ -1219,8 +1219,8 @@
     "file": "userguide/images/log-a-debt-payment--terms.png",
     "guide": "log-a-debt-payment",
     "caption": "The Loan terms card: what it started at, the balance now, the annual rate, the minimum payment, what you are paying, months left, when it is gone and the interest still to come, with Solved and From your plan tags.",
-    "capturedAt": "2026-11-25",
-    "commit": "a3694a7",
+    "capturedAt": "2026-11-26",
+    "commit": "5a41fa4",
     "viewport": "1280x720"
   },
   {

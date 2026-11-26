@@ -7,6 +7,7 @@ import com.budgetowl.debt.domain.BalanceSource;
 import com.budgetowl.debt.domain.Debt;
 import com.budgetowl.debt.persistence.DebtPaymentRepository;
 import com.budgetowl.debt.persistence.DebtRepository;
+import com.budgetowl.debt.persistence.LatestCharge;
 import com.budgetowl.debt.persistence.PaymentActivity;
 import com.budgetowl.debt.persistence.PrincipalSinceAnchor;
 import java.math.BigDecimal;
@@ -127,6 +128,10 @@ public class DebtBalanceService {
         for (PaymentActivity row : payments.activity(householdId)) {
             activity.put(row.debtId(), row);
         }
+        Map<UUID, LocalDate> charged = new HashMap<>();
+        for (LatestCharge row : payments.latestCharges(householdId)) {
+            charged.put(row.debtId(), row.paidDate());
+        }
 
         LocalDate today = today();
         Map<UUID, Bill> linkedBills = linkedBills(householdId, found);
@@ -137,6 +142,7 @@ public class DebtBalanceService {
                             debt,
                             principalPaid.get(debt.id()),
                             activity.get(debt.id()),
+                            charged.get(debt.id()),
                             linkedBills.get(debt.billId().orElse(null)),
                             today));
         }
@@ -172,11 +178,17 @@ public class DebtBalanceService {
                 activity = row;
             }
         }
+        LocalDate charged = null;
+        for (LatestCharge row : payments.latestCharges(householdId)) {
+            if (row.debtId().equals(debt.id())) {
+                charged = row.paidDate();
+            }
+        }
         Bill bill =
                 debt.billId()
                         .flatMap(id -> bills.findByIdAndHouseholdId(id, householdId))
                         .orElse(null);
-        return factsFor(debt, principalPaid, activity, bill, today());
+        return factsFor(debt, principalPaid, activity, charged, bill, today());
     }
 
     // ------------------------------------------------------------------------------- internals
@@ -185,6 +197,7 @@ public class DebtBalanceService {
             Debt debt,
             BigDecimal principalPaid,
             PaymentActivity activity,
+            LocalDate lastCharged,
             Bill linkedBill,
             LocalDate today) {
         Money anchored =
@@ -194,7 +207,7 @@ public class DebtBalanceService {
 
         LocalDate lastPaid = activity == null ? null : activity.latestPaidDate();
         long paymentCount = activity == null ? 0L : activity.paymentCount();
-        YearMonth firstPaymentMonth = firstPaymentMonth(linkedBill, lastPaid, today);
+        YearMonth firstPaymentMonth = firstPaymentMonth(linkedBill, lastPaid, lastCharged, today);
 
         Rate rate = rate(debt, anchored, firstPaymentMonth);
         Estimate estimate = estimate(debt, anchored, rate.apr(), lastPaid, today);
@@ -318,8 +331,24 @@ public class DebtBalanceService {
      * <p>The linked bill's next occurrence if there is one, otherwise the day-of-month of the most
      * recent payment, otherwise today. Month-end clamps the way a bill schedule does: the 31st
      * becomes the 28th in February.
+     *
+     * <p><b>Never a month whose interest has already been charged</b> (ADR-0040). A payment logged
+     * today used to land here as "the next payment is today", so month 1 was the month just paid:
+     * the projection charged its interest a second time and counted its payment a second time. The
+     * same happened when a linked bill falls due after an early payment in its month. Whatever the
+     * rules above say, month 1 is after the latest month a payment charged.
      */
     private static YearMonth firstPaymentMonth(
+            Bill linkedBill, LocalDate lastPaid, LocalDate lastCharged, LocalDate today) {
+        YearMonth scheduled = scheduledPaymentMonth(linkedBill, lastPaid, today);
+        if (lastCharged == null) {
+            return scheduled;
+        }
+        YearMonth firstUncharged = YearMonth.from(lastCharged).plusMonths(1);
+        return scheduled.isBefore(firstUncharged) ? firstUncharged : scheduled;
+    }
+
+    private static YearMonth scheduledPaymentMonth(
             Bill linkedBill, LocalDate lastPaid, LocalDate today) {
         if (linkedBill != null) {
             Optional<LocalDate> next = nextOccurrence(linkedBill, today);

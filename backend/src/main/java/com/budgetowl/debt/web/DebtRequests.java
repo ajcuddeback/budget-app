@@ -290,7 +290,11 @@ public final class DebtRequests {
     }
 
     /**
-     * A payment to preview: the amount, and nothing else.
+     * A payment to preview: the amount, and optionally the date it will be logged with.
+     *
+     * <p>{@code paidDate} defaults to today. It matters because it decides whether the payment
+     * carries its month's interest (ADR-0040), so without it a back-dated payment would preview a
+     * split that logging then does not record. Refused in the future, as logging refuses it.
      *
      * <p>In a body rather than a query string, so it does not land in a reverse proxy's access log
      * or in Spring's own {@code DispatcherServlet} line at {@code DEBUG} — which masks the decoded
@@ -298,12 +302,13 @@ public final class DebtRequests {
      * is not secret, but it is theirs, and a URL is the one part of a request every layer logs.
      */
     public record PreviewPaymentRequest(
-            @NotNull @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String amount) {
+            @NotNull @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String amount,
+            LocalDate paidDate) {
 
         /** Redacted — the amount is a payment somebody is about to make. */
         @Override
         public String toString() {
-            return "PreviewPaymentRequest[]";
+            return "PreviewPaymentRequest[paidDate=" + paidDate + "]";
         }
     }
 

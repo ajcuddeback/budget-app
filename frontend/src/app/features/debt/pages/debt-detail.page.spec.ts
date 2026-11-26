@@ -431,7 +431,10 @@ describe('DebtDetailPage', () => {
     buttonNamed(root, 'Log a payment').click();
     await settle(fixture);
 
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '445' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '445',
+      paidDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
     const sheet = root.querySelector('dialog');
     expect(sheet?.textContent).toContain(
       '£117.94 interest · £327.06 principal · balance after £5,852.94',
@@ -450,7 +453,29 @@ describe('DebtDetailPage', () => {
     await settle(fixture);
 
     // Nobody is typing, so there is nothing to wait to settle.
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '495' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '495',
+      paidDate: expect.any(String),
+    });
+  });
+
+  it('asks again with the date when the date paid changes', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+    debtsService.previewPayment.mockClear();
+
+    // The date is part of the question: a second payment in a month that has already been
+    // charged its interest is all principal (ADR-0040), so the split can change with it.
+    type(root, '#payment-date', '2026-01-15');
+    await settle(fixture);
+
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '445',
+      paidDate: '2026-01-15',
+    });
   });
 
   it('waits for typing to settle before asking', async () => {
@@ -467,7 +492,10 @@ describe('DebtDetailPage', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 450));
     await settle(fixture);
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '500.00' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '500.00',
+      paidDate: expect.any(String),
+    });
   });
 
   it('asks nothing about an amount it cannot read yet', async () => {

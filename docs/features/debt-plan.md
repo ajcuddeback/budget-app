@@ -5,11 +5,11 @@
   the **Owed** card, the demo fixtures and the user guide have all shipped. See
   [What slice 10 has built](#what-slice-10-has-built) and [Known gaps](#known-gaps)
 - **Owner:** Repository owner
-- **Last updated:** 2026-11-24
+- **Last updated:** 2026-11-26
 - **Depends on:** accounts (3), transactions (5), bills & income (7)
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0025 (a plan
   record is not a transaction), ADR-0031 (one transaction, one entry), ADR-0032 (projected, not
-  generated), ADR-0033 (a linked pair), `bills-and-income.md`, `transfers.md`,
+  generated), ADR-0033 (a linked pair), ADR-0040 (interest once per calendar month), `bills-and-income.md`, `transfers.md`,
   `../domain/model.md`
 - **Designs:** `design/canvas/` section `v1` — six artboards: *Debt plan, two structures* ·
   *Debt plan absorbs the debt table* · *Debt detail — terms in, payments out* · *Debt detail on
@@ -160,6 +160,13 @@ The projection's first period starts at the debt's **next payment date**: the li
 occurrence if the debt is linked to one, otherwise the day-of-month of the most recent recorded
 payment, otherwise today. Month-end clamps the same way a bill schedule does — the 31st becomes the
 28th in February (`bills-and-income.md`).
+
+**It is never a month whose interest has already been charged** (ADR-0040). Whatever the rule above
+gives, month 1 is after the latest month in which a payment carried interest. Before this, a payment
+logged today made "the next payment is today" true, so the projection charged the month just paid
+its interest and counted its payment a second time. That pulled the payoff month a month early. The
+same happened when a linked bill fell due after an early payment in its month. Logging the month's
+scheduled payment now leaves the payoff month exactly where it was.
 
 ### When the numbers do not work
 
@@ -335,7 +342,21 @@ Consequences, stated so nobody rediscovers them:
 
 **The split.** A logged payment's `interest` is `round(balance × apr ÷ 100 ÷ 12, minor unit, HALF_EVEN)`
 at the time, `principal` is `amount − interest`, and `balanceAfter` is the previous balance minus
-`principal`. `interest + principal = amount` exactly, by construction — the interest is rounded and
+`principal`.
+
+**A month's interest is charged once** (ADR-0040). The formula above applies to the first payment
+in a calendar month. A payment dated in a month where another payment of the same debt, counted
+against the balance (on or after the anchor date), already carries interest has `interest = 0` and
+is all principal. So an extra payment always comes off the balance in full and can never raise it.
+Until 2026-11-26 every payment was treated as a whole month's payment: on the Visa at $6,180.00 and
+22.9%, a $63 extra payment after the month's $445 was charged another $111.69 of interest, had a
+principal of −$48.69, and *raised* the balance. "Carries interest" rather than "exists" is
+deliberate. A statement correction (always zero interest) never marks a month as charged, and
+deleting the payment that carried a month's interest lets the next one logged in that month carry
+it. The rule doesn't depend on provenance, so the weekly check-in's `CHECK_IN` payments
+(slice 14) follow it with no special case. Logging and deleting a payment lock the debt row
+(`FOR UPDATE`) first, so two members logging the month's first payment at the same moment can't
+both find the month uncharged. `interest + principal = amount` exactly, by construction — the interest is rounded and
 the principal takes the remainder, so no payment ever loses or invents a cent. Because the interest
 is a whole number of cents, a payment in cents splits into two cent figures that each display
 exactly and still add up, and the balance it leaves is on the cent grid too.
@@ -518,7 +539,7 @@ existed:
 | `POST` | `/api/debts/{id}/archive` · `/unarchive` | Retire without deleting, as accounts do |
 | `GET` | `/api/debts/{id}/payments` | The history, **paginated** (page envelope, `api-style.md`) |
 | `POST` | `/api/debts/{id}/payments` | Log one. Accepts an optional `transactionId` |
-| `POST` | `/api/debts/{id}/payments/preview` | What logging `{"amount"}` **would** record — the split and the resulting balance — writing nothing. Built through the same code path as logging, so it cannot disagree with it. A `POST` to keep the amount out of URLs; a `VIEWER` is refused it, as for any non-`GET` |
+| `POST` | `/api/debts/{id}/payments/preview` | What logging `{"amount", "paidDate"?}` **would** record — the split and the resulting balance — writing nothing. `paidDate` defaults to today and is refused in the future. It is there because the date decides whether the payment carries its month's interest (ADR-0040). Built through the same code path as logging, so it cannot disagree with it. A `POST` to keep the amount out of URLs; a `VIEWER` is refused it, as for any non-`GET` |
 | `PATCH` · `DELETE` | `/api/debts/{id}/payments/{paymentId}` | Correct · remove |
 | `POST` | `/api/debts/{id}/balance` | Confirm or correct the balance. Writes the anchor, and a `STATEMENT_CORRECTION` row when it disagrees with the arithmetic |
 | `GET` | `/api/debt-plan` | Strategy, amount, order, **both** projections and the comparison |
@@ -1100,6 +1121,21 @@ bounded and these unbounded:
   and `interest + principal = amount` holds.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
+- **The plan ladder still charges this month again for a debt already paid this month**
+  (ADR-0040). The single-debt projection on the detail page starts after the latest charged month.
+  `PayoffLadder` does not: it runs one month index for every rung, starting at today's month. A
+  debt paid this month is charged and paid again in the plan's month 1, so its plan dates, and
+  possibly the debt-free month, are a month optimistic. Not fixed, because the honest fix needs a
+  product decision: how much of this month's `monthlyAmount` the household has already spent, and
+  on which rungs. A logged payment need not match the plan's allocation. An extra payment still
+  never moves a plan date later (`DebtIT`).
+- **Moving a payment's date into another month keeps its interest.** A correction keeps the
+  stored interest (see Payments). Moving the month's interest-bearing payment into a month that
+  is already charged leaves that month charged twice and the month it left uncharged. A statement
+  confirmation puts the balance right, as for any other drift.
+- **Calendar months, not statement cycles.** "Once per month" means once per calendar month of
+  `paidDate`. A lender's cycle that closes mid-month straddles two of them. This is the same
+  simplification the projection makes.
 
 ## Decisions
 
@@ -1157,7 +1193,8 @@ is the reason this was a safe call to make without waiting: the shapes do not co
    household with debts in two currencies gets one strategy and two ungrouped projections, which is
    the mixed-currency gap in *Known gaps* seen from another angle.
 
-Decided on 2026-11-25, during implementation, and numbered after the eighth above:
+Decided on 2026-11-25, during implementation, and numbered after the eighth above (the tenth was
+decided on 2026-11-26):
 
 9. **Interest is rounded to the currency's minor unit, not to four places.** `interestFor` rounds
    `balance × apr ÷ 1200` half-even to `Currency.getDefaultFractionDigits()` — cents for USD, whole
@@ -1171,6 +1208,14 @@ Decided on 2026-11-25, during implementation, and numbered after the eighth abov
    replaced scale-4 rounding before slice 10 ever merged to main**, so no stored row predates it
    and there is nothing to migrate. One consequence: avalanche never costing more than snowball now
    holds to within rounding rather than exactly (*Testing notes*, `PayoffLadderTest`).
+10. **A debt's interest is charged once per calendar month, and the projection starts after it.**
+    Recorded as **ADR-0040**. The rejected alternative was interest accrued since the last
+    payment's date: closer to a lender, but it contradicts the monthly projection that is this
+    feature's definition, and it depends on the order rows are written in while splits are never
+    rewritten. The demo's Visa history moved from March–August to **February–July** in the same
+    change. The guide's walkthrough logs a payment on the demo's today, 20 August, and with August
+    already paid it was showing a second payment charged a second month of interest: the defect
+    itself, in a screenshot.
 
 ## Where the designs and the docs disagree
 
@@ -1375,6 +1420,14 @@ this is about it.
   moves the derived balance and a `STATEMENT_CORRECTION` reconciles it; **deleting the linked
   transaction leaves the payment and does not move the balance**; a transaction cannot settle two
   debt payments; deleting a debt takes its payments and no transactions.
+  **Interest once per month (ADR-0040):** an extra payment in the same month is all principal;
+  across extras from $0.01 to $5,000 an extra payment **never raises the balance and never moves the
+  detail's payoff month or the plan's debt-free month later**; logging the month's scheduled payment
+  leaves the payoff month where it was (the projection no longer re-charges the month just paid); a
+  dated preview of an extra payment is exactly what logging it records, and a future-dated preview
+  is a `400`; a payment in a month nobody has paid yet still carries that month's interest; and
+  deleting the payment that carried a month's interest lets the next one carry it, one charge per
+  month.
 - **`DebtPeriodSummaryIT`** — the counted-once arithmetic, with the designs' own shape: three
   minimums of 185, 342 and 118 where the 342 is a linked bill, giving `debtMinimums = 645` and
   `debtMinimumsNotInBills = 303`. Then **four** ways the 342 stops being a bill row — delete the

@@ -1,9 +1,11 @@
 package com.budgetowl.debt.persistence;
 
 import com.budgetowl.debt.domain.Debt;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -37,6 +39,24 @@ public interface DebtRepository extends Repository<Debt, UUID> {
     void delete(Debt debt);
 
     Optional<Debt> findByIdAndHouseholdId(UUID id, UUID householdId);
+
+    /**
+     * The same row, locked {@code FOR UPDATE} until the transaction ends.
+     *
+     * <p>For a payment write whose split depends on the other payments in its month (ADR-0040).
+     * Logging reads "does this month already carry interest?" and then inserts. Without the lock,
+     * two members logging at the same moment both read "no", and the month is charged twice.
+     * Logging and deleting a payment both take it first, so whichever commits second sees the
+     * first. It also makes the per-debt payment cap hold under concurrency.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            select d from Debt d
+            where d.id = :id and d.householdId = :householdId
+            """)
+    Optional<Debt> findByIdAndHouseholdIdForUpdate(
+            @Param("id") UUID id, @Param("householdId") UUID householdId);
 
     /**
      * One household's debts, archived ones included or not.
