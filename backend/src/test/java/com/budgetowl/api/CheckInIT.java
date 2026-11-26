@@ -221,7 +221,7 @@ class CheckInIT extends CheckInTestBase {
 
         ApiResponse refused = complete(owner);
 
-        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.status()).isEqualTo(422);
         assertThat(refused.stringField("code")).isEqualTo("check-in-incomplete");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM payee_rules", Long.class)).isZero();
     }

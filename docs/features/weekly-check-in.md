@@ -1347,8 +1347,9 @@ fixed, and three Lows: one fixed, two recorded below.
   *"Also record this against …"* passed the bill's base-currency number to
   `DebtPaymentService.log`, which reads it in the debt's own currency. So £25 paid a EUR loan
   €25, silently. Now `CheckInPictures` offers the prompt only for a base-currency debt, so the
-  answer is refused (`400`, field `recordDebtPayment`) and an old draft completes as
-  `debt-paid-off`. As a second guard, completion calls a `log` overload that refuses a debt not in
+  answer is refused (`400`, field `recordDebtPayment`). A draft answered before the fix is refused
+  at completion with `409 check-in-stale`, reason `debt-paid-off`: the reason's wording is not
+  accurate for this case, but nothing is written. As a second guard, completion calls a `log` overload that refuses a debt not in
   the amount's currency. The test is `CheckInIT.a_debt_in_another_currency_is_never_offered_its_bills_amount`.
   Removing the filter fails it.
 - **Fixed (Low): charge detection re-sorted a payee's history once per row.** With 200 outflows
