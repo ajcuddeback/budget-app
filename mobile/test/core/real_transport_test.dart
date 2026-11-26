@@ -130,6 +130,54 @@ void main() {
     expect(await check(server.port, trust: trustingTestCa), ConnectProblem.certificateWrongName);
   });
 
+  test('the server check leaves the shared transport open for every request after it', () async {
+    // One real adapter, as the app has one (httpAdapterProvider): the meta check, then the API
+    // client's bearer request, through the same sockets. Dio.close() closes the adapter it was
+    // given, so a check that closed its Dio broke the app for good — sign-out's logout included.
+    final seen = <String>[];
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((request) async {
+      seen.add('${request.method} ${request.uri.path} ${request.headers.value('authorization')}');
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(
+        request.uri.path == '/api/meta'
+            ? jsonEncode({'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1})
+            : '{}',
+      );
+      await request.response.close();
+    });
+    addTearDown(server.close);
+    final address = (ServerAddress.parse(
+      'http://127.0.0.1:${server.port}',
+      allowLocalCleartext: true,
+    ) as AddressAccepted).address;
+    final shared = platformHttpAdapter();
+    addTearDown(shared.close);
+    final tokens = TokenStore(MemorySecureStore());
+    await tokens.save('fixture-token-owner');
+    final api = ApiClient(
+      server: address,
+      adapter: shared,
+      tokens: tokens,
+      onSessionEnded: () {},
+      onOutcome: (_) {},
+      logRequests: false,
+    );
+
+    final body = await HttpOverrides.runWithHttpOverrides(() async {
+      await ServerCheck(shared).check(address);
+      await ServerCheck(shared).check(address);
+      return api.getText('/api/auth/me');
+    }, _RealSockets(null));
+
+    expect(body, '{}');
+    expect(seen, [
+      'GET /api/meta null',
+      'GET /api/meta null',
+      'GET /api/auth/me Bearer fixture-token-owner',
+    ]);
+  });
+
   test('a redirect is an error, and the token never reaches the host it points at', () async {
     final elsewhere = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final reachedElsewhere = <String?>[];

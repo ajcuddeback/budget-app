@@ -63,6 +63,9 @@ final class ServerCheck {
       ),
     )..httpClientAdapter = _adapter;
 
+    // This Dio is never closed: Dio.close() closes the adapter it was given, and the adapter is the
+    // app's one shared transport (httpAdapterProvider). Closing it here broke every request after
+    // the first server check. Dropping the Dio is enough; it holds no socket of its own.
     final Response<ResponseBody> response;
     try {
       response = await dio.get<ResponseBody>('/api/meta');
@@ -74,8 +77,6 @@ final class ServerCheck {
         TransportFailure.certificateWrongName => ConnectProblem.certificateWrongName,
         TransportFailure.other => ConnectProblem.transport,
       });
-    } finally {
-      dio.close();
     }
 
     if (response.statusCode != 200) {

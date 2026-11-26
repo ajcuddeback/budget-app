@@ -77,6 +77,10 @@ final class FixtureServer implements HttpClientAdapter {
   /// The `Authorization` header of every request, or null where there was none.
   final List<String?> authorizations = [];
 
+  /// Whether anything closed this transport. The app shares one adapter, so closing it breaks every
+  /// later request — as `IOHttpClientAdapter` does. A request after it is a miss and an error.
+  bool closed = false;
+
   /// While set, every request fails as a phone with no network does.
   bool offline = false;
 
@@ -104,6 +108,10 @@ final class FixtureServer implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    if (closed) {
+      misses.add('${options.method} ${options.uri.path} — after the shared adapter was closed');
+      throw StateError("Can't establish connection after the adapter was closed (as the real one)");
+    }
     if (offline) {
       throw DioException.connectionError(
         requestOptions: options,
@@ -185,7 +193,7 @@ final class FixtureServer implements HttpClientAdapter {
   );
 
   @override
-  void close({bool force = false}) {}
+  void close({bool force = false}) => closed = true;
 }
 
 /// The origin every widget test's server is at. Not a real host, and never contacted.

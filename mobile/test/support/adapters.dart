@@ -13,18 +13,25 @@ final class ScriptedAdapter implements HttpClientAdapter {
   final Future<ResponseBody> Function(RequestOptions options) answer;
   final List<RequestOptions> requests = [];
 
+  /// Whether anything closed this transport. The app shares one adapter across every client, so a
+  /// close is a bug: the real adapter refuses every request after it.
+  bool closed = false;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) {
+    if (closed) {
+      throw StateError("Can't establish connection after the adapter was closed (as the real one)");
+    }
     requests.add(options);
     return answer(options);
   }
 
   @override
-  void close({bool force = false}) {}
+  void close({bool force = false}) => closed = true;
 }
 
 ResponseBody json(int status, Object? body, {Map<String, String> headers = const {}}) =>
