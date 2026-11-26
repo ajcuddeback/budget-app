@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# flutter_test writes golden diffs here when a comparison fails. Never committed.
+/test/goldens/failures/
