@@ -1,0 +1,9 @@
+# flutter gen-l10n configuration. The ARB itself is generated from the web's en.json plus
+# l10n/mobile.en.json by tools/mobile-l10n.sh — never edit lib/l10n/app_en.arb by hand.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n/gen
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+use-escaping: false

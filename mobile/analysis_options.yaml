@@ -1,0 +1,44 @@
+# very_good_analysis, plus the project's own rules (docs/guides/flutter-style.md).
+#
+# `dynamic` is effectively banned: strict-casts, strict-inference and strict-raw-types make every
+# implicit dynamic an error, and avoid_dynamic_calls refuses a call through one. An API response
+# becomes a typed model at the boundary (lib/core/json/json.dart) or not at all.
+#
+# Money never passes through a double: test/architecture/guards_test.dart fails on
+# double.parse / num.parse / toDouble() / double fields in lib/ (an analyzer plugin would need
+# build tooling this project refuses to depend on, so the rule is a test, run by tools/verify.sh
+# as its own step).
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    avoid_dynamic_calls: error
+    avoid_print: error
+    inference_failure_on_untyped_parameter: error
+    inference_failure_on_function_return_type: error
+    inference_failure_on_collection_literal: error
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - lib/l10n/gen/**
+    - lib/l10n/message_lookup.g.dart
+
+linter:
+  rules:
+    # Widgets and providers document themselves through their names; a doc comment is required
+    # where the reason is not obvious, which review enforces better than a lint.
+    public_member_api_docs: false
+    # Every string is an ARB lookup, so this rule would fire on test descriptions only.
+    lines_longer_than_80_chars: false
+    # A preference for Dart's newest constructor syntax, not a correctness rule. Off until the
+    # Flutter tooling's own templates use it.
+    unnecessary_type_name_in_constructor: false
+    # A Riverpod provider's type is the call that builds it; spelling it out again (and dart fix
+    # reaching into riverpod/src to do so) adds nothing.
+    specify_nonobvious_property_types: false
+    avoid_print: true
