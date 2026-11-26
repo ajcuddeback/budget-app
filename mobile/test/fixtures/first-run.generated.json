@@ -437,6 +437,19 @@
     "then" : "joined"
   }, {
     "state" : "joined",
+    "method" : "GET",
+    "path" : "/api/setup/status",
+    "auth" : null,
+    "request" : null,
+    "status" : 200,
+    "body" : {
+      "setupComplete" : true,
+      "registrationOpen" : false,
+      "passwordLoginEnabled" : true,
+      "oidcEnabled" : false
+    }
+  }, {
+    "state" : "joined",
     "method" : "POST",
     "path" : "/api/auth/token",
     "auth" : null,

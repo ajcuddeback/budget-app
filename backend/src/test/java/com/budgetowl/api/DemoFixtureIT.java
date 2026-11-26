@@ -1541,7 +1541,6 @@ class DemoFixtureIT extends ApiTestBase {
             record.send(owner, "GET", "/api/transactions/payee-suggestions?typed=" + typed, null);
         }
         record.send(owner, "GET", "/api/transfers/" + demo.augustTransfer(), null);
-        record.send(owner, "GET", "/api/auth/devices?page=0&size=50", null);
         // Two rows going the same way cannot be one transfer — a real 422, rendered from its code.
         record.send(
                 owner,
@@ -1691,6 +1690,8 @@ class DemoFixtureIT extends ApiTestBase {
                         record, stranger, "no-household", MEMBER_EMAIL, MEMBER_SECRET, "member");
         record.in("no-household");
         record.send(removed, "GET", "/api/auth/me", null);
+        // Their way out is signing out, which ends their token like anybody else's.
+        record.sendThen("connect", removed, "POST", "/api/auth/logout", null);
 
         // ---- devices: the phone sees itself, and signs a browser out.
         record.in("demo");
@@ -1773,20 +1774,19 @@ class DemoFixtureIT extends ApiTestBase {
      * and arbitrary: a regeneration may flip a salary and the rent. The committed file keeps
      * whichever real order it was written with; the comparison sorts each page's rows by date and
      * stable id first, so a flip is not drift, while any other change — a figure, a field, a row —
-     * still fails.
+     * still fails. Writing works the same way: a regeneration that differs only by a flip leaves
+     * the committed file alone, so the goldens drawn from it do not churn.
      */
     private static void compareOrWriteMobile(String document, Path committed, Path regenerated)
             throws IOException {
-        if (Boolean.getBoolean("fixtures.write") || !Files.exists(committed)) {
-            compareOrWrite(document, committed, regenerated);
-            return;
+        if (Files.exists(committed)) {
+            JsonNode now = tieOrderFree(MobileRecorder.JSON.readTree(document));
+            JsonNode then = tieOrderFree(MobileRecorder.JSON.readTree(Files.readString(committed)));
+            if (now.equals(then)) {
+                return;
+            }
         }
-        String stored = Files.readString(committed);
-        JsonNode now = tieOrderFree(MobileRecorder.JSON.readTree(document));
-        JsonNode then = tieOrderFree(MobileRecorder.JSON.readTree(stored));
-        if (!now.equals(then)) {
-            compareOrWrite(document, committed, regenerated);
-        }
+        compareOrWrite(document, committed, regenerated);
     }
 
     private static JsonNode tieOrderFree(JsonNode node) {
@@ -1894,6 +1894,8 @@ class DemoFixtureIT extends ApiTestBase {
                 """
                         .formatted(MEMBER_SECRET));
         record.in("joined");
+        // The sign-in screen asks whether password sign-in is on before it is shown.
+        record.send(Caller.stranger(secondPhone), "GET", "/api/setup/status", null);
         Caller member =
                 signInAsPhone(
                         record,
