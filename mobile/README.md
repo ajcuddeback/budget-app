@@ -105,7 +105,7 @@ and send a `PATCH` only with the fields that changed.
 - Wrap it in `Screen(title:, actions:, onRefresh:, body:)`; use `SnapshotView` for the
   loading / error / stale states, and `Gutter`, `Lede` and the banners from `shared/widgets`.
 - **Roles decide what is offered**: `ref.watch(signedInProvider)?.membership?.role?.canWrite ??
-  false`, and do not build a write control for a `VIEWER`. The API refuses anyway; that is why a viewer's forced write
+false`, and do not build a write control for a `VIEWER`. The API refuses anyway; that is why a viewer's forced write
   must still show the translated `403`.
 - Disable writes offline with `canWriteNow(ref)` and show `OfflineNote` / the offline message.
 - Sheets and dialogs open on the **root** navigator (`Navigator.of(context, rootNavigator: true)`,
@@ -128,7 +128,10 @@ Errors are never the server's words: `context.errorMessage(error)` turns a probl
 
 ### 6. Fixtures
 
-Extend `DemoFixtureIT`'s mobile section with the exchanges the screen makes: `record.in(state)`,
+An area records its own file, `test/fixtures/<area>.generated.json`, from its own
+`the_committed_mobile_<area>_fixtures…` method in `DemoFixtureIT`, loaded with
+`FixtureServer.load('<area>', state: …)`; `demo` and `first-run` are phase 1's. In it, record the
+exchanges the screen makes: `record.in(state)`,
 `record.send(caller, method, path, body)` for a read, `record.sendThen(next, …)` for a write that
 moves the server to another state. Paths must be byte-for-byte what the app sends (query order
 does not matter). Regenerate with the command above. `FixtureServer` answers only recorded
@@ -140,7 +143,9 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
   `TestPhone(server: …)..signedIn('owner' | 'viewer' | 'member')`, through `pumpApp`. Assert what
   was sent (`server.served`), the state the server moved to, and what is on screen. A typed
   password or name comes from `fixtureRequest(…)`, never a literal.
-- Add a `Scenario` to `test/goldens/screens_golden_test.dart`: light and dark always; RTL and
+- Add `Scenario`s in the area's own `test/goldens/<area>_golden_test.dart`, whose `main` is
+  `runGoldens(scenarios)` from `golden_harness.dart` (`pumpPhone`, `signedInPhone`, `tapText`,
+  `everyWay`, `bothThemes`); `screens_golden_test.dart` is phase 1's. Light and dark always; RTL and
   text 2.0 for a main screen; `VIEWER`, offline-stale and error where the screen has them. Run
   `tools/mobile-check.sh` and **open every PNG it lists as changed**. A golden nobody looked at is
   not a check.
