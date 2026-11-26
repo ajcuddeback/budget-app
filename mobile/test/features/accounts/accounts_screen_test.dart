@@ -300,9 +300,9 @@ void main() {
       expect(find.text('Add an account'), findsOneWidget, reason: 'no sheet opened');
       expect(find.text(l.offline_write), findsOneWidget);
 
-      await expectLater(
-        container.read(accountsWriterProvider).create(cashTin),
-        throwsA(isA<AppError>().having((e) => e.kind, 'kind', AppErrorKind.offline)),
+      expect(
+        await attempt(tester, () => container.read(accountsWriterProvider).create(cashTin)),
+        isA<AppError>().having((e) => e.kind, 'kind', AppErrorKind.offline),
       );
       expect(writes(server), isEmpty);
       expect(server.state, 'accounts');
@@ -321,11 +321,16 @@ void main() {
       expect(find.text('Archive Emergency Fund?'), findsNothing, reason: 'the action is off');
       expect(find.text(l.offline_versionUnconfirmed), findsWidgets);
 
-      await expectLater(
-        container.read(accountsWriterProvider).create(cashTin),
-        throwsA(isA<AppError>()),
+      expect(
+        await attempt(tester, () => container.read(accountsWriterProvider).create(cashTin)),
+        isA<AppError>(),
       );
       expect(writes(server), isEmpty);
     });
   });
 }
+
+/// A write attempted directly, under real time: if the gate failed and the request went out, it
+/// completes (or fails) for real and the test says so, instead of hanging on the fake clock.
+Future<Object?> attempt(WidgetTester tester, Future<Object?> Function() write) => tester
+    .runAsync<Object?>(() => write().then<Object?>((_) => null, onError: (Object error) => error));

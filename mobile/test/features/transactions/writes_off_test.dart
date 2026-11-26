@@ -48,9 +48,9 @@ void main() {
       await tapVisible(tester, find.text('Move money'));
       expect(find.text(sentence), findsOneWidget);
 
-      await expectLater(
-        container.read(transactionsWriterProvider).create(coffee),
-        throwsA(isA<AppError>()),
+      expect(
+        await attempt(tester, () => container.read(transactionsWriterProvider).create(coffee)),
+        isA<AppError>(),
       );
       expect(writes(server), isEmpty);
       expect(server.state, 'demo');
@@ -74,3 +74,8 @@ void main() {
     expect(writes(server), isEmpty);
   });
 }
+
+/// A write attempted directly, under real time: if the gate failed and the request went out, it
+/// completes (or fails) for real and the test says so, instead of hanging on the fake clock.
+Future<Object?> attempt(WidgetTester tester, Future<Object?> Function() write) => tester
+    .runAsync<Object?>(() => write().then<Object?>((_) => null, onError: (Object error) => error));

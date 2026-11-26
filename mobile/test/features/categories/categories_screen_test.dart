@@ -226,9 +226,12 @@ void main() {
       await tapVisible(tester, find.bySemanticsLabel('Remove SQ *BLUE BOTTLE'));
       expect(find.text(l.offline_write), findsWidgets);
 
-      await expectLater(
-        container.read(categoriesWriterProvider).removeRule(blueBottle),
-        throwsA(isA<AppError>().having((e) => e.kind, 'kind', AppErrorKind.offline)),
+      expect(
+        await attempt(
+          tester,
+          () => container.read(categoriesWriterProvider).removeRule(blueBottle),
+        ),
+        isA<AppError>().having((e) => e.kind, 'kind', AppErrorKind.offline),
       );
       expect(writes(server), isEmpty);
       expect(server.state, 'categories');
@@ -241,13 +244,21 @@ void main() {
 
       await tap(tester, 'Add a category');
       expect(find.text(l.offline_versionUnconfirmed), findsOneWidget);
-      await expectLater(
-        container
-            .read(categoriesWriterProvider)
-            .create(const CategoryForm(name: 'Pets', kind: 'EXPENSE')),
-        throwsA(isA<AppError>()),
+      expect(
+        await attempt(
+          tester,
+          () => container
+              .read(categoriesWriterProvider)
+              .create(const CategoryForm(name: 'Pets', kind: 'EXPENSE')),
+        ),
+        isA<AppError>(),
       );
       expect(writes(server), isEmpty);
     });
   });
 }
+
+/// A write attempted directly, under real time: if the gate failed and the request went out, it
+/// completes (or fails) for real and the test says so, instead of hanging on the fake clock.
+Future<Object?> attempt(WidgetTester tester, Future<Object?> Function() write) => tester
+    .runAsync<Object?>(() => write().then<Object?>((_) => null, onError: (Object error) => error));
