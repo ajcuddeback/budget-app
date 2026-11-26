@@ -1,0 +1,781 @@
+<div class="stack check-in" id="check-in-top" tabindex="-1">
+  @if (loading()) {
+    <h1 class="page-title">{{ 'title.checkIn' | t }}</h1>
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <h1 class="page-title">{{ 'title.checkIn' | t }}</h1>
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <h1 class="page-title">{{ 'title.checkIn' | t }}</h1>
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else if (week(); as week) {
+    <header class="check-in-head">
+      <p class="eyebrow wide-only">
+        {{ 'checkIn.eyebrow' | t: { week: number(), range: rangeOf(week) } }}
+      </p>
+      <p class="eyebrow narrow-only">{{ 'checkIn.eyebrowShort' | t: { week: number() } }}</p>
+      <div class="cluster title-row">
+        <h1 class="page-title">{{ 'checkIn.title' | t: { week: number() } }}</h1>
+        <span class="tag" [class.tag-neutral]="status() !== 'DRAFT'">
+          {{ statusChipKey() | t }}
+        </span>
+      </div>
+      @if (status() !== 'COMPLETED') {
+        <p class="page-lede">
+          {{ 'checkIn.progress' | t: { answered: progress().answered, shown: progress().shown } }}
+        </p>
+        <p class="card-note">{{ 'checkIn.keptAsYouGo' | t }}</p>
+      }
+    </header>
+
+    <app-error-alert [error]="actionError()" />
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said.key | t: said.params }}</p>
+      </div>
+    }
+    @if (draftOpen(); as open) {
+      <div class="alert" role="alert">
+        <p>{{ 'checkIn.draftOpen' | t: { week: open } }}</p>
+        <div class="cluster">
+          <a class="btn btn-secondary btn-small" [routerLink]="['/check-in', open]">
+            {{ 'checkIn.draftOpenOpen' | t }}
+          </a>
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            [disabled]="busy() !== null"
+            (click)="discardOpenDraft()"
+          >
+            {{ 'checkIn.draftOpenDiscard' | t }}
+          </button>
+        </div>
+      </div>
+    }
+    @if (stale().length > 0) {
+      <div class="alert" role="alert">
+        <p>{{ 'checkIn.staleIntro' | t }}</p>
+        @for (reason of staleGeneral(); track reason) {
+          @let said = staleGeneralSaid(reason);
+          <p>{{ said.key | t }}</p>
+        }
+      </div>
+    }
+    @if (week.otherCurrencyRows > 0) {
+      <p class="card-note">
+        {{ 'checkIn.otherCurrencies' | t: { count: week.otherCurrencyRows } }}
+      </p>
+    }
+
+    @if (status() === 'COMPLETED') {
+      <!-- What it wrote, each line linking to where that record lives and is corrected. -->
+      <section class="card" aria-labelledby="completed-heading">
+        <h2 class="card-title" id="completed-heading">{{ 'checkIn.completed' | t }}</h2>
+        @if (week.completedAt) {
+          <p class="card-note">
+            {{
+              'checkIn.completedBy'
+                | t: { name: week.completedBy?.name ?? '', date: (week.completedAt | dateOnly) }
+            }}
+          </p>
+        }
+        <p class="card-note">{{ 'checkIn.completedLede' | t }}</p>
+        <ul class="summary">
+          @for (line of summaryLines(); track $index) {
+            <li>
+              <!-- The sentence is the link: "Open" five times over says nothing to a screen reader. -->
+              @if (line.link) {
+                <a [routerLink]="line.link">{{ line.said.key | t: line.said.params }}</a>
+              } @else {
+                {{ line.said.key | t: line.said.params }}
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    } @else {
+      @if (status() === 'NOT_STARTED') {
+        <section class="card" aria-labelledby="not-started-heading">
+          <h2 class="card-title" id="not-started-heading">{{ 'checkIn.notStarted' | t }}</h2>
+          @if (canWrite()) {
+            <p class="card-note">{{ 'checkIn.notStartedBody' | t }}</p>
+            <div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                [disabled]="busy() !== null"
+                (click)="start()"
+              >
+                {{ 'checkIn.start' | t }}
+              </button>
+            </div>
+          } @else {
+            <p class="card-note">{{ 'checkIn.notStartedReadOnly' | t }}</p>
+          }
+        </section>
+      } @else if (!canWrite()) {
+        <p class="card-note">{{ 'checkIn.readOnly' | t }}</p>
+      }
+
+      <!-- Desktop: a chip per shown step, each linking to its section. -->
+      <nav class="step-chips wide-only" [attr.aria-label]="'checkIn.stepsLabel' | t">
+        @for (step of steps(); track step.step; let i = $index) {
+          <a class="step-chip" [class.is-done]="step.answered" [href]="'#' + stepId(step)">
+            @if (step.answered) {
+              {{ 'checkIn.chipDone' | t: { number: i + 1 } }}
+            } @else {
+              {{ 'checkIn.chipName' | t: { number: i + 1, name: (stepName(step) | t) } }}
+            }
+          </a>
+        }
+      </nav>
+
+      <!-- Phone: a progress bar over the shown steps. Never the only thing saying where you are. -->
+      <div class="narrow-only progress-wrap">
+        <div
+          class="progress"
+          role="progressbar"
+          [attr.aria-label]="'checkIn.stepsLabel' | t"
+          [attr.aria-valuemin]="1"
+          [attr.aria-valuemax]="steps().length"
+          [attr.aria-valuenow]="screen() + 1"
+          [attr.aria-valuetext]="
+            'checkIn.progressBar' | t: { current: screen() + 1, total: steps().length }
+          "
+        >
+          @for (step of steps(); track step.step; let i = $index) {
+            <span class="progress-segment" [class.is-filled]="i <= screen()"></span>
+          }
+        </div>
+      </div>
+
+      @for (step of steps(); track step.step; let i = $index; let last = $last) {
+        @let said = heading(step);
+        @let status = statusOf(step);
+        <section
+          class="card step"
+          [class.is-current]="i === screen()"
+          [id]="stepId(step)"
+          [attr.aria-labelledby]="stepId(step) + '-heading'"
+        >
+          <div class="cluster section-head">
+            <h2 class="card-title" [id]="stepId(step) + '-heading'">
+              {{ 'checkIn.stepNumbered' | t: { number: i + 1, name: (stepName(step) | t) } }}
+            </h2>
+            <span class="tag tag-neutral">{{ status.key | t: status.params }}</span>
+          </div>
+          <p class="step-heading">{{ said.key | t: said.params }}</p>
+
+          @switch (step.step) {
+            @case ('WHATS_NEW') {
+              @for (line of step.income ?? []; track line.incomeSourceId) {
+                <div class="info-card">
+                  <p class="info-title">
+                    {{
+                      (line.transactionId
+                        ? 'checkIn.income.heading'
+                        : 'checkIn.income.headingNotYet'
+                      ) | t
+                    }}
+                  </p>
+                  @for (part of incomeOf(line); track $index) {
+                    <p class="row-sub">{{ part.key | t: part.params }}</p>
+                  }
+                </div>
+              }
+              <ul class="rows items">
+                @for (item of step.items; track item.itemKey) {
+                  @let reason = reasonOf(item);
+                  @let staleSaid = staleOf(item);
+                  <li
+                    class="item"
+                    [id]="itemId(item.itemKey)"
+                    [class.is-stale]="staleSaid !== null"
+                  >
+                    <p class="item-kind">
+                      {{
+                        (item.kind === 'UNUSUAL_CHARGE'
+                          ? 'checkIn.odd.heading'
+                          : 'checkIn.overdue.heading'
+                        ) | t
+                      }}
+                    </p>
+                    <div class="item-line">
+                      <div class="row-main">
+                        @if (item.payeeName) {
+                          <span class="row-title" dir="auto">{{ item.payeeName }}</span>
+                        } @else if (item.billName) {
+                          <span class="row-title">{{ item.billName }}</span>
+                        }
+                        <span class="row-sub">
+                          @if (item.date) {
+                            {{ item.date | dateOnly }}
+                          }
+                          @if (accountOf(item); as account) {
+                            · {{ account.key | t: account.params }}
+                          }
+                        </span>
+                        @if (reason) {
+                          <span class="row-sub">{{ reason.key | t: reason.params }}</span>
+                        }
+                      </div>
+                      @if (chargeAmount(item); as amount) {
+                        <span class="item-amount">{{
+                          amount.amount | money: amount.currency
+                        }}</span>
+                      }
+                    </div>
+                    @if (item.kind === 'UNUSUAL_CHARGE') {
+                      @let offer = prepaidOf(item);
+                      <p class="item-question">{{ offer.key | t: offer.params }}</p>
+                    }
+                    @if (staleSaid) {
+                      <p class="field-error">{{ staleSaid.key | t }}</p>
+                    }
+                    @if (editable()) {
+                      @if (item.debtPrompt && item.kind === 'OVERDUE_BILL') {
+                        <label class="checkbox">
+                          <input
+                            type="checkbox"
+                            [checked]="prompted(item)"
+                            [disabled]="busy() !== null"
+                            (change)="togglePrompt(item, $any($event.target).checked)"
+                          />
+                          {{ 'checkIn.recordAgainst' | t: { debt: item.debtPrompt.debtName } }}
+                        </label>
+                      }
+                      <div class="cluster choices">
+                        @if (item.kind === 'UNUSUAL_CHARGE') {
+                          @if (item.multiple) {
+                            <button
+                              type="button"
+                              class="btn btn-secondary btn-small"
+                              [class.is-chosen]="chose(item, 'PREPAID')"
+                              [attr.aria-pressed]="chose(item, 'PREPAID')"
+                              [disabled]="busy() !== null"
+                              (click)="prepaid(item)"
+                            >
+                              {{ 'checkIn.odd.yesPrepaid' | t }}
+                            </button>
+                          }
+                        } @else {
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [class.is-chosen]="chose(item, 'MARK_PAID')"
+                            [attr.aria-pressed]="chose(item, 'MARK_PAID')"
+                            [disabled]="busy() !== null"
+                            (click)="markPaid(item)"
+                          >
+                            {{ 'checkIn.overdue.markPaid' | t }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [class.is-chosen]="chose(item, 'SKIP')"
+                            [attr.aria-pressed]="chose(item, 'SKIP')"
+                            [disabled]="busy() !== null"
+                            (click)="skip(item)"
+                          >
+                            {{ 'checkIn.overdue.skip' | t }}
+                          </button>
+                        }
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-small"
+                          [class.is-chosen]="chose(item, 'LEAVE')"
+                          [attr.aria-pressed]="chose(item, 'LEAVE')"
+                          [disabled]="busy() !== null"
+                          (click)="leave(item)"
+                        >
+                          {{ 'checkIn.leaveIt' | t }}
+                        </button>
+                      </div>
+                    } @else if (item.answer) {
+                      <p class="row-sub">
+                        {{
+                          'checkIn.chosen' | t: { choice: (choiceNameKey(item.answer.choice) | t) }
+                        }}
+                      </p>
+                    }
+                    @if (answeredByOf(item); as by) {
+                      <p class="row-sub">{{ by.key | t: by.params }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+              @if (step.items.length > 0) {
+                <p class="card-note">{{ 'checkIn.whatsNew.quiet' | t }}</p>
+              }
+            }
+
+            @case ('CATEGORIZE') {
+              <p class="card-note">{{ placedOf(step).key | t: placedOf(step).params }}</p>
+              <ul class="rows items">
+                @for (item of step.items; track item.itemKey) {
+                  @let staleSaid = staleOf(item);
+                  @let replaces = replacesRuleOf(item);
+                  <li
+                    class="item"
+                    [id]="itemId(item.itemKey)"
+                    [class.is-stale]="staleSaid !== null"
+                  >
+                    <div class="item-line">
+                      <div class="row-main">
+                        <span class="row-title" dir="auto">{{ item.payeeName ?? '—' }}</span>
+                        <span class="row-sub">
+                          @if (item.date) {
+                            {{ item.date | dateOnly }}
+                          }
+                          @if (accountOf(item); as account) {
+                            · {{ account.key | t: account.params }}
+                          }
+                        </span>
+                      </div>
+                      @if (item.amount; as amount) {
+                        <span class="item-amount">{{
+                          amount.amount | money: amount.currency
+                        }}</span>
+                      }
+                    </div>
+                    @if (byRule(item)) {
+                      <span class="tag tag-neutral rule-tag">{{ 'checkIn.yourRule' | t }}</span>
+                    }
+                    @if (staleSaid) {
+                      <p class="field-error">{{ staleSaid.key | t }}</p>
+                    }
+                    @if (editable()) {
+                      <div class="cluster category-pick">
+                        <div class="field">
+                          <label class="visually-hidden" [for]="itemId(item.itemKey) + '-category'">
+                            {{ 'checkIn.categorize.category' | t }}
+                          </label>
+                          <select
+                            class="input"
+                            [id]="itemId(item.itemKey) + '-category'"
+                            [value]="chosenCategoryOf(item)"
+                            [disabled]="busy() !== null"
+                            (change)="chooseCategory(item, $any($event.target).value)"
+                          >
+                            <option value="" [selected]="chosenCategoryOf(item) === ''">
+                              {{ 'checkIn.categorize.choose' | t }}
+                            </option>
+                            @for (option of categoryOptions(); track option.id) {
+                              <option
+                                [value]="option.id"
+                                [selected]="option.id === chosenCategoryOf(item)"
+                              >
+                                {{ option.label.key | t: option.label.params }}
+                              </option>
+                            }
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-small"
+                          [class.is-chosen]="chose(item, 'LEAVE')"
+                          [attr.aria-pressed]="chose(item, 'LEAVE')"
+                          [disabled]="busy() !== null"
+                          (click)="leave(item)"
+                        >
+                          {{ 'checkIn.leaveIt' | t }}
+                        </button>
+                      </div>
+                      @if (item.payeeName) {
+                        <label class="checkbox">
+                          <input
+                            type="checkbox"
+                            [checked]="item.answer?.remember ?? false"
+                            [disabled]="busy() !== null || chosenCategoryOf(item) === ''"
+                            (change)="toggleRemember(item, $any($event.target).checked)"
+                          />
+                          {{ 'checkIn.categorize.always' | t }}
+                        </label>
+                      }
+                      @if (replaces) {
+                        <p class="field-hint">{{ replaces.key | t: replaces.params }}</p>
+                      }
+                    } @else {
+                      <p class="row-sub">
+                        @if (chosenCategoryName(item); as name) {
+                          {{ name }}
+                        } @else if (item.answer?.choice === 'LEAVE') {
+                          {{ 'checkIn.choiceName.LEAVE' | t }}
+                        } @else {
+                          {{ 'checkIn.categorize.choose' | t }}
+                        }
+                      </p>
+                    }
+                    @if (answeredByOf(item); as by) {
+                      <p class="row-sub">{{ by.key | t: by.params }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+              @if ((step.more ?? 0) > 0) {
+                <p class="card-note">
+                  {{ 'checkIn.categorize.more' | t: { count: step.more ?? 0 } }}
+                  <a routerLink="/transactions" [queryParams]="{ filter: 'uncategorised' }">
+                    {{ 'checkIn.categorize.moreLink' | t }}
+                  </a>
+                </p>
+              }
+              @if (spentOf(step); as spent) {
+                <div class="info-card">
+                  <p class="info-title">{{ 'checkIn.weekInOneLine' | t }}</p>
+                  <p class="row-sub">{{ spent.key | t: spent.params }}</p>
+                </div>
+              }
+            }
+
+            @case ('BILLS') {
+              <ul class="rows items">
+                @for (item of step.items; track item.itemKey) {
+                  @let reason = reasonOf(item);
+                  @let staleSaid = staleOf(item);
+                  @let pick = pickOf(item);
+                  <li
+                    class="item"
+                    [id]="itemId(item.itemKey)"
+                    [class.is-stale]="staleSaid !== null"
+                  >
+                    @if (item.question) {
+                      <p class="item-kind">{{ 'checkIn.bills.mapHeading' | t }}</p>
+                    }
+                    <div class="item-line">
+                      <div class="row-main">
+                        <span class="row-title" dir="auto">{{ item.payeeName ?? '—' }}</span>
+                        <span class="row-sub">
+                          @if (item.date) {
+                            {{ item.date | dateOnly }}
+                          }
+                          @if (accountOf(item); as account) {
+                            · {{ account.key | t: account.params }}
+                          }
+                        </span>
+                      </div>
+                      @if (chargeAmount(item); as amount) {
+                        <span class="item-amount">{{
+                          amount.amount | money: amount.currency
+                        }}</span>
+                      }
+                    </div>
+                    @if (reason) {
+                      <p class="item-question">{{ reason.key | t: reason.params }}</p>
+                    }
+                    @if (staleSaid) {
+                      <p class="field-error">{{ staleSaid.key | t }}</p>
+                    }
+                    @if (attachedOf(item); as attached) {
+                      <p class="row-sub">{{ attached.key | t: attached.params }}</p>
+                    }
+                    @if (editable()) {
+                      @if (item.debtPrompt) {
+                        <label class="checkbox">
+                          <input
+                            type="checkbox"
+                            [checked]="prompted(item)"
+                            [disabled]="busy() !== null"
+                            (change)="togglePrompt(item, $any($event.target).checked)"
+                          />
+                          {{ 'checkIn.recordAgainst' | t: { debt: item.debtPrompt.debtName } }}
+                        </label>
+                      }
+                      <div class="cluster choices">
+                        @if (
+                          item.reason !== 'RULE_MATCH' &&
+                          (item.suggestedBillId || item.reason === 'RULE_OUTSIDE_TOLERANCE')
+                        ) {
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [class.is-chosen]="chose(item, 'ATTACH')"
+                            [attr.aria-pressed]="chose(item, 'ATTACH')"
+                            [disabled]="busy() !== null"
+                            (click)="attachSuggested(item)"
+                          >
+                            {{
+                              (item.reason === 'RECURRING'
+                                ? 'checkIn.charge.mapIt'
+                                : 'checkIn.charge.attach'
+                              ) | t
+                            }}
+                          </button>
+                        }
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-small"
+                          [attr.aria-expanded]="pick !== null"
+                          [attr.aria-controls]="itemId(item.itemKey) + '-picker'"
+                          [disabled]="busy() !== null"
+                          (click)="openPicker(item)"
+                        >
+                          {{ 'checkIn.charge.differentBill' | t }}
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-small"
+                          [class.is-chosen]="chose(item, 'NOT_A_BILL')"
+                          [attr.aria-pressed]="chose(item, 'NOT_A_BILL')"
+                          [disabled]="busy() !== null"
+                          (click)="notABill(item)"
+                        >
+                          {{ 'checkIn.charge.notABill' | t }}
+                        </button>
+                        @if (!item.question) {
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-small"
+                            [class.is-chosen]="chose(item, 'LEAVE')"
+                            [attr.aria-pressed]="chose(item, 'LEAVE')"
+                            [disabled]="busy() !== null"
+                            (click)="leave(item)"
+                          >
+                            {{ 'checkIn.leaveIt' | t }}
+                          </button>
+                        }
+                      </div>
+                      @if (pick) {
+                        <div class="picker" [id]="itemId(item.itemKey) + '-picker'">
+                          <div class="field">
+                            <label class="field-label" [for]="itemId(item.itemKey) + '-bill'">
+                              {{ 'checkIn.charge.whichBill' | t }}
+                            </label>
+                            <select
+                              class="input"
+                              [id]="itemId(item.itemKey) + '-bill'"
+                              [disabled]="busy() !== null"
+                              (change)="pickBill(item, $any($event.target).value)"
+                            >
+                              @for (bill of billChoices(); track bill.billId) {
+                                <option
+                                  [value]="bill.billId"
+                                  [selected]="bill.billId === pick.billId"
+                                >
+                                  {{ bill.name }} ·
+                                  {{ bill.expected.amount | money: bill.expected.currency }}
+                                </option>
+                              }
+                            </select>
+                          </div>
+                          <div class="field">
+                            <label class="field-label" [for]="itemId(item.itemKey) + '-date'">
+                              {{ 'checkIn.charge.whichDate' | t }}
+                            </label>
+                            <select
+                              class="input"
+                              [id]="itemId(item.itemKey) + '-date'"
+                              [disabled]="busy() !== null"
+                              (change)="pickDate(item, $any($event.target).value)"
+                            >
+                              @for (date of datesFor(pick.billId); track date) {
+                                <option [value]="date" [selected]="date === pick.dueDate">
+                                  {{ date | dateOnly }}
+                                </option>
+                              }
+                            </select>
+                          </div>
+                          <label class="checkbox">
+                            <input
+                              type="checkbox"
+                              [checked]="pick.remember"
+                              (change)="pickRemember(item, $any($event.target).checked)"
+                            />
+                            {{ 'checkIn.charge.remember' | t }}
+                          </label>
+                          <div>
+                            <button
+                              type="button"
+                              class="btn btn-primary btn-small"
+                              [disabled]="
+                                busy() !== null || pick.billId === '' || pick.dueDate === ''
+                              "
+                              (click)="attachPicked(item)"
+                            >
+                              {{ 'checkIn.charge.attachChosen' | t }}
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    } @else if (item.answer && item.answer.choice !== 'ATTACH') {
+                      <p class="row-sub">
+                        {{
+                          'checkIn.chosen' | t: { choice: (choiceNameKey(item.answer.choice) | t) }
+                        }}
+                      </p>
+                    }
+                    @if (answeredByOf(item); as by) {
+                      <p class="row-sub">{{ by.key | t: by.params }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+
+              @if ((step.bills ?? []).length > 0) {
+                <table class="bill-table">
+                  <caption class="visually-hidden">
+                    {{
+                      'checkIn.bills.heading' | t
+                    }}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ 'checkIn.bills.bill' | t }}</th>
+                      <th scope="col">{{ 'checkIn.bills.date' | t }}</th>
+                      <th scope="col">{{ 'checkIn.bills.status' | t }}</th>
+                      <th scope="col" class="numeric">{{ 'checkIn.bills.amount' | t }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (line of step.bills ?? []; track line.billId + line.dueDate) {
+                      @let lineStatus = occurrenceStatusOf(line);
+                      <tr [class.is-overdue]="line.overdue">
+                        <td>{{ line.billName }}</td>
+                        <td>{{ line.dueDate | dateOnly }}</td>
+                        <td>{{ lineStatus.key | t: lineStatus.params }}</td>
+                        <td class="numeric">
+                          {{ line.amount.amount | money: line.amount.currency }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+              @if (step.stillToPay; as still) {
+                <div class="info-card cluster still-to-pay">
+                  <span class="info-title">{{ 'checkIn.bills.stillToPay' | t }}</span>
+                  <span class="item-amount">{{ still.amount | money: still.currency }}</span>
+                </div>
+              }
+            }
+
+            @case ('NEXT_WEEK') {
+              @if (targetLine(step); as target) {
+                <p class="card-note">{{ target.key | t: target.params }}</p>
+              }
+              @if (offersAllocation(step)) {
+                @let allocation = allocationItem(step);
+                @let allocationStale = allocation ? staleOf(allocation) : null;
+                <fieldset
+                  class="allocation"
+                  [id]="allocation ? itemId(allocation.itemKey) : null"
+                  [class.is-stale]="allocationStale !== null"
+                >
+                  <legend class="field-label">{{ 'checkIn.next.where' | t }}</legend>
+                  @if (!step.figures?.surplusAllocatable) {
+                    <p class="field-hint">{{ 'checkIn.next.short' | t }}</p>
+                  }
+                  @if (allocationStale) {
+                    <p class="field-error">{{ allocationStale.key | t }}</p>
+                  }
+                  @for (choice of step.choices ?? []; track choiceValue(choice)) {
+                    @let label = choiceLabelOf(choice);
+                    <label class="choice" [class.is-chosen]="allocated(step, choice)">
+                      <input
+                        type="radio"
+                        name="allocation"
+                        [value]="choiceValue(choice)"
+                        [checked]="allocated(step, choice)"
+                        [disabled]="!editable() || busy() !== null"
+                        (change)="allocate(choice)"
+                      />
+                      <span class="choice-text">
+                        <span class="row-title">{{ label.key | t: label.params }}</span>
+                        @for (effect of choiceEffectOf(step, choice); track $index) {
+                          <span class="row-sub">{{ effect.key | t: effect.params }}</span>
+                        }
+                      </span>
+                    </label>
+                  }
+                </fieldset>
+              }
+
+              @if (figureOf(step); as figure) {
+                <div class="next-figure" aria-live="polite">
+                  <p class="info-title">{{ 'checkIn.next.youCanSpend' | t }}</p>
+                  <p class="figure-amount" [class.is-negative]="negative(figure.amount)">
+                    {{ figure.amount.amount | money: figure.amount.currency }}
+                  </p>
+                  <p class="row-sub">
+                    {{
+                      'checkIn.next.perDay'
+                        | t: { amount: (figure.perDay.amount | money: figure.perDay.currency) }
+                    }}
+                  </p>
+                  @if (negative(figure.amount)) {
+                    <p class="field-hint">{{ 'checkIn.next.negative' | t }}</p>
+                  }
+                </div>
+              }
+              @if (dueNextWeekOf(step); as due) {
+                <p class="card-note">{{ due.key | t: due.params }}</p>
+              }
+              @if (streakOf(step); as streak) {
+                <p class="card-note">{{ streak.key | t: streak.params }}</p>
+              }
+              @if (editable()) {
+                <div class="cluster finish">
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    [disabled]="busy() !== null"
+                    (click)="finish()"
+                  >
+                    @if (busy() === 'finish') {
+                      {{ 'checkIn.finishing' | t }}
+                    } @else {
+                      <span class="wide-only">{{ 'checkIn.finish' | t }}</span>
+                      <span class="narrow-only">{{ 'checkIn.finishMobile' | t }}</span>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-ghost"
+                    [disabled]="busy() !== null"
+                    (click)="askToDiscard()"
+                  >
+                    {{ 'checkIn.discard' | t }}
+                  </button>
+                </div>
+              }
+            }
+          }
+
+          <!-- Phone only: each screen ends by naming the next one. -->
+          <div class="step-footer narrow-only">
+            @if (i > 0) {
+              <button type="button" class="btn btn-secondary" (click)="go(i - 1)">
+                {{ 'checkIn.back' | t }}
+              </button>
+            }
+            @if (!last) {
+              @let next = nextKey(i);
+              @if (next) {
+                <button type="button" class="btn btn-primary" (click)="go(i + 1)">
+                  {{ next | t }}
+                </button>
+              }
+            }
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
+
+@if (confirmingDiscard()) {
+  <app-confirm-dialog
+    [heading]="'checkIn.discardTitle' | t"
+    [message]="'checkIn.discardMessage' | t"
+    [confirmLabel]="'checkIn.discard' | t"
+    [busy]="busy() === 'discard'"
+    tone="destructive"
+    (confirmed)="discard()"
+    (cancelled)="cancelDiscard()"
+  />
+}

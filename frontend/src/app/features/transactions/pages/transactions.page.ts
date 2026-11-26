@@ -14,6 +14,7 @@ import { Account } from '../../accounts/data/account.models';
 import { AccountsService } from '../../accounts/data/accounts.service';
 import { Category } from '../../categories/data/category.models';
 import { CategoriesService } from '../../categories/data/categories.service';
+import { CheckInPromptComponent } from '../../check-in/components/check-in-prompt.component';
 import { pickableCategories } from '../../categories/data/category-tree';
 import { TransactionDialogComponent } from '../components/transaction-dialog.component';
 import { TransactionListComponent } from '../components/transaction-list.component';
@@ -93,6 +94,7 @@ interface PendingTransferDelete {
     TransferDialogComponent,
     PairDialogComponent,
     ConfirmDialogComponent,
+    CheckInPromptComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './transactions.page.html',

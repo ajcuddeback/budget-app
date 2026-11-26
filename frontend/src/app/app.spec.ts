@@ -106,6 +106,7 @@ describe('App', () => {
     ).map((link) => link.textContent?.trim());
     expect(links).toEqual([
       'Transactions',
+      'Check-in',
       'Accounts',
       'Bills',
       'Debt plan',

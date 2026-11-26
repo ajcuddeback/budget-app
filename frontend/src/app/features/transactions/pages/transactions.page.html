@@ -24,6 +24,8 @@
       </div>
     </section>
   } @else {
+    <!-- The home card's check-in prompt (weekly-check-in.md, UI). Shows nothing if it can't load. -->
+    <app-check-in-prompt />
     <section class="card" aria-labelledby="ledger-heading">
       <div class="cluster section-head">
         <h2 class="card-title" id="ledger-heading">{{ 'transactions.heading' | t }}</h2>

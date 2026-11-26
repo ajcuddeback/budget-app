@@ -1,0 +1,321 @@
+/*
+ * One template, two arrangements (weekly-check-in.md, UI): a page of sections on a wide screen,
+ * one section per screen on a phone. The same fields in the same order either way; only what is
+ * shown changes. Every value is a design token (design/README.md).
+ */
+
+.check-in-head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.check-in-head > *,
+.title-row h1 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.title-row {
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.narrow-only {
+  display: none;
+}
+
+/* ---- step chips (wide) ------------------------------------------------------------------- */
+
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.step-chip {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.step-chip.is-done {
+  border-color: var(--color-accent-text);
+  color: var(--color-accent-text);
+}
+
+/* ---- progress (narrow) ------------------------------------------------------------------- */
+
+.progress {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.progress-segment {
+  flex: 1 1 0;
+  block-size: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-divider);
+}
+
+.progress-segment.is-filled {
+  background: var(--color-primary);
+}
+
+/* ---- a step ------------------------------------------------------------------------------ */
+
+.step {
+  scroll-margin-block-start: var(--space-4);
+}
+
+.step-heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.items {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.item {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  scroll-margin-block-start: var(--space-4);
+}
+
+.item.is-stale,
+.allocation.is-stale {
+  border-color: var(--color-accent-2);
+  border-width: 2px;
+}
+
+.item p {
+  margin: 0;
+}
+
+.item-kind {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-accent-text);
+}
+
+.item-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: flex-start;
+}
+
+.item-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.item-question {
+  font-weight: 600;
+}
+
+.rule-tag {
+  justify-self: start;
+}
+
+.choices {
+  gap: var(--space-2);
+}
+
+.btn.is-chosen {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+}
+
+.category-pick {
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.category-pick .field {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
+.picker {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-divider) 40%, transparent);
+}
+
+.info-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+}
+
+.info-card p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.info-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.still-to-pay {
+  justify-content: space-between;
+}
+
+/* ---- the bills table --------------------------------------------------------------------- */
+
+.bill-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-table th,
+.bill-table td {
+  padding: var(--space-2) var(--space-2);
+  border-block-end: 1px solid var(--color-divider);
+  text-align: start;
+}
+
+.bill-table th {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.bill-table .numeric {
+  text-align: end;
+}
+
+.bill-table .is-overdue td {
+  font-weight: 700;
+}
+
+/* ---- step 4 ------------------------------------------------------------------------------ */
+
+.allocation {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.allocation p {
+  margin: 0;
+}
+
+.choice {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.choice.is-chosen {
+  border-color: var(--color-primary);
+  border-width: 2px;
+}
+
+.choice input {
+  margin-block-start: var(--space-1);
+}
+
+.choice-text {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.next-figure {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.next-figure p {
+  margin: 0;
+}
+
+.figure-amount {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 2.5rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure-amount.is-negative {
+  color: var(--color-accent-2);
+}
+
+.finish {
+  gap: var(--space-3);
+}
+
+.summary {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.summary a {
+  color: var(--color-accent-text);
+}
+
+.step-footer {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* ---- a phone: one step per screen -------------------------------------------------------- */
+
+@media (max-width: 40rem) {
+  .wide-only {
+    display: none;
+  }
+
+  .narrow-only {
+    display: block;
+  }
+
+  .step-footer.narrow-only {
+    display: flex;
+  }
+
+  .step:not(.is-current) {
+    display: none;
+  }
+
+  .choices .btn,
+  .finish .btn-primary {
+    flex: 1 1 auto;
+  }
+}

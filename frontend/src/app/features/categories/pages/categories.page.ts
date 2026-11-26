@@ -17,6 +17,7 @@ import {
 } from '../data/category-patch';
 import { CategoryGroup, groupByKind } from '../data/category-tree';
 import { Category, categoryKindKey } from '../data/category.models';
+import { PayeeRulesComponent } from '../../check-in/components/payee-rules.component';
 import { CategoriesService } from '../data/categories.service';
 
 /** What the dialog is open for. A `null` category means "add one". */
@@ -55,6 +56,7 @@ interface PendingAction {
     NoHouseholdComponent,
     CategoryDialogComponent,
     ConfirmDialogComponent,
+    PayeeRulesComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './categories.page.html',

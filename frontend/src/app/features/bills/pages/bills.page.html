@@ -300,6 +300,43 @@
                       {{ bill.tolerance | money: bill.currency }}
                     </p>
                   }
+                  @for (mapping of bill.mappings ?? []; track mapping.ruleId) {
+                    <p class="row-sub mapping">
+                      <span class="tag tag-neutral">{{ 'checkIn.mapping.label' | t }}</span>
+                      <span dir="auto">{{ mapping.payeeName }}</span>
+                      <span>
+                        ·
+                        @if (mapping.accountLastFour) {
+                          {{
+                            'checkIn.account'
+                              | t: { name: mapping.accountName, lastFour: mapping.accountLastFour }
+                          }}
+                        } @else {
+                          {{ mapping.accountName }}
+                        }
+                        ·
+                        @if (bill.amountVaries && bill.tolerance) {
+                          {{
+                            'checkIn.mapping.varies'
+                              | t: { amount: (bill.tolerance | money: bill.currency) }
+                          }}
+                        } @else {
+                          {{ 'checkIn.mapping.exact' | t }}
+                        }
+                      </span>
+                      @if (canWrite()) {
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-small"
+                          [disabled]="busyId() !== null"
+                          (click)="unmap(bill, mapping.ruleId)"
+                        >
+                          {{ 'checkIn.mapping.unmap' | t }}
+                          <span class="visually-hidden" dir="auto">{{ mapping.payeeName }}</span>
+                        </button>
+                      }
+                    </p>
+                  }
                 </div>
 
                 <p class="figures">

@@ -913,17 +913,15 @@ class DemoFixtureIT extends ApiTestBase {
                 "{\"amount\":\"63.00\",\"choice\":\"GOAL\",\"goalId\":\"%s\"}"
                         .formatted(ids.get("fund")));
         for (Map.Entry<String, String> answer : answers.entrySet()) {
-            ApiResponse answered =
-                    owner.put(CanvasWeek.W34 + "/answers/" + answer.getKey(), answer.getValue());
-            if (answered.status() != 200) {
-                throw new AssertionError("could not answer the demo week: " + answered.body());
+            String body = answer.getValue();
+            if (answer.getKey().startsWith("cat.") && body.contains(",\"remember\":true")) {
+                // The page asks for a category first and the "Always file" tick second: two
+                // answers, the second replacing the first at its version. Both are generated.
+                putAnswer(
+                        owner, generated, answer.getKey(), body.replace(",\"remember\":true", ""));
+                body = body.substring(0, body.length() - 1) + ",\"version\":0}";
             }
-            generated.put(
-                    "PUT /api/check-ins/2026-W34/answers/"
-                            + answer.getKey()
-                            + " "
-                            + previewLabel(answer.getValue()),
-                    answered.body());
+            putAnswer(owner, generated, answer.getKey(), body);
         }
         generated.put(
                 "GET /api/check-ins/2026-W34 VIEWER",
@@ -951,6 +949,27 @@ class DemoFixtureIT extends ApiTestBase {
                                         render(generated, "CHECK_IN_API"),
                                         new Fixture(Map.of(), null, stable))));
         compareOrWrite(document, COMMITTED_CHECK_INS, REGENERATED_CHECK_INS);
+    }
+
+    private static void putAnswer(
+            ApiClient owner, Map<String, String> generated, String itemKey, String body) {
+        ApiResponse answered = owner.put(CanvasWeek.W34 + "/answers/" + itemKey, body);
+        if (answered.status() != 200) {
+            throw new AssertionError("could not answer the demo week: " + answered.body());
+        }
+        generated.put(
+                "PUT /api/check-ins/2026-W34/answers/" + itemKey + " " + checkInLabel(body),
+                answered.body());
+    }
+
+    /**
+     * An answer body as the mock keys it: {@link #previewLabel} without the {@code version} a
+     * replacement carries or any {@code false}, which the page sends and the generator need not.
+     */
+    private static String checkInLabel(String body) {
+        return java.util.Arrays.stream(previewLabel(body).split("&"))
+                .filter(part -> !part.startsWith("version=") && !part.endsWith("=false"))
+                .collect(java.util.stream.Collectors.joining("&"));
     }
 
     /**

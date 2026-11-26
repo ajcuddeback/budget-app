@@ -14,6 +14,7 @@ import { ErrorAlertComponent } from '../../../shared/components/error-alert.comp
 import { NoHouseholdComponent } from '../../../shared/components/no-household.component';
 import { AccountsService } from '../../accounts/data/accounts.service';
 import { Account } from '../../accounts/data/account.models';
+import { CheckInService } from '../../check-in/data/check-in.service';
 import { CategoriesService } from '../../categories/data/categories.service';
 import { Category } from '../../categories/data/category.models';
 import { BillDialogComponent } from '../components/bill-dialog.component';
@@ -117,6 +118,7 @@ export class BillsPage {
   private readonly accountsService = inject(AccountsService);
   private readonly auth = inject(AuthService);
   private readonly i18n = inject(I18nService);
+  private readonly checkIns = inject(CheckInService);
 
   protected readonly loading = signal(true);
   protected readonly loadError = signal<ApiError | null>(null);
@@ -583,6 +585,19 @@ export class BillsPage {
     } finally {
       this.busyId.set(null);
     }
+  }
+
+  /**
+   * Removes a mapping a weekly check-in remembered. Nothing recorded is undone: the bill's paid
+   * occurrences stay paid, and the next check-in simply asks about that charge again.
+   */
+  protected unmap(bill: Bill, ruleId: string): void {
+    void this.run(
+      ruleId,
+      bill.name,
+      () => this.checkIns.removeChargeRule(ruleId),
+      'checkIn.mapping.removed',
+    );
   }
 
   // ------------------------------------------------------------------------------ what to show

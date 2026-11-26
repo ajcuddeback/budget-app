@@ -96,9 +96,24 @@ export interface Bill {
   active: boolean;
   /** This month's, in date order. Empty is ordinary — see {@link BillOccurrence}. */
   occurrences: BillOccurrence[];
+  /**
+   * The charge rules a weekly check-in created for this bill: *"COMCAST XFINITY · Chase •4412"*.
+   * Optional so a fixture written before slice 14 still type-checks; absent reads as none.
+   */
+  mappings?: BillMapping[];
   createdAt: string;
   updatedAt: string;
   version: number;
+}
+
+/** A payee and account a check-in remembered as paying this bill. Removed with Unmap. */
+export interface BillMapping {
+  ruleId: string;
+  /** From a bank file: rendered in its own `dir="auto"` element. */
+  payeeName: string;
+  accountId: string;
+  accountName: string;
+  accountLastFour: string | null;
 }
 
 /** One month's bills and what they come to. */
