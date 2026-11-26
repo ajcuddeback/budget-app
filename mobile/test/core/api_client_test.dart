@@ -259,6 +259,15 @@ void main() {
     },
   );
 
+  test("P3: a local failure's log line is what failed and the error's type, never its message", () {
+    final line = failureLine(
+      'caching the member',
+      StateError('/data/user/0/app.budgetowl/cache/budget_owl_cache.db: balance 1234.56'),
+    );
+
+    expect(line, 'local caching the member failed (StateError)');
+  });
+
   test('a body that is not JSON is "unexpected", not a crash', () async {
     final adapter = ScriptedAdapter((_) async => text(200, '<html>'));
 

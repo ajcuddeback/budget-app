@@ -64,20 +64,32 @@ it keep on the phone, and how? What happens to an edit made with no signal?
   CAs are trusted by `network_security_config.xml` but not, on their own, by Dart's TLS, which
   reads only the system store; for phase 1 a private CA worked on iOS and failed closed on
   Android. Now `MainActivity` reads the user-installed CAs (`AndroidCAStore`, aliases `user:…`)
-  through a read-only platform channel, and on Android the app's one transport builds its
-  `HttpClient` with a `SecurityContext` that keeps the system roots and adds those certificates
-  as trust anchors (`lib/core/http/user_trust.dart`). This trusts exactly the set the app's own
-  network security config already declares (`<certificates src="user" />`, pinned by a test); it
-  adds no `badCertificateCallback`, and the chain and host name are verified as for any server.
-  The set is read once per launch, before the first request: a CA installed while the app runs
-  is trusted from its next launch, and one the person removes is no longer trusted from then
-  either. A store that cannot be read means the system roots alone (fails closed). Real-socket
-  tests prove it with a per-run test CA through the same code path; **the channel itself needs
-  checking on a device**, since no test here runs Android.
+  through a read-only platform channel (`lib/core/http/user_trust.dart`).
+- **A server is pinned to the one user CA it was connected through** (2026-11-26, slice 15
+  phase 2, round 2; owner-facing, the secure option taken). Trusting every user CA would also
+  trust a CA an employer's device management pushed, which can read the token and the balances
+  through TLS inspection. So at connect time (`ServerCheck`, through `PhoneTrustAdapter.checkAndPin`)
+  the server is checked against the system roots alone: if they verify it, nothing is stored and
+  no user CA is ever added for it. If only a user CA does, each one is tried alone on top of the
+  system roots, and the SHA-256 fingerprint of the one that verifies it is stored with the server
+  address in secure storage. From then on the app's one transport trusts the system roots plus
+  **that CA only**, while it is on the phone; the store is read again whenever the app returns
+  to the foreground, so a CA removed in Settings stops being trusted for every connection made
+  after, and the server then fails as "certificate not trusted". The pin lives and dies with the
+  address: a sign-out keeps both (signing back in never re-pins), a change of server, a fresh
+  install or an unreadable address clears both. No `badCertificateCallback`; the chain and the
+  host name are verified as for any server; a store that cannot be read means the system roots
+  alone. **What it does not cover:** a CA that is already intercepting at the moment the person
+  connects is the one that verifies the server then, and is pinned; and a system CA the person
+  disabled in Settings is still trusted, because Dart reads the system directory itself.
+  Real-socket tests prove it with three per-run test CAs; **the channel itself needs checking on
+  a device**, since no test here runs Android.
 - **Writes wait for this launch's version check** (2026-11-26, slice 15 phase 2). Decision 2's
   `/api/meta` is checked at every launch, and until it has passed, the app sends no write — sign-in
   included — whatever else has reached the server; a check that fails (busy, timed out) keeps
-  writes off and reads on, and is retried on the next request that reaches the server.
+  writes off and reads on, and is retried on the next request that reaches the server. A write
+  the person has just asked for — sign-in, setup, accepting an invitation — waits for that
+  check, or runs it, before anything is sent (`ensureVersionConfirmed`).
 - `/api/meta` becomes the sixth public route, rate-limited and pinned to an exact body by a test.
 - The cache adds a native dependency (SQLCipher) to both platforms' builds.
 - Because the cache is wiped on any `401`, a revoked phone loses its data the next time it is

@@ -67,6 +67,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       _error = null;
     });
     try {
+      // A launch check that failed is waited for or run again here, so the first tap works.
+      await ref.read(sessionProvider.notifier).ensureVersionConfirmed();
       final csrf = await csrfForPublicWrite(api);
       final joined = await api.write(
         'POST',

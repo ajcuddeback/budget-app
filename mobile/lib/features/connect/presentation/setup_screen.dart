@@ -52,6 +52,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final email = _email.text.trim();
     final password = _password.text;
     try {
+      // A launch check that failed is waited for or run again here, so the first tap works.
+      await ref.read(sessionProvider.notifier).ensureVersionConfirmed();
       final csrf = await csrfForPublicWrite(api);
       await api.write(
         'POST',

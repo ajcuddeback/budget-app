@@ -166,6 +166,10 @@ final class SessionController extends Notifier<SessionState> {
       state = const SessionNoServer();
       return;
     }
+    // Trust only what this server was pinned to when it was connected to (Android): the system
+    // roots, plus its one user CA while that is still on the phone. Before anything is sent to it.
+    final transport = ref.read(httpAdapterProvider);
+    if (transport is ServerTrust) transport.pinTo(await _servers.readCaPin());
     ref.read(currentServerProvider.notifier).set(server);
     // Only a token this server issued (audit L3). Anything another origin's token left behind —
     // the cache and its key — goes with it (audit N2). **No token at all means the same** (R1): a
@@ -244,6 +248,29 @@ final class SessionController extends Notifier<SessionState> {
     return false;
   }
 
+  /// For a write the person has just asked for — sign-in, setup, accepting an invitation: returns
+  /// once this launch's version check has passed, **waiting for the one in flight or running one
+  /// now**, so a launch check that failed (busy, timed out) does not make the first tap fail.
+  ///
+  /// Throws [AppError.noAnswer] when it still cannot be confirmed — the write is not sent — and
+  /// [AppError.unexpected] after a version mismatch, which has also moved the session to
+  /// [SessionUnsupported].
+  Future<void> ensureVersionConfirmed() async {
+    if (_gate.versionConfirmed) return;
+    final server = ref.read(currentServerProvider);
+    if (server == null) throw const AppError.noAnswer();
+    // One that was already out may have been sent while the server was still busy: if it fails,
+    // this tap asks once more, now.
+    final inFlight = _checking;
+    if (inFlight != null) {
+      if (await inFlight) throw const AppError.unexpected();
+      if (!ref.mounted) throw const AppError.noAnswer();
+      if (_gate.versionConfirmed) return;
+    }
+    if (await _checkVersion(server)) throw const AppError.unexpected();
+    if (!ref.mounted || !_gate.versionConfirmed) throw const AppError.noAnswer();
+  }
+
   /// Retries the version check when a request has just reached the server and the version is not
   /// yet confirmed this launch — "on the next refresh". At most one check at a time (start-up's
   /// included), and only while there is a server to talk to.
@@ -263,6 +290,13 @@ final class SessionController extends Notifier<SessionState> {
     final server = ref.read(currentServerProvider);
     _ending = true;
     try {
+      // A token that was loaded is ended on the server too, not only dropped here: it is taken out
+      // of storage first, then revoked best effort (audit N1, L4).
+      try {
+        await _endToken();
+      } on Object catch (error) {
+        debugLogFailure('ending the token after a failed start-up', error);
+      }
       await _local.wipe(forgetServer: server == null);
     } on Object {
       // Every step was attempted (LocalState.wipe); what storage refused, it refused.
@@ -285,9 +319,18 @@ final class SessionController extends Notifier<SessionState> {
   /// member can ever be carried to a second origin (audit L3).
   Future<void> connect(ServerAddress address) async {
     _gate.unconfirmVersion();
-    await ServerCheck(ref.read(httpAdapterProvider)).check(address);
+    // On Android the check also decides which user-installed CA, if any, this server is trusted
+    // through from now on: none when the system roots verify it, else the one that does (pinned).
+    final transport = ref.read(httpAdapterProvider);
+    String? caPin;
+    if (transport is ServerTrust) {
+      caPin = await transport.checkAndPin(address);
+    } else {
+      await ServerCheck(transport).check(address);
+    }
     await _local.wipe(forgetServer: true);
-    await _servers.save(address);
+    await _servers.save(address, caPin: caPin);
+    if (transport is ServerTrust) transport.pinTo(caPin);
     ref.read(currentServerProvider.notifier).set(address);
     // The check above was this server's, this launch: writes (sign-in, setup, join) may follow.
     _gate.confirmVersion();
@@ -303,12 +346,8 @@ final class SessionController extends Notifier<SessionState> {
   }) async {
     final current = state;
     if (current is! SessionSignedOut) throw StateError('already signed in');
-    // The password goes only to a server whose version was confirmed this launch (attack 4). If
-    // the launch check failed — busy, timed out — it is tried once more here, now.
-    if (!_gate.versionConfirmed) {
-      if (await (_checking ?? _checkVersion(current.server))) throw const AppError.unexpected();
-      if (!_gate.versionConfirmed) throw const AppError.noAnswer();
-    }
+    // The password goes only to a server whose version was confirmed this launch (attack 4).
+    await ensureVersionConfirmed();
     final issued = await _api.write(
       'POST',
       '/api/auth/token',
@@ -421,32 +460,54 @@ final class SessionController extends Notifier<SessionState> {
     if (current is SessionSignedIn) await _refreshMe(current.server);
   }
 
+  /// Re-reads the member once it is already on screen. What the server sent is shown **first**;
+  /// caching it is best effort. A cache that cannot be written (sealed by a sign-out meanwhile, a
+  /// full disk, anything) is logged in a debug build and costs nothing else: it never reaches
+  /// start-up's catch-all, which would sign a working session out.
   Future<void> _refreshMe(ServerAddress server) async {
+    final ({CurrentUser me, String body}) fetched;
     try {
-      final me = await _fetchMe();
-      if (!ref.mounted) return;
-      final current = state;
-      if (current is SessionSignedIn && current.server == server) {
-        state = SessionSignedIn(server, me, current.epoch);
-      }
+      fetched = await _fetchMeFromServer();
     } on AppError {
       // Offline: the cached member stands. A 401 has already ended the session.
+      return;
+    } on Object catch (error) {
+      debugLogFailure('re-reading the member', error);
+      return;
+    }
+    if (!ref.mounted) return;
+    final current = state;
+    if (current is! SessionSignedIn || current.server != server) return;
+    state = SessionSignedIn(server, fetched.me, current.epoch);
+    try {
+      await _cacheMe(fetched.body);
+    } on Object catch (error) {
+      debugLogFailure('caching the member', error);
     }
   }
 
+  /// `GET /api/auth/me`, decoded, and cached. A cache that cannot be written is a failure here: at
+  /// start-up and at sign-in nothing has been shown yet, and the caller ends what it began.
   Future<CurrentUser> _fetchMe() async {
+    final fetched = await _fetchMeFromServer();
+    await _cacheMe(fetched.body);
+    return fetched.me;
+  }
+
+  Future<({CurrentUser me, String body})> _fetchMeFromServer() async {
     final body = await _api.getText('/api/auth/me');
     // Torn down while the read was in flight: there is no session left to cache it for.
     if (!ref.mounted) throw const AppError.unexpected();
-    final CurrentUser me;
     try {
-      me = CurrentUser.fromJson(decodeObject(body));
+      return (me: CurrentUser.fromJson(decodeObject(body)), body: body);
     } on UnexpectedJson {
       throw const AppError.unexpected();
     }
+  }
+
+  Future<void> _cacheMe(String body) async {
     final cache = await ref.read(cacheHolderProvider).obtain();
     await cache.write(meCacheKey, '', body, ref.read(clockProvider)().toUtc());
-    return me;
   }
 
   Future<CurrentUser?> _cachedMe() async {
