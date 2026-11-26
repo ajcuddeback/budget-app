@@ -41,7 +41,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Debt plan & debt detail | Done — slice 10 | [debt-plan.md](debt-plan.md) |
 | Goals | Done — slice 11 | [goals.md](goals.md) |
 | Reporting & insights | Done — slice 13 | [reporting.md](reporting.md) |
-| Weekly check-in | Planned | _not written_ |
+| Weekly check-in | Planned — slice 14 | [weekly-check-in.md](weekly-check-in.md) |
 | Owl chat (AI insights) | Planned | _not written_ |
 
 Keep this table current — it is the index an agent scans first.

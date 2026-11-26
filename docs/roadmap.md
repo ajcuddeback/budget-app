@@ -29,7 +29,7 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 11 | [Goals](features/goals.md) | 5 | **Done** |
 | 12 | [File import](features/file-import.md) (CSV / OFX / QIF), plus the manual "these two rows are one transfer" ledger action | 5, 8 | **Done** |
 | 13 | **[Reporting & insights](features/reporting.md)** — income and spending, where it went, CSV | 5, 7 | **Done** |
-| 14 | **Weekly check-in** — the four-step pass | 6, 7, 10 | Planned |
+| 14 | **[Weekly check-in](features/weekly-check-in.md)** — the four-step pass | 6, 7, 10 | Planned |
 | 15 | Mobile app (Flutter) | 2–10 | Planned |
 | 16 | Bank connections (pluggable providers) | 12 | Planned |
 | 17 | AI insights / Owl chat (opt-in, local-first) | 13 | Planned |
