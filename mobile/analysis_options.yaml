@@ -5,9 +5,10 @@
 # becomes a typed model at the boundary (lib/core/json/json.dart) or not at all.
 #
 # Money never passes through a double: test/architecture/guards_test.dart fails on
-# double.parse / num.parse / toDouble() / double fields in lib/ (an analyzer plugin would need
-# build tooling this project refuses to depend on, so the rule is a test, run by tools/verify.sh
-# as its own step).
+# double.parse / num.parse (and their tryParse forms) and .toDouble() in lib/. It does not see a
+# `double` field or parameter; amounts are typed Money/Decimal at the JSON boundary, and money tests
+# keep 19-digit amounts exact. (An analyzer plugin would need build tooling this project refuses to
+# depend on, so the rule is a test, run by tools/verify.sh as its own step.)
 include: package:very_good_analysis/analysis_options.yaml
 
 # The repository's line length everywhere else (Java, TypeScript) is 100.

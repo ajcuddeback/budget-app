@@ -156,7 +156,7 @@ Household, Devices, Preferences, and Admin for an instance administrator.
   mirror the web's `en.json` keys where the text is the same, so the two stay in step.
 - Amounts are parsed from their wire strings into `Decimal` (package `decimal`) and formatted
   with `intl`'s `NumberFormat.currency` for the user's locale and the amount's own currency.
-  `double` never holds an amount: an analyzer rule bans `double.parse`/`num.parse`/`toDouble()`
+  `double` never holds an amount: an architecture test bans `double.parse`/`num.parse`/`toDouble()`
   in `lib/`, and the money formatter has its own tests (scale, rounding, negative, very large).
 - Dates are formatted with `intl` and the user's locale; a date-only field is never converted
   through a time zone.
@@ -179,7 +179,7 @@ Household, Devices, Preferences, and Admin for an instance administrator.
 No server-side change beyond `GET /api/meta` (no migration). On the device:
 
 ```
-secure storage   server_url, token, cache_key
+secure storage   server_url, token (with the origin that issued it), cache_key
 drift (sqlcipher) cache_entries(key TEXT PK, household_id TEXT, body TEXT, fetched_at INT, bytes INT)
 shared prefs     theme override, text-only UI preferences — never anything financial
 ```
@@ -369,6 +369,10 @@ drives the real API as the phone does and writes
 | Type scale | Tokens from `design/` | **Constants in the token generator** (`TypeScaleTokens`) | The web's token sheet has no type-scale variables; the sizes are written once, in the generator, not in widgets |
 | Fixture order | — | Same-date ledger rows keep the committed file's order; a regeneration that differs only by such a flip writes nothing | The API orders same-date rows by random id, so goldens drawn from the file would churn on every regeneration |
 | Revoking another device | "the screens that depend on it refresh" | Re-reads **only the devices list** | No household data changed |
+| Category path separator | The web's `transactions.categoryPath`, *"{parent} → {name}"* | Mobile strings **`transactions.categoryTrail`** and **`transfers.accountsTrail`** with **"›"** | The bundled Figtree has no U+2192, so the arrow drew as a box. "›" is in the font and mirrors in RTL |
+| Offline on Transactions | — | **No standing offline banner**: the stale label says the copy is old; *"You're offline — this needs a connection"* appears when a write is attempted. The record button stays opaque (`surface`/`muted`, field border) and explains on a tap | The design has no disabled-colour token; the web's 45% opacity let the row beneath show through the button |
+| Token storage | The token in secure storage | The token **and the origin that issued it**; a token whose origin is not the server about to be called is deleted, not loaded | Audit L3: no stored state can carry one server's token to another |
+| First run | — | A marker file in Application Support; when it is missing, secure storage is wiped before anything is read | Audit L5: the iOS Keychain survives an uninstall |
 
 ### Proving each control can fail
 
@@ -389,6 +393,24 @@ confirmed clean (`git diff` empty, the sabotage absent).
 | Invitation for another host | The host comparison removed | `invitation_link_test`; `screens_test`: refused and nothing sent |
 | `VIEWER` sees no write control | `Role.canWrite` returned `true` | `core_rules_test` roles; `screens_test`: a VIEWER sees no write control |
 
+After the phase-1 security audit and the coordinator's golden review, each fix was proved the
+same way:
+
+| Item | Broken how | Failed |
+| ---- | ---------- | ------ |
+| H1 shared transport | `dio.close()` put back in `ServerCheck` | `real_transport_test`: the shared transport stays open (two checks and a bearer request through one real `IOHttpClientAdapter`); the journey. With the fakes made to honour `close()`, a dozen screen, journey and session tests had also failed before the fix |
+| L1 cleartext at the socket | `runWithCleartextPolicy` returned `body()` without the zone; separately, `main.dart` passed `allowLocalCleartext: true` | `cleartext_policy_test` (release refusal at the socket, zone flag); `guards_test`: the app runs inside the zone |
+| L2 401 while starting | `sessionEnded` ignored the starting state | `session_test` L2: a token revoked while the phone was off is wiped at start-up |
+| L3 token to a second origin | The wipe in `connect()` removed; separately, `TokenStore.load` ignored the origin; then both | `session_test` L3 connect wipe; `cache_test` + `session_test` origin binding; with both removed, the relaunch scenario sent `GET /api/auth/me` with the old token |
+| L4 revoke before wipe | Revocation limited to the signed-in state (the old behaviour) | `session_test` L4: unsupported-version screen, and a failed sign-in follow-up |
+| L5 Keychain after reinstall | The wipe on a missing marker removed | `session_test` L5 |
+| L6 recents screenshot | `setRecentsScreenshotEnabled(false)` removed | `platform_config_test` |
+| L7 rate-limited check | The `429` branch removed | `server_check_test`: busy, not "not Budget Owl" |
+| G1 separator | The ledger row back on the web's arrow key | 13 goldens (transactions, viewer, account, offline-stale, row actions) |
+| G2 standing banner | The `OfflineNote` put back on Transactions | `screens_test` offline; 4 offline-stale goldens |
+| G3 translucent button | The button's background back on the divider token | `screens_test` offline (alpha 0.16, expected 1.0); 4 offline-stale goldens |
+| Meta limiter coverage | The prune at the cap removed | `MetaRateLimiterTest`: expired windows are dropped (JaCoCo had failed the gate on this package's branches) |
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -397,7 +419,10 @@ negative amount's sign moved to the wrong end: amounts keep their own direction,
 U+2212 joined by a word joiner so it never wraps away from its figure. At text 2.0 the ledger row
 squeezed the payee to a few letters a line: past 1.5× it stacks the amount under the payee. The
 floating button had a black ring (the test binding's disabled shadows): goldens draw real
-shadows. Sign-in, Setup and Join had no way back to Connect: each has one.
+shadows. Sign-in, Setup and Join had no way back to Connect: each has one. After review: the
+category separator drew as a box (now "›"), the offline screen stacked two banners (now only the
+stale label until a write is tried), and the offline record button let the row beneath show
+through (now opaque).
 
 ### Known gaps
 
@@ -405,8 +430,11 @@ shadows. Sign-in, Setup and Join had no way back to Connect: each has one.
   config trusts them, but Dart's TLS stack reads only the system store, so a server whose CA the
   user installed fails as "certificate not trusted". It fails closed. The remedy (a platform
   channel, or a CA the user pastes in) is a phase-2 decision. iOS honours an enabled CA profile.
-- **"→" draws as a box in goldens only.** The bundled Figtree subset has no U+2192 (category
-  paths such as "Bills → Utilities"); on a phone the system font supplies it.
+- **The recents-screen behaviour on Android 13+ needs checking on a device.** No emulator or test
+  here shows what the task switcher draws; the call and its version guard are pinned by a test.
+- **Behind a reverse proxy every phone shares one rate limit**, because the API keys limits on the
+  socket address; `deploy/README.md` says when `server.forward-headers-strategy` is safe to turn on
+  (the stack's own nginx appends to `X-Forwarded-For`, so not as shipped).
 - **Pairing offers candidates from the ledger's first page only**, because only the first page is
   read and cached. A transfer's other half older than 50 rows cannot be picked yet.
 - **Release signing** still uses Flutter's debug keys (`android/app/build.gradle.kts`). Store

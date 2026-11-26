@@ -9,8 +9,8 @@ environment:
 
 # Every package is pinned by pubspec.lock, which is committed (mobile-app.md, attack 12).
 # Nothing that phones home: no analytics, no crash reporting, no ads. A package that does is a
-# privacy defect, not a dependency choice (ADR-0016) — test/architecture/dependencies_test.dart
-# fails the build on the usual suspects.
+# privacy defect, not a dependency choice (ADR-0016) — test/architecture/guards_test.dart
+# ("no package that phones home is in the lockfile") fails the build on the usual suspects.
 dependencies:
   decimal: ^3.2.7
   dio: ^5.11.1

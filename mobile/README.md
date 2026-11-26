@@ -149,6 +149,14 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
 
 ## Gotchas
 
+- **Never close a Dio or an adapter you were handed.** `Dio.close()` closes its adapter, and the
+  app has one shared transport (`httpAdapterProvider`): closing it broke every later request,
+  sign-out's logout included (audit H1). The fakes now fail any request after a close.
+- **A stored token is bound to its origin.** `TokenStore.save(token, origin:)` and
+  `load(origin:)`; a test phone that is "signed in" carries both (`TestPhone.signedIn`).
+- **A release build refuses `http://` at the socket** (`cleartext_policy.dart` around `runApp`).
+  The Android and iOS network configs do not govern Dart's sockets on their own.
+
 - **Riverpod 3 retries a failed provider by default** (up to ten times with backoff). The app's
   `ProviderScope` passes `retry: noRetry`; a test container must too, or a 401 becomes a burst.
 - **`dart:io` on Android ignores user-installed CAs**, whatever the network security config says.
