@@ -371,13 +371,16 @@ public class DebtPaymentService {
             Debt debt, LocalDate paidDate, Money amount, PaymentProvenance provenance) {
         DebtFacts facts = balances.factsFor(debt);
         Money balanceBefore = facts.balance();
-        return DebtPayment.of(
-                debt,
-                paidDate,
-                amount,
-                interestOn(balanceBefore, facts),
-                balanceBefore,
-                provenance);
+        // A check-in's surplus is an EXTRA payment, on top of the month the plan already pays and
+        // whose interest that payment carries. Charging it a second month of interest made paying
+        // $63 more move a 22.9% card's payoff month LATER: $117.94 of interest against $63 left the
+        // balance higher than before. So it is principal only (weekly-check-in.md, "What slice 14
+        // has built"). A hand-logged payment keeps the shipped split.
+        Money interest =
+                provenance == PaymentProvenance.CHECK_IN
+                        ? Money.zero(balanceBefore.currency())
+                        : interestOn(balanceBefore, facts);
+        return DebtPayment.of(debt, paidDate, amount, interest, balanceBefore, provenance);
     }
 
     /**

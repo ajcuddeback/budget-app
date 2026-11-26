@@ -67,9 +67,36 @@ class CheckInIT extends CheckInTestBase {
         JsonNode goal = choice(week, "GOAL");
         assertThat(amount(goal.get("savedNow"))).isEqualTo("2340.0000");
         assertThat(amount(goal.get("savedWith"))).isEqualTo("2403.0000");
-        assertThat(choice(week, "DEBT").get("debtId").asString())
+        JsonNode debt = choice(week, "DEBT");
+        assertThat(debt.get("debtId").asString())
                 .as("the plan's rung-1 debt, the Visa, under avalanche")
                 .isEqualTo(canvas.id("visaDebt").toString());
+        assertThat(java.time.YearMonth.parse(debt.get("payoffMonthWith").asString()))
+                .as("paying more never moves the payoff month later")
+                .isBeforeOrEqualTo(
+                        java.time.YearMonth.parse(debt.get("payoffMonthNow").asString()));
+    }
+
+    @Test
+    void a_surplus_paid_to_a_debt_is_principal_only_and_lowers_the_balance_by_exactly_itself() {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        answerTheCanvas(canvas, owner);
+        answer(
+                owner,
+                "alloc",
+                "{\"choice\":\"DEBT\",\"debtId\":\"%s\",\"amount\":\"63.00\"}"
+                        .formatted(canvas.id("visaDebt")));
+
+        ok(complete(owner), 200);
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT interest || ' ' || principal FROM debt_payments"
+                                        + " WHERE provenance = 'CHECK_IN'",
+                                String.class))
+                .as("an extra payment carries no second month of interest")
+                .isEqualTo("0.0000 63.0000");
     }
 
     @Test
