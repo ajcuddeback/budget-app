@@ -166,6 +166,10 @@ final class SessionController extends Notifier<SessionState> {
       state = const SessionNoServer();
       return;
     }
+    // Trust only what this server was pinned to when it was connected to (Android): the system
+    // roots, plus its one user CA while that is still on the phone. Before anything is sent to it.
+    final transport = ref.read(httpAdapterProvider);
+    if (transport is ServerTrust) transport.pinTo(await _servers.readCaPin());
     ref.read(currentServerProvider.notifier).set(server);
     // Only a token this server issued (audit L3). Anything another origin's token left behind —
     // the cache and its key — goes with it (audit N2). **No token at all means the same** (R1): a
@@ -315,9 +319,18 @@ final class SessionController extends Notifier<SessionState> {
   /// member can ever be carried to a second origin (audit L3).
   Future<void> connect(ServerAddress address) async {
     _gate.unconfirmVersion();
-    await ServerCheck(ref.read(httpAdapterProvider)).check(address);
+    // On Android the check also decides which user-installed CA, if any, this server is trusted
+    // through from now on: none when the system roots verify it, else the one that does (pinned).
+    final transport = ref.read(httpAdapterProvider);
+    String? caPin;
+    if (transport is ServerTrust) {
+      caPin = await transport.checkAndPin(address);
+    } else {
+      await ServerCheck(transport).check(address);
+    }
     await _local.wipe(forgetServer: true);
-    await _servers.save(address);
+    await _servers.save(address, caPin: caPin);
+    if (transport is ServerTrust) transport.pinTo(caPin);
     ref.read(currentServerProvider.notifier).set(address);
     // The check above was this server's, this launch: writes (sign-in, setup, join) may follow.
     _gate.confirmVersion();
