@@ -197,6 +197,7 @@ void main() {
 
     expect(find.text('You are not part of a household yet'), findsOneWidget);
     await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Sign out'));
+    await untilSignedOut(tester);
 
     expect(server.served, contains('POST /api/auth/logout'));
     expect(phone.store.values.keys, ['budget_owl.server']);
@@ -497,6 +498,7 @@ void main() {
       await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Sign out here'));
       expect(find.text('Sign out of this phone?'), findsOneWidget);
       await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Sign out here').last);
+      await untilSignedOut(tester);
 
       expect(server.served, contains('POST /api/auth/logout'));
       expect(phone.store.values.keys, ['budget_owl.server']);

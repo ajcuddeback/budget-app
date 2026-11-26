@@ -53,6 +53,11 @@ void main() {
 
     answer();
     await tapVisible(tester, find.widgetWithText(FilledButton, 'Accept and join'));
+    await settleUntil(
+      tester,
+      () => find.text('Welcome to Rivera Household').evaluate().isNotEmpty,
+      what: 'the invitation was accepted',
+    );
 
     expect(gate.writes, ['POST /api/invitations/fixture-invitation/accept']);
     expect(find.text('Welcome to Rivera Household'), findsOneWidget);
@@ -90,6 +95,11 @@ void main() {
 
     answer();
     await tapVisible(tester, find.widgetWithText(FilledButton, 'Create account'));
+    await settleUntil(
+      tester,
+      () => phone.store.values.containsKey('budget_owl.bearer_token'),
+      what: 'the new owner was signed in',
+    );
 
     expect(gate.writes, ['POST /api/setup/first-user', 'POST /api/auth/token']);
     expect(phone.store.values['budget_owl.bearer_token'], 'fixture-token-owner');

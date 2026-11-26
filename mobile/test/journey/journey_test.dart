@@ -1,4 +1,5 @@
 import 'package:budget_owl/core/cache/cache_holder.dart';
+import 'package:budget_owl/core/session/session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -20,7 +21,8 @@ void main() {
     expect(find.text('Connect to your server'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'owl.example.test');
     await tester.tap(find.text('Connect'));
-    await settle(tester);
+    // Connecting wipes what any earlier server left before it moves on: wait for it, not a time.
+    await untilSession<SessionSignedOut>(tester);
     expect(server.served.first, 'GET /api/meta');
     expect(find.text('Connected to owl.example.test'), findsOneWidget);
 
@@ -82,7 +84,7 @@ void main() {
     await tapVisible(tester, find.text('Sign out'));
     await settle(tester);
     await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));
-    await settle(tester);
+    await untilSignedOut(tester);
 
     expect(
       find.text('Sign in with my account'),
