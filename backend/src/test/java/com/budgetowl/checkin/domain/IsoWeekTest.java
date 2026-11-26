@@ -1,6 +1,7 @@
 package com.budgetowl.checkin.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -97,5 +98,39 @@ class IsoWeekTest {
                                 .orElseThrow()
                                 .billId())
                 .isEqualTo(id);
+    }
+
+    @Test
+    void a_year_outside_the_range_is_not_a_week_whichever_way_it_arrives() {
+        assertThat(IsoWeek.parse("1899-W10")).isEmpty();
+        assertThat(IsoWeek.parse("9999-W10")).isEmpty();
+        assertThat(IsoWeek.parse(null)).isEmpty();
+        assertThatThrownBy(() -> new IsoWeek(1899, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new IsoWeek(9999, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new IsoWeek(2025, 53))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new IsoWeek(2026, 0)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void a_week_starts_only_on_a_monday() {
+        assertThat(IsoWeek.startingOn(LocalDate.of(2026, 8, 17)).toString()).isEqualTo("2026-W34");
+        assertThatThrownBy(() -> IsoWeek.startingOn(LocalDate.of(2026, 8, 18)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void a_week_contains_monday_to_sunday_and_orders_by_its_monday() {
+        IsoWeek week = IsoWeek.parse("2026-W34").orElseThrow();
+
+        assertThat(week.contains(LocalDate.of(2026, 8, 16))).isFalse();
+        assertThat(week.contains(LocalDate.of(2026, 8, 17))).isTrue();
+        assertThat(week.contains(LocalDate.of(2026, 8, 23))).isTrue();
+        assertThat(week.contains(LocalDate.of(2026, 8, 24))).isFalse();
+        assertThat(week.compareTo(week.next())).isNegative();
+        assertThat(week.compareTo(week.previous())).isPositive();
+        assertThat(week.compareTo(IsoWeek.parse("2026-W34").orElseThrow())).isZero();
     }
 }
