@@ -189,7 +189,8 @@ class DebtPaymentTest {
 
         // A payment history is a behavioural record: who pays late, who pays extra, and when
         // money appeared.
-        assertThat(printed).doesNotContain("445").doesNotContain("117.9");
+        // With the decimal point: the random id is hex and can contain "445" by chance.
+        assertThat(printed).doesNotContain("445.0").doesNotContain("117.9");
         assertThat(printed).contains(PAID.toString()).contains("USER_LOGGED");
     }
 
