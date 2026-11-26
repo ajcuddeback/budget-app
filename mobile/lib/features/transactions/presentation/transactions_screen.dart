@@ -470,8 +470,12 @@ class _LedgerBody extends StatelessWidget {
           ),
         if (page.totalPages > 1)
           Gutter(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // A Wrap, so at large text the pager moves onto two lines instead of overflowing.
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: SpaceTokens.s2,
+              runSpacing: SpaceTokens.s2,
               children: [
                 OutlinedButton(
                   onPressed: page.page == 0 ? null : () => onPage(page.page - 1),

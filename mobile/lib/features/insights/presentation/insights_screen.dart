@@ -118,9 +118,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               child: NoticeBanner(
                 icon: Icons.error_outline,
                 text: switch (_exportError) {
-                  final AppError error when error.isConnectivity => l.offline_noCopy,
                   final AppError error => context.errorMessage(error),
-                  _ => l.error_generic,
+                  _ => l.insights_shareFailed,
                 },
               ),
             ),
@@ -577,6 +576,7 @@ class _ShareBar extends StatelessWidget {
           child: SizedBox(
             height: SpaceTokens.s3,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final segment in shared)
                   Expanded(

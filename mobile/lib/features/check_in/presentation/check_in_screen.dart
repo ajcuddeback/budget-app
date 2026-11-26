@@ -54,6 +54,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
   /// The debt-plan prompt's tick, per item, before the answer it belongs to is given.
   final Map<String, bool> _prompts = {};
 
+  final GlobalKey _topKey = GlobalKey();
+  final GlobalKey _progressKey = GlobalKey();
+
   Snapshot<Week> get _snapshot => ref.read(checkInProvider(_requested));
 
   Week? get _week => _snapshot.data;
@@ -129,6 +132,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
         ? week.steps.length - 1
         : week.steps.indexWhere((s) => s.items.any((i) => i.itemKey == first));
     setState(() => _screen = index < 0 ? 0 : index);
+    _reveal(_topKey);
   }
 
   void _forget(String itemKey) {
@@ -311,8 +315,21 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
   @override
   void open(String route) => context.go(route);
 
-  void _go(int index, int shown) =>
-      setState(() => _screen = index.clamp(0, shown == 0 ? 0 : shown - 1));
+  void _go(int index, int shown) {
+    setState(() => _screen = index.clamp(0, shown == 0 ? 0 : shown - 1));
+    _reveal(_progressKey);
+  }
+
+  /// Brings [key]'s widget to the top once the new step is laid out: a step opens at its start,
+  /// as the web's scrolls to the top, never half-way down the one before.
+  void _reveal(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = key.currentContext;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(target);
+      }
+    });
+  }
 
   // --------------------------------------------------------------------------------- build
 
@@ -359,7 +376,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
             ),
           ),
         ?(stale == null ? null : Gutter(child: stale)),
-        Overline(l.checkIn_eyebrowShort('${week.number}')),
+        KeyedSubtree(key: _topKey, child: Overline(l.checkIn_eyebrowShort('${week.number}'))),
         Gutter(
           child: Wrap(
             spacing: SpaceTokens.s2,
@@ -380,7 +397,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
           Gutter(
             child: NoticeBanner(
               text: _actionError!.isConnectivity
-                  ? l.offline_write
+                  ? writesOffText(l, ref.read(reachabilityProvider))
                   : context.errorMessage(_actionError!),
               icon: Icons.error_outline,
             ),
@@ -403,9 +420,11 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
             _notStarted(context)
           else if (!_canWrite)
             Lede(l.checkIn_readOnly),
-          if (editable && !_online) const Gutter(child: OfflineNote()),
+          // Why the controls are off — unless the stale label above already says "offline"
+          // (one banner, not two: phase 1's G2).
+          if (editable && !_online && stale == null) const Gutter(child: OfflineNote()),
           if (steps.isNotEmpty) ...[
-            _Progress(current: screen, total: steps.length),
+            _Progress(key: _progressKey, current: screen, total: steps.length),
             StepSection(
               key: ValueKey(steps[screen].step),
               step: steps[screen],
@@ -544,7 +563,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> implements CheckI
 
 /// A segment per shown step, filled to the one on screen.
 class _Progress extends StatelessWidget {
-  const _Progress({required this.current, required this.total});
+  const _Progress({required this.current, required this.total, super.key});
 
   final int current;
   final int total;

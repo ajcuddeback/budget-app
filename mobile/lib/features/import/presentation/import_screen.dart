@@ -345,7 +345,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       padding: const EdgeInsetsDirectional.only(top: SpaceTokens.s2),
       child: NoticeBanner(
         icon: Icons.error_outline,
-        text: error.isConnectivity ? context.l10n.offline_write : context.errorMessage(error),
+        text: error.isConnectivity
+            ? writesOffText(context.l10n, ref.read(reachabilityProvider))
+            : context.errorMessage(error),
       ),
     );
   }

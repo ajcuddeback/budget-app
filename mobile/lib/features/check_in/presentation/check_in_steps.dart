@@ -393,7 +393,7 @@ class StepSection extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    l.checkIn_next_perDay(words.money(perDay)),
+                    l.checkIn_next_perDayPhone(words.money(perDay)),
                     style: text.bodyMedium?.copyWith(color: context.colors.muted),
                   ),
                   if (figure.isNegative) Muted(l.checkIn_next_negative),

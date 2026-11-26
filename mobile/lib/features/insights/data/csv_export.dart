@@ -104,6 +104,8 @@ final class CsvExporter {
 
   static const String folderName = 'budget-owl-export';
 
+  static const String _bom = '﻿';
+
   Future<ShareOutcome> export(
     ReportName report, {
     required String from,
@@ -126,7 +128,9 @@ final class CsvExporter {
     ShareOutcome? outcome;
     try {
       await folder.create(recursive: true);
-      await file.writeAsString(text, flush: true);
+      // The server's byte-order mark, which the transport's UTF-8 decoding drops: without it a
+      // spreadsheet mis-reads every non-Latin category name (reporting.md, CSV export).
+      await file.writeAsString(text.startsWith(_bom) ? text : '$_bom$text', flush: true);
       return outcome = await sharer.share(file, mimeType: 'text/csv', origin: origin);
     } finally {
       await _delete(file);

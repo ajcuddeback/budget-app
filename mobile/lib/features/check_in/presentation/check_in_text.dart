@@ -252,7 +252,7 @@ final class CheckInWords {
       case AnswerChoice.goal:
         final goal = choice.goalName ?? '';
         return [
-          l.checkIn_choice_goalMoves(
+          l.checkIn_choice_goalMovesPhone(
             goal,
             choice.savedNow == null ? '' : money(choice.savedNow!),
             choice.savedWith == null ? '' : money(choice.savedWith!),

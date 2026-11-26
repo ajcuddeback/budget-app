@@ -2318,6 +2318,12 @@ abstract class AppLocalizations {
   /// **'{goal} · {from} → {to} of {target}'**
   String checkIn_choice_goalMoves(String goal, String from, String to, String target);
 
+  /// Mobile only (l10n/mobile.en.json "checkIn.choice.goalMovesPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'{goal} · {from} › {to} of {target}'**
+  String checkIn_choice_goalMovesPhone(String goal, String from, String to, String target);
+
   /// Web en.json "checkIn.choice.goalNeverMoves".
   ///
   /// In en, this message translates to:
@@ -2629,6 +2635,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'≈ {amount}/day'**
   String checkIn_next_perDay(String amount);
+
+  /// Mobile only (l10n/mobile.en.json "checkIn.next.perDayPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'About {amount} a day'**
+  String checkIn_next_perDayPhone(String amount);
 
   /// Web en.json "checkIn.next.short".
   ///
@@ -7908,6 +7920,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Spending: {first} in {firstMonth}, to {last} in {lastMonth}.'**
   String insights_said_spending(String first, String firstMonth, String last, String lastMonth);
+
+  /// Mobile only (l10n/mobile.en.json "insights.shareFailed").
+  ///
+  /// In en, this message translates to:
+  /// **'The share sheet could not open, so nothing was shared. Try again.'**
+  String get insights_shareFailed;
 
   /// Web en.json "insights.soFar".
   ///

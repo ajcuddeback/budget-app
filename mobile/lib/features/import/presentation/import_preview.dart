@@ -317,16 +317,15 @@ class _Figure extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.symmetric(vertical: SpaceTokens.s1),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // A Wrap: at large text the figure goes under its label rather than off the edge.
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      spacing: SpaceTokens.s2,
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
-          ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
         ),
-        const SizedBox(width: SpaceTokens.s2),
         value,
       ],
     ),

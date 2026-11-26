@@ -1296,6 +1296,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String checkIn_choice_goalMovesPhone(String goal, String from, String to, String target) {
+    return '$goal · $from › $to of $target';
+  }
+
+  @override
   String checkIn_choice_goalNeverMoves(String amount, String goal) {
     return 'Records $amount set aside for $goal today. Move the money yourself — Budget Owl never moves money.';
   }
@@ -1487,6 +1492,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String checkIn_next_perDay(String amount) {
     return '≈ $amount/day';
+  }
+
+  @override
+  String checkIn_next_perDayPhone(String amount) {
+    return 'About $amount a day';
   }
 
   @override
@@ -4714,6 +4724,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String insights_said_spending(String first, String firstMonth, String last, String lastMonth) {
     return 'Spending: $first in $firstMonth, to $last in $lastMonth.';
   }
+
+  @override
+  String get insights_shareFailed =>
+      'The share sheet could not open, so nothing was shared. Try again.';
 
   @override
   String insights_soFar(String month) {

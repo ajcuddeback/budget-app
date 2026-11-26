@@ -1830,6 +1830,24 @@
       }
     }
   },
+  "checkIn_choice_goalMovesPhone": "{goal} · {from} › {to} of {target}",
+  "@checkIn_choice_goalMovesPhone": {
+    "description": "Mobile only (l10n/mobile.en.json \"checkIn.choice.goalMovesPhone\").",
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
   "checkIn_choice_goalNeverMoves": "Records {amount} set aside for {goal} today. Move the money yourself — Budget Owl never moves money.",
   "@checkIn_choice_goalNeverMoves": {
     "description": "Web en.json \"checkIn.choice.goalNeverMoves\".",
@@ -2133,6 +2151,15 @@
   "checkIn_next_perDay": "≈ {amount}/day",
   "@checkIn_next_perDay": {
     "description": "Web en.json \"checkIn.next.perDay\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "checkIn_next_perDayPhone": "About {amount} a day",
+  "@checkIn_next_perDayPhone": {
+    "description": "Mobile only (l10n/mobile.en.json \"checkIn.next.perDayPhone\").",
     "placeholders": {
       "amount": {
         "type": "String"
@@ -7007,6 +7034,10 @@
         "type": "String"
       }
     }
+  },
+  "insights_shareFailed": "The share sheet could not open, so nothing was shared. Try again.",
+  "@insights_shareFailed": {
+    "description": "Mobile only (l10n/mobile.en.json \"insights.shareFailed\")."
   },
   "insights_soFar": "{month} (so far)",
   "@insights_soFar": {
