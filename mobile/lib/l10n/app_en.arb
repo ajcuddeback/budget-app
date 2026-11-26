@@ -7817,9 +7817,37 @@
   "@preferences_localeHint": {
     "description": "Web en.json \"preferences.localeHint\"."
   },
+  "preferences_localeHintPhone": "Saved with your membership, and used by Budget Owl on the web. This app is in English for now, with English dates and numbers, whatever you choose here.",
+  "@preferences_localeHintPhone": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.localeHintPhone\")."
+  },
   "preferences_saved": "Preferences saved.",
   "@preferences_saved": {
     "description": "Web en.json \"preferences.saved\"."
+  },
+  "preferences_theme": "Theme",
+  "@preferences_theme": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.theme\")."
+  },
+  "preferences_themeDark": "Dark",
+  "@preferences_themeDark": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.themeDark\")."
+  },
+  "preferences_themeHeading": "Appearance",
+  "@preferences_themeHeading": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.themeHeading\")."
+  },
+  "preferences_themeHint": "Automatic follows this phone’s own light or dark setting. Your choice is kept on this phone only, and is never sent to your server.",
+  "@preferences_themeHint": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.themeHint\")."
+  },
+  "preferences_themeLight": "Light",
+  "@preferences_themeLight": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.themeLight\")."
+  },
+  "preferences_themeSystem": "Automatic",
+  "@preferences_themeSystem": {
+    "description": "Mobile only (l10n/mobile.en.json \"preferences.themeSystem\")."
   },
   "preferences_title": "Your preferences",
   "@preferences_title": {

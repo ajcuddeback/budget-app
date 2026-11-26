@@ -5268,7 +5268,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Text appears in this language where a translation exists, and in English otherwise. Dates and numbers always follow your choice.';
 
   @override
+  String get preferences_localeHintPhone =>
+      'Saved with your membership, and used by Budget Owl on the web. This app is in English for now, with English dates and numbers, whatever you choose here.';
+
+  @override
   String get preferences_saved => 'Preferences saved.';
+
+  @override
+  String get preferences_theme => 'Theme';
+
+  @override
+  String get preferences_themeDark => 'Dark';
+
+  @override
+  String get preferences_themeHeading => 'Appearance';
+
+  @override
+  String get preferences_themeHint =>
+      'Automatic follows this phone’s own light or dark setting. Your choice is kept on this phone only, and is never sent to your server.';
+
+  @override
+  String get preferences_themeLight => 'Light';
+
+  @override
+  String get preferences_themeSystem => 'Automatic';
 
   @override
   String get preferences_title => 'Your preferences';

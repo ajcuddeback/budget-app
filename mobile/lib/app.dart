@@ -1,13 +1,14 @@
 import 'package:budget_owl/core/privacy/privacy_cover.dart';
 import 'package:budget_owl/core/routing/router.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
+import 'package:budget_owl/features/preferences/data/theme_choice.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Light, dark or the system's choice. The system by default; Preferences (phase 2) keeps the
-/// web's same override on the device, in shared preferences — the one thing stored there.
-final themeModeProvider = Provider<ThemeMode>((ref) => ThemeMode.system);
+/// Light, dark or the system's choice: the system by default, or the web's same override as
+/// Preferences keeps it on this phone (features/preferences/data/theme_choice.dart).
+final themeModeProvider = Provider<ThemeMode>((ref) => ref.watch(themeChoiceProvider).mode);
 
 /// Null follows the language, as it should. Set only by the right-to-left golden tests, since
 /// English is the only language that ships and every layout must still work mirrored.

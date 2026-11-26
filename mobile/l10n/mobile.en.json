@@ -85,5 +85,13 @@
   "devices.confirmHeadingPhone": "Sign out of this phone?",
   "devices.confirmMessagePhone": "This is the phone you are using now. You will be signed out, and what Budget Owl keeps on it is erased.",
 
+  "preferences.localeHintPhone": "Saved with your membership, and used by Budget Owl on the web. This app is in English for now, with English dates and numbers, whatever you choose here.",
+  "preferences.themeHeading": "Appearance",
+  "preferences.theme": "Theme",
+  "preferences.themeSystem": "Automatic",
+  "preferences.themeLight": "Light",
+  "preferences.themeDark": "Dark",
+  "preferences.themeHint": "Automatic follows this phone’s own light or dark setting. Your choice is kept on this phone only, and is never sent to your server.",
+
   "privacy.hidden": "Budget Owl is hidden while the app is in the background."
 }
