@@ -7,6 +7,7 @@ import 'package:budget_owl/features/connect/presentation/join_screen.dart';
 import 'package:budget_owl/features/connect/presentation/setup_screen.dart';
 import 'package:budget_owl/features/connect/presentation/starting_screen.dart';
 import 'package:budget_owl/features/debt/presentation/debt_detail_screen.dart';
+import 'package:budget_owl/features/goals/presentation/goal_detail_screen.dart';
 import 'package:budget_owl/features/more/presentation/more_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,6 +67,15 @@ final Map<String, List<RouteBase>> _detailRoutes = {
       builder: (_, state) {
         final id = state.pathParameters['id']!;
         return DebtDetailScreen(key: ValueKey(id), id: id);
+      },
+    ),
+  ],
+  '/more/goals': [
+    GoRoute(
+      path: ':id',
+      builder: (_, state) {
+        final id = state.pathParameters['id']!;
+        return GoalDetailScreen(key: ValueKey(id), id: id);
       },
     ),
   ],

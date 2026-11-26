@@ -4,8 +4,10 @@ import com.budgetowl.api.DemoFixtureIT.Caller;
 import com.budgetowl.api.DemoFixtureIT.MobileRecorder;
 import com.budgetowl.api.DemoFixtureIT.SettableClock;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -373,8 +375,30 @@ class MobilePlansFixtureIT extends ApiTestBase {
             String body) {
         // Plan snapshots are unique on the instant they were taken.
         clock.moveTo(clock.instant().plusSeconds(1));
+        String shown = whatIfAmount(JSON.readTree(who.client().get(PLAN).body()));
         debtStep(record, who, plans, debts, from, to, "PUT", PLAN,
                 body.formatted(planVersion(who.client())));
+        // A new monthly amount: the phone re-reads the what-if it was showing as the write lands,
+        // before the new plan moves it on to the new amount's. Answered as the real API answers it.
+        String now = whatIfAmount(JSON.readTree(who.client().get(PLAN).body()));
+        if (shown != null && !shown.equals(now)) {
+            record.in(to);
+            record.send(who, "GET", PLAN + "/projection?monthlyAmount=" + shown, null);
+        }
+    }
+
+    /**
+     * The what-if the page asks: the plan's amount plus fifty, at the server's scale, as the web's
+     * exact addition writes it. Null with no debt to ask about.
+     */
+    private static String whatIfAmount(JsonNode plan) {
+        if (plan.get("debtCount").asLong() == 0) {
+            return null;
+        }
+        return new BigDecimal(plan.get("monthlyAmount").asString())
+                .add(new BigDecimal("50"))
+                .setScale(4)
+                .toPlainString();
     }
 
     /** The plan page: the plan, the debts, the what-if, the summary and the bills it offers. */
@@ -383,15 +407,9 @@ class MobilePlansFixtureIT extends ApiTestBase {
         record.send(who, "GET", DEBTS, null);
         record.send(who, "GET", ACTIVE_BILLS, null);
         record.send(who, "GET", SUMMARY.formatted(PERIOD), null);
-        JsonNode body = JSON.readTree(plan.body());
-        if (body.get("debtCount").asLong() > 0) {
-            // The what-if the page asks: the plan's amount plus fifty, at the server's scale, as
-            // the web's exact addition writes it. A read that stores nothing.
-            String more =
-                    new java.math.BigDecimal(body.get("monthlyAmount").asString())
-                            .add(new java.math.BigDecimal("50"))
-                            .setScale(4)
-                            .toPlainString();
+        // The what-if: a read that stores nothing.
+        String more = whatIfAmount(JSON.readTree(plan.body()));
+        if (more != null) {
             record.send(who, "GET", PLAN + "/projection?monthlyAmount=" + more, null);
         }
     }
@@ -461,6 +479,9 @@ class MobilePlansFixtureIT extends ApiTestBase {
 
         record.in("plans");
         readGoals(record, owner, plans, goals);
+        // The emergency fund's history runs past one page: "Show more" reads the second.
+        record.send(owner, "GET",
+                "/api/goals/" + plans.id("gol-0002") + "/contributions?page=1&size=50", null);
         // The add dialog as the test fills it in, and the edit and plan dialogs as they open.
         record.send(owner, "POST", "/api/goals/projection-preview", "{\"targetAmount\":\"900\"}");
         for (String goal : goals) {
@@ -759,6 +780,12 @@ class MobilePlansFixtureIT extends ApiTestBase {
                 "{\"name\":\"Emergency fund\",\"targetAmount\":\"6000.00\",\"startingAmount\":"
                         + "\"2000.00\",\"monthlyContribution\":\"200.00\",\"accountId\":\""
                         + savings + "\"}");
+        // A year of weekly round-ups first: more history than one page, so "Show more" has a
+        // second page to read.
+        for (int week = 0; week < 52; week++) {
+            contribute(owner, fund, LocalDate.parse("2025-06-01").plusWeeks(week).toString(),
+                    "25.00", null);
+        }
         contribute(owner, fund, "2026-06-01", "200.00", null);
         contribute(owner, fund, "2026-07-01", "200.00", null);
         contribute(owner, fund, "2026-07-18", "-160.00", "Vet bill");

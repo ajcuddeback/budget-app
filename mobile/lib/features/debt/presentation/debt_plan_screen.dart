@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
+import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/money/money.dart';
 import 'package:budget_owl/core/session/session.dart';
@@ -207,7 +208,7 @@ class _DebtPlanScreenState extends ConsumerState<DebtPlanScreen> {
             Gutter(
               child: NoticeBanner(
                 icon: Icons.error_outline,
-                text: error.isConnectivity ? l.offline_write : context.errorMessage(error),
+                text: writeErrorText(context, ref.watch(reachabilityProvider), error),
               ),
             ),
           SnapshotView<_Page>(

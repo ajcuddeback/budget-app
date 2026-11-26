@@ -5942,6 +5942,12 @@ abstract class AppLocalizations {
   /// **'← All goals'**
   String get goals_back;
 
+  /// Mobile only (l10n/mobile.en.json "goals.backToAll").
+  ///
+  /// In en, this message translates to:
+  /// **'Back to all goals'**
+  String get goals_backToAll;
+
   /// Web en.json "goals.contribute.amount".
   ///
   /// In en, this message translates to:
@@ -6325,6 +6331,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open →'**
   String get goals_open;
+
+  /// Mobile only (l10n/mobile.en.json "goals.openNamed").
+  ///
+  /// In en, this message translates to:
+  /// **'Open {name}'**
+  String goals_openNamed(String name);
+
+  /// Mobile only (l10n/mobile.en.json "goals.openTrail").
+  ///
+  /// In en, this message translates to:
+  /// **'Open ›'**
+  String get goals_openTrail;
 
   /// Web en.json "goals.overdueTag".
   ///

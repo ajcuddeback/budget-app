@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
+import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
@@ -150,7 +151,9 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
           stale: stale,
           canWrite: canWrite,
           notice: _notice,
-          error: error,
+          errorText: error == null
+              ? null
+              : writeErrorText(context, ref.watch(reachabilityProvider), error),
           onLog: () => _log(data.detail.debt),
           onEdit: () => _edit(data.detail.debt),
           onConfirm: () => _confirm(data.detail.debt),
@@ -172,7 +175,7 @@ class _DetailBody extends StatelessWidget {
     required this.stale,
     required this.canWrite,
     required this.notice,
-    required this.error,
+    required this.errorText,
     required this.onLog,
     required this.onEdit,
     required this.onConfirm,
@@ -185,7 +188,7 @@ class _DetailBody extends StatelessWidget {
   final Widget? stale;
   final bool canWrite;
   final String? notice;
-  final AppError? error;
+  final String? errorText;
   final VoidCallback onLog;
   final VoidCallback onEdit;
   final VoidCallback onConfirm;
@@ -197,7 +200,7 @@ class _DetailBody extends StatelessWidget {
     final debt = detail.debt;
     final text = Theme.of(context).textTheme;
     final c = context.colors;
-    final failure = error;
+    final failure = errorText;
 
     // The household's debts in rung order, for the stepper. A debt outside the ladder has no
     // position to step through.
@@ -253,10 +256,7 @@ class _DetailBody extends StatelessWidget {
         if (notice != null) Gutter(child: NoticeBanner(text: notice!, success: true)),
         if (failure != null)
           Gutter(
-            child: NoticeBanner(
-              icon: Icons.error_outline,
-              text: failure.isConnectivity ? l.offline_write : context.errorMessage(failure),
-            ),
+            child: NoticeBanner(icon: Icons.error_outline, text: failure),
           ),
         _TermsCard(debt: debt, f: f),
         // 2. Balance now.

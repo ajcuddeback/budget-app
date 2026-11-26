@@ -1,6 +1,7 @@
 import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
+import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/money/money.dart';
 import 'package:budget_owl/core/session/session.dart';
@@ -162,7 +163,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                 icon: Icons.error_outline,
                 text: _subjected(
                   _actionSubject,
-                  error.isConnectivity ? l.offline_write : context.errorMessage(error),
+                  writeErrorText(context, ref.watch(reachabilityProvider), error),
                 ),
               ),
             ),

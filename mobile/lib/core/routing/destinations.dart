@@ -1,6 +1,7 @@
 import 'package:budget_owl/features/bills/presentation/bills_screen.dart';
 import 'package:budget_owl/features/debt/presentation/debt_plan_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
+import 'package:budget_owl/features/goals/presentation/goals_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
@@ -73,7 +74,7 @@ final List<Destination> moreEntries = [
     path: '/more/goals',
     label: (l) => l.nav_goals,
     icon: Icons.flag_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_goals),
+    screen: (_) => const GoalsScreen(),
   ),
 
   Destination(

@@ -45472,6 +45472,446 @@
     }
   }, {
     "state" : "amount",
+    "method" : "GET",
+    "path" : "/api/debt-plan/projection?monthlyAmount=955.0000",
+    "auth" : "owner",
+    "request" : null,
+    "status" : 200,
+    "body" : {
+      "strategy" : "CUSTOM",
+      "currency" : "USD",
+      "monthlyAmount" : "955.0000",
+      "minimums" : "715.0000",
+      "debtCount" : 5,
+      "mixedCurrency" : false,
+      "currencies" : [ {
+        "currency" : "USD",
+        "planCurrency" : true,
+        "monthlyAmount" : "955.0000",
+        "minimums" : "715.0000",
+        "surplus" : "240.0000",
+        "owed" : "28142.9400",
+        "belowMinimums" : false,
+        "selected" : {
+          "strategy" : "CUSTOM",
+          "debtFreeMonth" : "2029-05",
+          "firstWinMonth" : "2026-12",
+          "totalInterest" : "3573.5900",
+          "reason" : null,
+          "rungs" : [ {
+            "rung" : 1,
+            "debtId" : "deb-0004",
+            "name" : "Store card",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Argos",
+            "balance" : "1180.0000",
+            "apr" : "29.900",
+            "aprDerivable" : true,
+            "minimum" : "45.0000",
+            "extra" : "240.0000",
+            "monthlyAmount" : "285.0000",
+            "payoffMonth" : "2026-12",
+            "totalInterest" : "81.7200"
+          }, {
+            "rung" : 2,
+            "debtId" : "deb-0005",
+            "name" : "Old overdraft",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Monzo",
+            "balance" : "860.0000",
+            "apr" : "39.900",
+            "aprDerivable" : true,
+            "minimum" : "25.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "25.0000",
+            "payoffMonth" : "2027-03",
+            "totalInterest" : "186.7800"
+          }, {
+            "rung" : 3,
+            "debtId" : "deb-0001",
+            "name" : "Visa",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Chase Bank",
+            "balance" : "5802.9400",
+            "apr" : "22.900",
+            "aprDerivable" : true,
+            "minimum" : "185.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "185.0000",
+            "payoffMonth" : "2028-03",
+            "totalInterest" : "1451.9900"
+          }, {
+            "rung" : 4,
+            "debtId" : "deb-0002",
+            "name" : "Car loan",
+            "kind" : "INSTALLMENT",
+            "servicer" : "Ally",
+            "balance" : "10650.0000",
+            "apr" : "6.400",
+            "aprDerivable" : true,
+            "minimum" : "342.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "342.0000",
+            "payoffMonth" : "2028-09",
+            "totalInterest" : "909.8800"
+          }, {
+            "rung" : 5,
+            "debtId" : "deb-0003",
+            "name" : "Student loan",
+            "kind" : "INSTALLMENT",
+            "servicer" : "Nelnet",
+            "balance" : "9650.0000",
+            "apr" : "4.500",
+            "aprDerivable" : true,
+            "minimum" : "118.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "118.0000",
+            "payoffMonth" : "2029-05",
+            "totalInterest" : "943.2200"
+          } ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "27449.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "26746.8900"
+          }, {
+            "month" : "2026-11",
+            "balance" : "26034.4400"
+          }, {
+            "month" : "2026-12",
+            "balance" : "25312.1100"
+          }, {
+            "month" : "2027-01",
+            "balance" : "24579.7000"
+          }, {
+            "month" : "2027-02",
+            "balance" : "23835.6400"
+          }, {
+            "month" : "2027-03",
+            "balance" : "23078.6300"
+          }, {
+            "month" : "2027-04",
+            "balance" : "22308.3200"
+          }, {
+            "month" : "2027-05",
+            "balance" : "21526.7600"
+          }, {
+            "month" : "2027-06",
+            "balance" : "20735.6700"
+          }, {
+            "month" : "2027-07",
+            "balance" : "19934.9000"
+          }, {
+            "month" : "2027-08",
+            "balance" : "19124.2800"
+          }, {
+            "month" : "2027-09",
+            "balance" : "18303.6600"
+          }, {
+            "month" : "2027-10",
+            "balance" : "17472.8800"
+          }, {
+            "month" : "2027-11",
+            "balance" : "16631.7600"
+          }, {
+            "month" : "2027-12",
+            "balance" : "15780.1300"
+          }, {
+            "month" : "2028-01",
+            "balance" : "14917.8200"
+          }, {
+            "month" : "2028-02",
+            "balance" : "14044.6600"
+          }, {
+            "month" : "2028-03",
+            "balance" : "13160.4700"
+          }, {
+            "month" : "2028-04",
+            "balance" : "12265.0700"
+          }, {
+            "month" : "2028-05",
+            "balance" : "11362.8900"
+          }, {
+            "month" : "2028-06",
+            "balance" : "10456.0400"
+          }, {
+            "month" : "2028-07",
+            "balance" : "9544.5000"
+          }, {
+            "month" : "2028-08",
+            "balance" : "8628.2300"
+          }, {
+            "month" : "2028-09",
+            "balance" : "7707.2200"
+          }, {
+            "month" : "2028-10",
+            "balance" : "6781.4300"
+          }, {
+            "month" : "2028-11",
+            "balance" : "5851.8600"
+          }, {
+            "month" : "2028-12",
+            "balance" : "4918.8000"
+          }, {
+            "month" : "2029-01",
+            "balance" : "3982.2500"
+          }, {
+            "month" : "2029-02",
+            "balance" : "3042.1800"
+          }, {
+            "month" : "2029-03",
+            "balance" : "2098.5900"
+          }, {
+            "month" : "2029-04",
+            "balance" : "1151.4600"
+          }, {
+            "month" : "2029-05",
+            "balance" : "200.7800"
+          }, {
+            "month" : "2029-06",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        },
+        "avalanche" : {
+          "strategy" : "AVALANCHE",
+          "debtFreeMonth" : "2029-05",
+          "firstWinMonth" : "2026-11",
+          "totalInterest" : "3529.9700",
+          "reason" : null,
+          "rungs" : [ ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "27449.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "26744.8900"
+          }, {
+            "month" : "2026-11",
+            "balance" : "26028.3100"
+          }, {
+            "month" : "2026-12",
+            "balance" : "25299.6200"
+          }, {
+            "month" : "2027-01",
+            "balance" : "24559.6000"
+          }, {
+            "month" : "2027-02",
+            "balance" : "23809.0700"
+          }, {
+            "month" : "2027-03",
+            "balance" : "23047.8200"
+          }, {
+            "month" : "2027-04",
+            "balance" : "22275.6200"
+          }, {
+            "month" : "2027-05",
+            "balance" : "21493.4400"
+          }, {
+            "month" : "2027-06",
+            "balance" : "20701.7100"
+          }, {
+            "month" : "2027-07",
+            "balance" : "19900.3000"
+          }, {
+            "month" : "2027-08",
+            "balance" : "19089.0200"
+          }, {
+            "month" : "2027-09",
+            "balance" : "18267.7300"
+          }, {
+            "month" : "2027-10",
+            "balance" : "17436.2600"
+          }, {
+            "month" : "2027-11",
+            "balance" : "16594.4400"
+          }, {
+            "month" : "2027-12",
+            "balance" : "15742.1000"
+          }, {
+            "month" : "2028-01",
+            "balance" : "14879.0700"
+          }, {
+            "month" : "2028-02",
+            "balance" : "14005.1700"
+          }, {
+            "month" : "2028-03",
+            "balance" : "13120.2300"
+          }, {
+            "month" : "2028-04",
+            "balance" : "12224.0600"
+          }, {
+            "month" : "2028-05",
+            "balance" : "11321.6600"
+          }, {
+            "month" : "2028-06",
+            "balance" : "10414.5900"
+          }, {
+            "month" : "2028-07",
+            "balance" : "9502.8200"
+          }, {
+            "month" : "2028-08",
+            "balance" : "8586.3300"
+          }, {
+            "month" : "2028-09",
+            "balance" : "7665.0900"
+          }, {
+            "month" : "2028-10",
+            "balance" : "6739.0800"
+          }, {
+            "month" : "2028-11",
+            "balance" : "5809.3500"
+          }, {
+            "month" : "2028-12",
+            "balance" : "4876.1400"
+          }, {
+            "month" : "2029-01",
+            "balance" : "3939.4300"
+          }, {
+            "month" : "2029-02",
+            "balance" : "2999.2000"
+          }, {
+            "month" : "2029-03",
+            "balance" : "2055.4500"
+          }, {
+            "month" : "2029-04",
+            "balance" : "1108.1600"
+          }, {
+            "month" : "2029-05",
+            "balance" : "157.3200"
+          }, {
+            "month" : "2029-06",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        },
+        "snowball" : {
+          "strategy" : "SNOWBALL",
+          "debtFreeMonth" : "2029-05",
+          "firstWinMonth" : "2026-11",
+          "totalInterest" : "3565.7800",
+          "reason" : null,
+          "rungs" : [ ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "27449.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "26744.8900"
+          }, {
+            "month" : "2026-11",
+            "balance" : "26028.3100"
+          }, {
+            "month" : "2026-12",
+            "balance" : "25299.6200"
+          }, {
+            "month" : "2027-01",
+            "balance" : "24559.6000"
+          }, {
+            "month" : "2027-02",
+            "balance" : "23809.0700"
+          }, {
+            "month" : "2027-03",
+            "balance" : "23047.8200"
+          }, {
+            "month" : "2027-04",
+            "balance" : "22275.6200"
+          }, {
+            "month" : "2027-05",
+            "balance" : "21493.4400"
+          }, {
+            "month" : "2027-06",
+            "balance" : "20701.7100"
+          }, {
+            "month" : "2027-07",
+            "balance" : "19900.3000"
+          }, {
+            "month" : "2027-08",
+            "balance" : "19089.0200"
+          }, {
+            "month" : "2027-09",
+            "balance" : "18267.7300"
+          }, {
+            "month" : "2027-10",
+            "balance" : "17436.2600"
+          }, {
+            "month" : "2027-11",
+            "balance" : "16594.4400"
+          }, {
+            "month" : "2027-12",
+            "balance" : "15742.1000"
+          }, {
+            "month" : "2028-01",
+            "balance" : "14879.0700"
+          }, {
+            "month" : "2028-02",
+            "balance" : "14005.1700"
+          }, {
+            "month" : "2028-03",
+            "balance" : "13120.2300"
+          }, {
+            "month" : "2028-04",
+            "balance" : "12224.0600"
+          }, {
+            "month" : "2028-05",
+            "balance" : "11322.2600"
+          }, {
+            "month" : "2028-06",
+            "balance" : "10416.5700"
+          }, {
+            "month" : "2028-07",
+            "balance" : "9506.9800"
+          }, {
+            "month" : "2028-08",
+            "balance" : "8593.4700"
+          }, {
+            "month" : "2028-09",
+            "balance" : "7676.0300"
+          }, {
+            "month" : "2028-10",
+            "balance" : "6754.6400"
+          }, {
+            "month" : "2028-11",
+            "balance" : "5829.2700"
+          }, {
+            "month" : "2028-12",
+            "balance" : "4899.9100"
+          }, {
+            "month" : "2029-01",
+            "balance" : "3966.5500"
+          }, {
+            "month" : "2029-02",
+            "balance" : "3029.1600"
+          }, {
+            "month" : "2029-03",
+            "balance" : "2087.7400"
+          }, {
+            "month" : "2029-04",
+            "balance" : "1142.2500"
+          }, {
+            "month" : "2029-05",
+            "balance" : "192.6900"
+          }, {
+            "month" : "2029-06",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        }
+      } ],
+      "version" : 4
+    }
+  }, {
+    "state" : "amount",
     "method" : "PUT",
     "path" : "/api/debt-plan",
     "auth" : "owner",
@@ -48074,6 +48514,275 @@
       "size" : 50,
       "totalElements" : 0,
       "totalPages" : 0
+    }
+  }, {
+    "state" : "below",
+    "method" : "GET",
+    "path" : "/api/debt-plan/projection?monthlyAmount=2050.0000",
+    "auth" : "owner",
+    "request" : null,
+    "status" : 200,
+    "body" : {
+      "strategy" : "CUSTOM",
+      "currency" : "USD",
+      "monthlyAmount" : "2050.0000",
+      "minimums" : "715.0000",
+      "debtCount" : 5,
+      "mixedCurrency" : false,
+      "currencies" : [ {
+        "currency" : "USD",
+        "planCurrency" : true,
+        "monthlyAmount" : "2050.0000",
+        "minimums" : "715.0000",
+        "surplus" : "1335.0000",
+        "owed" : "28142.9400",
+        "belowMinimums" : false,
+        "selected" : {
+          "strategy" : "CUSTOM",
+          "debtFreeMonth" : "2027-10",
+          "firstWinMonth" : "2026-08",
+          "totalInterest" : "1367.9700",
+          "reason" : null,
+          "rungs" : [ {
+            "rung" : 1,
+            "debtId" : "deb-0004",
+            "name" : "Store card",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Argos",
+            "balance" : "1180.0000",
+            "apr" : "29.900",
+            "aprDerivable" : true,
+            "minimum" : "45.0000",
+            "extra" : "1164.4000",
+            "monthlyAmount" : "1209.4000",
+            "payoffMonth" : "2026-08",
+            "totalInterest" : "29.4000"
+          }, {
+            "rung" : 2,
+            "debtId" : "deb-0005",
+            "name" : "Old overdraft",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Monzo",
+            "balance" : "860.0000",
+            "apr" : "39.900",
+            "aprDerivable" : true,
+            "minimum" : "25.0000",
+            "extra" : "170.6000",
+            "monthlyAmount" : "195.6000",
+            "payoffMonth" : "2026-09",
+            "totalInterest" : "51.6400"
+          }, {
+            "rung" : 3,
+            "debtId" : "deb-0001",
+            "name" : "Visa",
+            "kind" : "CREDIT_CARD",
+            "servicer" : "Chase Bank",
+            "balance" : "5802.9400",
+            "apr" : "22.900",
+            "aprDerivable" : true,
+            "minimum" : "185.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "185.0000",
+            "payoffMonth" : "2027-01",
+            "totalInterest" : "425.5900"
+          }, {
+            "rung" : 4,
+            "debtId" : "deb-0002",
+            "name" : "Car loan",
+            "kind" : "INSTALLMENT",
+            "servicer" : "Ally",
+            "balance" : "10650.0000",
+            "apr" : "6.400",
+            "aprDerivable" : true,
+            "minimum" : "342.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "342.0000",
+            "payoffMonth" : "2027-06",
+            "totalInterest" : "422.4500"
+          }, {
+            "rung" : 5,
+            "debtId" : "deb-0003",
+            "name" : "Student loan",
+            "kind" : "INSTALLMENT",
+            "servicer" : "Nelnet",
+            "balance" : "9650.0000",
+            "apr" : "4.500",
+            "aprDerivable" : true,
+            "minimum" : "118.0000",
+            "extra" : "0.0000",
+            "monthlyAmount" : "118.0000",
+            "payoffMonth" : "2027-10",
+            "totalInterest" : "438.8900"
+          } ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "26354.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "24528.1900"
+          }, {
+            "month" : "2026-11",
+            "balance" : "22662.2400"
+          }, {
+            "month" : "2026-12",
+            "balance" : "20765.9100"
+          }, {
+            "month" : "2027-01",
+            "balance" : "18838.6500"
+          }, {
+            "month" : "2027-02",
+            "balance" : "16879.8800"
+          }, {
+            "month" : "2027-03",
+            "balance" : "14905.4100"
+          }, {
+            "month" : "2027-04",
+            "balance" : "12920.5500"
+          }, {
+            "month" : "2027-05",
+            "balance" : "10925.2300"
+          }, {
+            "month" : "2027-06",
+            "balance" : "8919.4000"
+          }, {
+            "month" : "2027-07",
+            "balance" : "6903.0100"
+          }, {
+            "month" : "2027-08",
+            "balance" : "4878.9000"
+          }, {
+            "month" : "2027-09",
+            "balance" : "2847.2000"
+          }, {
+            "month" : "2027-10",
+            "balance" : "807.8800"
+          }, {
+            "month" : "2027-11",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        },
+        "avalanche" : {
+          "strategy" : "AVALANCHE",
+          "debtFreeMonth" : "2027-10",
+          "firstWinMonth" : "2026-08",
+          "totalInterest" : "1361.4600",
+          "reason" : null,
+          "rungs" : [ ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "26354.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "24522.4200"
+          }, {
+            "month" : "2026-11",
+            "balance" : "22656.3600"
+          }, {
+            "month" : "2026-12",
+            "balance" : "20759.9100"
+          }, {
+            "month" : "2027-01",
+            "balance" : "18832.5300"
+          }, {
+            "month" : "2027-02",
+            "balance" : "16873.6500"
+          }, {
+            "month" : "2027-03",
+            "balance" : "14899.1500"
+          }, {
+            "month" : "2027-04",
+            "balance" : "12914.2500"
+          }, {
+            "month" : "2027-05",
+            "balance" : "10918.9000"
+          }, {
+            "month" : "2027-06",
+            "balance" : "8913.0300"
+          }, {
+            "month" : "2027-07",
+            "balance" : "6896.6100"
+          }, {
+            "month" : "2027-08",
+            "balance" : "4872.4700"
+          }, {
+            "month" : "2027-09",
+            "balance" : "2840.7400"
+          }, {
+            "month" : "2027-10",
+            "balance" : "801.3900"
+          }, {
+            "month" : "2027-11",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        },
+        "snowball" : {
+          "strategy" : "SNOWBALL",
+          "debtFreeMonth" : "2027-10",
+          "firstWinMonth" : "2026-08",
+          "totalInterest" : "1421.9400",
+          "reason" : null,
+          "rungs" : [ ],
+          "series" : [ {
+            "month" : "2026-08",
+            "balance" : "28142.9400"
+          }, {
+            "month" : "2026-09",
+            "balance" : "26354.6700"
+          }, {
+            "month" : "2026-10",
+            "balance" : "24522.4200"
+          }, {
+            "month" : "2026-11",
+            "balance" : "22656.3600"
+          }, {
+            "month" : "2026-12",
+            "balance" : "20759.9100"
+          }, {
+            "month" : "2027-01",
+            "balance" : "18832.5300"
+          }, {
+            "month" : "2027-02",
+            "balance" : "16873.6500"
+          }, {
+            "month" : "2027-03",
+            "balance" : "14901.0400"
+          }, {
+            "month" : "2027-04",
+            "balance" : "12920.5700"
+          }, {
+            "month" : "2027-05",
+            "balance" : "10932.2000"
+          }, {
+            "month" : "2027-06",
+            "balance" : "8935.9000"
+          }, {
+            "month" : "2027-07",
+            "balance" : "6931.6500"
+          }, {
+            "month" : "2027-08",
+            "balance" : "4918.6200"
+          }, {
+            "month" : "2027-09",
+            "balance" : "2894.8500"
+          }, {
+            "month" : "2027-10",
+            "balance" : "860.2900"
+          }, {
+            "month" : "2027-11",
+            "balance" : "0.0000"
+          } ],
+          "seriesMonthStride" : 1
+        }
+      } ],
+      "version" : 5
     }
   } ]
 }

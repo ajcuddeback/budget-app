@@ -1,10 +1,12 @@
 import 'package:budget_owl/core/errors/app_error.dart';
+import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/money/money.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/shared/figures.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The building blocks Bills & income, the debt plan and goals share: a titled card, a tag, an
@@ -211,7 +213,7 @@ Future<String?> openSheet(BuildContext context, Widget sheet) => Navigator.of(
 
 /// The frame every plans sheet uses: a title that may take two lines, a close button, the error a
 /// save met at the top, the fields, and the offline note under the save button.
-class SheetFrame extends StatelessWidget {
+class SheetFrame extends ConsumerWidget {
   const SheetFrame({
     required this.title,
     required this.children,
@@ -228,9 +230,10 @@ class SheetFrame extends StatelessWidget {
   final AppError? error;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final failure = error;
+    final reachability = ref.watch(reachabilityProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(title, maxLines: 2),
@@ -248,7 +251,7 @@ class SheetFrame extends StatelessWidget {
             children: [
               if (failure != null) ...[
                 NoticeBanner(
-                  text: failure.isConnectivity ? l.offline_write : context.errorMessage(failure),
+                  text: writeErrorText(context, reachability, failure),
                   icon: Icons.error_outline,
                 ),
                 const SizedBox(height: SpaceTokens.s4),
@@ -272,3 +275,8 @@ String? amountProblem(BuildContext context, String? typed, {bool required = true
   if (text.isEmpty) return required ? context.l10n.validation_required : null;
   return isTypedAmount(text) ? null : context.l10n.validation_positiveAmount;
 }
+
+/// The sentence for a write that failed or was refused before it was sent: why writes are off —
+/// offline, or this server's version not confirmed yet this launch — or the problem's own words.
+String writeErrorText(BuildContext context, Reachability reachability, AppError error) =>
+    error.isConnectivity ? writesOffText(context.l10n, reachability) : context.errorMessage(error);
