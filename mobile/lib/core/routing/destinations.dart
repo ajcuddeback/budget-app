@@ -1,4 +1,7 @@
+import 'package:budget_owl/features/check_in/presentation/check_in_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
+import 'package:budget_owl/features/import/presentation/import_screen.dart';
+import 'package:budget_owl/features/insights/presentation/insights_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
@@ -40,7 +43,7 @@ final List<Destination> tabs = [
     path: '/check-in',
     label: (l) => l.nav_checkIn,
     icon: Icons.task_alt_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_checkIn),
+    screen: (_) => const CheckInScreen(),
   ),
 
   Destination(
@@ -92,14 +95,14 @@ final List<Destination> moreEntries = [
     path: '/more/insights',
     label: (l) => l.nav_insights,
     icon: Icons.insights_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_insights),
+    screen: (_) => const InsightsScreen(),
   ),
 
   Destination(
     path: '/more/import',
     label: (l) => l.nav_import,
     icon: Icons.file_upload_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_import),
+    screen: (_) => const ImportScreen(),
   ),
 
   Destination(

@@ -1115,6 +1115,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkIn_back => 'Back';
 
   @override
+  String get checkIn_backToCurrent => 'Back to this week';
+
+  @override
   String get checkIn_bills_amount => 'Amount';
 
   @override
@@ -4057,6 +4060,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_chooseAccount => 'Choose an account';
 
   @override
+  String get import_chooseFile => 'Choose a file';
+
+  @override
   String get import_chooseFormat => 'Choose a format';
 
   @override
@@ -4312,6 +4318,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_includeAll => 'Include all';
 
   @override
+  String import_kilobytes(String count) {
+    return '$count kB';
+  }
+
+  @override
   String get import_lede =>
       'Bring in transactions from a file your bank exported. You\'ll see exactly what will be added before anything is.';
 
@@ -4377,6 +4388,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get import_readFailed => 'Your browser couldn\'t open that file. Try choosing it again.';
+
+  @override
+  String get import_readFailedPhone =>
+      'This phone couldn\'t open that file. Try choosing it again.';
 
   @override
   String get import_ready => 'Preview ready.';
@@ -4663,6 +4678,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get insights_legend_spending => 'Spending';
+
+  @override
+  String insights_monthRange(String from, String to) {
+    return '$from – $to';
+  }
 
   @override
   String get insights_range_12 => '12 mo';

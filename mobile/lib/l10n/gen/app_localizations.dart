@@ -2036,6 +2036,12 @@ abstract class AppLocalizations {
   /// **'Back'**
   String get checkIn_back;
 
+  /// Mobile only (l10n/mobile.en.json "checkIn.backToCurrent").
+  ///
+  /// In en, this message translates to:
+  /// **'Back to this week'**
+  String get checkIn_backToCurrent;
+
   /// Web en.json "checkIn.bills.amount".
   ///
   /// In en, this message translates to:
@@ -6764,6 +6770,12 @@ abstract class AppLocalizations {
   /// **'Choose an account'**
   String get import_chooseAccount;
 
+  /// Mobile only (l10n/mobile.en.json "import.chooseFile").
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get import_chooseFile;
+
   /// Web en.json "import.chooseFormat".
   ///
   /// In en, this message translates to:
@@ -7219,6 +7231,12 @@ abstract class AppLocalizations {
   /// **'Include all'**
   String get import_includeAll;
 
+  /// Mobile only (l10n/mobile.en.json "import.kilobytes").
+  ///
+  /// In en, this message translates to:
+  /// **'{count} kB'**
+  String import_kilobytes(String count);
+
   /// Web en.json "import.lede".
   ///
   /// In en, this message translates to:
@@ -7332,6 +7350,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your browser couldn\'t open that file. Try choosing it again.'**
   String get import_readFailed;
+
+  /// Mobile only (l10n/mobile.en.json "import.readFailedPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'This phone couldn\'t open that file. Try choosing it again.'**
+  String get import_readFailedPhone;
 
   /// Web en.json "import.ready".
   ///
@@ -7824,6 +7848,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Spending'**
   String get insights_legend_spending;
+
+  /// Mobile only (l10n/mobile.en.json "insights.monthRange").
+  ///
+  /// In en, this message translates to:
+  /// **'{from} – {to}'**
+  String insights_monthRange(String from, String to);
 
   /// Web en.json "insights.range.12".
   ///

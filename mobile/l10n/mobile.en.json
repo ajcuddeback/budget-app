@@ -84,5 +84,11 @@
   "devices.confirmHeadingPhone": "Sign out of this phone?",
   "devices.confirmMessagePhone": "This is the phone you are using now. You will be signed out, and what Budget Owl keeps on it is erased.",
 
-  "privacy.hidden": "Budget Owl is hidden while the app is in the background."
+  "privacy.hidden": "Budget Owl is hidden while the app is in the background.",
+
+  "checkIn.backToCurrent": "Back to this week",
+  "insights.monthRange": "{from} – {to}",
+  "import.chooseFile": "Choose a file",
+  "import.readFailedPhone": "This phone couldn't open that file. Try choosing it again.",
+  "import.kilobytes": "{count} kB"
 }

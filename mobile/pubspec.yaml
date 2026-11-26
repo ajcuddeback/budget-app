@@ -15,6 +15,11 @@ dependencies:
   decimal: ^3.2.7
   dio: ^5.11.1
   drift: ^2.35.4
+  # Import's file picker (flutter.dev): the system document picker (Android ACTION_OPEN_DOCUMENT,
+  # iOS UIDocumentPickerViewController), so no storage permission is declared. Both platforms
+  # hand back a copy in the app's temporary directory as well as the bytes; the import screen
+  # deletes that copy as soon as the bytes are in memory (lib/features/import/data/statement_file.dart).
+  file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -26,6 +31,10 @@ dependencies:
   material_ui: ^1.1.0
   meta: ^1.19.0
   path_provider: ^2.1.6
+  # Insights' CSV export (fluttercommunity.dev): the platform share sheet. No permission; on
+  # Android a FileProvider over cache/share_plus only. The export file is written to the app's
+  # temporary directory and deleted after sharing (lib/features/insights/data/csv_export.dart).
+  share_plus: ^13.3.1
   # SQLite itself, bundled through build hooks. The user define below selects the SQLCipher
   # build, which is what encrypts the cache (ADR-0042). sqlcipher_flutter_libs is end-of-life and
   # replaced by exactly this option.

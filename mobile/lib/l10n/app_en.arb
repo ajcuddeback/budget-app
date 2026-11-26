@@ -1497,6 +1497,10 @@
   "@checkIn_back": {
     "description": "Web en.json \"checkIn.back\"."
   },
+  "checkIn_backToCurrent": "Back to this week",
+  "@checkIn_backToCurrent": {
+    "description": "Mobile only (l10n/mobile.en.json \"checkIn.backToCurrent\")."
+  },
   "checkIn_bills_amount": "Amount",
   "@checkIn_bills_amount": {
     "description": "Web en.json \"checkIn.bills.amount\"."
@@ -6025,6 +6029,10 @@
   "@import_chooseAccount": {
     "description": "Web en.json \"import.chooseAccount\"."
   },
+  "import_chooseFile": "Choose a file",
+  "@import_chooseFile": {
+    "description": "Mobile only (l10n/mobile.en.json \"import.chooseFile\")."
+  },
   "import_chooseFormat": "Choose a format",
   "@import_chooseFormat": {
     "description": "Web en.json \"import.chooseFormat\"."
@@ -6402,6 +6410,15 @@
   "@import_includeAll": {
     "description": "Web en.json \"import.includeAll\"."
   },
+  "import_kilobytes": "{count} kB",
+  "@import_kilobytes": {
+    "description": "Mobile only (l10n/mobile.en.json \"import.kilobytes\").",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
   "import_lede": "Bring in transactions from a file your bank exported. You'll see exactly what will be added before anything is.",
   "@import_lede": {
     "description": "Web en.json \"import.lede\"."
@@ -6490,6 +6507,10 @@
   "import_readFailed": "Your browser couldn't open that file. Try choosing it again.",
   "@import_readFailed": {
     "description": "Web en.json \"import.readFailed\"."
+  },
+  "import_readFailedPhone": "This phone couldn't open that file. Try choosing it again.",
+  "@import_readFailedPhone": {
+    "description": "Mobile only (l10n/mobile.en.json \"import.readFailedPhone\")."
   },
   "import_ready": "Preview ready.",
   "@import_ready": {
@@ -6910,6 +6931,18 @@
   "insights_legend_spending": "Spending",
   "@insights_legend_spending": {
     "description": "Web en.json \"insights.legend.spending\"."
+  },
+  "insights_monthRange": "{from} – {to}",
+  "@insights_monthRange": {
+    "description": "Mobile only (l10n/mobile.en.json \"insights.monthRange\").",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "insights_range_12": "12 mo",
   "@insights_range_12": {

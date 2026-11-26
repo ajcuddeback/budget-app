@@ -1,6 +1,20 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- The app talks to the user's own server, and only to it. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!--
+      Never any storage permission, whatever a plugin's own manifest asks for. Import picks a file
+      with the system document picker and CSV export shares through a FileProvider; neither needs
+      one (mobile-app.md, Screens). test/architecture/storage_permission_test.dart pins this list.
+    -->
+    <uses-permission tools:node="remove" android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission tools:node="remove" android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission tools:node="remove" android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission tools:node="remove" android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission tools:node="remove" android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission tools:node="remove" android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission tools:node="remove" android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
 
     <!--
       Security (docs/features/mobile-app.md, Threat model):
