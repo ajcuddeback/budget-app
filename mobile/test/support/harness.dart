@@ -5,7 +5,6 @@ import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/storage/secure_store.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +48,12 @@ final class TestPhone {
   /// Already connected to the test server, as a returning member's phone is.
   void connected() => store.values['budget_owl.server'] = testServerOrigin;
 
+  /// Already signed in as [who] (`owner`, `viewer`, `member`) with the fixture's token.
+  void signedIn(String who) {
+    connected();
+    store.values['budget_owl.bearer_token'] = 'fixture-token-$who';
+  }
+
   List<Override> get overrides => [
     httpAdapterProvider.overrideWithValue(server),
     secureStoreProvider.overrideWithValue(store),
@@ -75,6 +80,10 @@ Future<ProviderContainer> pumpApp(
     ..physicalSize = size
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  // flutter_test draws elevation as a solid black outline by default, which made every floating
+  // button in the goldens look ringed in black. Real shadows, as the phone draws them.
+  debugDisableShadows = false;
+  addTearDown(() => debugDisableShadows = true);
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   final container = ProviderContainer(

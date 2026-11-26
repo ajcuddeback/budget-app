@@ -32,9 +32,34 @@ final class FixtureServer implements HttpClientAdapter {
       for (final e in decoded['exchanges']! as List<Object?>)
         _Exchange.fromJson(e! as Map<String, Object?>),
     ];
+    _refuseAmbiguity(name, exchanges);
     final server = FixtureServer._(exchanges, state, Uri.parse(origin));
     addTearDown(server.verifyNoMisses);
     return server;
+  }
+
+  /// Two recordings of the same request in the same state with different answers would make the
+  /// fake answer whichever comes first — a test passing or failing on file order. Refused.
+  static void _refuseAmbiguity(String name, List<_Exchange> exchanges) {
+    final answers = <String, String>{};
+    for (final e in exchanges) {
+      final query = e.uri.queryParameters.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+      final headers = e.requestHeaders.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+      final key = jsonEncode([
+        e.state,
+        e.method,
+        e.uri.path,
+        [for (final q in query) '${q.key}=${q.value}'],
+        e.auth,
+        [for (final h in headers) '${h.key}=${h.value}'],
+        e.request,
+      ]);
+      final answer = jsonEncode([e.status, e.body, e.then, e.responseHeaders]);
+      final earlier = answers.putIfAbsent(key, () => answer);
+      if (earlier != answer) {
+        throw StateError('$name.generated.json answers $key two different ways');
+      }
+    }
   }
 
   final List<_Exchange> _exchanges;
@@ -58,11 +83,16 @@ final class FixtureServer implements HttpClientAdapter {
   /// While set, every request fails as a server that does not answer does.
   bool noAnswer = false;
 
+  /// Goes offline as soon as an exchange whose `METHOD /path` starts with this has been served —
+  /// for a screen that must meet a failure on its own first read.
+  String? offlineAfter;
+
   void verifyNoMisses() {
     expect(
       misses,
       isEmpty,
-      reason: 'the app asked for exchanges no fixture records. Generate them with DemoFixtureIT '
+      reason:
+          'the app asked for exchanges no fixture records. Generate them with DemoFixtureIT '
           '(mvn -f backend test -Dtest=DemoFixtureIT -Dfixtures.write=true) rather than writing '
           'a response by hand.',
     );
@@ -89,16 +119,13 @@ final class FixtureServer implements HttpClientAdapter {
     }
 
     final bytes = <int>[];
-    if (requestStream != null) {
-      await for (final chunk in requestStream) {
-        bytes.addAll(chunk);
-      }
-    }
+    if (requestStream != null) await requestStream.forEach(bytes.addAll);
     final Object? body = bytes.isEmpty ? null : jsonDecode(utf8.decode(bytes));
     final uri = options.uri;
     final auth = options.headers['Authorization'] as String?;
     authorizations.add(auth);
-    final described = '$state: ${options.method} ${uri.path}'
+    final described =
+        '$state: ${options.method} ${uri.path}'
         '${uri.hasQuery ? '?${uri.query}' : ''}${body == null ? '' : ' ${jsonEncode(body)}'}';
 
     if (uri.origin != origin.origin) {
@@ -110,14 +137,16 @@ final class FixtureServer implements HttpClientAdapter {
       misses.add(described);
       return _miss();
     }
-    served.add('${options.method} ${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}');
+    final line = '${options.method} ${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+    served.add(line);
+    if (offlineAfter != null && line.startsWith(offlineAfter!)) offline = true;
     if (match.then != null) state = match.then!;
     return ResponseBody.fromString(
       match.body == null ? '' : jsonEncode(match.body),
       match.status,
       headers: {
         Headers.contentTypeHeader: [
-          match.status >= 400 ? 'application/problem+json' : 'application/json',
+          if (match.status >= 400) 'application/problem+json' else 'application/json',
         ],
         for (final h in match.responseHeaders.entries) h.key.toLowerCase(): [h.value],
       },
@@ -233,9 +262,9 @@ Map<String, Object?> fixtureRequest(
   required String path,
   String? then,
 }) {
-  final decoded =
-      jsonDecode(File('test/fixtures/$name.generated.json').readAsStringSync())
-          as Map<String, Object?>;
+  final decoded = jsonDecode(
+    File('test/fixtures/$name.generated.json').readAsStringSync(),
+  ) as Map<String, Object?>;
   for (final e in decoded['exchanges']! as List<Object?>) {
     final exchange = e! as Map<String, Object?>;
     if (exchange['state'] == state &&
@@ -250,9 +279,9 @@ Map<String, Object?> fixtureRequest(
 
 /// The fixture's response body for one exchange, for a test that asserts a figure the API sent.
 Object? fixtureBody(String name, {required String state, required String path}) {
-  final decoded =
-      jsonDecode(File('test/fixtures/$name.generated.json').readAsStringSync())
-          as Map<String, Object?>;
+  final decoded = jsonDecode(
+    File('test/fixtures/$name.generated.json').readAsStringSync(),
+  ) as Map<String, Object?>;
   for (final e in decoded['exchanges']! as List<Object?>) {
     final exchange = e! as Map<String, Object?>;
     if (exchange['state'] == state && exchange['path'] == path && exchange['method'] == 'GET') {

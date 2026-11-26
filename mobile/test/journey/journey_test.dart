@@ -28,8 +28,14 @@ void main() {
     await tester.tap(find.text('Sign in with my account'));
     await settle(tester);
     final signIn = fixtureRequest('demo', state: 'connect', path: '/api/auth/token', then: 'demo');
-    await tester.enterText(find.widgetWithText(TextField, 'Email address'), signIn['email']! as String);
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), signIn['password']! as String);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email address'),
+      signIn['email']! as String,
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      signIn['password']! as String,
+    );
     expect(find.text('Phone · Android'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await settle(tester);
@@ -60,7 +66,7 @@ void main() {
 
     expect(find.text('Transaction recorded.'), findsOneWidget);
     final after = _balance(tester);
-    expect(after, isNot(before), reason: 'the balance is the server\'s, refreshed after the write');
+    expect(after, isNot(before), reason: "the balance is the server's, refreshed after the write");
 
     // Offline: the copy stays, labelled, and writes say why they cannot happen.
     server.offline = true;
@@ -78,7 +84,11 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));
     await settle(tester);
 
-    expect(find.text('Sign in'), findsWidgets);
+    expect(
+      find.text('Sign in with my account'),
+      findsOneWidget,
+      reason: 'back to the connect screen',
+    );
     expect(phone.store.values.containsKey('budget_owl.bearer_token'), isFalse);
     expect(phone.store.values.containsKey('budget_owl.cache_key'), isFalse);
     expect(phone.cacheFile.existsSync(), isFalse);
