@@ -435,7 +435,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         obscureText: true,
         autocorrect: false,
         enableSuggestions: false,
-        keyboardType: TextInputType.visiblePassword,
+        // No keyboardType: obscureText picks the password variation. visiblePassword would tell
+        // an Android keyboard the text is shown in clear (security audit, phase 2, L3).
         maxLength: AdminLimits.secret,
         // No character counter: on a secret it would say how long the typed one is.
         decoration: InputDecoration(labelText: l.admin_oidcSecret, counterText: ''),

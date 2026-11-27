@@ -171,6 +171,9 @@ void main() {
       );
       expect(field.obscureText, isTrue);
       expect(field.enableSuggestions, isFalse);
+      // Not visiblePassword: on Android that variation tells the keyboard the text is shown in
+      // clear, and some keyboards then offer it in their suggestion strip.
+      expect(field.keyboardType, isNot(TextInputType.visiblePassword));
       expect(drawn(secret), findsNothing);
       await save(tester);
 
