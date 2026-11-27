@@ -31,6 +31,7 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 13 | **[Reporting & insights](features/reporting.md)** — income and spending, where it went, CSV | 5, 7 | **Done** |
 | 14 | **[Weekly check-in](features/weekly-check-in.md)** — the four-step pass | 6, 7, 10, 11 | **Done** |
 | 15 | **[Mobile app (Flutter)](features/mobile-app.md)** — every screen, Android and iOS | 2–14 | **Done** (device checks pending) |
+| 15b | **[Deployment-ready: install, back up, restore, upgrade](features/deployment.md)** — tested restore, upgrade and rollback, a Proxmox VM | 1, 9 | In progress |
 | 16 | Bank connections (pluggable providers) | 12 | Planned |
 | 17 | AI insights / Owl chat (opt-in, local-first) | 13 | Planned |
 
