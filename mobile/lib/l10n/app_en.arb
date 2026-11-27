@@ -8023,6 +8023,10 @@
   "@setup_title": {
     "description": "Web en.json \"setup.title\"."
   },
+  "signOut_incomplete": "This phone couldn't finish signing out. Try again, or remove Budget Owl from the phone.",
+  "@signOut_incomplete": {
+    "description": "Mobile only (l10n/mobile.en.json \"signOut.incomplete\")."
+  },
   "theme_toDark": "Switch to dark theme",
   "@theme_toDark": {
     "description": "Web en.json \"theme.toDark\"."

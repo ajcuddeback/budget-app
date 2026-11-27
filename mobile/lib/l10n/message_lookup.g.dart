@@ -1511,6 +1511,7 @@ String? lookupMessage(
     'setup.password' => l.setup_password,
     'setup.passwordHint' => l.setup_passwordHint(a('min')),
     'setup.title' => l.setup_title,
+    'signOut.incomplete' => l.signOut_incomplete,
     'theme.toDark' => l.theme_toDark,
     'theme.toLight' => l.theme_toLight,
     'title.accounts' => l.title_accounts,

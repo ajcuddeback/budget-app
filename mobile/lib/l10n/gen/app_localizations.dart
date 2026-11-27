@@ -9073,6 +9073,12 @@ abstract class AppLocalizations {
   /// **'Set up Budget Owl'**
   String get setup_title;
 
+  /// Mobile only (l10n/mobile.en.json "signOut.incomplete").
+  ///
+  /// In en, this message translates to:
+  /// **'This phone couldn\'t finish signing out. Try again, or remove Budget Owl from the phone.'**
+  String get signOut_incomplete;
+
   /// Web en.json "theme.toDark".
   ///
   /// In en, this message translates to:

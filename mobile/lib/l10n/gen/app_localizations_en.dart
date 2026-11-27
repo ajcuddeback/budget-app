@@ -5411,6 +5411,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setup_title => 'Set up Budget Owl';
 
   @override
+  String get signOut_incomplete =>
+      'This phone couldn\'t finish signing out. Try again, or remove Budget Owl from the phone.';
+
+  @override
   String get theme_toDark => 'Switch to dark theme';
 
   @override

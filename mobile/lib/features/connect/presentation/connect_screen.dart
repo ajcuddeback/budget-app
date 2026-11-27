@@ -32,6 +32,9 @@ class ConnectScreen extends ConsumerWidget {
         server: server,
         failure: failure,
       ),
+      SessionSignOutIncomplete(:final forgetServer) => _SignOutIncomplete(
+        forgetServer: forgetServer,
+      ),
       _ => const _AddressStep(),
     };
   }
@@ -195,6 +198,46 @@ class _Choices extends ConsumerWidget {
               onPressed: () => ref.read(sessionProvider.notifier).signOut(forgetServer: true),
               child: Text(l.connect_changeServer),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A sign-out that could not remove the token (round 6, V1): said plainly, with a retry.
+class _SignOutIncomplete extends ConsumerStatefulWidget {
+  const _SignOutIncomplete({required this.forgetServer});
+
+  final bool forgetServer;
+
+  @override
+  ConsumerState<_SignOutIncomplete> createState() => _SignOutIncompleteState();
+}
+
+class _SignOutIncompleteState extends ConsumerState<_SignOutIncomplete> {
+  bool _busy = false;
+
+  Future<void> _retry() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(sessionProvider.notifier).signOut(forgetServer: widget.forgetServer);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Screen(
+      title: l.nav_signOut,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Gutter(child: NoticeBanner(text: l.signOut_incomplete)),
+          Gutter(
+            child: FilledButton(onPressed: _busy ? null : _retry, child: Text(l.common_retry)),
           ),
         ],
       ),

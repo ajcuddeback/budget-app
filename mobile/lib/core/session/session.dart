@@ -66,6 +66,18 @@ final class SessionUnsupported extends SessionState {
   final ConnectFailure failure;
 }
 
+/// A sign-out (or a failed sign-in's clean-up) that could not remove the token from secure
+/// storage, even after the wipe retried it (round 6, V1). Neither signed in nor honestly signed
+/// out: the next launch would find the token and resume. The connect screen says so and offers
+/// to try again; nothing of the session is in memory.
+final class SessionSignOutIncomplete extends SessionState {
+  const SessionSignOutIncomplete({required this.server, required this.forgetServer});
+  final ServerAddress? server;
+
+  /// Whether the sign-out was a change of server, so trying again does the same.
+  final bool forgetServer;
+}
+
 /// The server requests go to. Set by [SessionController]; read by [apiClientProvider].
 final class CurrentServer extends Notifier<ServerAddress?> {
   @override
@@ -393,13 +405,14 @@ final class SessionController extends Notifier<SessionState> {
     } on Object {
       // The token was issued; end it on the server too, not only here (audit L4).
       _ending = true;
+      var finished = false;
       try {
-        await _endToken();
-        await _local.wipe();
-      } on Object catch (error) {
-        debugLogFailure('wiping after a failed sign-in', error);
+        finished = await _endLocally();
       } finally {
         _ending = false;
+      }
+      if (!finished && ref.mounted) {
+        state = SessionSignOutIncomplete(server: current.server, forgetServer: false);
       }
       rethrow;
     }
@@ -421,22 +434,24 @@ final class SessionController extends Notifier<SessionState> {
       SessionSignedIn(:final server) => server,
       SessionSignedOut(:final server) => server,
       SessionUnsupported(:final server) => server,
+      SessionSignOutIncomplete(:final server) => server,
       _ => null,
     };
     _ending = true;
+    var finished = false;
     try {
       // Whenever a token is held — signed in, or stopped at the unsupported-version screen
-      // (audit L4) — it is taken out of storage first, then the server is asked to end it.
-      await _endToken();
-      await _local.wipe(forgetServer: forgetServer);
-    } on Object catch (error) {
-      // Every step was attempted (LocalState.wipe); what storage refused, it refused. The person
-      // still leaves the session: nothing in memory outlives it (round 5, U1).
-      debugLogFailure('signing out', error);
+      // (audit L4) — it is taken out of storage first, then the server is asked to end it; the
+      // wipe runs whatever that did (round 6, V1).
+      finished = await _endLocally(forgetServer: forgetServer);
     } finally {
       _ending = false;
       if (ref.mounted) {
-        if (forgetServer || server == null) {
+        if (!finished) {
+          // The token is still stored: "signed out" would be untrue, and the next launch would
+          // resume. Nothing of the session stays in memory; the person can try again.
+          state = SessionSignOutIncomplete(server: server, forgetServer: forgetServer);
+        } else if (forgetServer || server == null) {
           ref.read(currentServerProvider.notifier).set(null);
           _gate.unconfirmVersion();
           state = const SessionNoServer();
@@ -451,15 +466,48 @@ final class SessionController extends Notifier<SessionState> {
   /// `POST /api/auth/logout` with the copy, best effort. If the app is killed while the logout is
   /// in flight, the next launch finds no token and is signed out. Unreachable, already revoked or
   /// slow, the caller wipes the rest regardless.
+  ///
+  /// A delete that fails does not stop the revocation: the copy taken first is revoked, then the
+  /// failure is reported, and the caller's wipe tries the delete again (round 6, V1).
   Future<void> _endToken() async {
-    final token = await _tokens.take();
-    final api = ref.read(apiClientProvider);
-    if (api == null || token == null) return;
+    final token = _tokens.held;
+    Object? failure;
+    StackTrace? trace;
     try {
-      await api.revoke(token).timeout(revokeTimeout);
-    } on Object {
-      // The wipe that follows happens regardless.
+      await _tokens.take();
+    } on Object catch (error, stack) {
+      failure = error;
+      trace = stack;
     }
+    final api = ref.read(apiClientProvider);
+    if (api != null && token != null) {
+      try {
+        await api.revoke(token).timeout(revokeTimeout);
+      } on Object {
+        // The wipe that follows happens regardless.
+      }
+    }
+    if (failure != null) Error.throwWithStackTrace(failure, trace!);
+  }
+
+  /// Ends the session on this phone: the token ([_endToken], when [revoke]), then the wipe — each
+  /// in its own try, so neither stops the other, and the wipe's own steps are each attempted
+  /// (LocalState.wipe; its token step retries the delete). True only when the token is then
+  /// confirmed gone from secure storage (round 6, V1).
+  Future<bool> _endLocally({bool forgetServer = false, bool revoke = true}) async {
+    if (revoke) {
+      try {
+        await _endToken();
+      } on Object catch (error) {
+        debugLogFailure('ending the token', error);
+      }
+    }
+    try {
+      await _local.wipe(forgetServer: forgetServer);
+    } on Object catch (error) {
+      debugLogFailure('wiping local state', error);
+    }
+    return !await _tokens.isStored();
   }
 
   /// How long a sign-out waits for the server to confirm the revocation.
@@ -478,14 +526,17 @@ final class SessionController extends Notifier<SessionState> {
     };
     if (_ending || server == null) return;
     _ending = true;
+    var finished = false;
     try {
-      await _local.wipe();
-    } on Object catch (error) {
-      // As in signOut: the session ends whatever storage refused (round 5, U1).
-      debugLogFailure('ending the session', error);
+      // The server has already ended the token: nothing to revoke, only to wipe.
+      finished = await _endLocally(revoke: false);
     } finally {
       _ending = false;
-      if (ref.mounted) state = SessionSignedOut(server, notice: SignInNotice.expired);
+      if (ref.mounted) {
+        state = finished
+            ? SessionSignedOut(server, notice: SignInNotice.expired)
+            : SessionSignOutIncomplete(server: server, forgetServer: false);
+      }
     }
   }
 

@@ -40,6 +40,8 @@ String? redirectFor(SessionState session, String location) {
       return at(Routes.connect) ? null : Routes.connect;
     case SessionUnsupported():
       return at(Routes.connect) ? null : Routes.connect;
+    case SessionSignOutIncomplete():
+      return at(Routes.connect) ? null : Routes.connect;
     case SessionSignedOut(:final notice):
       if (Routes.signedOut.any(at)) return null;
       // A session that just ended, or an account just made, goes straight to sign-in with its

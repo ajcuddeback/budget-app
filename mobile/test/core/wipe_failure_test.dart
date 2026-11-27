@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:budget_owl/app.dart';
+import 'package:budget_owl/core/auth/token_store.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
 import 'package:budget_owl/core/session/local_state.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/adapters.dart';
 import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
@@ -115,6 +117,117 @@ void main() {
 
     expect(c.read(sessionProvider), isA<SessionSignedOut>());
     expect(phone.store.values.keys, ['budget_owl.server']);
+  });
+
+  group('V1: a token that cannot be deleted', () {
+    const tokenKey = 'budget_owl.bearer_token';
+    const incomplete =
+        "This phone couldn't finish signing out. Try again, or remove Budget Owl from the phone.";
+
+    test('sign-out still revokes it and wipes the rest, and says it could not finish', () async {
+      final (phone, c) = await signedIn();
+      final server = phone.server as FixtureServer;
+      phone.store.undeletable.add(tokenKey);
+
+      await c.read(sessionProvider.notifier).signOut();
+
+      expect(c.read(sessionProvider), isA<SessionSignOutIncomplete>(), reason: 'not "signed out"');
+      nothingInMemory(c);
+      expect(server.served, contains(startsWith('POST /api/auth/logout')), reason: 'revoked');
+      expect(phone.store.values.containsKey(cacheKey), isFalse, reason: 'the key went');
+      expect(phone.cacheFile.existsSync(), isFalse, reason: 'the cache went');
+      expect(phone.store.values.containsKey(tokenKey), isTrue);
+    });
+
+    test('a delete that fails once is retried by the wipe, and the sign-out finishes', () async {
+      final (phone, c) = await signedIn();
+      phone.store.failingDeletes[tokenKey] = 1;
+
+      await c.read(sessionProvider.notifier).signOut();
+
+      expect(c.read(sessionProvider), isA<SessionSignedOut>());
+      expect(phone.store.values.keys, ['budget_owl.server']);
+    });
+
+    test('a change of server that could not finish keeps that, to try again', () async {
+      final (phone, c) = await signedIn();
+      phone.store.undeletable.add(tokenKey);
+
+      await c.read(sessionProvider.notifier).signOut(forgetServer: true);
+      final state = c.read(sessionProvider);
+      expect(state, isA<SessionSignOutIncomplete>());
+      expect((state as SessionSignOutIncomplete).forgetServer, isTrue);
+
+      phone.store.undeletable.remove(tokenKey);
+      await c.read(sessionProvider.notifier).signOut(forgetServer: state.forgetServer);
+      expect(c.read(sessionProvider), isA<SessionNoServer>());
+      expect(phone.store.values, isEmpty);
+    });
+
+    test('a store that cannot be read cannot confirm it gone', () async {
+      final store = MemorySecureStore()..unreadable.add(tokenKey);
+      expect(await TokenStore(store).isStored(), isTrue);
+      expect(await TokenStore(MemorySecureStore()).isStored(), isFalse);
+    });
+
+    test('a 401 that cannot delete it says the same', () async {
+      final (phone, c) = await signedIn();
+      phone.store.undeletable.add(tokenKey);
+
+      await c.read(sessionProvider.notifier).sessionEnded();
+
+      expect(c.read(sessionProvider), isA<SessionSignOutIncomplete>());
+      nothingInMemory(c);
+    });
+
+    test("a failed sign-in's clean-up that cannot delete it says the same", () async {
+      final adapter = ScriptedAdapter((o) async {
+        if (o.path.endsWith('/api/meta')) {
+          return json(200, {'app': 'budget-owl', 'apiVersion': 1, 'minimumClientApiVersion': 1});
+        }
+        if (o.path.endsWith('/api/auth/token')) return json(201, {'token': 'fixture-token-new'});
+        if (o.path.endsWith('/api/auth/logout')) return json(204, null);
+        return json(500, {'code': 'internal-error'});
+      });
+      final phone = TestPhone(server: adapter)..connected();
+      final c = containerFor(phone);
+      await until<SessionSignedOut>(c);
+      phone.store.undeletable.add(tokenKey);
+
+      await expectLater(
+        c
+            .read(sessionProvider.notifier)
+            .signIn(email: 'ada@example.com', password: 'not-the-password', deviceLabel: 'Phone'),
+        throwsA(anything),
+      );
+
+      expect(c.read(sessionProvider), isA<SessionSignOutIncomplete>());
+      expect(adapter.requests.where((o) => o.path.endsWith('/api/auth/logout')), hasLength(1));
+    });
+
+    testWidgets('on screen: the could-not-finish state, and Try again finishing it', (
+      tester,
+    ) async {
+      final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))..signedIn('owner');
+      await pumpApp(tester, phone);
+      phone.store.undeletable.add(tokenKey);
+      final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+
+      unawaited(container.read(sessionProvider.notifier).signOut());
+      await settleUntil(
+        tester,
+        () => container.read(sessionProvider) is SessionSignOutIncomplete,
+        what: 'the sign-out could not finish',
+      );
+
+      expect(find.text(incomplete), findsOneWidget);
+      expect(find.text('Transactions'), findsNothing);
+
+      phone.store.undeletable.remove(tokenKey);
+      await tapVisible(tester, find.text('Try again'));
+      await untilSignedOut(tester);
+      expect(find.text(incomplete), findsNothing);
+    });
   });
 
   testWidgets('on screen: sign-out with a failing wipe shows sign-in, not the old data', (

@@ -29,9 +29,17 @@ final class MemorySecureStore implements SecureStore {
   /// Keys whose delete throws.
   final Set<String> undeletable = {};
 
+  /// Keys whose next deletes throw, this many times, then work: a store that recovers.
+  final Map<String, int> failingDeletes = {};
+
   @override
   Future<void> delete(String key) async {
     if (undeletable.contains(key)) throw StateError('secure storage could not delete $key');
+    final failures = failingDeletes[key] ?? 0;
+    if (failures > 0) {
+      failingDeletes[key] = failures - 1;
+      throw StateError('secure storage could not delete $key, this time');
+    }
     values.remove(key);
   }
 

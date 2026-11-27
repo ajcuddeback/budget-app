@@ -110,6 +110,16 @@ final class TokenStore {
     return token;
   }
 
+  /// Whether a token is still in secure storage. A store that cannot be read says yes: nothing
+  /// may claim a sign-out finished that it cannot confirm (round 6, V1).
+  Future<bool> isStored() async {
+    try {
+      return await _store.read(_key) != null;
+    } on Object {
+      return true;
+    }
+  }
+
   Future<void> clear() async {
     _held = null;
     await _store.delete(_key);

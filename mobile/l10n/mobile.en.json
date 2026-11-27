@@ -30,6 +30,8 @@
 
   "connect.error.phoneNotCleared": "This phone could not clear what it held for the previous server, so nothing was connected. Try again.",
 
+  "signOut.incomplete": "This phone couldn't finish signing out. Try again, or remove Budget Owl from the phone.",
+
   "trust.through": "Trusted through a certificate authority installed on this phone:",
   "trust.throughUnnamed": "Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:",
   "trust.missing": "The certificate authority this server was trusted through is no longer installed on this phone:",
