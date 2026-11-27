@@ -1,6 +1,7 @@
 import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
+import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/http/user_trust.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
@@ -177,27 +178,76 @@ bool canWriteNow(WidgetRef ref) => ref.watch(reachabilityProvider).canWrite;
 String writesOffText(AppLocalizations l, Reachability reachability) =>
     reachability == Reachability.unconfirmed ? l.offline_versionUnconfirmed : l.offline_write;
 
-/// Which certificate authority installed on this phone the server is trusted through (S1): its
-/// name, or — when its certificate names none — the start of its fingerprint. Only for a server
-/// pinned to a user CA; a server the system roots verify gets no sentence at all.
-String trustedThroughText(AppLocalizations l, CaPin pin) {
-  final name = pin.subject;
-  if (name != null) return l.trust_through(name);
-  final pairs = [for (var i = 0; i < 16; i += 2) pin.fingerprint.substring(i, i + 2).toUpperCase()];
-  return l.trust_throughUnnamed('${pairs.join(':')}…');
-}
+/// The first [hexDigits] of [pin]'s fingerprint, in upper-case pairs: `C1:C1:C1:C1`.
+String fingerprintStart(CaPin pin, int hexDigits) =>
+    [for (var i = 0; i < hexDigits; i += 2) pin.fingerprint.substring(i, i + 2).toUpperCase()]
+        .join(':');
 
-/// The sentence above, quiet, under the server it is about. Nothing when there is no pin.
+/// [text] as a first-strong isolate (U+2068 … U+2069): it takes its own direction and cannot move
+/// the punctuation or words around it. A CA's name cannot close the isolate early: [cleanCaName]
+/// drops every format character, U+2069 included.
+String isolated(String text) => '${String.fromCharCode(0x2068)}$text${String.fromCharCode(0x2069)}';
+
+/// Which certificate authority installed on this phone the server is trusted through (S1, T1),
+/// under the server it is about. A sentence of ours, then — on its own line, as its own styled
+/// span and isolated — the CA's name and the start of its fingerprint; the name is never inside a
+/// sentence or quotes, so whatever its maker wrote cannot read as ours. With no name, the
+/// fingerprint alone. When the CA is no longer on the phone (T3), a different first line says so,
+/// and a third says connections will fail and points to [changeServer]. Nothing at all for a
+/// server the system roots verify.
 class TrustedThroughNote extends ConsumerWidget {
-  const TrustedThroughNote({super.key});
+  const TrustedThroughNote({required this.changeServer, super.key});
+
+  /// The label of this screen's control for changing server, which the missing-CA line names.
+  final String changeServer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pin = ref.watch(pinnedCaProvider);
     if (pin == null) return const SizedBox.shrink();
-    return Text(
-      trustedThroughText(context.l10n, pin),
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
+    final missing = ref.watch(pinnedCaInstalledProvider) == false;
+    final l = context.l10n;
+    final c = context.colors;
+    final text = Theme.of(context).textTheme;
+    final quiet = text.bodyMedium?.copyWith(color: c.muted);
+    // Body size, in the theme's title weight: emphasised, not a caption.
+    final strong = text.bodyMedium?.copyWith(fontWeight: text.titleSmall?.fontWeight);
+    final name = pin.subject;
+    final lead = missing
+        ? l.trust_missing
+        : name == null
+        ? l.trust_throughUnnamed
+        : l.trust_through;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(lead, style: missing ? strong?.copyWith(color: c.accentText) : quiet),
+        const SizedBox(height: SpaceTokens.s1),
+        Text.rich(
+          TextSpan(
+            children: [
+              if (name != null) ...[
+                TextSpan(
+                  text: isolated(name),
+                  style: strong?.copyWith(color: c.text),
+                ),
+                const TextSpan(text: '  '),
+              ],
+              TextSpan(
+                text: isolated(
+                  name == null ? '${fingerprintStart(pin, 16)}…' : fingerprintStart(pin, 8),
+                ),
+                style: quiet,
+              ),
+            ],
+          ),
+        ),
+        if (missing) ...[
+          const SizedBox(height: SpaceTokens.s1),
+          Text(l.trust_missingHelp(changeServer), style: quiet),
+        ],
+      ],
     );
   }
 }

@@ -9781,17 +9781,29 @@ abstract class AppLocalizations {
   /// **'Transfer saved.'**
   String get transfers_updated;
 
+  /// Mobile only (l10n/mobile.en.json "trust.missing").
+  ///
+  /// In en, this message translates to:
+  /// **'The certificate authority this server was trusted through is no longer installed on this phone:'**
+  String get trust_missing;
+
+  /// Mobile only (l10n/mobile.en.json "trust.missingHelp").
+  ///
+  /// In en, this message translates to:
+  /// **'Connections to the server will fail until it is installed again, or until you use “{action}” below.'**
+  String trust_missingHelp(String action);
+
   /// Mobile only (l10n/mobile.en.json "trust.through").
   ///
   /// In en, this message translates to:
-  /// **'Trusted through \'{name}\', a certificate authority installed on this phone.'**
-  String trust_through(String name);
+  /// **'Trusted through a certificate authority installed on this phone:'**
+  String get trust_through;
 
   /// Mobile only (l10n/mobile.en.json "trust.throughUnnamed").
   ///
   /// In en, this message translates to:
-  /// **'Trusted through a certificate authority installed on this phone, fingerprint {fingerprint}.'**
-  String trust_throughUnnamed(String fingerprint);
+  /// **'Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:'**
+  String get trust_throughUnnamed;
 
   /// Web en.json "validation.amount".
   ///

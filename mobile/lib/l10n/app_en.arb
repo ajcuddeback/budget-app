@@ -8587,23 +8587,26 @@
   "@transfers_updated": {
     "description": "Web en.json \"transfers.updated\"."
   },
-  "trust_through": "Trusted through '{name}', a certificate authority installed on this phone.",
-  "@trust_through": {
-    "description": "Mobile only (l10n/mobile.en.json \"trust.through\").",
+  "trust_missing": "The certificate authority this server was trusted through is no longer installed on this phone:",
+  "@trust_missing": {
+    "description": "Mobile only (l10n/mobile.en.json \"trust.missing\")."
+  },
+  "trust_missingHelp": "Connections to the server will fail until it is installed again, or until you use “{action}” below.",
+  "@trust_missingHelp": {
+    "description": "Mobile only (l10n/mobile.en.json \"trust.missingHelp\").",
     "placeholders": {
-      "name": {
+      "action": {
         "type": "String"
       }
     }
   },
-  "trust_throughUnnamed": "Trusted through a certificate authority installed on this phone, fingerprint {fingerprint}.",
+  "trust_through": "Trusted through a certificate authority installed on this phone:",
+  "@trust_through": {
+    "description": "Mobile only (l10n/mobile.en.json \"trust.through\")."
+  },
+  "trust_throughUnnamed": "Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:",
   "@trust_throughUnnamed": {
-    "description": "Mobile only (l10n/mobile.en.json \"trust.throughUnnamed\").",
-    "placeholders": {
-      "fingerprint": {
-        "type": "String"
-      }
-    }
+    "description": "Mobile only (l10n/mobile.en.json \"trust.throughUnnamed\")."
   },
   "validation_amount": "Enter an amount using digits and a dot, like 1250.00 or -400.",
   "@validation_amount": {

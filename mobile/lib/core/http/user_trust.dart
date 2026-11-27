@@ -102,22 +102,119 @@ String? caDisplayName(List<int> der) {
   }
 }
 
-/// [name] fit to show: control, format and direction-override characters removed (a name cannot
-/// reorder the sentence it sits in), whitespace collapsed, at most [caNameMaxLength] characters.
-/// Null when nothing is left. Storage is not trusted either: what is read back is cleaned again.
+/// [name] fit to show (T1), by an allow-list: only letters, digits, spaces, punctuation that is
+/// not a quotation mark, and at most [_marksPerBase] combining marks on a letter, digit or
+/// punctuation mark. Everything else is dropped: controls, format characters (direction marks and
+/// overrides, isolates, U+061C, U+00AD, U+180E, U+FFF9–FFFB, tags), private-use and unassigned
+/// code points, symbols, every quotation mark and apostrophe look-alike (so the name cannot close
+/// a quote it is shown in), and the default-ignorable characters that are letters or marks
+/// (Hangul fillers, the grapheme joiner, variation selectors). Whitespace is collapsed to one
+/// space; at most [caNameMaxLength] characters are kept. Null when nothing is left.
+///
+/// The name is still the CA maker's own words: the screen shows it on its own line, as a
+/// first-strong isolate, never inside a sentence. Storage is not trusted either: what is read
+/// back is cleaned again.
 String? cleanCaName(String? name) {
   if (name == null) return null;
-  final cleaned = name
-      .replaceAll(
-        RegExp(r'[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]'),
-        '',
-      )
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-  if (cleaned.isEmpty) return null;
-  final runes = cleaned.runes.toList();
-  if (runes.length <= caNameMaxLength) return cleaned;
-  return '${String.fromCharCodes(runes.take(caNameMaxLength - 1)).trimRight()}…';
+  final out = <int>[];
+  var space = false;
+  var marks = 0;
+  var base = false;
+  for (final rune in name.runes.take(_caNameRunesRead)) {
+    final char = String.fromCharCode(rune);
+    if (_ignorable(rune) || _quoteLike(rune) || _quotePunctuation.hasMatch(char)) {
+      continue;
+    }
+    if (_space.hasMatch(char)) {
+      space = out.isNotEmpty;
+      base = false;
+      continue;
+    }
+    if (_mark.hasMatch(char)) {
+      if (base && marks < _marksPerBase) {
+        out.add(rune);
+        marks++;
+      }
+      continue;
+    }
+    if (_letterOrDigit.hasMatch(char) || _punctuation.hasMatch(char)) {
+      if (space) out.add(0x20);
+      space = false;
+      out.add(rune);
+      base = true;
+      marks = 0;
+    }
+    // Anything else — a control, format, private-use, unassigned or surrogate code point, a
+    // symbol — is dropped.
+  }
+  if (out.isEmpty) return null;
+  if (out.length <= caNameMaxLength) return String.fromCharCodes(out);
+  return '${String.fromCharCodes(out.take(caNameMaxLength - 1)).trimRight()}…';
+}
+
+/// The most of a subject's text looked at: a certificate can carry a long one.
+const int _caNameRunesRead = 512;
+
+/// Combining marks kept on one base character: enough for any real name, too few to stack.
+const int _marksPerBase = 2;
+
+final RegExp _letterOrDigit = RegExp(r'^[\p{L}\p{Nd}]$', unicode: true);
+final RegExp _punctuation = RegExp(r'^\p{P}$', unicode: true);
+final RegExp _quotePunctuation = RegExp(r'^[\p{Pi}\p{Pf}]$', unicode: true);
+final RegExp _mark = RegExp(r'^\p{M}$', unicode: true);
+final RegExp _space = RegExp(r'^[\p{Zs}\p{Zl}\p{Zp}\t\n\v\f\r]$', unicode: true);
+
+/// Unicode's default-ignorable code points (DerivedCoreProperties), which include letters and
+/// marks that show nothing, and U+FFF9–FFFB.
+bool _ignorable(int rune) => _inAny(rune, const [
+  (0x00AD, 0x00AD),
+  (0x034F, 0x034F),
+  (0x061C, 0x061C),
+  (0x115F, 0x1160),
+  (0x17B4, 0x17B5),
+  (0x180B, 0x180F),
+  (0x200B, 0x200F),
+  (0x202A, 0x202E),
+  (0x2060, 0x206F),
+  (0x3164, 0x3164),
+  (0xFE00, 0xFE0F),
+  (0xFEFF, 0xFEFF),
+  (0xFFA0, 0xFFA0),
+  (0xFFF0, 0xFFFB),
+  (0x1BCA0, 0x1BCA3),
+  (0x1D173, 0x1D17A),
+  (0xE0000, 0xE0FFF),
+]);
+
+/// Quotation marks and apostrophes that are not initial or final punctuation: the ASCII ones,
+/// primes, geresh and gershayim, modifier-letter apostrophes, saltillo, low-9 quotes, CJK corner
+/// brackets and their fullwidth and vertical forms.
+bool _quoteLike(int rune) => _inAny(rune, const [
+  (0x0022, 0x0022),
+  (0x0027, 0x0027),
+  (0x0060, 0x0060),
+  (0x00B4, 0x00B4),
+  (0x02B9, 0x02BD),
+  (0x02C8, 0x02C8),
+  (0x02EE, 0x02EE),
+  (0x05F3, 0x05F4),
+  (0x2018, 0x201F),
+  (0x2032, 0x2037),
+  (0x2E42, 0x2E42),
+  (0x300C, 0x300F),
+  (0x301D, 0x301F),
+  (0xA78B, 0xA78C),
+  (0xFE41, 0xFE44),
+  (0xFF02, 0xFF02),
+  (0xFF07, 0xFF07),
+  (0xFF62, 0xFF63),
+]);
+
+bool _inAny(int rune, List<(int, int)> ranges) {
+  for (final (low, high) in ranges) {
+    if (rune >= low && rune <= high) return true;
+  }
+  return false;
 }
 
 bool _sameBytes(List<int> a, List<int> b) {
@@ -149,6 +246,8 @@ final class _Der {
   (int tag, int start, int end) _next() {
     if (_at + 2 > _end) throw const FormatException('DER: truncated');
     final tag = _bytes[_at++];
+    // A tag number of 31 or more takes more bytes; no certificate field uses one.
+    if (tag & 0x1f == 0x1f) throw const FormatException('DER: multi-byte tag');
     var length = _bytes[_at++];
     if (length & 0x80 != 0) {
       final count = length & 0x7f;
@@ -202,10 +301,14 @@ final class _Der {
         ]);
       case 0x1C:
         if (content.length % 4 != 0) throw const FormatException('DER: UniversalString');
-        return String.fromCharCodes([
+        final codePoints = [
           for (var i = 0; i < content.length; i += 4)
             (content[i] << 24) | (content[i + 1] << 16) | (content[i + 2] << 8) | content[i + 3],
-        ]);
+        ];
+        if (codePoints.any((c) => c > 0x10FFFF)) {
+          throw const FormatException('DER: UniversalString beyond Unicode');
+        }
+        return String.fromCharCodes(codePoints);
       default:
         throw const FormatException('DER: not a directory string');
     }

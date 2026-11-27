@@ -59,6 +59,19 @@ abstract interface class ServerTrust implements HttpClientAdapter {
   /// Reads the phone's user CAs again: on start and whenever the app returns to the foreground,
   /// since the person may have removed one in Settings meanwhile.
   Future<void> reloadPhoneStore();
+
+  /// Whether the CA the server is pinned to is on the phone now (T3): null while nothing is
+  /// pinned or the phone's store has not yet been read since the pin was set; false when it is
+  /// gone (or the store could not be read), so every connection to the server will fail.
+  ValueListenable<bool?> get pinnedCaInstalled;
+}
+
+/// Refuses to close the app's one transport (security audit H1, round 4 T2): a debug build —
+/// every test — throws; a release build does nothing, so the app keeps working.
+void _refuseClose() {
+  if (kDebugMode) {
+    throw StateError('the shared transport is never closed (mobile/README.md, Gotchas)');
+  }
 }
 
 /// The Android transport (ADR-0042, pinned user CAs).
@@ -91,6 +104,11 @@ final class PhoneTrustAdapter implements ServerTrust {
   int _generation = 0;
   late IOHttpClientAdapter _inner;
   late Future<void> _pending;
+  bool _storeRead = false;
+  final ValueNotifier<bool?> _installed = ValueNotifier(null);
+
+  @override
+  ValueListenable<bool?> get pinnedCaInstalled => _installed;
 
   /// The fingerprint this server is pinned to, if any.
   String? get pin => _pin;
@@ -105,6 +123,7 @@ final class PhoneTrustAdapter implements ServerTrust {
       // A later read has started: its answer is the newer one.
       if (generation != _generation) return;
       _store = certificates;
+      _storeRead = true;
       _apply();
     });
     _pending = reading;
@@ -169,6 +188,7 @@ final class PhoneTrustAdapter implements ServerTrust {
         }
       }
     }
+    _installed.value = pin == null || !_storeRead ? null : anchor != null;
     if (_sameAnchor(anchor, _anchor)) return;
     _anchor = anchor;
     final previous = _inner;
@@ -196,8 +216,11 @@ final class PhoneTrustAdapter implements ServerTrust {
     return await _inner.fetch(options, requestStream, cancelFuture);
   }
 
+  /// Refused, as [SharedTransport.close] is: this adapter *is* the app's transport, and closing
+  /// it closed the inner client every request goes through (round 4, T2). Only a client being
+  /// replaced ([_apply]) or a throwaway probe is ever closed.
   @override
-  void close({bool force = false}) => _inner.close(force: force);
+  void close({bool force = false}) => _refuseClose();
 }
 
 /// The app's one transport, as [httpAdapterProvider] hands it out (security audit H1).
@@ -221,11 +244,7 @@ final class SharedTransport implements HttpClientAdapter {
   ) => inner.fetch(options, requestStream, cancelFuture);
 
   @override
-  void close({bool force = false}) {
-    if (kDebugMode) {
-      throw StateError('the shared transport is never closed (mobile/README.md, Gotchas)');
-    }
-  }
+  void close({bool force = false}) => _refuseClose();
 }
 
 /// The per-server trust [transport] carries, if any: the [ServerTrust] itself, or the one inside
@@ -243,6 +262,18 @@ void reloadTrustOnResume(Ref ref, HttpClientAdapter adapter) {
   final listener = AppLifecycleListener(onResume: () => unawaited(adapter.reloadPhoneStore()));
   ref.onDispose(listener.dispose);
 }
+
+/// Whether the CA the current server is pinned to is still on the phone (T3), as
+/// [ServerTrust.pinnedCaInstalled] says; null on a platform that pins nothing.
+final pinnedCaInstalledProvider = Provider<bool?>((ref) {
+  final trust = serverTrustOf(ref.watch(httpAdapterProvider));
+  if (trust == null) return null;
+  final installed = trust.pinnedCaInstalled;
+  void changed() => ref.invalidateSelf();
+  installed.addListener(changed);
+  ref.onDispose(() => installed.removeListener(changed));
+  return installed.value;
+});
 
 final httpAdapterProvider = Provider<HttpClientAdapter>((ref) {
   final adapter = platformHttpAdapter();

@@ -28,8 +28,10 @@
   "connect.error.versionMismatch": "This server's API is version {server}, and this app needs version {app}. Update whichever is older, then try again.",
   "connect.error.transport": "The connection to the server failed part-way. Try again.",
 
-  "trust.through": "Trusted through '{name}', a certificate authority installed on this phone.",
-  "trust.throughUnnamed": "Trusted through a certificate authority installed on this phone, fingerprint {fingerprint}.",
+  "trust.through": "Trusted through a certificate authority installed on this phone:",
+  "trust.throughUnnamed": "Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:",
+  "trust.missing": "The certificate authority this server was trusted through is no longer installed on this phone:",
+  "trust.missingHelp": "Connections to the server will fail until it is installed again, or until you use “{action}” below.",
 
   "login.server": "Signing in to {host}",
   "login.deviceLabel": "Name for this phone",
