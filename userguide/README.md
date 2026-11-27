@@ -12,7 +12,8 @@ account to seeing your first month's budget.
 
 | Guide                                                                           | What it covers                                                                                                   |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| [Installing Budget Owl](installing.md)                                          | Get it running on your own server                                                                                |
+| [Installing Budget Owl](installing.md)                                          | Get it running on your own server, back it up, restore it, and keep it up to date                                |
+| [Run it on Proxmox](run-it-on-proxmox.md)                                       | One script that makes a locked-down Debian VM and installs Budget Owl in it on first boot                        |
 | [Getting started](getting-started.md)                                           | Set up your household and see your first budget                                                                  |
 | [Create your account and household](features/create-your-account.md)            | The first account on a new server, and the household that comes with it                                          |
 | [Sign in](features/sign-in.md)                                                  | Sign in and out, and what to do when it will not let you                                                         |

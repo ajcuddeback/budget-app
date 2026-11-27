@@ -169,6 +169,17 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "packaging" ]; then
       missing "nginx import cap" "Docker is not running"
     fi
 
+    # A restore nobody has tested is a hope (docs/features/deployment.md). The real stack, from
+    # nothing: set up a household, back up, delete the volume, restore, and check the data — plus
+    # the refusals (data present without --replace, a changed file, a newer version's backup).
+    # Its own Compose project and throwaway credentials; never your .env or your stack. About 90s
+    # once the images exist; it builds them first if they do not.
+    if docker info >/dev/null 2>&1; then
+      run "backup, destroy the volume, restore (tools/deploy-check.sh)" tools/deploy-check.sh
+    else
+      missing "backup and restore round trip" "Docker is not running"
+    fi
+
     # Only the web port reaches the host, and only on loopback by default.
     published=$(env DB_PASSWORD=verify-only docker compose config 2>/dev/null | grep -c 'published:' || true)
     if [ "$published" -eq 1 ]; then

@@ -131,6 +131,15 @@ jobs:
           docker build -t budget-owl-api:ci ./backend
           docker build -t budget-owl-web:ci ./frontend
 
+      - name: Backup, destroy the volume, restore
+        # tools/deploy-check.sh builds the Compose images itself (the layers above are cached) and
+        # runs as its own project with throwaway credentials. `age` makes it check the encrypted
+        # round trip too, rather than skipping it.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age >/dev/null
+          tools/deploy-check.sh --remove-images
+
       - name: Scan images for known vulnerabilities
         # Pinned to a commit, not a moving tag: a tag can be repointed at any commit, which means
         # arbitrary third-party code running in CI. Resolved from refs/tags/0.33.1^{}.
