@@ -14,6 +14,8 @@
 #   --safety-age-recipient K  encrypt the safety backup to this age public key,
 #   --safety-gpg-recipient K  ...or to this gpg key. Unencrypted otherwise.
 #   --no-start                leave the app stopped afterwards.
+#   --skip-version-check      restore even if this version's app image cannot be read to check
+#                             that the backup is not newer than it. Avoid.
 #   -h, --help                this text.
 #
 # What it does, in order. Nothing that is there now is changed until step 6.
@@ -41,6 +43,7 @@ identity=""
 safety_out=""
 safety_args=()
 start=1
+skip_version_check=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -50,6 +53,7 @@ while [ $# -gt 0 ]; do
     --safety-age-recipient) safety_args+=(--age-recipient "${2:?needs a key}"); shift 2 ;;
     --safety-gpg-recipient) safety_args+=(--gpg-recipient "${2:?needs a key}"); shift 2 ;;
     --no-start) start=0; shift ;;
+    --skip-version-check) skip_version_check=1; shift ;;
     -h|--help) print_help "$0"; exit 0 ;;
     -*) die 2 "unknown option: $1 (see --help)" ;;
     *) [ -z "$backup" ] || die 2 "one backup at a time"; backup="$1"; shift ;;
@@ -159,9 +163,15 @@ failed=$(db_psql budgetowl_restore_scratch -At -c "SELECT count(*) FROM flyway_s
 [ "$failed" -eq 0 ] || die 1 "the backup records $failed failed migration(s); it was taken from a
        broken database. Choose an earlier backup. Nothing was changed."
 shipped=$(image_schema_version)
-if [ -z "$shipped" ]; then
-  log "warning: could not read which schema this version's app image ships (is it built?);"
-  log "         skipping the newer-than-this-version check."
+if [ -z "$shipped" ] && [ "$skip_version_check" -eq 1 ]; then
+  log "warning: --skip-version-check: not checking the backup against this version's migrations."
+elif [ -z "$shipped" ]; then
+  # Closed, not open: restoring a newer backup under older code is the downgrade that cannot be
+  # undone, so "could not tell" is a refusal.
+  die 5 "could not read which migrations this version's app image ships, so cannot tell whether
+       this backup (schema $restored) is newer than it. Build the images first
+       (docker compose build), or, if you are sure, run again with --skip-version-check.
+       Nothing was changed."
 elif [ "$restored" -gt "$shipped" ]; then
   die 5 "this backup was made by a NEWER Budget Owl (schema $restored); the version here only
        knows up to schema $shipped. Migrations cannot be undone, so this version cannot run it.

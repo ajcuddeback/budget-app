@@ -80,10 +80,16 @@ schema_version() {
 }
 
 # image_schema_version — the highest migration shipped in the api image, without starting it.
-# Empty if the image is not present locally (nothing is pulled or built to find out).
+# Empty if it cannot be read, including when the image is not on this machine: nothing is pulled
+# or built to find out. (No `run --pull never`: Debian 13's Compose 2.26 does not accept it, and
+# a caller that treated the resulting empty answer as "fine" is how this check once failed open.)
 image_schema_version() {
-  dc run --rm --no-deps -T --pull never --entrypoint sh "$API_SERVICE" -c 'unzip -l app.jar' \
-      2>/dev/null \
+  local image
+  image=$(dc config --images 2>/dev/null | grep -m1 'budget-owl-api' || true)
+  if [ -n "$image" ] && ! docker image inspect "$image" >/dev/null 2>&1; then
+    return 0
+  fi
+  dc run --rm --no-deps -T --entrypoint sh "$API_SERVICE" -c 'unzip -l app.jar' 2>/dev/null \
     | grep -o 'db/migration/V[0-9]*__' | sed 's#db/migration/V##; s#__##' | sort -n | tail -1 \
     || true
 }
