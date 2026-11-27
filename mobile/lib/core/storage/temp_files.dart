@@ -1,6 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:budget_owl/core/config/environment.dart';
+import 'package:budget_owl/core/http/api_client.dart' show debugLogFailure;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -17,6 +19,10 @@ import 'package:path_provider/path_provider.dart';
 ///   before the picker returns. If the pick fails, or the app dies before the import's `finally`,
 ///   nothing knows its path. Swept: a real directory directly under the temporary directory, named
 ///   as a UUID, holding exactly one regular file and nothing else.
+/// - **`tmp/<bundle id>-Inbox/`** (iOS): file_selector_ios opens a document "as a copy", into the
+///   Inbox folder in the real `tmp/` — not Dart's temporary directory, which on iOS is
+///   `Library/Caches`. AppDelegate says where both are ([PickerInbox]); everything in the Inbox
+///   is swept (round 5, U2).
 ///
 /// Swept on every wipe (sign-out, `401`, change of server) and once at start-up. Nothing outside
 /// the temporary directory is ever deleted: links are never followed, and every path is checked to
@@ -31,6 +37,33 @@ abstract final class TempFiles {
 
 /// The app's temporary directory.
 final temporaryDirectoryProvider = FutureProvider<Directory>((ref) => getTemporaryDirectory());
+
+/// AppDelegate's file methods (ios/Runner/AppDelegate.swift).
+const MethodChannel filesChannel = MethodChannel('app.budgetowl/files');
+
+/// Where file_selector_ios leaves its copies: [inbox], inside the real [temporary] (`tmp/`).
+final class PickerInbox {
+  const PickerInbox({required this.temporary, required this.inbox});
+
+  final Directory temporary;
+  final Directory inbox;
+}
+
+/// The iOS picker's Inbox, as AppDelegate resolves it from the bundle id; null on any other
+/// platform, or when it cannot be had (then nothing is swept there).
+final pickerInboxProvider = FutureProvider<PickerInbox?>((ref) async {
+  if (ref.watch(targetPlatformProvider) != TargetPlatform.iOS) return null;
+  try {
+    final paths = await filesChannel.invokeMapMethod<String, String>('pickerInbox');
+    final temporary = paths?['temporary'];
+    final inbox = paths?['inbox'];
+    if (temporary == null || inbox == null) return null;
+    return PickerInbox(temporary: Directory(temporary), inbox: Directory(inbox));
+  } on Object catch (error) {
+    debugLogFailure('finding the picker inbox', error);
+    return null;
+  }
+});
 
 /// Only the files this app names: `budget-owl-<report>-<from>-<to>.csv`.
 bool isExportName(String name) =>
@@ -84,10 +117,44 @@ Future<void> sweepPickerCopies(Directory temporary) async {
   }
 }
 
-/// The start-up and wipe sweep: exports everywhere, the picker's copies on Android.
-Future<void> sweepTemporaryFiles(Directory temporary, {required TargetPlatform platform}) async {
+/// Where the document picker leaves its copy of a picked file, for the picker to delete it at
+/// once: on iOS the real `tmp/` (its Inbox is there; Dart's temporary directory is
+/// `Library/Caches`, which holds none), elsewhere the temporary directory (round 5, U2).
+final pickerCopyRootProvider = FutureProvider<Directory>((ref) async {
+  final inbox = await ref.watch(pickerInboxProvider.future);
+  return inbox?.temporary ?? await ref.watch(temporaryDirectoryProvider.future);
+});
+
+/// file_selector_ios's copies: everything in [PickerInbox.inbox], which must be a real directory
+/// directly inside [PickerInbox.temporary] whose name ends in `-Inbox`. Nothing is followed: a link
+/// in it is deleted as a link, and an Inbox that is itself a link is left alone.
+Future<void> sweepPickerInbox(PickerInbox picker) async {
+  // The Inbox must be named by AppDelegate as directly inside tmp/ (both paths as it gave them:
+  // on iOS /var is a link to /private/var, so they are compared before anything is resolved).
+  String normal(Directory d) => d.absolute.uri.normalizePath().path.replaceAll(RegExp(r'/+$'), '');
+  final name = picker.inbox.uri.pathSegments.where((s) => s.isNotEmpty).last;
+  if (!name.endsWith('-Inbox') || normal(picker.inbox.parent) != normal(picker.temporary)) return;
+  final root = _real(picker.temporary);
+  if (root == null) return;
+  final inbox = Directory('$root/$name');
+  if (!_isRealDirectoryInside(inbox.path, root)) return;
+  for (final entry in _children(inbox)) {
+    if (!isInsideDirectory(entry.path, root)) continue;
+    // A directory is deleted with what it holds; Dart deletes a link in it as a link.
+    await _delete(entry, recursive: entry is Directory);
+  }
+}
+
+/// The start-up and wipe sweep: exports everywhere, the picker's copies on Android (UUID folders)
+/// and on iOS (its Inbox, when [inbox] says where it is).
+Future<void> sweepTemporaryFiles(
+  Directory temporary, {
+  required TargetPlatform platform,
+  PickerInbox? inbox,
+}) async {
   await sweepExports(temporary);
   if (platform == TargetPlatform.android) await sweepPickerCopies(temporary);
+  if (platform == TargetPlatform.iOS && inbox != null) await sweepPickerInbox(inbox);
 }
 
 /// [temporary] with its links resolved, or null when it does not exist.

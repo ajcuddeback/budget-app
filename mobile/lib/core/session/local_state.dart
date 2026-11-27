@@ -102,6 +102,7 @@ final localStateProvider = Provider<LocalState>(
       await sweepTemporaryFiles(
         await ref.read(temporaryDirectoryProvider.future),
         platform: ref.read(targetPlatformProvider),
+        inbox: await ref.read(pickerInboxProvider.future),
       );
     },
   ),

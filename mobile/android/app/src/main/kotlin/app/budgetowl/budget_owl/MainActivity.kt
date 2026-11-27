@@ -12,6 +12,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.security.KeyStore
+import java.security.MessageDigest
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,51 +64,111 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLIPBOARD_CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method != SET_SENSITIVE && call.method != CLEAR) {
-                    result.notImplemented()
-                    return@setMethodCallHandler
-                }
-                if (handleClipboard(call.method, call.argument<String>("text"))) {
-                    result.success(null)
-                } else {
-                    result.error("unavailable", null, null)
+                when (call.method) {
+                    SET_SENSITIVE -> {
+                        val text = call.argument<String>("text")
+                        val receipt = text?.let { copySensitive(it) }
+                        if (receipt == null) {
+                            result.error("unavailable", null, null)
+                        } else {
+                            result.success(receipt)
+                        }
+                    }
+                    CLEAR_IF_UNCHANGED -> {
+                        val receipt = call.argument<Int>("receipt")
+                        result.success(if (receipt == null) CHANGED else clearIfUnchanged(receipt))
+                    }
+                    else -> result.notImplemented()
                 }
             }
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** The one copy this app may take back: what it can be recognised by, never its text. */
+    private class Copied(val receipt: Int, val timestamp: Long?, val digest: ByteArray)
+
+    private var copied: Copied? = null
+    private var receipts = 0
+
+    /** A take-back asked for while the app was not focused, checked again on focus. */
+    private var pendingClear: Int? = null
+
     /**
-     * A credential the person chose to copy (an invitation link), and taking it back. On Android
-     * 13+ the clip is marked ClipDescription.EXTRA_IS_SENSITIVE: the system's copy preview hides
-     * it and keyboards leave it out of clipboard suggestions. Below 13 there is no such flag and
-     * it is a plain copy. The clip has no label, so nothing about it is described either. Dart
-     * reads the clipboard back and asks for "clear" only while it still holds that text
-     * (lib/core/platform/sensitive_clipboard.dart). Needs checking on a device.
+     * A credential the person chose to copy (an invitation link). On Android 13+ the clip is
+     * marked ClipDescription.EXTRA_IS_SENSITIVE: the system's copy preview hides it and keyboards
+     * leave it out of clipboard suggestions. Below 13 nothing can mark it: it is a plain clip
+     * until it is taken back. The clip has no label. Returns a receipt for [clearIfUnchanged].
+     * Needs checking on a device.
      */
-    private fun handleClipboard(method: String, text: String?): Boolean {
-        val clipboard = getSystemService(ClipboardManager::class.java) ?: return false
-        when (method) {
-            SET_SENSITIVE -> {
-                val clip = ClipData.newPlainText("", text ?: return false)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    clip.description.extras =
-                        PersistableBundle().apply {
-                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                        }
+    private fun copySensitive(text: String): Int? {
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return null
+        val clip = ClipData.newPlainText("", text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            clip.description.extras =
+                PersistableBundle().apply {
+                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
                 }
-                clipboard.setPrimaryClip(clip)
-            }
-            CLEAR ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    clipboard.clearPrimaryClip()
-                } else {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
-                }
-            else -> return false
         }
-        return true
+        clipboard.setPrimaryClip(clip)
+        // Our own clip, read back at once while focused: its timestamp, set by the system, is
+        // how it is recognised later (Android 8+). Below 8 a digest of the text is kept instead.
+        val timestamp =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                clipboard.primaryClipDescription?.timestamp
+            } else {
+                null
+            }
+        val receipt = ++receipts
+        copied = Copied(receipt, timestamp, sha256(text))
+        pendingClear = null
+        return receipt
     }
+
+    /**
+     * Empties the clipboard if it still holds the copy [receipt] names, **without reading what
+     * is on it** on Android 8+: only the clip's description, whose timestamp is compared, which
+     * shows no "pasted from your clipboard" notice (that is getPrimaryClip, Android 12+). Below 8
+     * a digest of the clip is compared; those versions have no notice and no background limit.
+     * Android 10+ refuses any clipboard access to an app that is not focused: then the check is
+     * deferred to the next time the window has focus ([onWindowFocusChanged]).
+     */
+    private fun clearIfUnchanged(receipt: Int): String {
+        val record = copied
+        if (record == null || record.receipt != receipt) return CHANGED
+        if (!hasWindowFocus()) {
+            pendingClear = receipt
+            return DEFERRED
+        }
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return CHANGED
+        val unchanged =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val now = clipboard.primaryClipDescription
+                record.timestamp != null && now != null && now.timestamp == record.timestamp
+            } else {
+                val clip = clipboard.primaryClip
+                val text = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).text else null
+                text != null && MessageDigest.isEqual(sha256(text.toString()), record.digest)
+            }
+        copied = null
+        pendingClear = null
+        if (!unchanged) return CHANGED
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            clipboard.clearPrimaryClip()
+        } else {
+            clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+        }
+        return CLEARED
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        val pending = pendingClear
+        if (hasFocus && pending != null) clearIfUnchanged(pending)
+    }
+
+    private fun sha256(text: String): ByteArray =
+        MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
 
     /** The DER encoding of every enabled user-installed CA: AndroidCAStore aliases "user:…". */
     private fun userCaCertificates(): List<ByteArray> {
@@ -124,6 +185,9 @@ class MainActivity : FlutterActivity() {
         const val USER_ALIAS_PREFIX = "user:"
         const val CLIPBOARD_CHANNEL = "app.budgetowl/clipboard"
         const val SET_SENSITIVE = "setSensitive"
-        const val CLEAR = "clear"
+        const val CLEAR_IF_UNCHANGED = "clearIfUnchanged"
+        const val CLEARED = "cleared"
+        const val CHANGED = "changed"
+        const val DEFERRED = "deferred"
     }
 }

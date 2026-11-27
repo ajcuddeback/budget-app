@@ -123,9 +123,27 @@ void main() {
           reason: 'the same channel',
         );
         expect(activity, contains('SET_SENSITIVE = "setSensitive"'));
-        expect(dart, contains("invokeMethod<void>('setSensitive', {'text': text})"));
-        expect(activity, contains('CLEAR = "clear"'));
-        expect(dart, contains("invokeMethod<void>('clear')"));
+        expect(dart, contains("invokeMethod<int>('setSensitive', {'text': text})"));
+        expect(activity, contains('CLEAR_IF_UNCHANGED = "clearIfUnchanged"'));
+        expect(dart, contains("invokeMethod<String>('clearIfUnchanged', {"));
+        // U3: recognised by the clip's timestamp, from its description — never its content on
+        // Android 8+, where reading it shows "pasted from your clipboard" (12+).
+        expect(
+          activity,
+          matches(
+            RegExp(
+              r'VERSION_CODES\.O\) \{\s*val now = clipboard\.primaryClipDescription\s*'
+              r'record\.timestamp != null && now != null && now\.timestamp == record\.timestamp',
+            ),
+          ),
+        );
+        expect(
+          RegExp(r'\.primaryClip\b(?!Description)').allMatches(activity),
+          hasLength(1),
+          reason: 'the clip itself is read once: below Android 8, for its digest',
+        );
+        expect(activity, contains('if (!hasWindowFocus()) {'), reason: 'Android 10+: deferred');
+        expect(activity, contains('override fun onWindowFocusChanged(hasFocus: Boolean)'));
         expect(
           activity,
           matches(
@@ -154,6 +172,43 @@ void main() {
   });
 
   group('iOS', () {
+    test('a copied credential is local-only, expires, and is taken back unread (U3)', () {
+      final delegate = File('ios/Runner/AppDelegate.swift')
+          .readAsStringSync()
+          .replaceAll(RegExp('//.*'), '');
+      final dart = File('lib/core/platform/sensitive_clipboard.dart').readAsStringSync();
+      expect(delegate, contains('static let clipboardChannel = "app.budgetowl/clipboard"'));
+      expect(delegate, contains('static let setSensitive = "setSensitive"'));
+      expect(delegate, contains('static let clearIfUnchanged = "clearIfUnchanged"'));
+      expect(delegate, contains('.localOnly: true,'));
+      expect(delegate, contains('.expirationDate: Date().addingTimeInterval(AppDelegate.expiry),'));
+      expect(delegate, contains('static let expiry: TimeInterval = 10 * 60'));
+      expect(dart, contains('iosExpiry = Duration(minutes: 10)'), reason: 'the same ten minutes');
+      expect(delegate, contains('guard pasteboard.changeCount == record.changeCount else {'));
+      for (final read in [
+        'pasteboard.string',
+        'pasteboard.strings',
+        'hasStrings',
+        'pasteboard.url',
+      ]) {
+        expect(delegate, isNot(contains(read)), reason: 'nothing is read back');
+      }
+      expect(
+        RegExp(r'pasteboard\.items\b').allMatches(delegate).length,
+        1,
+        reason: 'items only written, to empty it',
+      );
+      expect(delegate, contains('pasteboard.items = []'));
+      // U2: where the picker's copies are.
+      expect(delegate, contains('static let filesChannel = "app.budgetowl/files"'));
+      expect(
+        File('lib/core/storage/temp_files.dart').readAsStringSync(),
+        contains("MethodChannel('app.budgetowl/files')"),
+      );
+      expect(delegate, contains(r'appendingPathComponent("\(bundle)-Inbox", isDirectory: true)'));
+      expect(delegate, contains('URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)'));
+    });
+
     test('App Transport Security keeps its defaults: no key, so no exception', () {
       final plist = _xml('ios/Runner/Info.plist');
       expect(plist, isNot(contains('NSAppTransportSecurity')));

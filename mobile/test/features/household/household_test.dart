@@ -225,6 +225,20 @@ void main() {
       expect(phone.clipboard.clears, 0);
     });
 
+    testWidgets('U3: closed while the app is not focused, the check is left to the device', (
+      tester,
+    ) async {
+      final (_, phone) = await openHousehold(tester);
+      final link = await makeLink(tester);
+      phone.clipboard.background = true;
+
+      await tapVisible(tester, find.text('Done'));
+
+      // Android defers the timestamp check to the next focus (MainActivity); nothing throws here.
+      expect(phone.clipboard.text, link);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('L2: closed without copying, the clipboard is not touched', (tester) async {
       final (_, phone) = await openHousehold(tester);
       phone.clipboard.copiedElsewhere('earlier');

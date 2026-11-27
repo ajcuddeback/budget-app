@@ -74,4 +74,8 @@ Future<void> forgetPlatformCopy(String path, Directory temporary) async {
   }
 }
 
-final statementPickerProvider = Provider<StatementPicker>((ref) => SystemStatementPicker());
+final statementPickerProvider = Provider<StatementPicker>(
+  // On iOS the copy is in tmp/<bundle id>-Inbox/, not the temporary directory (Library/Caches):
+  // without this it was never deleted there (round 5, U2).
+  (ref) => SystemStatementPicker(temporary: () => ref.read(pickerCopyRootProvider.future)),
+);

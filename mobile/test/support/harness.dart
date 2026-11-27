@@ -45,32 +45,48 @@ final class MemorySecureStore implements SecureStore {
   Future<void> write(String key, String value) async => values[key] = value;
 }
 
-/// The phone's clipboard: what is on it, and whether it was marked sensitive.
+/// The phone's clipboard, as the native side sees it: what is on it, whether it was marked
+/// sensitive, and a change count that any copy moves on — so "still our copy" is decided as the
+/// device decides it, without anything reading the text.
 final class MemoryClipboard implements ClipboardPlatform {
   String? text;
   bool sensitive = false;
   int clears = 0;
+  int _changes = 0;
+  int _receipts = 0;
+  ({int receipt, int change})? _ours;
+
+  /// While set, the app is not focused: Android defers the check (ClearOutcome.deferred).
+  bool background = false;
 
   @override
-  Future<void> setSensitive(String text) async {
+  Future<int?> setSensitive(String text) async {
     this.text = text;
     sensitive = true;
+    _ours = (receipt: ++_receipts, change: ++_changes);
+    return _receipts;
   }
 
   @override
-  Future<String?> read() async => text;
-
-  @override
-  Future<void> clear() async {
+  Future<ClearOutcome> clearIfUnchanged(int receipt) async {
+    if (background) return ClearOutcome.deferred;
+    final ours = _ours;
+    if (ours == null || ours.receipt != receipt || ours.change != _changes) {
+      return ClearOutcome.changed;
+    }
     clears++;
     text = null;
     sensitive = false;
+    _ours = null;
+    _changes++;
+    return ClearOutcome.cleared;
   }
 
   /// The person copies something else, in this app or another.
   void copiedElsewhere(String other) {
     text = other;
     sensitive = false;
+    _changes++;
   }
 }
 
@@ -135,6 +151,7 @@ final class TestPhone {
       return temporaryDirectory;
     }),
     clipboardPlatformProvider.overrideWithValue(clipboard),
+    pickerInboxProvider.overrideWith((ref) async => null),
     clockProvider.overrideWithValue(() => now),
     allowLocalCleartextProvider.overrideWithValue(allowLocalCleartext),
     targetPlatformProvider.overrideWithValue(TargetPlatform.android),

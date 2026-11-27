@@ -4,11 +4,13 @@ import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/auth/token_store.dart';
 import 'package:budget_owl/core/cache/cache_holder.dart';
 import 'package:budget_owl/core/cache/cache_key_store.dart';
+import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/session/local_state.dart';
 import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/storage/temp_files.dart';
 import 'package:budget_owl/features/import/data/statement_file.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -115,6 +117,175 @@ void main() {
     test('a temporary directory that does not exist is nothing to sweep', () async {
       final temp = scratch('budget-owl-temp')..deleteSync();
       await sweepTemporaryFiles(temp, platform: TargetPlatform.android);
+    });
+  });
+
+  group("U2: iOS's picker Inbox", () {
+    const bundleInbox = 'app.budgetowl.budgetOwl-Inbox';
+
+    PickerInbox inboxIn(Directory tmp, [String name = bundleInbox]) =>
+        PickerInbox(temporary: tmp, inbox: Directory('${tmp.path}/$name'));
+
+    test('everything in tmp/<bundle id>-Inbox/ goes, and nothing beside it', () async {
+      final tmp = scratch('budget-owl-ios-tmp');
+      write(tmp, '$bundleInbox/Statement 2026-07.ofx');
+      write(tmp, '$bundleInbox/statement-2.csv');
+      write(tmp, '$bundleInbox/nested/statement.qif');
+      write(tmp, 'WebKit/cache.db');
+      write(tmp, 'beside.txt');
+
+      await sweepPickerInbox(inboxIn(tmp));
+
+      expect(Directory('${tmp.path}/$bundleInbox').listSync(), isEmpty);
+      expect(there(tmp, 'WebKit/cache.db'), isTrue);
+      expect(there(tmp, 'beside.txt'), isTrue);
+    });
+
+    test('never outside tmp: links in it go as links, an Inbox that is a link is left', () async {
+      final tmp = scratch('budget-owl-ios-tmp');
+      final outside = scratch('budget-owl-outside');
+      final precious = write(outside, 'kept.ofx');
+      Directory('${tmp.path}/$bundleInbox').createSync();
+      Link('${tmp.path}/$bundleInbox/to-file').createSync(precious.path);
+      Link('${tmp.path}/$bundleInbox/to-folder').createSync(outside.path);
+
+      await sweepPickerInbox(inboxIn(tmp));
+
+      expect(precious.existsSync(), isTrue);
+      expect(there(tmp, '$bundleInbox/to-file'), isFalse, reason: 'the link itself went');
+
+      final linked = scratch('budget-owl-ios-tmp');
+      Link('${linked.path}/$bundleInbox').createSync(outside.path);
+      await sweepPickerInbox(inboxIn(linked));
+      expect(precious.existsSync(), isTrue);
+    });
+
+    test('only a folder named *-Inbox directly in tmp', () async {
+      final tmp = scratch('budget-owl-ios-tmp');
+      write(tmp, 'Documents/statement.ofx');
+      write(tmp, 'deeper/$bundleInbox/statement.ofx');
+      // A real Inbox too: a request naming any other place sweeps nothing, not this one either.
+      write(tmp, '$bundleInbox/statement.ofx');
+
+      await sweepPickerInbox(inboxIn(tmp, 'Documents'));
+      await sweepPickerInbox(
+        PickerInbox(temporary: tmp, inbox: Directory('${tmp.path}/deeper/$bundleInbox')),
+      );
+
+      expect(there(tmp, 'Documents/statement.ofx'), isTrue);
+      expect(there(tmp, 'deeper/$bundleInbox/statement.ofx'), isTrue);
+      expect(there(tmp, '$bundleInbox/statement.ofx'), isTrue);
+    });
+
+    test('a tmp/ reached through a link, as /var is on iOS, is still swept', () async {
+      final real = scratch('budget-owl-private-var');
+      write(real, '$bundleInbox/statement.ofx');
+      final holder = scratch('budget-owl-var');
+      final viaLink = Link('${holder.path}/tmp')..createSync(real.path);
+
+      await sweepPickerInbox(inboxIn(Directory(viaLink.path)));
+
+      expect(there(real, '$bundleInbox/statement.ofx'), isFalse);
+    });
+
+    test('the start-up and wipe sweep: the Inbox on iOS only', () async {
+      final caches = scratch('budget-owl-caches');
+      final tmp = scratch('budget-owl-ios-tmp');
+      write(tmp, '$bundleInbox/statement.ofx');
+
+      await sweepTemporaryFiles(caches, platform: TargetPlatform.android, inbox: inboxIn(tmp));
+      expect(there(tmp, '$bundleInbox/statement.ofx'), isTrue);
+
+      await sweepTemporaryFiles(caches, platform: TargetPlatform.iOS, inbox: inboxIn(tmp));
+      expect(there(tmp, '$bundleInbox/statement.ofx'), isFalse);
+    });
+
+    test('AppDelegate says where it is; on Android nothing is asked', () async {
+      final calls = <String>[];
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        ..setMockMethodCallHandler(filesChannel, (call) async {
+          calls.add(call.method);
+          return {'temporary': '/private/var/tmp', 'inbox': '/private/var/tmp/$bundleInbox'};
+        });
+      addTearDown(() => messenger.setMockMethodCallHandler(filesChannel, null));
+
+      ProviderContainer on(TargetPlatform platform) {
+        final c = ProviderContainer(
+          overrides: [targetPlatformProvider.overrideWithValue(platform)],
+          retry: noRetry,
+        );
+        addTearDown(c.dispose);
+        return c;
+      }
+
+      final ios = await on(TargetPlatform.iOS).read(pickerInboxProvider.future);
+      expect(ios?.inbox.path, '/private/var/tmp/$bundleInbox');
+      expect(ios?.temporary.path, '/private/var/tmp');
+      expect(await on(TargetPlatform.android).read(pickerInboxProvider.future), isNull);
+      expect(calls, ['pickerInbox']);
+
+      messenger.setMockMethodCallHandler(
+        filesChannel,
+        (call) async => throw PlatformException(code: 'unavailable'),
+      );
+      expect(await on(TargetPlatform.iOS).read(pickerInboxProvider.future), isNull);
+    });
+
+    test("an iOS pick deletes its own copy at once, in tmp/'s Inbox, not Caches", () async {
+      final caches = scratch('budget-owl-caches');
+      final tmp = scratch('budget-owl-ios-tmp');
+      ProviderContainer on(TargetPlatform platform) {
+        final c = ProviderContainer(
+          overrides: [
+            targetPlatformProvider.overrideWithValue(platform),
+            temporaryDirectoryProvider.overrideWith((ref) async => caches),
+            pickerInboxProvider.overrideWith(
+              (ref) async => platform == TargetPlatform.iOS ? inboxIn(tmp) : null,
+            ),
+          ],
+          retry: noRetry,
+        );
+        addTearDown(c.dispose);
+        return c;
+      }
+
+      final ios = on(TargetPlatform.iOS);
+      expect((await ios.read(pickerCopyRootProvider.future)).path, tmp.path);
+      expect(
+        (await on(TargetPlatform.android).read(pickerCopyRootProvider.future)).path,
+        caches.path,
+      );
+
+      final copy = write(tmp, '$bundleInbox/Statement 2026-07.ofx');
+      final picked = await SystemStatementPicker(
+        open: () async => XFile(copy.path),
+        temporary: () => ios.read(pickerCopyRootProvider.future),
+      ).pick();
+
+      expect(picked?.name, 'Statement 2026-07.ofx');
+      expect(copy.existsSync(), isFalse);
+    });
+
+    test("an iOS phone's wipe sweeps the Inbox", () async {
+      final tmp = scratch('budget-owl-ios-tmp');
+      write(tmp, '$bundleInbox/statement.ofx');
+      final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))..signedIn('owner');
+      final c = ProviderContainer(
+        overrides: [
+          for (final o in phone.overrides)
+            if (!identical(o.origin, targetPlatformProvider) &&
+                !identical(o.origin, pickerInboxProvider))
+              o,
+          targetPlatformProvider.overrideWithValue(TargetPlatform.iOS),
+          pickerInboxProvider.overrideWith((ref) async => inboxIn(tmp)),
+        ],
+        retry: noRetry,
+      );
+      addTearDown(c.dispose);
+
+      await c.read(localStateProvider).wipe();
+
+      expect(there(tmp, '$bundleInbox/statement.ofx'), isFalse);
     });
   });
 
