@@ -199,12 +199,6 @@ final List<Scenario> scenarios = [
     await tapText(tester, 'More');
     return phone;
   }),
-
-  Scenario('placeholder', bothThemes, (tester, v) async {
-    final phone = await signedInPhone(tester, v);
-    await tapText(tester, 'Bills');
-    return phone;
-  }),
 ];
 
 /// A server whose certificate this phone does not trust: the handshake fails before HTTP.

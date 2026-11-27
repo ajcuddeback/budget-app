@@ -6,6 +6,8 @@ import 'package:budget_owl/features/connect/presentation/connect_screen.dart';
 import 'package:budget_owl/features/connect/presentation/join_screen.dart';
 import 'package:budget_owl/features/connect/presentation/setup_screen.dart';
 import 'package:budget_owl/features/connect/presentation/starting_screen.dart';
+import 'package:budget_owl/features/debt/presentation/debt_detail_screen.dart';
+import 'package:budget_owl/features/goals/presentation/goal_detail_screen.dart';
 import 'package:budget_owl/features/more/presentation/more_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,6 +57,30 @@ String? redirectFor(SessionState session, String location) {
   }
 }
 
+/// Detail screens, each a child of its More entry so the entry is beneath it and back returns to
+/// it. The id in the path is the server's id, never a slug: a slug would put a name in history.
+final Map<String, List<RouteBase>> _detailRoutes = {
+  '/more/debt-plan': [
+    GoRoute(
+      path: ':id',
+      // Keyed by the id: stepping to a sibling debt is a new page, never the last one's state.
+      builder: (_, state) {
+        final id = state.pathParameters['id']!;
+        return DebtDetailScreen(key: ValueKey(id), id: id);
+      },
+    ),
+  ],
+  '/more/goals': [
+    GoRoute(
+      path: ':id',
+      builder: (_, state) {
+        final id = state.pathParameters['id']!;
+        return GoalDetailScreen(key: ValueKey(id), id: id);
+      },
+    ),
+  ],
+};
+
 /// Re-runs [redirectFor] whenever the session changes.
 final class _SessionListenable extends ChangeNotifier {
   _SessionListenable(Ref ref) {
@@ -92,6 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     GoRoute(
                       path: entry.path.substring('${Routes.more}/'.length),
                       builder: (context, _) => entry.screen(context),
+                      routes: _detailRoutes[entry.path] ?? const [],
                     ),
                 ],
               ),

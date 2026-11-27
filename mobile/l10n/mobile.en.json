@@ -82,6 +82,9 @@
   "transactions.readOnlyRow": "Your role in this household can read transactions but not change them.",
   "transactions.categoryTrail": "{parent} › {name}",
   "transfers.accountsTrail": "{from} › {to}",
+  "goals.openTrail": "Open ›",
+  "goals.openNamed": "Open {name}",
+  "goals.backToAll": "Back to all goals",
 
   "devices.thisPhone": "This phone",
   "devices.confirmHeadingPhone": "Sign out of this phone?",

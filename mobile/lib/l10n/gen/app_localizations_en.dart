@@ -3546,6 +3546,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goals_back => '← All goals';
 
   @override
+  String get goals_backToAll => 'Back to all goals';
+
+  @override
   String get goals_contribute_amount => 'Amount';
 
   @override
@@ -3780,6 +3783,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get goals_open => 'Open →';
+
+  @override
+  String goals_openNamed(String name) {
+    return 'Open $name';
+  }
+
+  @override
+  String get goals_openTrail => 'Open ›';
 
   @override
   String get goals_overdueTag => 'Overdue';

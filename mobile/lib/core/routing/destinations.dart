@@ -1,8 +1,11 @@
 import 'package:budget_owl/features/accounts/presentation/accounts_screen.dart';
 import 'package:budget_owl/features/admin/presentation/admin_screen.dart';
+import 'package:budget_owl/features/bills/presentation/bills_screen.dart';
 import 'package:budget_owl/features/categories/presentation/categories_screen.dart';
+import 'package:budget_owl/features/debt/presentation/debt_plan_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
 import 'package:budget_owl/features/envelopes/presentation/envelopes_screen.dart';
+import 'package:budget_owl/features/goals/presentation/goals_screen.dart';
 import 'package:budget_owl/features/household/presentation/household_screen.dart';
 import 'package:budget_owl/features/preferences/presentation/preferences_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
@@ -53,7 +56,7 @@ final List<Destination> tabs = [
     path: '/bills',
     label: (l) => l.nav_bills,
     icon: Icons.event_repeat_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_bills),
+    screen: (_) => const BillsScreen(),
   ),
 
   Destination(
@@ -70,14 +73,14 @@ final List<Destination> moreEntries = [
     path: '/more/debt-plan',
     label: (l) => l.nav_debtPlan,
     icon: Icons.trending_down_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_debtPlan),
+    screen: (_) => const DebtPlanScreen(),
   ),
 
   Destination(
     path: '/more/goals',
     label: (l) => l.nav_goals,
     icon: Icons.flag_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_goals),
+    screen: (_) => const GoalsScreen(),
   ),
 
   Destination(

@@ -5201,6 +5201,10 @@
   "@goals_back": {
     "description": "Web en.json \"goals.back\"."
   },
+  "goals_backToAll": "Back to all goals",
+  "@goals_backToAll": {
+    "description": "Mobile only (l10n/mobile.en.json \"goals.backToAll\")."
+  },
   "goals_contribute_amount": "Amount",
   "@goals_contribute_amount": {
     "description": "Web en.json \"goals.contribute.amount\"."
@@ -5554,6 +5558,19 @@
   "goals_open": "Open →",
   "@goals_open": {
     "description": "Web en.json \"goals.open\"."
+  },
+  "goals_openNamed": "Open {name}",
+  "@goals_openNamed": {
+    "description": "Mobile only (l10n/mobile.en.json \"goals.openNamed\").",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "goals_openTrail": "Open ›",
+  "@goals_openTrail": {
+    "description": "Mobile only (l10n/mobile.en.json \"goals.openTrail\")."
   },
   "goals_overdueTag": "Overdue",
   "@goals_overdueTag": {
