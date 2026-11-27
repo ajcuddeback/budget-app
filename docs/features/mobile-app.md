@@ -68,7 +68,11 @@ such, and says plainly that changes have to wait.
   CA, such as one an employer's device management pushed to inspect TLS. The phone's CAs are read
   again whenever the app comes back to the foreground: a pinned CA removed in Settings is no
   longer trusted for any new connection, and the server fails as "certificate not trusted". A
-  sign-out keeps the pin with the address; changing server clears both. The chain and the host
+  sign-out keeps the pin with the address; changing server clears both. **The pin is shown**:
+  the Connect screen's choices and More → Server say *"Trusted through '{name}', a certificate
+  authority installed on this phone."*, the name being the CA certificate's subject CN (or O; the
+  start of its fingerprint when it has neither), so a CA the person does not recognise can be
+  noticed. Nothing extra is said for a server the system roots verify. The chain and the host
   name are always verified, and a store that cannot be read means the system roots only (fails
   closed). This **needs checking on a device** (Known gaps). The error screen distinguishes, in its
   own words: host not found, connection refused or timed out, certificate not trusted,
@@ -198,8 +202,8 @@ Household, Devices, Preferences, and Admin for an instance administrator.
 No server-side change beyond `GET /api/meta` (no migration). On the device:
 
 ```
-secure storage   server_url, server_ca_pin (Android, when the server needed a user CA), token
-                 (with the origin that issued it), cache_key
+secure storage   server_url, server_ca_pin and server_ca_name (Android, when the server needed
+                 a user CA), token (with the origin that issued it), cache_key
 drift (sqlcipher) cache_entries(key TEXT PK, household_id TEXT, body TEXT, fetched_at INT, bytes INT)
 shared prefs     theme override, text-only UI preferences — never anything financial
 ```
@@ -258,7 +262,7 @@ been removed; someone reading a bug report or crash log.
    forbids `print` and `debugPrint` anywhere else. That line is the method, the path with long
    segments redacted, and the status: never a body, a header or a query string. Beside it,
    `debugLogFailure` (also debug-only, same file) names a local step that failed and the error's
-   type, never its message.
+   type, never its message. A pinned CA's name is never logged: `CaPin.toString` leaves it out.
 7. **Screenshots in the app switcher.** Android `FLAG_SECURE` is **not** set (it also blocks the
    user's own screenshots); instead, the app covers its content when it goes to the background
    (iOS and Android), so the task switcher shows no balances. This is the privacy option with the
@@ -479,6 +483,15 @@ After the round-2 audit:
 | P2 a removed CA stops being trusted | The store is re-read on every return to the foreground (`reloadTrustOnResume`, `AppLifecycleListener`), and the inner client swapped when the trust changes | A re-read not applied; the inner client not swapped; the listener doing nothing on resume; the provider not wiring it | `user_trust_test`: CA removed (twice: direct, and with a keep-alive connection open), the redirect test that pins before the first read; the same plus the shared-transport tests (the old client was closed under them); the foreground test; the source check |
 | AND1, again | — | The pinned CA not added; a trust-anyway callback; a store read failure propagating | 7 `user_trust_test` cases; `guards_test`, `real_transport_test` ×2 and 11 `user_trust_test` cases; the store-failure test |
 
+After the round-3 audit:
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| S1 the pin is shown | `checkAndPin` returns a `CaPin` (fingerprint and the CA's subject CN or O, from a small DER walk, cleaned: no control or direction-override characters, at most 64); `ServerStore` keeps the name beside the pin, cleaned again on read; `pinnedCaProvider`; `TrustedThroughNote` on Connect's choices and under More → Server; goldens `connect-choices-pinned` (light, dark, RTL, text 2×) and `more-pinned` (light, dark, text 2×), read | The Connect note removed; the More note removed; the O preferred to the CN; direction overrides kept; the name in `toString`; a server change leaving it on screen; the name not stored | 2 widget tests and 4 goldens; 1 widget test and 3 goldens; the names test; the hostile-name test and the stored-name re-clean; the log test; `pin_session_test` change-of-server; connect |
+| S2 a late /me belongs to its sign-in | `_refreshMe` carries the epoch it started under and drops an answer for any other | The epoch comparison removed | `session_test` S2. Its first version passed with the fix removed: Dio runs interceptors asynchronously, so the refresh went out after the sign-out had taken the token, with none. It now waits until the owner's request is on the wire |
+| S3 wipes waited for, not timed | `settleUntil`, `untilSignedOut`, `untilSession`; `pumpApp` waits for start-up (which wipes when there is no token) | The wipe slowed by 1 s | With the waits every feature, journey and golden test passed; the no-household test on the old fixed settle failed with the cache key still stored |
+| Guard the shared transport | `httpAdapterProvider` hands out a `SharedTransport` whose `close()` throws in a debug build; the grep guard is an allow-list of file and receiver | `close()` quiet in debug; a `ref.read(httpAdapterProvider).close()` in `session.dart` (a receiver the old name list never matched) | `real_transport_test` H1; `guards_test` |
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -504,7 +517,9 @@ through (now opaque).
 - **A CA already intercepting when the person connects is the one pinned.** Pinning protects a
   server from a user CA added *after* it was connected to (the device-management case). If an
   interception CA is in place at the moment of connecting, it is the CA that verifies the server
-  then, and it is pinned. Changing server and connecting again re-pins.
+  then, and it is pinned. Changing server and connecting again re-pins. The mitigation is that
+  the pin is **named on screen** (Connect, More → Server): an unfamiliar CA name is the person's
+  cue. The name is whatever the CA's maker wrote; an inspection CA can call itself anything.
 - **A system CA the person disabled in Settings is still trusted.** Dart reads the system
   certificate directory itself, not Android's list of enabled system CAs.
 - **A connection already open when the pinned CA is removed** finishes the request it is carrying;

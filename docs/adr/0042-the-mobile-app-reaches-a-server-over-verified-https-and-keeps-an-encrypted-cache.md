@@ -81,7 +81,13 @@ it keep on the phone, and how? What happens to an edit made with no signal?
   host name are verified as for any server; a store that cannot be read means the system roots
   alone. **What it does not cover:** a CA that is already intercepting at the moment the person
   connects is the one that verifies the server then, and is pinned; and a system CA the person
-  disabled in Settings is still trusted, because Dart reads the system directory itself.
+  disabled in Settings is still trusted, because Dart reads the system directory itself. Because
+  the pin is trust-on-first-use, **it is shown** (round 3, S1): when a user CA is pinned, the
+  Connect screen's choices and More → Server say which, by its certificate's subject CN (or O) —
+  *"Trusted through 'Acme Inspection CA', a certificate authority installed on this phone."* —
+  so a person who connected behind an inspection proxy can see it. The name is the CA maker's own
+  text: display only, cleaned of control and direction-override characters, never logged. A
+  server the system roots verify gets no sentence.
   Real-socket tests prove it with three per-run test CAs; **the channel itself needs checking on
   a device**, since no test here runs Android.
 - **Writes wait for this launch's version check** (2026-11-26, slice 15 phase 2). Decision 2's
