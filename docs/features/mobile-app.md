@@ -152,8 +152,13 @@ The one new API route. Public, so the app can identify a server before anyone si
   sign-out was a change of server), and removes it only once the token is confirmed gone. A
   launch that finds it ends the session again — the wipe, no token loaded, the delete tried
   again — before reading anything else, and shows the unfinished state again if the token is
-  still there. A new sign-in, whose token replaces the old one, removes it too. A marker that
-  cannot be written is logged (debug builds) and the sign-out goes on. `connect()` turns a failed wipe into its own failure, *"This phone could
+  still there. A new sign-in removes a marker still left (its removal had failed) **before**
+  saving its token, so a kill in between cannot make the next launch wipe the new session (round
+  8, X2). A marker that cannot be written is logged (debug builds) and the sign-out goes on. *Try
+  again* that finishes, keeping the server, **starts the session over** (start-up applies the
+  server's CA pin and makes it current, in that order), because a launch that found the marker
+  stopped before doing either; without it the sign-in that followed had no client to send with
+  (round 8, X1). `connect()` turns a failed wipe into its own failure, *"This phone could
   not clear what it held for the previous server, so nothing was connected"*: no server is saved
   or current, so a half-wiped phone is never connected to a new origin.
 
@@ -584,6 +589,15 @@ deleted had expected *"Your session ended"* — exactly what W1 refuses; it now 
 unfinished state. The test store's `unreadable` also threw for a key already deleted, which no
 Keystore does; it now throws only while a value is stored.
 
+After the round-8 audit:
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| X1 Try again after a relaunch | A retry from `SessionSignOutIncomplete` that finishes and keeps the server calls `ref.invalidateSelf()`: start-up runs again, applying the CA pin and setting the current server before sign-in | Landing on `SessionSignedOut` without starting over (the round-7 code) | The relaunch-then-retry-then-sign-in test: no current server, so the sign-in had no client |
+| X2 the marker goes before the new token | `signIn` removes a stale marker before `TokenStore.save` | The two swapped back | The ordering test (the store's `onWrite` sees whether the marker is there when the token lands) |
+| A store that can never confirm | `MemorySecureStore.alwaysUnreadable`: a read throws even with nothing stored, so a sign-out ends at *"couldn't finish"* on purpose | — | Kept as a test of that path: the token is deleted but cannot be confirmed gone, and the marker stays |
+
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -855,6 +869,10 @@ length counter (removed); three scenarios scrolled past what they were meant to 
 - **At text 2.0 the shared `Screen` header breaks "Administration" mid-word** (one word wider than
   the phone). A shared-widget fix (scale a title down to fit) for every area; not done here.
 - **The invite link wraps at a hyphen**, as the web's text box does; *Copy link* copies it exactly.
+- **A start-up retry does not revoke the old token** (round 8, X3; accepted). When a sign-out's
+  revocation did not reach the server and its delete failed, a later launch ends the session
+  again without loading the token, so it cannot revoke it. That token stays live on the server
+  until it is revoked under *Devices* on the web — the device list there shows it.
 - **An unfinished sign-out is remembered only if Application Support can be written.** The
   marker is best effort: on a phone where that write also fails, closing the app on *"couldn't
   finish signing out"* and opening it again resumes with the surviving token, as before round 7.
