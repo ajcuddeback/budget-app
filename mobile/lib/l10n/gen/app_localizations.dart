@@ -3398,6 +3398,12 @@ abstract class AppLocalizations {
   /// **'Something answered at that address, but it isn\'t a Budget Owl server.'**
   String get connect_error_notBudgetOwl;
 
+  /// Mobile only (l10n/mobile.en.json "connect.error.phoneNotCleared").
+  ///
+  /// In en, this message translates to:
+  /// **'This phone could not clear what it held for the previous server, so nothing was connected. Try again.'**
+  String get connect_error_phoneNotCleared;
+
   /// Mobile only (l10n/mobile.en.json "connect.error.transport").
   ///
   /// In en, this message translates to:

@@ -339,7 +339,17 @@ final class SessionController extends Notifier<SessionState> {
     } else {
       await ServerCheck(transport).check(address);
     }
-    await _local.wipe(forgetServer: true);
+    try {
+      await _local.wipe(forgetServer: true);
+    } on Object catch (error) {
+      // Something of the previous server may be left: connect nothing to it (fails closed). Every
+      // step was attempted, the old address and its pin included, so the connect screen is the
+      // honest state.
+      debugLogFailure('wiping before connecting', error);
+      ref.read(currentServerProvider.notifier).set(null);
+      if (ref.mounted) state = const SessionNoServer();
+      throw const ConnectFailure(ConnectProblem.phoneNotCleared);
+    }
     await _servers.save(address, caPin: caPin);
     trust?.pinTo(caPin?.fingerprint);
     // Said on the Connect screen's choices and under More → Server, so a CA the person does not
@@ -386,6 +396,8 @@ final class SessionController extends Notifier<SessionState> {
       try {
         await _endToken();
         await _local.wipe();
+      } on Object catch (error) {
+        debugLogFailure('wiping after a failed sign-in', error);
       } finally {
         _ending = false;
       }
@@ -417,15 +429,21 @@ final class SessionController extends Notifier<SessionState> {
       // (audit L4) — it is taken out of storage first, then the server is asked to end it.
       await _endToken();
       await _local.wipe(forgetServer: forgetServer);
-      if (forgetServer || server == null) {
-        ref.read(currentServerProvider.notifier).set(null);
-        _gate.unconfirmVersion();
-        state = const SessionNoServer();
-      } else {
-        state = SessionSignedOut(server);
-      }
+    } on Object catch (error) {
+      // Every step was attempted (LocalState.wipe); what storage refused, it refused. The person
+      // still leaves the session: nothing in memory outlives it (round 5, U1).
+      debugLogFailure('signing out', error);
     } finally {
       _ending = false;
+      if (ref.mounted) {
+        if (forgetServer || server == null) {
+          ref.read(currentServerProvider.notifier).set(null);
+          _gate.unconfirmVersion();
+          state = const SessionNoServer();
+        } else {
+          state = SessionSignedOut(server);
+        }
+      }
     }
   }
 
@@ -462,9 +480,12 @@ final class SessionController extends Notifier<SessionState> {
     _ending = true;
     try {
       await _local.wipe();
-      state = SessionSignedOut(server, notice: SignInNotice.expired);
+    } on Object catch (error) {
+      // As in signOut: the session ends whatever storage refused (round 5, U1).
+      debugLogFailure('ending the session', error);
     } finally {
       _ending = false;
+      if (ref.mounted) state = SessionSignedOut(server, notice: SignInNotice.expired);
     }
   }
 

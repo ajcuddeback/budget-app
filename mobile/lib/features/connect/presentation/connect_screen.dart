@@ -146,6 +146,7 @@ String connectFailureText(AppLocalizations l, ConnectFailure failure) => switch 
     '$clientApiVersion',
   ),
   ConnectProblem.transport => l.connect_error_transport,
+  ConnectProblem.phoneNotCleared => l.connect_error_phoneNotCleared,
 };
 
 class _Choices extends ConsumerWidget {

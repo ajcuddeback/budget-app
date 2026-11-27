@@ -1971,6 +1971,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something answered at that address, but it isn\'t a Budget Owl server.';
 
   @override
+  String get connect_error_phoneNotCleared =>
+      'This phone could not clear what it held for the previous server, so nothing was connected. Try again.';
+
+  @override
   String get connect_error_transport => 'The connection to the server failed part-way. Try again.';
 
   @override

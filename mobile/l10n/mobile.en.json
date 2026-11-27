@@ -28,6 +28,8 @@
   "connect.error.versionMismatch": "This server's API is version {server}, and this app needs version {app}. Update whichever is older, then try again.",
   "connect.error.transport": "The connection to the server failed part-way. Try again.",
 
+  "connect.error.phoneNotCleared": "This phone could not clear what it held for the previous server, so nothing was connected. Try again.",
+
   "trust.through": "Trusted through a certificate authority installed on this phone:",
   "trust.throughUnnamed": "Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:",
   "trust.missing": "The certificate authority this server was trusted through is no longer installed on this phone:",

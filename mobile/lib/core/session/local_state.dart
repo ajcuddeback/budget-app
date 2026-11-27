@@ -2,6 +2,7 @@ import 'package:budget_owl/core/auth/token_store.dart';
 import 'package:budget_owl/core/cache/cache_holder.dart';
 import 'package:budget_owl/core/cache/cache_key_store.dart';
 import 'package:budget_owl/core/config/environment.dart';
+import 'package:budget_owl/core/http/api_client.dart' show debugLogFailure;
 import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/storage/temp_files.dart';
@@ -51,7 +52,10 @@ final class LocalState {
 
   /// **Every step is attempted**, even when one before it fails: a secure-storage error deleting
   /// the token must not leave the cache file and its key behind. The first failure is rethrown
-  /// once all of them have run. Idempotent, and cheap when there is nothing to delete: a few
+  /// once all of them have run — except the temporary-directory sweep's, which is logged (debug
+  /// builds only: the step and the error's type) and never fails the wipe: an export or a picked
+  /// copy left behind is swept again at the next start (round 5, U1). Callers change state in a
+  /// `finally`, so whatever this rethrows, the person always reaches sign-in or connect. Idempotent, and cheap when there is nothing to delete: a few
   /// secure-storage deletes and a file delete that finds no file.
   Future<void> wipe({bool forgetServer = false}) async {
     wipes++;
@@ -70,7 +74,11 @@ final class LocalState {
     await step(_tokens.clear);
     await step(_cache.destroy);
     await step(_keys.clear);
-    await step(_sweepTemporary);
+    try {
+      await _sweepTemporary();
+    } on Object catch (error) {
+      debugLogFailure('sweeping the temporary directory', error);
+    }
     if (forgetServer) {
       // The transport stops trusting the old server's CA before its record goes.
       await step(() async => _forgetTrust());

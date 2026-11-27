@@ -2900,6 +2900,10 @@
   "@connect_error_notBudgetOwl": {
     "description": "Mobile only (l10n/mobile.en.json \"connect.error.notBudgetOwl\")."
   },
+  "connect_error_phoneNotCleared": "This phone could not clear what it held for the previous server, so nothing was connected. Try again.",
+  "@connect_error_phoneNotCleared": {
+    "description": "Mobile only (l10n/mobile.en.json \"connect.error.phoneNotCleared\")."
+  },
   "connect_error_transport": "The connection to the server failed part-way. Try again.",
   "@connect_error_transport": {
     "description": "Mobile only (l10n/mobile.en.json \"connect.error.transport\")."

@@ -19,6 +19,10 @@ enum ConnectProblem {
   busy,
   versionMismatch,
   transport,
+
+  /// Not the server's: this phone could not clear what it held for the previous server, so the
+  /// new one was not connected (round 5, U1). Nothing of either is shown.
+  phoneNotCleared,
 }
 
 final class ConnectFailure implements Exception {

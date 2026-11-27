@@ -566,6 +566,7 @@ String? lookupMessage(
     'connect.error.certificateWrongName' => l.connect_error_certificateWrongName,
     'connect.error.hostNotFound' => l.connect_error_hostNotFound,
     'connect.error.notBudgetOwl' => l.connect_error_notBudgetOwl,
+    'connect.error.phoneNotCleared' => l.connect_error_phoneNotCleared,
     'connect.error.transport' => l.connect_error_transport,
     'connect.error.unreachable' => l.connect_error_unreachable,
     'connect.error.versionMismatch' => l.connect_error_versionMismatch(a('server'), a('app')),

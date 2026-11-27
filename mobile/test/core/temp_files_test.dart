@@ -174,26 +174,30 @@ void main() {
       },
     );
 
-    test('the wipe sweeps, and still runs every other step when the sweep fails', () async {
-      var swept = 0;
-      final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))..signedIn('owner');
-      final c = containerFor(phone);
-      await until<SessionSignedIn>(c);
-      final failing = LocalState(
-        c.read(tokenStoreProvider),
-        c.read(cacheHolderProvider),
-        c.read(cacheKeyStoreProvider),
-        c.read(serverStoreProvider),
-        sweepTemporary: () async {
-          swept++;
-          throw const FileSystemException('no temporary directory');
-        },
-      );
+    test(
+      'U1: a sweep that fails is logged, not a failed wipe; every other step still runs',
+      () async {
+        var swept = 0;
+        final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))
+          ..signedIn('owner');
+        final c = containerFor(phone);
+        await until<SessionSignedIn>(c);
+        final failing = LocalState(
+          c.read(tokenStoreProvider),
+          c.read(cacheHolderProvider),
+          c.read(cacheKeyStoreProvider),
+          c.read(serverStoreProvider),
+          sweepTemporary: () async {
+            swept++;
+            throw const FileSystemException('no temporary directory');
+          },
+        );
 
-      await expectLater(failing.wipe(), throwsA(isA<FileSystemException>()));
-      expect(swept, 1);
-      expect(phone.store.values.keys, ['budget_owl.server'], reason: 'the token and key went');
-    });
+        await failing.wipe();
+        expect(swept, 1);
+        expect(phone.store.values.keys, ['budget_owl.server'], reason: 'the token and key went');
+      },
+    );
   });
 
   test('a picked file that is not in the temporary directory is never deleted', () async {

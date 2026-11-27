@@ -106,6 +106,9 @@ final class TestPhone {
 
   final MemoryClipboard clipboard = MemoryClipboard();
 
+  /// While set, asking for the temporary directory throws, as `getTemporaryDirectory` can.
+  bool temporaryDirectoryFails = false;
+
   String get installMarker => '${supportDirectory.path}/${InstallMarker.fileName}';
   final bool allowLocalCleartext;
   DateTime now = demoNow;
@@ -125,7 +128,12 @@ final class TestPhone {
     secureStoreProvider.overrideWithValue(store),
     cacheDirectoryProvider.overrideWith((ref) async => cacheDirectory),
     supportDirectoryProvider.overrideWith((ref) async => supportDirectory),
-    temporaryDirectoryProvider.overrideWith((ref) async => temporaryDirectory),
+    temporaryDirectoryProvider.overrideWith((ref) async {
+      if (temporaryDirectoryFails) {
+        throw const FileSystemException('the platform gave no temporary directory');
+      }
+      return temporaryDirectory;
+    }),
     clipboardPlatformProvider.overrideWithValue(clipboard),
     clockProvider.overrideWithValue(() => now),
     allowLocalCleartextProvider.overrideWithValue(allowLocalCleartext),
