@@ -740,13 +740,16 @@ Phase 1's `Transaction`, `Ledger` and `Transfer` models called `Money.fromWire` 
 `UnexpectedJson`, so one amount the server's `NUMERIC(19,4)` could never produce (`"1e9"`, five
 decimals, sixteen integer digits) or an impossible date escaped `refresh` as an **uncaught async
 error**. The screen kept its spinner, and nothing told the person the answer was unreadable.
-Separately, `TransactionsWriter.transfer` decoded the body **outside** `getJson`'s mapping, so even
-an `UnexpectedJson` from `Transfer.fromJson` escaped the screen's `on AppError` catch.
+Separately, `TransactionsWriter.transfer` mapped nothing: `ApiClient.getJson` is only
+`decodeObject(getText(...))`, so an `UnexpectedJson` from it or from `Transfer.fromJson` (a body that
+is not JSON, such as a proxy's 200 sign-in page, or a missing field) escaped the screen's
+`on AppError` catch.
 
 - **The fix is at the boundary, not in `CachedResource`.** `wireMoney` moved from
   `features/accounts/data/accounts.dart` to `core/money/money.dart`, so a feature no longer imports
   another feature to read an amount. The ledger models use it, and a local `_date` reader for their
-  dates. `transfer()` maps `UnexpectedJson` to `AppError.unexpected()`.
+  dates. `transfer()` maps `UnexpectedJson`, from the decode or the `fromJson`, to
+  `AppError.unexpected()`.
 - **Why not widen `refresh`'s catch to `FormatException`:** it would not reach the transfer read,
   which does not go through `CachedResource`. It would also loosen the `decode` contract ("throw
   `UnexpectedJson`") that every other repository and `ApiClient.getJson` share. The only core change
@@ -755,7 +758,7 @@ an `UnexpectedJson` from `Transfer.fromJson` escaped the screen's `on AppError` 
   cache holds no entry for the key.
 - Tests: `test/features/transactions/malformed_body_test.dart` (recorded demo answers with one field
   changed: the ledger's generic error panel, no exception, nothing cached; the transfer read is
-  `AppError.unexpected`; the untampered bodies still read). `test/core/money_test.dart` checks that
+  `AppError.unexpected`, and so is one that is not JSON at all; the untampered bodies still read). `test/core/money_test.dart` checks that
   `wireMoney` names the field and never the value.
 
 #### What reading the screenshots changed
@@ -1027,6 +1030,10 @@ translations do not have this.
   fix is the ledger's (see "Follow-up: the ledger's malformed figures"), ideally as a `wireDate`
   next to `CalendarDate` in core, replacing the private copies in `envelope.dart`, `check_in.dart`,
   `import.dart` and `transaction.dart`.
+- **`AccountsWriter.latest` has the transfer read's old gap** (`accounts.dart`): `getJson` and
+  `Account.fromJson` run outside any mapping, and the account sheet catches `AppError` only, so a
+  non-JSON or malformed body after a `409` escapes as an uncaught error. The fix is the same
+  `try … on UnexpectedJson` that `TransactionsWriter.transfer` now has.
 - **The month bar reads any month** the user steps to; only July, August and September 2026 are
   recorded, so tests do not step further.
 

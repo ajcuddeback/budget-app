@@ -7,7 +7,6 @@ import 'package:budget_owl/features/transactions/data/transactions_repository.da
 import 'package:budget_owl/features/transactions/domain/transaction.dart';
 import 'package:budget_owl/l10n/gen/app_localizations_en.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fixture_server.dart';
@@ -75,6 +74,28 @@ void main() {
     });
   }
 
+  testWidgets('a transfer answered 200 with a page that is not JSON is AppError.unexpected', (
+    tester,
+  ) async {
+    // A reverse proxy's sign-in or error page, served with a 200. Neither getJson nor the fixture
+    // maps it: the repository must.
+    final server = _Tampering(
+      FixtureServer.load('demo', state: 'demo'),
+      const {},
+      raw: {'/api/transfers/tgr-0001': '<html><body>Sign in</body></html>'},
+    );
+    final container = await pumpApp(tester, TestPhone(server: server)..signedIn('owner'));
+
+    final failure = await tester.runAsync<Object?>(
+      () => container
+          .read(transactionsWriterProvider)
+          .transfer('tgr-0001')
+          .then<Object?>((_) => null, onError: (Object error) => error),
+    );
+    expect(server.tampered, contains('/api/transfers/tgr-0001'));
+    expect(failure, isA<AppError>().having((e) => e.kind, 'kind', AppErrorKind.unexpected));
+  });
+
   testWidgets('the recorded bodies, untampered, still read', (tester) async {
     final server = _Tampering(FixtureServer.load('demo', state: 'demo'), const {});
     final container = await pumpApp(tester, TestPhone(server: server)..signedIn('owner'));
@@ -90,12 +111,15 @@ void main() {
 Map<String, Object?> _firstRow(Map<String, Object?> body) =>
     (body['content']! as List<Object?>).first! as Map<String, Object?>;
 
-/// The fixture server, with the JSON answer to each listed `path?query` changed by a test.
+/// The fixture server, with the answer to each listed `path?query` changed by a test.
 final class _Tampering implements HttpClientAdapter {
-  _Tampering(this._fixture, this._changes);
+  _Tampering(this._fixture, this._changes, {this.raw = const {}});
 
   final FixtureServer _fixture;
   final Map<String, void Function(Map<String, Object?> body)> _changes;
+
+  /// Bodies replaced outright, for an answer that is not JSON at all.
+  final Map<String, String> raw;
 
   /// Which listed requests were answered, so a test cannot pass by never asking.
   final List<String> tampered = [];
@@ -109,8 +133,14 @@ final class _Tampering implements HttpClientAdapter {
     final answer = await _fixture.fetch(options, requestStream, cancelFuture);
     final uri = options.uri;
     final line = '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+    if (options.method != 'GET') return answer;
+    final replacement = raw[line];
+    if (replacement != null) {
+      tampered.add(line);
+      return ResponseBody.fromString(replacement, answer.statusCode, headers: answer.headers);
+    }
     final change = _changes[line];
-    if (options.method != 'GET' || change == null) return answer;
+    if (change == null) return answer;
     final bytes = <int>[];
     await answer.stream.forEach(bytes.addAll);
     final body = jsonDecode(utf8.decode(bytes)) as Map<String, Object?>;
