@@ -55,22 +55,30 @@ final class SystemStatementPicker implements StatementPicker {
 
 /// Deletes the platform's copy at [path] if — and only if — it lies inside [temporary], and then
 /// the folder the plugin made for it when that folder is left empty. Never anything else.
+///
+/// Both the copy's folder and the root are compared with their links resolved: on iOS `/var` is a
+/// link to `/private/var`, and the plugin and the system name the same folder each way, so an
+/// unresolved comparison could skip the delete (round 6, V3). The copy itself is never followed:
+/// a link there is deleted as a link.
 Future<void> forgetPlatformCopy(String path, Directory temporary) async {
   if (path.isEmpty) return;
-  final root = temporary.absolute.path;
-  final file = File(path).absolute;
-  if (!isInsideDirectory(file.path, root)) return;
   try {
-    if (file.existsSync()) await file.delete();
-    final folder = file.parent;
+    final root = temporary.resolveSymbolicLinksSync();
+    final named = File(path).absolute;
+    final folder = Directory(named.parent.resolveSymbolicLinksSync());
+    final file = File('${folder.path}/${named.uri.pathSegments.last}');
+    if (!isInsideDirectory(file.path, root)) return;
+    if (FileSystemEntity.typeSync(file.path, followLinks: false) != FileSystemEntityType.notFound) {
+      await file.delete();
+    }
     if (folder.path != root &&
         isInsideDirectory(folder.path, root) &&
-        folder.existsSync() &&
-        folder.listSync().isEmpty) {
+        folder.listSync(followLinks: false).isEmpty) {
       await folder.delete();
     }
   } on FileSystemException {
-    // Already gone: nothing of the statement is left behind by trying.
+    // Already gone, or a folder that does not exist: nothing of the statement is left behind by
+    // trying.
   }
 }
 

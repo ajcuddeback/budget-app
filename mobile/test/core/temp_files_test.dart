@@ -371,6 +371,52 @@ void main() {
     );
   });
 
+  group('V3: the picker deletes its copy whichever way the temporary directory is named', () {
+    test('a root named through a link, a copy named by its real path, and the other way', () async {
+      final real = scratch('budget-owl-private-var');
+      final holder = scratch('budget-owl-var');
+      final link = Link('${holder.path}/tmp')..createSync(real.path);
+      final viaLink = Directory(link.path);
+
+      final first = write(real, '3f2c9a1e-7b4d-4e8a-9c0f-1d2e3f4a5b6c/statement.ofx');
+      await forgetPlatformCopy(first.path, viaLink);
+      expect(first.existsSync(), isFalse);
+      expect(first.parent.existsSync(), isFalse, reason: 'its emptied folder too');
+
+      final second = write(real, 'app.budgetowl.budgetOwl-Inbox/statement.csv');
+      await forgetPlatformCopy('${viaLink.path}/app.budgetowl.budgetOwl-Inbox/statement.csv', real);
+      expect(second.existsSync(), isFalse);
+    });
+
+    test('resolving never lets it out: a folder in temp that links outside is refused', () async {
+      final temp = scratch('budget-owl-temp');
+      final outside = scratch('budget-owl-outside');
+      final precious = write(outside, 'statement.ofx');
+      Link('${temp.path}/escape').createSync(outside.path);
+
+      await forgetPlatformCopy('${temp.path}/escape/statement.ofx', temp);
+
+      expect(precious.existsSync(), isTrue);
+    });
+
+    test('a copy that is a link is deleted as a link, never its target', () async {
+      final temp = scratch('budget-owl-temp');
+      final outside = scratch('budget-owl-outside');
+      final precious = write(outside, 'statement.ofx');
+      Directory('${temp.path}/3f2c9a1e-7b4d-4e8a-9c0f-1d2e3f4a5b6c').createSync();
+      final link = Link('${temp.path}/3f2c9a1e-7b4d-4e8a-9c0f-1d2e3f4a5b6c/statement.ofx')
+        ..createSync(precious.path);
+
+      await forgetPlatformCopy(link.path, temp);
+
+      expect(precious.existsSync(), isTrue);
+      expect(
+        FileSystemEntity.typeSync(link.path, followLinks: false),
+        FileSystemEntityType.notFound,
+      );
+    });
+  });
+
   test('a picked file that is not in the temporary directory is never deleted', () async {
     final temp = scratch('budget-owl-temp');
     final elsewhere = scratch('budget-owl-documents');

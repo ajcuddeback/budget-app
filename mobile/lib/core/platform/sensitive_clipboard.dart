@@ -23,19 +23,23 @@ enum ClearOutcome {
 /// read**: whether the clipboard still holds our copy is decided on the device, from metadata,
 /// never by reading what the person copied (round 5, U3).
 abstract interface class ClipboardPlatform {
-  /// Puts [text] on the clipboard, as protected as the platform allows, and returns a receipt
-  /// naming this copy — null where the platform cannot recognise it again.
-  Future<int?> setSensitive(String text);
+  /// Puts [text] on the clipboard, as protected as the platform allows, and returns the receipt:
+  /// what the device needs to recognise this copy later — the clip's timestamp on Android 8+, a
+  /// digest of it below, `changeCount` on iOS. Null where the platform cannot recognise it again.
+  ///
+  /// The receipt is kept here, in Dart, not by the native side: an activity recreated between the
+  /// copy and the take-back can still compare (round 6, V2).
+  Future<Map<String, Object?>?> setSensitive(String text);
 
-  /// Empties the clipboard if it still holds the copy [receipt] names.
-  Future<ClearOutcome> clearIfUnchanged(int receipt);
+  /// Empties the clipboard if it still holds the copy [receipt] describes.
+  Future<ClearOutcome> clearIfUnchanged(Map<String, Object?> receipt);
 }
 
 /// One copy this app made, to take back later.
 final class CopiedText {
   const CopiedText._(this._receipt);
 
-  final int? _receipt;
+  final Map<String, Object?>? _receipt;
 }
 
 /// The clipboard for a credential, such as an invitation link (round 4 L2, round 5 U3).
@@ -86,20 +90,18 @@ final class SystemClipboardPlatform implements ClipboardPlatform {
   bool get _native => platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 
   @override
-  Future<int?> setSensitive(String text) async {
+  Future<Map<String, Object?>?> setSensitive(String text) async {
     if (!_native) {
       await Clipboard.setData(ClipboardData(text: text));
       return null;
     }
-    return await clipboardChannel.invokeMethod<int>('setSensitive', {'text': text});
+    return await clipboardChannel.invokeMapMethod<String, Object?>('setSensitive', {'text': text});
   }
 
   @override
-  Future<ClearOutcome> clearIfUnchanged(int receipt) async {
+  Future<ClearOutcome> clearIfUnchanged(Map<String, Object?> receipt) async {
     if (!_native) return ClearOutcome.changed;
-    final answer = await clipboardChannel.invokeMethod<String>('clearIfUnchanged', {
-      'receipt': receipt,
-    });
+    final answer = await clipboardChannel.invokeMethod<String>('clearIfUnchanged', receipt);
     return ClearOutcome.values.firstWhere(
       (outcome) => outcome.name == answer,
       orElse: () => ClearOutcome.changed,

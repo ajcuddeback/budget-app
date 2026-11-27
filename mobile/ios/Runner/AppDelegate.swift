@@ -42,14 +42,11 @@ import UIKit
   /// How long a copied credential lives on the pasteboard (SensitiveClipboard.iosExpiry).
   static let expiry: TimeInterval = 10 * 60
 
-  /// The one copy this app may take back: the pasteboard's changeCount right after it, never its
-  /// text.
-  private var copied: (receipt: Int, changeCount: Int)?
-  private var receipts = 0
-
   /// A credential the person chose to copy (an invitation link): localOnly, so Universal
   /// Clipboard never carries it to their other devices, and expiring by itself after ten minutes.
-  /// Taking it back compares UIPasteboard.changeCount, which reads nothing: no "Allow Paste?"
+  /// The receipt is the pasteboard's changeCount right after the copy, kept by Dart and handed
+  /// back (round 6, V2): nothing about a copy lives here, and the system keeps the count across
+  /// launches. Taking it back compares changeCount, which reads nothing: no "Allow Paste?"
   /// prompt (iOS 16+), and it works while the app is in the background. Needs checking on a
   /// device.
   private func handleClipboard(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -68,19 +65,15 @@ import UIKit
           .localOnly: true,
           .expirationDate: Date().addingTimeInterval(AppDelegate.expiry),
         ])
-      receipts += 1
-      copied = (receipt: receipts, changeCount: pasteboard.changeCount)
-      result(receipts)
+      result(["changeCount": pasteboard.changeCount])
     case AppDelegate.clearIfUnchanged:
       guard let arguments = call.arguments as? [String: Any],
-        let receipt = arguments["receipt"] as? Int,
-        let record = copied, record.receipt == receipt
+        let changeCount = arguments["changeCount"] as? Int
       else {
         result("changed")
         return
       }
-      copied = nil
-      guard pasteboard.changeCount == record.changeCount else {
+      guard pasteboard.changeCount == changeCount else {
         result("changed")
         return
       }

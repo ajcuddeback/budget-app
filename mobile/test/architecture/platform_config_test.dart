@@ -123,9 +123,8 @@ void main() {
           reason: 'the same channel',
         );
         expect(activity, contains('SET_SENSITIVE = "setSensitive"'));
-        expect(dart, contains("invokeMethod<int>('setSensitive', {'text': text})"));
+        expect(dart, contains("invokeMapMethod<String, Object?>('setSensitive', {"));
         expect(activity, contains('CLEAR_IF_UNCHANGED = "clearIfUnchanged"'));
-        expect(dart, contains("invokeMethod<String>('clearIfUnchanged', {"));
         // U3: recognised by the clip's timestamp, from its description — never its content on
         // Android 8+, where reading it shows "pasted from your clipboard" (12+).
         expect(
@@ -133,7 +132,7 @@ void main() {
           matches(
             RegExp(
               r'VERSION_CODES\.O\) \{\s*val now = clipboard\.primaryClipDescription\s*'
-              r'record\.timestamp != null && now != null && now\.timestamp == record\.timestamp',
+              r'copy\.timestamp != null && now != null && now\.timestamp == copy\.timestamp',
             ),
           ),
         );
@@ -143,6 +142,19 @@ void main() {
           reason: 'the clip itself is read once: below Android 8, for its digest',
         );
         expect(activity, contains('if (!hasWindowFocus()) {'), reason: 'Android 10+: deferred');
+        // V2: nothing about a copy lives on the activity; Dart keeps the receipt and hands it back.
+        expect(activity, isNot(contains('private var copied')));
+        expect(
+          activity,
+          matches(
+            RegExp(
+              r'VERSION_CODES\.O\) \{\s*mapOf\(TIMESTAMP to clipboard\.primaryClipDescription\?\.timestamp\)'
+              r'\s*\} else \{\s*mapOf\(DIGEST to sha256Hex\(text\)\)',
+            ),
+          ),
+          reason: 'the timestamp on Android 8+; a digest only below',
+        );
+        expect(dart, contains("invokeMethod<String>('clearIfUnchanged', receipt)"));
         expect(activity, contains('override fun onWindowFocusChanged(hasFocus: Boolean)'));
         expect(
           activity,
@@ -184,7 +196,9 @@ void main() {
       expect(delegate, contains('.expirationDate: Date().addingTimeInterval(AppDelegate.expiry),'));
       expect(delegate, contains('static let expiry: TimeInterval = 10 * 60'));
       expect(dart, contains('iosExpiry = Duration(minutes: 10)'), reason: 'the same ten minutes');
-      expect(delegate, contains('guard pasteboard.changeCount == record.changeCount else {'));
+      expect(delegate, contains('guard pasteboard.changeCount == changeCount else {'));
+      expect(delegate, contains('result(["changeCount": pasteboard.changeCount])'));
+      expect(delegate, isNot(contains('private var copied')), reason: 'V2: Dart keeps the receipt');
       for (final read in [
         'pasteboard.string',
         'pasteboard.strings',

@@ -61,31 +61,24 @@ final class MemoryClipboard implements ClipboardPlatform {
   bool sensitive = false;
   int clears = 0;
   int _changes = 0;
-  int _receipts = 0;
-  ({int receipt, int change})? _ours;
 
   /// While set, the app is not focused: Android defers the check (ClearOutcome.deferred).
   bool background = false;
 
   @override
-  Future<int?> setSensitive(String text) async {
+  Future<Map<String, Object?>?> setSensitive(String text) async {
     this.text = text;
     sensitive = true;
-    _ours = (receipt: ++_receipts, change: ++_changes);
-    return _receipts;
+    return {'changeCount': ++_changes};
   }
 
   @override
-  Future<ClearOutcome> clearIfUnchanged(int receipt) async {
+  Future<ClearOutcome> clearIfUnchanged(Map<String, Object?> receipt) async {
     if (background) return ClearOutcome.deferred;
-    final ours = _ours;
-    if (ours == null || ours.receipt != receipt || ours.change != _changes) {
-      return ClearOutcome.changed;
-    }
+    if (receipt['changeCount'] != _changes) return ClearOutcome.changed;
     clears++;
     text = null;
     sensitive = false;
-    _ours = null;
     _changes++;
     return ClearOutcome.cleared;
   }

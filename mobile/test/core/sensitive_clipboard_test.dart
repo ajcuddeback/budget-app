@@ -16,6 +16,7 @@ void main() {
   late List<MethodCall> native;
   late List<String> plain;
   late String nativeAnswer;
+  const receiptFromDevice = {'timestamp': 1764248400123};
 
   setUp(() {
     native = [];
@@ -24,7 +25,7 @@ void main() {
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       ..setMockMethodCallHandler(clipboardChannel, (call) async {
         native.add(call);
-        return call.method == 'setSensitive' ? 7 : nativeAnswer;
+        return call.method == 'setSensitive' ? receiptFromDevice : nativeAnswer;
       })
       ..setMockMethodCallHandler(SystemChannels.platform, (call) async {
         if (call.method == 'Clipboard.getData' || call.method == 'Clipboard.hasStrings') {
@@ -57,7 +58,11 @@ void main() {
         final outcome = await clipboard.takeBack(copied);
 
         expect(native.map((c) => c.method), ['setSensitive', 'clearIfUnchanged']);
-        expect(native.last.arguments, {'receipt': 7}, reason: 'the receipt, not the link');
+        expect(
+          native.last.arguments,
+          receiptFromDevice,
+          reason: 'what the device gave back, not the link: a recreated activity can compare',
+        );
         expect(outcome, ClearOutcome.cleared);
       });
 

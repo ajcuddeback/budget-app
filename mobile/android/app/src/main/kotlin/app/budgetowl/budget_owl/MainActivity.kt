@@ -75,8 +75,12 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     CLEAR_IF_UNCHANGED -> {
-                        val receipt = call.argument<Int>("receipt")
-                        result.success(if (receipt == null) CHANGED else clearIfUnchanged(receipt))
+                        val copy =
+                            Receipt(
+                                call.argument<Number>(TIMESTAMP)?.toLong(),
+                                call.argument<String>(DIGEST),
+                            )
+                        result.success(clearIfUnchanged(copy))
                     }
                     else -> result.notImplemented()
                 }
@@ -85,23 +89,24 @@ class MainActivity : FlutterActivity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    /** The one copy this app may take back: what it can be recognised by, never its text. */
-    private class Copied(val receipt: Int, val timestamp: Long?, val digest: ByteArray)
-
-    private var copied: Copied? = null
-    private var receipts = 0
+    /**
+     * What recognises one copy: its ClipDescription timestamp (Android 8+), or a digest of its
+     * text below 8. It is Dart's to keep and hand back (round 6, V2): nothing about a copy lives
+     * on this activity, so one recreated between the copy and the take-back can still compare.
+     */
+    private class Receipt(val timestamp: Long?, val digest: String?)
 
     /** A take-back asked for while the app was not focused, checked again on focus. */
-    private var pendingClear: Int? = null
+    private var pendingClear: Receipt? = null
 
     /**
      * A credential the person chose to copy (an invitation link). On Android 13+ the clip is
      * marked ClipDescription.EXTRA_IS_SENSITIVE: the system's copy preview hides it and keyboards
      * leave it out of clipboard suggestions. Below 13 nothing can mark it: it is a plain clip
-     * until it is taken back. The clip has no label. Returns a receipt for [clearIfUnchanged].
+     * until it is taken back. The clip has no label. Returns the receipt for [clearIfUnchanged].
      * Needs checking on a device.
      */
-    private fun copySensitive(text: String): Int? {
+    private fun copySensitive(text: String): Map<String, Any?>? {
         val clipboard = getSystemService(ClipboardManager::class.java) ?: return null
         val clip = ClipData.newPlainText("", text)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -111,47 +116,40 @@ class MainActivity : FlutterActivity() {
                 }
         }
         clipboard.setPrimaryClip(clip)
-        // Our own clip, read back at once while focused: its timestamp, set by the system, is
-        // how it is recognised later (Android 8+). Below 8 a digest of the text is kept instead.
-        val timestamp =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                clipboard.primaryClipDescription?.timestamp
-            } else {
-                null
-            }
-        val receipt = ++receipts
-        copied = Copied(receipt, timestamp, sha256(text))
         pendingClear = null
-        return receipt
+        // Our own clip, read back at once while focused: its timestamp, set by the system, is how
+        // it is recognised later (Android 8+). Below 8 a digest of the text is kept instead.
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mapOf(TIMESTAMP to clipboard.primaryClipDescription?.timestamp)
+        } else {
+            mapOf(DIGEST to sha256Hex(text))
+        }
     }
 
     /**
-     * Empties the clipboard if it still holds the copy [receipt] names, **without reading what
+     * Empties the clipboard if it still holds the copy [copy] describes, **without reading what
      * is on it** on Android 8+: only the clip's description, whose timestamp is compared, which
      * shows no "pasted from your clipboard" notice (that is getPrimaryClip, Android 12+). Below 8
      * a digest of the clip is compared; those versions have no notice and no background limit.
      * Android 10+ refuses any clipboard access to an app that is not focused: then the check is
      * deferred to the next time the window has focus ([onWindowFocusChanged]).
      */
-    private fun clearIfUnchanged(receipt: Int): String {
-        val record = copied
-        if (record == null || record.receipt != receipt) return CHANGED
+    private fun clearIfUnchanged(copy: Receipt): String {
         if (!hasWindowFocus()) {
-            pendingClear = receipt
+            pendingClear = copy
             return DEFERRED
         }
+        pendingClear = null
         val clipboard = getSystemService(ClipboardManager::class.java) ?: return CHANGED
         val unchanged =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val now = clipboard.primaryClipDescription
-                record.timestamp != null && now != null && now.timestamp == record.timestamp
+                copy.timestamp != null && now != null && now.timestamp == copy.timestamp
             } else {
                 val clip = clipboard.primaryClip
                 val text = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).text else null
-                text != null && MessageDigest.isEqual(sha256(text.toString()), record.digest)
+                copy.digest != null && text != null && sha256Hex(text.toString()) == copy.digest
             }
-        copied = null
-        pendingClear = null
         if (!unchanged) return CHANGED
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             clipboard.clearPrimaryClip()
@@ -167,8 +165,10 @@ class MainActivity : FlutterActivity() {
         if (hasFocus && pending != null) clearIfUnchanged(pending)
     }
 
-    private fun sha256(text: String): ByteArray =
-        MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+    private fun sha256Hex(text: String): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(text.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 
     /** The DER encoding of every enabled user-installed CA: AndroidCAStore aliases "user:…". */
     private fun userCaCertificates(): List<ByteArray> {
@@ -189,5 +189,7 @@ class MainActivity : FlutterActivity() {
         const val CLEARED = "cleared"
         const val CHANGED = "changed"
         const val DEFERRED = "deferred"
+        const val TIMESTAMP = "timestamp"
+        const val DIGEST = "digest"
     }
 }
