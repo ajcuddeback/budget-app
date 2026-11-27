@@ -114,6 +114,7 @@ class MonthInterestTest {
                         itself,
                         VISA,
                         AUG_20,
+                        new BigDecimal("445.00"),
                         new BigDecimal("117.94"),
                         PaymentProvenance.USER_LOGGED);
 
@@ -154,6 +155,46 @@ class MonthInterestTest {
         assertThat(decision.charge()).isEqualTo(MonthInterest.Charge.CARRIED);
     }
 
+    // ------------------------------------------------ what counts as paid this month
+
+    @Test
+    void what_was_paid_this_month_counts_this_debts_payments_in_this_month_only() {
+        List<MonthInterestRow> rows =
+                List.of(
+                        paid(VISA, AUG_20, "445.00", "117.94", PaymentProvenance.USER_LOGGED),
+                        paid(
+                                VISA,
+                                LocalDate.of(2026, 8, 25),
+                                "50.00",
+                                "0.00",
+                                PaymentProvenance.USER_LOGGED),
+                        paid(
+                                VISA,
+                                LocalDate.of(2026, 7, 20),
+                                "445.00",
+                                "120.00",
+                                PaymentProvenance.USER_LOGGED),
+                        paid(CAR, AUG_20, "342.00", "56.80", PaymentProvenance.USER_LOGGED));
+
+        assertThat(MonthInterest.paidIn(VISA, YearMonth.of(2026, 8), rows, USD))
+                .isEqualTo(money("495.00"));
+    }
+
+    @Test
+    void a_statement_correction_and_a_check_in_surplus_are_not_paid_towards_the_plan() {
+        // A correction is not a payment. A check-in surplus is paid ON TOP of the plan (decision
+        // 5): counting it would take it off the plan's own payment and the surplus could never move
+        // a payoff date.
+        List<MonthInterestRow> rows =
+                List.of(
+                        paid(VISA, AUG_20, "185.00", "117.94", PaymentProvenance.USER_LOGGED),
+                        paid(VISA, AUG_20, "-4.10", "0.00", PaymentProvenance.STATEMENT_CORRECTION),
+                        paid(VISA, AUG_20, "63.00", "0.00", PaymentProvenance.CHECK_IN));
+
+        assertThat(MonthInterest.paidIn(VISA, YearMonth.of(2026, 8), rows, USD))
+                .isEqualTo(money("185.00"));
+    }
+
     private MonthInterest.Decision decide(
             LocalDate paidDate, Money balanceBefore, List<MonthInterestRow> rows) {
         return MonthInterest.decide(VISA, paidDate, balanceBefore, APR, rows, null, solver);
@@ -161,8 +202,22 @@ class MonthInterestTest {
 
     private static MonthInterestRow row(
             UUID debtId, LocalDate paidDate, String interest, PaymentProvenance provenance) {
+        return paid(debtId, paidDate, "100.00", interest, provenance);
+    }
+
+    private static MonthInterestRow paid(
+            UUID debtId,
+            LocalDate paidDate,
+            String amount,
+            String interest,
+            PaymentProvenance provenance) {
         return new MonthInterestRow(
-                UUID.randomUUID(), debtId, paidDate, new BigDecimal(interest), provenance);
+                UUID.randomUUID(),
+                debtId,
+                paidDate,
+                new BigDecimal(amount),
+                new BigDecimal(interest),
+                provenance);
     }
 
     private static Money money(String amount) {

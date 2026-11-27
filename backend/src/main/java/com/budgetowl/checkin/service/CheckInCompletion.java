@@ -421,6 +421,18 @@ public class CheckInCompletion {
                                             answer.billId().orElseThrow()));
                 }
             }
+            // Every debt this completion writes to is locked first, in one global order, before
+            // the first payment is written. The writes below would otherwise lock them in item
+            // order, and two transactions taking the same two debts in opposite orders deadlock.
+            CheckInAnswer allocating = byKey.get(ItemKeys.ALLOCATION);
+            List<UUID> debtsToWrite = new ArrayList<>();
+            for (DebtPrompt prompt : prompts) {
+                debtsToWrite.add(prompt.debtId());
+            }
+            if (allocating != null && allocating.choice() == AnswerChoice.DEBT) {
+                allocating.debtId().ifPresent(debtsToWrite::add);
+            }
+            writers.debtPayments.lockInOrder(actorId, debtsToWrite);
             for (DebtPrompt prompt : prompts) {
                 LocalDate paid = prompt.date().isAfter(today) ? today : prompt.date();
                 guarded(

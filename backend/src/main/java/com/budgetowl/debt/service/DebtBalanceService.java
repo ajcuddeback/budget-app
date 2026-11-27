@@ -143,7 +143,7 @@ public class DebtBalanceService {
                             principalPaid.get(debt.id()),
                             activity.get(debt.id()),
                             linkedBills.get(debt.billId().orElse(null)),
-                            MonthInterest.isBooked(debt.id(), thisMonth, thisMonthsRows, null),
+                            thisMonthsRows,
                             today));
         }
         return List.copyOf(facts);
@@ -184,17 +184,10 @@ public class DebtBalanceService {
                         .orElse(null);
         LocalDate today = today();
         YearMonth thisMonth = YearMonth.from(today);
-        boolean booked =
-                MonthInterest.isBooked(
-                        debt.id(),
-                        thisMonth,
-                        payments.monthInterestRows(
-                                householdId,
-                                debt.id(),
-                                thisMonth.atDay(1),
-                                thisMonth.atEndOfMonth()),
-                        null);
-        return factsFor(debt, principalPaid, activity, bill, booked, today);
+        List<MonthInterestRow> thisMonthsRows =
+                payments.monthInterestRows(
+                        householdId, debt.id(), thisMonth.atDay(1), thisMonth.atEndOfMonth());
+        return factsFor(debt, principalPaid, activity, bill, thisMonthsRows, today);
     }
 
     // ------------------------------------------------------------------------------- internals
@@ -204,7 +197,7 @@ public class DebtBalanceService {
             BigDecimal principalPaid,
             PaymentActivity activity,
             Bill linkedBill,
-            boolean interestBookedThisMonth,
+            List<MonthInterestRow> thisMonthsRows,
             LocalDate today) {
         Money anchored =
                 principalPaid == null
@@ -214,14 +207,17 @@ public class DebtBalanceService {
         LocalDate lastPaid = activity == null ? null : activity.latestPaidDate();
         long paymentCount = activity == null ? 0L : activity.paymentCount();
         YearMonth firstPaymentMonth = firstPaymentMonth(linkedBill, lastPaid, today);
-        YearMonth monthInterestBooked = interestBookedThisMonth ? YearMonth.from(today) : null;
+        // This month so far (ADR-0043): whether its interest is booked, and what was paid towards
+        // it. A projection that starts this month plans only what is still to come.
+        YearMonth thisMonth = YearMonth.from(today);
+        boolean booked = MonthInterest.isBooked(debt.id(), thisMonth, thisMonthsRows, null);
+        Money paid = MonthInterest.paidIn(debt.id(), thisMonth, thisMonthsRows, debt.currency());
+        FirstMonth first =
+                firstPaymentMonth.equals(thisMonth)
+                        ? new FirstMonth(booked, paid)
+                        : FirstMonth.untouched(debt.currency());
 
-        Rate rate =
-                rate(
-                        debt,
-                        anchored,
-                        firstPaymentMonth,
-                        firstPaymentMonth.equals(monthInterestBooked));
+        Rate rate = rate(debt, anchored, firstPaymentMonth, first);
         Estimate estimate = estimate(debt, anchored, rate.apr(), lastPaid, today);
 
         return new DebtFacts(
@@ -238,7 +234,9 @@ public class DebtBalanceService {
                 paymentCount,
                 lastPaid,
                 firstPaymentMonth,
-                monthInterestBooked);
+                thisMonth,
+                booked,
+                paid);
     }
 
     /**
@@ -254,8 +252,7 @@ public class DebtBalanceService {
      * place in the ladder rather than vanishing from the plan. Ranking it as 0% puts it last under
      * avalanche, which is recorded as a known gap rather than hidden.
      */
-    private Rate rate(
-            Debt debt, Money anchored, YearMonth firstPaymentMonth, boolean firstMonthBooked) {
+    private Rate rate(Debt debt, Money anchored, YearMonth firstPaymentMonth, FirstMonth first) {
         Optional<BigDecimal> entered = debt.apr();
         if (entered.isPresent()) {
             return new Rate(entered.get(), TermSource.ENTERED, true);
@@ -271,7 +268,7 @@ public class DebtBalanceService {
                                         debt.payment().orElseThrow(),
                                         horizon,
                                         firstPaymentMonth)
-                                .withFirstMonthInterestBooked(firstMonthBooked));
+                                .withFirstMonth(first));
         return switch (solution) {
             case TermsSolution.Solved solved ->
                     new Rate(solved.terms().apr(), TermSource.SOLVED, true);

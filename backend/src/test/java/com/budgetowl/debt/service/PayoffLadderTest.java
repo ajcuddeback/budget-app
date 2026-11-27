@@ -601,6 +601,126 @@ class PayoffLadderTest {
         assertThat(with.totalInterest().plus(booked)).isLessThanOrEqualTo(now.totalInterest());
     }
 
+    // ------------------------------------ month 1 counts what is already paid (ADR-0043)
+
+    @Test
+    void aMonthAlreadyPaidPlansOnlyWhatIsStillToCome() {
+        // The Visa's $445 for this month is recorded (it booked the month's interest), so month 1
+        // plans only the $460 still to come: the car's and the student loan's minimums.
+        PayoffProjection.Ranked plan =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, paid(visa, "445.00")),
+                                DECEMBER);
+
+        PayoffProjection.Rung rung = rungFor(plan, visa.id());
+        assertThat(rung.months().get(0).amount()).isEqualTo(money("0.00"));
+        assertThat(rung.months().get(0).interest()).isEqualTo(money("0.00"));
+        assertThat(rung.months().get(1).amount()).isEqualTo(money("445.00"));
+        assertThat(rung.extra())
+                .as("the standing allocation is still $185 + $260; only this month is netted")
+                .isEqualTo(money("260.00"));
+        assertThat(monthOneSpend(plan)).isEqualTo(money("460.00"));
+    }
+
+    @Test
+    void overpayingTheMonthPlansNothingMoreForItAndStillMeetsTheOtherMinimums() {
+        // $700 to the Visa this month is more than its $445: month 1 plans it nothing, never a
+        // negative payment, and the other debts' minimums are still owed and still planned. Month
+        // 2 is the whole $905 again: the overpayment is in the balance already, not carried.
+        PayoffProjection.Ranked plan =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, paid(visa, "700.00")),
+                                DECEMBER);
+
+        assertThat(rungFor(plan, visa.id()).months().get(0).amount()).isEqualTo(money("0.00"));
+        assertThat(rungFor(plan, car.id()).months().get(0).amount()).isEqualTo(money("342.00"));
+        assertThat(rungFor(plan, student.id()).months().get(0).amount()).isEqualTo(money("118.00"));
+        assertThat(rungFor(plan, visa.id()).months().get(1).amount()).isEqualTo(money("445.00"));
+    }
+
+    @Test
+    void bothStrategiesPutTheSameCashIntoAPartlyPaidMonth() {
+        // $300 already paid to the student loan: rung 3 under avalanche, rung 2 under snowball.
+        // Netting each debt's own allocation would make the month's cash depend on where the paid
+        // debt sits in each order; netting the month's amount gives both orders the same $605.
+        List<LadderDebt> debts = List.of(car, paid(student, "300.00"), visa);
+        PayoffProjection.Ranked avalanche =
+                (PayoffProjection.Ranked)
+                        ladder.project(PayoffStrategy.AVALANCHE, MONTHLY, debts, DECEMBER);
+        PayoffProjection.Ranked snowball =
+                (PayoffProjection.Ranked)
+                        ladder.project(PayoffStrategy.SNOWBALL, MONTHLY, debts, DECEMBER);
+
+        assertThat(monthOneSpend(avalanche)).isEqualTo(money("605.00"));
+        assertThat(monthOneSpend(snowball)).isEqualTo(money("605.00"));
+        assertThat(avalanche.totalInterest())
+                .isLessThanOrEqualTo(snowball.totalInterest().plus(money("1.00")));
+    }
+
+    @Property(tries = 200)
+    void countingTheMonthAsPaidNeverMovesTheSurplusPayoffLater(
+            @ForAll @IntRange(min = 1, max = 2_000) int surplusPounds,
+            @ForAll @IntRange(min = 0, max = 900) int alreadyPaidPounds) {
+        // Whatever was already paid towards the Visa this month (it booked the interest), a
+        // check-in surplus on top of it — principal only — never moves its payoff later and never
+        // adds interest.
+        Money already = money(alreadyPaidPounds + ".00");
+        Money surplus = money(surplusPounds + ".00");
+        Money after = visa.balance().minus(surplus);
+        Assume.that(after.isPositive());
+        LadderDebt before = withFirstMonth(visa, visa.balance(), new FirstMonth(true, already));
+        LadderDebt with = withFirstMonth(visa, after, new FirstMonth(true, already));
+
+        PayoffProjection.Ranked now =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, before),
+                                DECEMBER);
+        PayoffProjection.Ranked then =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, with),
+                                DECEMBER);
+
+        assertThat(rungFor(then, visa.id()).payoffMonth())
+                .isBeforeOrEqualTo(rungFor(now, visa.id()).payoffMonth());
+        assertThat(then.totalInterest()).isLessThanOrEqualTo(now.totalInterest());
+    }
+
+    private static Money monthOneSpend(PayoffProjection.Ranked plan) {
+        Money spent = money("0.00");
+        for (PayoffProjection.Rung rung : plan.rungs()) {
+            spent = spent.plus(rung.months().get(0).amount());
+        }
+        return spent;
+    }
+
+    /** The debt with this month's interest booked and {@code amount} already paid towards it. */
+    private static LadderDebt paid(LadderDebt debt, String amount) {
+        return withFirstMonth(debt, debt.balance(), new FirstMonth(true, money(amount)));
+    }
+
+    private static LadderDebt withFirstMonth(LadderDebt debt, Money balance, FirstMonth first) {
+        return new LadderDebt(
+                debt.id(),
+                debt.name(),
+                balance,
+                debt.apr(),
+                debt.minimumPayment(),
+                debt.customOrder(),
+                first);
+    }
+
     private static LadderDebt booked(LadderDebt debt, Money balance) {
         return new LadderDebt(
                 debt.id(),
@@ -609,7 +729,7 @@ class PayoffLadderTest {
                 debt.apr(),
                 debt.minimumPayment(),
                 debt.customOrder(),
-                true);
+                new FirstMonth(true, money("0.00")));
     }
 
     private static PayoffProjection.Rung rungFor(PayoffProjection.Ranked plan, UUID id) {

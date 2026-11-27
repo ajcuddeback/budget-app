@@ -19,6 +19,8 @@ import com.budgetowl.household.service.MembershipService;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.Currency;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -230,6 +233,37 @@ public class DebtPaymentService {
                 saved.id(),
                 actorId);
         return view(saved, debt.currency());
+    }
+
+    /**
+     * Locks every one of {@code debtIds} that is this household's, in one global order, until the
+     * transaction ends.
+     *
+     * <p>For a transaction that writes to more than one debt — a weekly check-in's completion,
+     * which records a bill prompt's payment against one debt and the surplus against another. Each
+     * write takes its debt's row lock on its own ({@link #lock}), in whatever order the writes
+     * come, and two transactions taking the same two debts in opposite orders deadlock. Taking them
+     * all here first, in the order {@link #lockOrder} gives, means every multi-debt writer waits
+     * rather than deadlocks. A debt that is not this household's, or no longer exists, is skipped:
+     * the write that names it answers for it.
+     *
+     * @throws org.springframework.transaction.IllegalTransactionStateException outside a
+     *     transaction, where a lock is released at once and protects nothing
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockInOrder(UUID actorId, Collection<UUID> debtIds) {
+        UUID householdId = memberships.requireWriteAccess(actorId).household().id();
+        for (UUID debtId : lockOrder(debtIds)) {
+            debts.lockByIdAndHouseholdId(debtId, householdId);
+        }
+    }
+
+    /**
+     * The one order debt rows are locked in when more than one is: by the id's text, which is also
+     * PostgreSQL's order for a {@code uuid}. Distinct, so a debt named twice is locked once.
+     */
+    static List<UUID> lockOrder(Collection<UUID> debtIds) {
+        return debtIds.stream().distinct().sorted(Comparator.comparing(UUID::toString)).toList();
     }
 
     /**

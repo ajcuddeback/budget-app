@@ -533,7 +533,7 @@ public class DebtService {
                                 facts.apr(),
                                 facts.debt().minimumPayment(),
                                 facts.firstPaymentMonth(),
-                                facts.firstMonthInterestBooked());
+                                facts.firstMonth());
         if (projection instanceof Projection.Cleared cleared) {
             return BalanceSeries.of(
                     facts.firstPaymentMonth(),
@@ -632,7 +632,7 @@ public class DebtService {
                                     facts.apr(),
                                     entered,
                                     facts.firstPaymentMonth(),
-                                    facts.firstMonthInterestBooked());
+                                    facts.firstMonth());
             return horizonEntered(debt, entered, TermSource.ENTERED, projection);
         }
         if (horizon != null) {
@@ -644,8 +644,7 @@ public class DebtService {
                                                     facts.apr(),
                                                     horizon,
                                                     facts.firstPaymentMonth())
-                                            .withFirstMonthInterestBooked(
-                                                    facts.firstMonthInterestBooked()));
+                                            .withFirstMonth(facts.firstMonth()));
             return switch (solution) {
                 case TermsSolution.Solved solved ->
                         horizonEntered(
@@ -682,7 +681,7 @@ public class DebtService {
                                 facts.apr(),
                                 paying,
                                 facts.firstPaymentMonth(),
-                                facts.firstMonthInterestBooked());
+                                facts.firstMonth());
         if (projection instanceof Projection.Cleared cleared) {
             return new Terms(
                     paying,
@@ -950,8 +949,7 @@ public class DebtService {
                                                     facts.apr(),
                                                     horizon,
                                                     firstPaymentMonth)
-                                            .withFirstMonthInterestBooked(
-                                                    facts.firstMonthInterestBooked()));
+                                            .withFirstMonth(facts.firstMonth()));
             if (solution instanceof TermsSolution.Unsolvable refused) {
                 throw unsolvable(refused.field().code(), refused.detail());
             }

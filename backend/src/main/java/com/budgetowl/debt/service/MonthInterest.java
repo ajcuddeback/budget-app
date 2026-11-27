@@ -1,11 +1,13 @@
 package com.budgetowl.debt.service;
 
 import com.budgetowl.common.Money;
+import com.budgetowl.debt.domain.PaymentProvenance;
 import com.budgetowl.debt.persistence.MonthInterestRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Collection;
+import java.util.Currency;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -94,6 +96,27 @@ public final class MonthInterest {
             }
         }
         return false;
+    }
+
+    /**
+     * What was recorded against {@code debtId} in {@code month} and counts as paid towards it: a
+     * projection made mid-month plans only what is still to come (ADR-0043). A statement correction
+     * is not a payment. A weekly check-in's surplus is paid <em>on top of</em> the plan
+     * (weekly-check-in.md, decision 5), so it does not reduce what the plan still pays this month —
+     * otherwise paying the surplus could never move a payoff date.
+     */
+    public static Money paidIn(
+            UUID debtId, YearMonth month, Collection<MonthInterestRow> rows, Currency currency) {
+        Money paid = Money.zero(currency);
+        for (MonthInterestRow row : rows) {
+            if (row.debtId().equals(debtId)
+                    && YearMonth.from(row.paidDate()).equals(month)
+                    && row.provenance() != PaymentProvenance.STATEMENT_CORRECTION
+                    && row.provenance() != PaymentProvenance.CHECK_IN) {
+                paid = paid.plus(Money.of(row.amount(), currency));
+            }
+        }
+        return paid.isNegative() ? Money.zero(currency) : paid;
     }
 
     /**

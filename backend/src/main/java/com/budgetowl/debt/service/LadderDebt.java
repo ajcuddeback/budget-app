@@ -27,9 +27,9 @@ import java.util.UUID;
  * @param customOrder the household's position for this debt under {@link PayoffStrategy#CUSTOM}, or
  *     null for a debt it has not placed. Ignored by the two named strategies, which derive the
  *     order from the numbers
- * @param firstMonthInterestBooked the plan's first month is the current one, and a payment recorded
- *     in it already carried its interest, so the ladder charges this debt none in month 1 —
- *     interest is charged once per debt per month (ADR-0043)
+ * @param firstMonth what is already true of the plan's month 1, which is the current month
+ *     (ADR-0043): its interest booked by a recorded payment, so the ladder charges this debt none
+ *     in month 1, and what was already paid towards this debt this month, which counts as paid
  */
 public record LadderDebt(
         UUID id,
@@ -38,9 +38,9 @@ public record LadderDebt(
         BigDecimal apr,
         Money minimumPayment,
         Integer customOrder,
-        boolean firstMonthInterestBooked) {
+        FirstMonth firstMonth) {
 
-    /** A debt whose first month has not had its interest charged yet: the ordinary case. */
+    /** A debt whose first month nothing has happened in yet: the ordinary case. */
     public LadderDebt(
             UUID id,
             String name,
@@ -48,7 +48,14 @@ public record LadderDebt(
             BigDecimal apr,
             Money minimumPayment,
             Integer customOrder) {
-        this(id, name, balance, apr, minimumPayment, customOrder, false);
+        this(
+                id,
+                name,
+                balance,
+                apr,
+                minimumPayment,
+                customOrder,
+                FirstMonth.untouched(balance.currency()));
     }
 
     public LadderDebt {
@@ -57,6 +64,7 @@ public record LadderDebt(
         Objects.requireNonNull(balance, "balance");
         Objects.requireNonNull(apr, "apr");
         Objects.requireNonNull(minimumPayment, "minimumPayment");
+        Objects.requireNonNull(firstMonth, "firstMonth");
         if (!balance.isPositive()) {
             throw new IllegalArgumentException("A debt in the ladder has a positive balance");
         }

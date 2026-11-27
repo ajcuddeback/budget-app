@@ -99,7 +99,7 @@ public final class PayoffLadder {
             return new PayoffProjection.None(Projection.Reason.BELOW_MINIMUMS);
         }
 
-        return run(order, monthlyAmount.minus(minimums), firstMonth);
+        return run(order, monthlyAmount, firstMonth);
     }
 
     /**
@@ -160,31 +160,30 @@ public final class PayoffLadder {
      * never the more expensive order. Without this, it is: a snowball that clears a small debt in
      * one month stops that debt's interest a month earlier and can come out ahead.
      */
-    private PayoffProjection run(List<LadderDebt> order, Money surplus, YearMonth firstMonth) {
+    private PayoffProjection run(
+            List<LadderDebt> order, Money monthlyAmount, YearMonth firstMonth) {
         int count = order.size();
-        Currency currency = surplus.currency();
+        Currency currency = monthlyAmount.currency();
         List<Money> owed = new ArrayList<>(count);
         List<Money> interestPaid = new ArrayList<>(count);
         List<YearMonth> payoffMonths = new ArrayList<>(count);
         List<List<ProjectionMonth>> rows = new ArrayList<>(count);
+        Money paidThisMonth = Money.zero(currency);
+        List<Money> deductions = new ArrayList<>(count);
         for (LadderDebt debt : order) {
             owed.add(debt.balance());
             interestPaid.add(Money.zero(currency));
             payoffMonths.add(null);
             rows.add(new ArrayList<>());
+            paidThisMonth = paidThisMonth.plus(debt.firstMonth().alreadyPaid());
+            deductions.add(debt.firstMonth().alreadyPaid());
         }
+        List<Money> standing = List.of();
 
         for (int monthNumber = 1; monthNumber <= MAX_MONTHS; monthNumber++) {
-            Money pot = surplus;
             boolean anyActive = false;
             for (int rung = 0; rung < count; rung++) {
-                if (owed.get(rung).isPositive()) {
-                    anyActive = true;
-                } else {
-                    // A cleared rung keeps paying — into the rungs below it. Its minimum rolls
-                    // down with the surplus, which is what makes the ladder accelerate.
-                    pot = pot.plus(order.get(rung).minimumPayment());
-                }
+                anyActive |= owed.get(rung).isPositive();
             }
             if (!anyActive) {
                 break;
@@ -195,40 +194,44 @@ public final class PayoffLadder {
             YearMonth month = firstMonth.plusMonths(monthNumber - 1L);
             List<Money> interest = new ArrayList<>(count);
             List<Money> due = new ArrayList<>(count);
-            List<Money> paid = new ArrayList<>(count);
             for (int rung = 0; rung < count; rung++) {
                 Money balance = owed.get(rung);
                 if (!balance.isPositive()) {
                     interest.add(Money.zero(currency));
                     due.add(Money.zero(currency));
-                    paid.add(Money.zero(currency));
                     continue;
                 }
                 // Once per debt per month (ADR-0043): a payment already recorded this month carried
                 // month 1's interest, and the balance includes it.
                 Money monthsInterest =
-                        monthNumber == 1 && order.get(rung).firstMonthInterestBooked()
+                        monthNumber == 1 && order.get(rung).firstMonth().interestBooked()
                                 ? Money.zero(currency)
                                 : solver.interestFor(balance, order.get(rung).apr());
-                Money owedNow = balance.plus(monthsInterest);
-                Money minimum = order.get(rung).minimumPayment();
-                Money floor = minimum.compareTo(owedNow) <= 0 ? minimum : owedNow;
                 interest.add(monthsInterest);
-                due.add(owedNow);
-                paid.add(floor);
-                pot = pot.plus(minimum.minus(floor));
+                due.add(balance.plus(monthsInterest));
             }
-            for (int rung = 0; rung < count && pot.isPositive(); rung++) {
-                if (!owed.get(rung).isPositive()) {
-                    continue;
-                }
-                Money room = due.get(rung).minus(paid.get(rung));
-                if (!room.isPositive()) {
-                    continue;
-                }
-                Money given = room.compareTo(pot) <= 0 ? room : pot;
-                paid.set(rung, paid.get(rung).plus(given));
-                pot = pot.minus(given);
+
+            List<Money> paid;
+            if (monthNumber == 1) {
+                // The plan's standing allocation, as if nothing were paid yet: what the page says
+                // each debt is paying every month.
+                standing = allocate(order, owed, due, monthlyAmount, null);
+                // Count it as paid (ADR-0043): month 1 is the current month, so only what is
+                // still to come of it is planned. The month's amount loses everything already
+                // paid towards the debts in it, and each debt's minimum what was paid towards
+                // that debt. The SAME cash goes into month 1 whichever order the ladder takes, so
+                // the strategies still compare like for like. Overpaying the month plans nothing
+                // more and is never carried forward: the balance already reflects it.
+                Money stillToCome = monthlyAmount.minus(paidThisMonth);
+                paid =
+                        allocate(
+                                order,
+                                owed,
+                                due,
+                                stillToCome.isPositive() ? stillToCome : Money.zero(currency),
+                                deductions);
+            } else {
+                paid = allocate(order, owed, due, monthlyAmount, null);
             }
 
             for (int rung = 0; rung < count; rung++) {
@@ -251,7 +254,66 @@ public final class PayoffLadder {
             }
         }
 
-        return assemble(order, interestPaid, payoffMonths, rows, currency);
+        return assemble(order, interestPaid, payoffMonths, rows, standing, currency);
+    }
+
+    /**
+     * One month's allocation of {@code budget}: every active rung its minimum first, capped at what
+     * it owes; then whatever is left down the ladder from the top.
+     *
+     * <p>With the whole monthly amount as the budget this is exactly the roll-down: the amount is
+     * at least the sum of the minimums, so every floor is met, and a cleared rung's minimum is
+     * still in the budget to flow down. In month 1 the budget can be smaller, because part of the
+     * month is already paid. <b>A minimum is still met</b> — it is owed whatever was paid to
+     * another debt — and only the extra goes: overpaying one debt this month never plans another's
+     * minimum away, and never plans a negative payment.
+     *
+     * @param deductions what each rung has already had this month, off its minimum; null for none
+     */
+    private static List<Money> allocate(
+            List<LadderDebt> order,
+            List<Money> owed,
+            List<Money> due,
+            Money budget,
+            List<Money> deductions) {
+        int count = order.size();
+        Currency currency = budget.currency();
+        List<Money> paid = new ArrayList<>(count);
+        Money left = budget;
+        for (int rung = 0; rung < count; rung++) {
+            if (!owed.get(rung).isPositive()) {
+                paid.add(Money.zero(currency));
+                continue;
+            }
+            Money minimum = order.get(rung).minimumPayment();
+            if (deductions != null) {
+                minimum = minimum.minus(deductions.get(rung));
+            }
+            Money floor = smaller(atLeastZero(minimum), due.get(rung));
+            paid.add(floor);
+            left = left.minus(floor);
+        }
+        for (int rung = 0; rung < count && left.isPositive(); rung++) {
+            if (!owed.get(rung).isPositive()) {
+                continue;
+            }
+            Money room = due.get(rung).minus(paid.get(rung));
+            if (!room.isPositive()) {
+                continue;
+            }
+            Money given = smaller(room, left);
+            paid.set(rung, paid.get(rung).plus(given));
+            left = left.minus(given);
+        }
+        return paid;
+    }
+
+    private static Money smaller(Money a, Money b) {
+        return a.compareTo(b) <= 0 ? a : b;
+    }
+
+    private static Money atLeastZero(Money money) {
+        return money.isNegative() ? Money.zero(money.currency()) : money;
     }
 
     private PayoffProjection assemble(
@@ -259,6 +321,7 @@ public final class PayoffLadder {
             List<Money> interestPaid,
             List<YearMonth> payoffMonths,
             List<List<ProjectionMonth>> rows,
+            List<Money> standing,
             Currency currency) {
         List<PayoffProjection.Rung> rungs = new ArrayList<>(order.size());
         Money totalInterest = Money.zero(currency);
@@ -268,9 +331,10 @@ public final class PayoffLadder {
             LadderDebt debt = order.get(rung);
             List<ProjectionMonth> months = rows.get(rung);
             Money minimum = debt.minimumPayment();
-            // Every active debt pays in month 1, so there is always a first row to read the
-            // allocation off. Rung 1's extra is the surplus; every other rung's is zero.
-            Money extra = months.get(0).amount().minus(minimum);
+            // The standing allocation, read off month 1 before anything already paid this month
+            // is counted: what the debt is paying every month. Rung 1's extra is the surplus;
+            // every other rung's is zero.
+            Money extra = standing.get(rung).minus(minimum);
             YearMonth payoffMonth = payoffMonths.get(rung);
             rungs.add(
                     new PayoffProjection.Rung(

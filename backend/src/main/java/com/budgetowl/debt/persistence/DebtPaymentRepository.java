@@ -167,7 +167,7 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
     @Query(
             """
             select new com.budgetowl.debt.persistence.MonthInterestRow(
-                       p.id, p.debtId, p.paidDate, p.interest, p.provenance)
+                       p.id, p.debtId, p.paidDate, p.amount, p.interest, p.provenance)
             from DebtPayment p
             where p.householdId = :householdId
               and p.debtId = :debtId
@@ -187,7 +187,7 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
     @Query(
             """
             select new com.budgetowl.debt.persistence.MonthInterestRow(
-                       p.id, p.debtId, p.paidDate, p.interest, p.provenance)
+                       p.id, p.debtId, p.paidDate, p.amount, p.interest, p.provenance)
             from DebtPayment p
             where p.householdId = :householdId
               and p.paidDate >= :from

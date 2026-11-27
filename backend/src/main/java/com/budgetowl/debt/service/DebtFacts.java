@@ -44,9 +44,12 @@ import java.util.Optional;
  *     which projects from its anchor and is an ordinary state, not an empty one
  * @param firstPaymentMonth the month the projection's first period falls in: the linked bill's next
  *     occurrence, otherwise the day-of-month of the most recent payment, otherwise today
- * @param monthInterestBooked the current month when a stored payment already carries its interest,
- *     otherwise null. Interest is charged once per debt per month (ADR-0043), so a projection whose
- *     first month is this one must not charge it again — see {@link #monthInterestBookedIn}
+ * @param currentMonth the month these facts were derived in — today's
+ * @param monthInterestBooked a stored payment dated in {@code currentMonth} already carries its
+ *     interest. Interest is charged once per debt per month (ADR-0043)
+ * @param paidThisMonth what was recorded against the debt in {@code currentMonth}, counted as paid
+ *     towards it: statement corrections and check-in surpluses are not in it (see {@link
+ *     FirstMonth})
  */
 public record DebtFacts(
         Debt debt,
@@ -62,7 +65,9 @@ public record DebtFacts(
         long paymentCount,
         LocalDate lastPaidDate,
         YearMonth firstPaymentMonth,
-        YearMonth monthInterestBooked) {
+        YearMonth currentMonth,
+        boolean monthInterestBooked,
+        Money paidThisMonth) {
 
     public DebtFacts {
         Objects.requireNonNull(debt, "debt");
@@ -73,28 +78,33 @@ public record DebtFacts(
         Objects.requireNonNull(apr, "apr");
         Objects.requireNonNull(aprSource, "aprSource");
         Objects.requireNonNull(firstPaymentMonth, "firstPaymentMonth");
+        Objects.requireNonNull(currentMonth, "currentMonth");
+        Objects.requireNonNull(paidThisMonth, "paidThisMonth");
     }
 
     /**
-     * Whether {@code month}'s interest is already in this balance, so a projection starting in it
-     * charges that month none (ADR-0043). Only ever true of the current month: no payment is dated
-     * in the future, and a past month is not where a projection starts.
+     * What is already true of {@code month} when a projection starts in it: the interest booked and
+     * what was paid, if it is the current month, and nothing otherwise. No payment is dated in the
+     * future, and a past month is not where a projection starts.
      */
-    public boolean monthInterestBookedIn(YearMonth month) {
-        return month.equals(monthInterestBooked);
+    public FirstMonth firstMonthAt(YearMonth month) {
+        return month.equals(currentMonth)
+                ? new FirstMonth(monthInterestBooked, paidThisMonth)
+                : FirstMonth.untouched(balance.currency());
     }
 
-    /** Whether this debt's own projection starts in a month whose interest is already booked. */
-    public boolean firstMonthInterestBooked() {
-        return monthInterestBookedIn(firstPaymentMonth);
+    /** The same, for this debt's own projection, which starts at its next payment month. */
+    public FirstMonth firstMonth() {
+        return firstMonthAt(firstPaymentMonth);
     }
 
     /**
-     * The same debt as it would stand after one more payment, which leaves {@code newBalance} and
-     * books {@code newMonthInterestBooked} (null for none). Computed, never stored: the weekly
-     * check-in's what-if.
+     * The same debt as it would stand after one more check-in payment, which leaves {@code
+     * newBalance} and may book the month's interest. Computed, never stored: the weekly check-in's
+     * what-if. A check-in surplus is paid on top of the plan, so what counts as paid this month
+     * does not change.
      */
-    public DebtFacts afterOnePayment(Money newBalance, YearMonth newMonthInterestBooked) {
+    public DebtFacts afterCheckInPayment(Money newBalance, boolean booksTheMonth) {
         return new DebtFacts(
                 debt,
                 newBalance,
@@ -109,7 +119,9 @@ public record DebtFacts(
                 paymentCount + 1,
                 lastPaidDate,
                 firstPaymentMonth,
-                newMonthInterestBooked);
+                currentMonth,
+                monthInterestBooked || booksTheMonth,
+                paidThisMonth);
     }
 
     public java.util.UUID id() {

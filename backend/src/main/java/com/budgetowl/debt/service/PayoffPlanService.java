@@ -333,12 +333,7 @@ public class PayoffPlanService {
             if (!facts.id().equals(debtId)) {
                 with.add(facts);
             } else if (balanceAfter.isPositive()) {
-                with.add(
-                        facts.afterOnePayment(
-                                balanceAfter,
-                                booksTheMonth || facts.monthInterestBookedIn(firstMonth())
-                                        ? firstMonth()
-                                        : null));
+                with.add(facts.afterCheckInPayment(balanceAfter, booksTheMonth));
             }
         }
         Money amount = groupAmount(plan, base, base, now);
@@ -659,7 +654,7 @@ public class PayoffPlanService {
                             // The plan's month 1 is this month. A payment already recorded in it
                             // carried its interest, so the plan does not charge it twice
                             // (ADR-0043).
-                            debt.monthInterestBookedIn(first)));
+                            debt.firstMonthAt(first)));
         }
         return List.copyOf(ladderDebts);
     }

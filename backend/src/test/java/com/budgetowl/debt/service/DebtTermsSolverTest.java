@@ -33,6 +33,9 @@ class DebtTermsSolverTest {
     private static final Currency GBP = Currency.getInstance("GBP");
     private static final YearMonth DECEMBER = YearMonth.of(2026, 12);
 
+    /** Month 1's interest already carried by a recorded payment, and nothing counted as paid. */
+    private static final FirstMonth BOOKED = new FirstMonth(true, money("0.00"));
+
     private final DebtTermsSolver solver = new DebtTermsSolver();
 
     // ------------------------------------------------------------------ the recurrence
@@ -218,7 +221,7 @@ class DebtTermsSolverTest {
         Projection.Cleared booked =
                 (Projection.Cleared)
                         solver.project(
-                                money("6180.00"), apr("22.900"), money("445.00"), DECEMBER, true);
+                                money("6180.00"), apr("22.900"), money("445.00"), DECEMBER, BOOKED);
 
         assertThat(booked.months().get(0).interest()).isEqualTo(money("0.00"));
         assertThat(booked.months().get(0).balanceAfter()).isEqualTo(money("5735.00"));
@@ -229,11 +232,86 @@ class DebtTermsSolverTest {
     }
 
     @Test
+    void aMonthAlreadyPaidInFullIsTheOrdinaryProjectionOneMonthLater() {
+        // This month's $445 is recorded and carried the month's interest, so December plans
+        // nothing more: January onwards is exactly the untouched recurrence, a month later.
+        Projection.Cleared plain =
+                (Projection.Cleared)
+                        solver.project(money("6180.00"), apr("22.900"), money("445.00"), DECEMBER);
+        Projection.Cleared paid =
+                (Projection.Cleared)
+                        solver.project(
+                                money("6180.00"),
+                                apr("22.900"),
+                                money("445.00"),
+                                DECEMBER,
+                                new FirstMonth(true, money("445.00")));
+
+        assertThat(paid.months().get(0).amount()).isEqualTo(money("0.00"));
+        assertThat(paid.months().get(0).balanceAfter()).isEqualTo(money("6180.00"));
+        assertThat(paid.monthsLeft()).isEqualTo(plain.monthsLeft() + 1);
+        assertThat(paid.payoffMonth()).isEqualTo(plain.payoffMonth().plusMonths(1));
+        assertThat(paid.totalInterest()).isEqualTo(plain.totalInterest());
+    }
+
+    @Test
+    void aMonthPartlyPaidPlansTheRestAndAnOverpaidOneNothingAndNeverLess() {
+        FirstMonth partly = new FirstMonth(true, money("100.00"));
+        FirstMonth overpaid = new FirstMonth(true, money("600.00"));
+
+        Projection.Cleared rest =
+                (Projection.Cleared)
+                        solver.project(
+                                money("6180.00"), apr("22.900"), money("445.00"), DECEMBER, partly);
+        Projection.Cleared none =
+                (Projection.Cleared)
+                        solver.project(
+                                money("6180.00"),
+                                apr("22.900"),
+                                money("445.00"),
+                                DECEMBER,
+                                overpaid);
+
+        assertThat(rest.months().get(0).amount()).isEqualTo(money("345.00"));
+        assertThat(none.months().get(0).amount()).isEqualTo(money("0.00"));
+        assertThat(none.months().get(1).amount())
+                .as("the overpayment is in the balance already; month 2 is the whole payment")
+                .isEqualTo(money("445.00"));
+    }
+
+    @Test
+    void solvingAPaymentWithTheMonthAlreadyPaidStillReachesTheHorizon() {
+        FirstMonth paid = new FirstMonth(true, money("445.00"));
+        TermsSolution.Solved solved =
+                (TermsSolution.Solved)
+                        solver.solve(
+                                DebtTerms.solvingPayment(
+                                                money("6180.00"),
+                                                apr("22.900"),
+                                                Horizon.ofMonths(12),
+                                                DECEMBER)
+                                        .withFirstMonth(paid));
+
+        Projection.Cleared projection = (Projection.Cleared) solved.projection();
+        assertThat(projection.monthsLeft()).isLessThanOrEqualTo(12);
+        Projection oneCentLess =
+                solver.project(
+                        money("6180.00"),
+                        apr("22.900"),
+                        solved.terms().payment().minus(money("0.01")),
+                        DECEMBER,
+                        paid);
+        assertThat(oneCentLess instanceof Projection.Cleared cleared && cleared.monthsLeft() <= 12)
+                .as("the smallest such payment, to the penny")
+                .isFalse();
+    }
+
+    @Test
     void aBookedFirstMonthAsksWhetherThePaymentCoversMonthTwosInterest() {
         // £50 against £6,180 at 22.9% never clears either way: month 2's interest on £6,130 is
         // £116.98. Booking month 1 must not make a payment that never clears look as if it did.
         Projection projection =
-                solver.project(money("6180.00"), apr("22.900"), money("50.00"), DECEMBER, true);
+                solver.project(money("6180.00"), apr("22.900"), money("50.00"), DECEMBER, BOOKED);
 
         assertThat(projection).isInstanceOf(Projection.None.class);
         assertThat(((Projection.None) projection).reason())
@@ -258,7 +336,7 @@ class DebtTermsSolverTest {
                                                         apr("22.900"),
                                                         twelve,
                                                         DECEMBER)
-                                                .withFirstMonthInterestBooked(true)))
+                                                .withFirstMonth(BOOKED)))
                         .terms()
                         .payment();
 
