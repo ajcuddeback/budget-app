@@ -1367,6 +1367,28 @@ in Settings is still trusted (Dart reads the system directory itself).
 _Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
 2 (pinned to one CA per server)._
 
+## `dart format lib` reformats the generated strings, and the generator check then fails
+
+**Symptom.** `generators_test` ("the ARB and the lookup are what tools/mobile-l10n.sh generates")
+failed after a change that touched no string: `lib/l10n/message_lookup.g.dart` had been run
+through `dart format` along with the code, and the generator writes it differently.
+
+**What to do.** Format the directories you changed, never `lib/l10n/` (the gate's format step
+excludes it). If it happened, run `tools/mobile-l10n.sh` again.
+
+_Added 2026-11-27 — slice 15 phase 2, round 4._
+
+## Write Unicode ranges in Dart as code points, not `\u` escapes, when an agent edits the file
+
+**Symptom.** A regex meant to strip direction overrides held the literal U+202A–U+202E characters,
+not their escapes, after an agent edit; the analyzer flagged
+`text_direction_code_point_in_literal`.
+
+**What to do.** Compare runes with integer literals (`0x202A`) and build characters with
+`String.fromCharCode`, as `cleanCaName` and `isolated` do; in tests, `String.fromCharCodes`.
+
+_Added 2026-11-27 — slice 15 phase 2, round 4._
+
 ## Dio runs interceptors asynchronously, so "sent" is later than the call
 
 **Symptom.** A test meant to hold a slow `/api/auth/me` across a sign-out passed with the fix it

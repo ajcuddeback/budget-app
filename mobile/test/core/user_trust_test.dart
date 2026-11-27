@@ -302,6 +302,206 @@ void main() {
     });
   });
 
+  group('T1: a CA name keeps only letters, digits, spaces and punctuation that is not a quote', () {
+    String chars(List<int> runes) => String.fromCharCodes(runes);
+
+    /// 'A', [rune], 'B': what is left of a name with [rune] between two letters.
+    String? between(int rune) => cleanCaName(chars([0x41, rune, 0x42]));
+
+    test('a quote cannot be closed: the ASCII ones and every look-alike are dropped', () {
+      expect(
+        cleanCaName("Home CA', not one you installed. Nothing to check"),
+        'Home CA, not one you installed. Nothing to check',
+      );
+      expect(cleanCaName('Home CA", "trusted'), 'Home CA, trusted');
+      for (final quote in const [
+        0x22, 0x27, 0x60, 0xAB, 0xB4, 0xBB, 0x2B9, 0x2BB, 0x2BC, 0x2C8, 0x5F3, 0x5F4, //
+        0x2018, 0x2019, 0x201A, 0x201B, 0x201C, 0x201D, 0x201E, 0x201F, 0x2032, 0x2033,
+        0x2039, 0x203A, 0x2E42, 0x300C, 0x300D, 0x300E, 0x301D, 0x301E, 0xA78B, 0xA78C,
+        0xFE41, 0xFF02, 0xFF07, 0xFF62,
+      ]) {
+        expect(between(quote), 'AB', reason: 'U+${quote.toRadixString(16)}');
+      }
+    });
+
+    test('format characters: direction marks, overrides and isolates, and the rest of Cf', () {
+      for (final format in const [
+        0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, //
+        0x2069, 0x061C, 0x00AD, 0x180E, 0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0xFFF9,
+        0xFFFA, 0xFFFB, 0x0600, 0x110BD,
+      ]) {
+        expect(between(format), 'AB', reason: 'U+${format.toRadixString(16)}');
+      }
+    });
+
+    test('invisible letters and marks: Hangul fillers, the grapheme joiner, selectors', () {
+      for (final invisible in const [
+        0x115F, 0x1160, 0x3164, 0xFFA0, 0x034F, 0x17B4, 0x180B, 0xFE00, 0xFE0F, 0xE0100, //
+        0xE01EF,
+      ]) {
+        expect(between(invisible), 'AB', reason: 'U+${invisible.toRadixString(16)}');
+      }
+    });
+
+    test('tag characters, private use, unassigned, surrogates and controls', () {
+      for (final other in const [
+        0xE0001, 0xE0020, 0xE0041, 0xE007F, 0xE000, 0xF8FF, 0xF0000, 0x10FFFD, 0x0378, //
+        0x10FFFF, 0xFFFF, 0xD800, 0xDC00, 0x00, 0x07, 0x1B, 0x7F, 0x85, 0x9B,
+      ]) {
+        expect(between(other), 'AB', reason: 'U+${other.toRadixString(16)}');
+      }
+    });
+
+    test('symbols are dropped; whitespace of any kind is one space', () {
+      expect(cleanCaName(chars([0x41, 0xA9, 0x2B, 0x1F512, 0x2800, 0x42])), 'AB');
+      expect(cleanCaName(chars([0x41, 0x0A, 0x09, 0x3000, 0x2028, 0xA0, 0x42])), 'A B');
+      expect(cleanCaName(chars([0x20, 0x41, 0x20, 0x20])), 'A');
+    });
+
+    test('combining marks: at most two on a base, none without one', () {
+      expect(cleanCaName(chars([0x65, ...List.filled(40, 0x301)])), chars([0x65, 0x301, 0x301]));
+      expect(cleanCaName(chars([0x301, 0x41])), 'A', reason: 'a mark with no base');
+      expect(cleanCaName(chars([0x41, 0x20, 0x301, 0x42])), 'A B', reason: 'not on a space');
+      expect(cleanCaName('Ålesund Hjemme-CA'), 'Ålesund Hjemme-CA');
+      expect(cleanCaName(chars([0x41, 0x30A, 0x42])), chars([0x41, 0x30A, 0x42]));
+    });
+
+    test('strong right-to-left letters are kept: the screen isolates the name instead', () {
+      expect(cleanCaName('רשות אישורים ביתית'), 'רשות אישורים ביתית');
+      expect(cleanCaName('مرجع الشهادات (المنزل)'), 'مرجع الشهادات (المنزل)');
+    });
+
+    test('nothing left is no name at all', () {
+      expect(cleanCaName(chars([0x202E, 0x3164, 0x27, 0x20, 0xE0041])), isNull);
+      expect(cleanCaName(''), isNull);
+      expect(cleanCaName(null), isNull);
+    });
+  });
+
+  group('T1: a malformed certificate has no name, so the fingerprint is shown', () {
+    List<int> length(int n) => n < 0x80
+        ? [n]
+        : n < 0x100
+        ? [0x81, n]
+        : [0x82, n >> 8, n & 0xff];
+    List<int> tlv(int tag, List<int> content) => [tag, ...length(content.length), ...content];
+    List<int> seq(List<int> content) => tlv(0x30, content);
+    const cn = [0x06, 0x03, 0x55, 0x04, 0x03];
+
+    /// A subject of one CN whose value is [value], already encoded.
+    List<int> subjectOf(List<int> value) => seq(tlv(0x31, seq([...cn, ...value])));
+
+    /// A certificate whose `tbsCertificate` is [tbs] (header included): what follows it in the
+    /// certificate is the signature algorithm and signature.
+    List<int> certificateAround(List<int> tbs) => seq([
+      ...tbs,
+      ...seq(tlv(0x06, [0x2A])),
+      ...tlv(0x03, [0x00]),
+    ]);
+    List<int> tbsContent(List<int> subject, {List<int>? serial}) => [
+      ...tlv(0xA0, tlv(0x02, [0x02])),
+      ...serial ?? tlv(0x02, [0x01]),
+      ...seq(tlv(0x06, [0x2A])),
+      ...subjectOf(tlv(0x0C, utf8.encode('Issuer'))),
+      ...seq([]),
+      ...subject,
+    ];
+    List<int> certificateWith(List<int> subject, {List<int>? serial}) =>
+        certificateAround(seq(tbsContent(subject, serial: serial)));
+    final name = subjectOf(tlv(0x0C, utf8.encode('Hand CA')));
+
+    test('the hand-built certificate itself is read (so each failure below is the change)', () {
+      expect(caDisplayName(certificateWith(name)), 'Hand CA');
+      expect(caDisplayName(certificateWith(subjectOf(tlv(0x1C, [0, 0, 0, 0x41])))), 'A');
+      expect(caDisplayName(certificateWith(subjectOf(tlv(0x1E, [0, 0x41])))), 'A');
+    });
+
+    test('an indefinite length (0x80)', () {
+      final content = tbsContent(name);
+      expect(caDisplayName(certificateAround([0x30, 0x80, ...content, 0x00, 0x00])), isNull);
+    });
+
+    test('a length field of more than 4 bytes', () {
+      final content = tbsContent(name);
+      final n = content.length;
+      expect(
+        caDisplayName(certificateAround([0x30, 0x85, 0, 0, 0, n >> 8, n & 0xff, ...content])),
+        isNull,
+      );
+    });
+
+    test('a child running past its parent', () {
+      // The CN's value claims two bytes more than its attribute holds: they are there, in the
+      // signature algorithm after it, but not inside the attribute.
+      final value = [0x0C, 7 + 2, ...utf8.encode('Hand CA')];
+      final attribute = [0x30, cn.length + value.length, ...cn, ...value];
+      final subject = seq(tlv(0x31, attribute));
+      expect(caDisplayName(certificateWith(subject)), isNull);
+    });
+
+    test('an odd-length BMPString', () {
+      expect(caDisplayName(certificateWith(subjectOf(tlv(0x1E, [0, 0x41, 0])))), isNull);
+    });
+
+    test('a UniversalString above U+10FFFF', () {
+      expect(caDisplayName(certificateWith(subjectOf(tlv(0x1C, [0, 0x11, 0, 0])))), isNull);
+      expect(caDisplayName(certificateWith(subjectOf(tlv(0x1C, [0x7F, 0, 0, 0x41])))), isNull);
+    });
+
+    test('a multi-byte tag', () {
+      // Tag number 128 in the high-tag form, as the serial number: no certificate field has one.
+      expect(caDisplayName(certificateWith(name, serial: [0x1F, 0x81, 0x00, 0x01, 0x00])), isNull);
+      expect(caDisplayName(certificateWith(subjectOf([0x1F, 0x0C, 0x01, 0x41]))), isNull);
+      // Read as a one-byte tag, [0x1F, 0x05] is tag 0x1F with five bytes of content, and the
+      // fields after it line up again: a name would be read. The tag itself is refused.
+      expect(
+        caDisplayName(certificateWith(name, serial: [0x1F, 0x05, 0x00, 0x02, 0x01, 0x01, 0x00])),
+        isNull,
+      );
+    });
+  });
+
+  group('T2, T3: the per-server trust', () {
+    test('T2: the adapter inside the shared transport refuses to be closed too', () {
+      final adapter = phoneWith([ca['CA1']!]);
+      expect(adapter.close, throwsStateError, reason: 'a debug build, as every test is');
+      expect(() => adapter.close(force: true), throwsStateError);
+      final trust = serverTrustOf(SharedTransport(adapter))!;
+      expect(trust.close, throwsStateError, reason: 'serverTrustOf hands out this adapter');
+      final dio = Dio()..httpClientAdapter = trust;
+      expect(dio.close, throwsStateError, reason: 'Dio.close() closes its adapter');
+    });
+
+    test('T3: whether the pinned CA is on the phone, once the store has been read', () async {
+      final store = [ca['CA1']!];
+      final firstRead = Completer<void>();
+      final adapter = PhoneTrustAdapter(() async {
+        await firstRead.future;
+        return List.of(store);
+      }, systemRoots: systemWithCa0);
+      final installed = adapter.pinnedCaInstalled;
+      expect(installed.value, isNull, reason: 'nothing pinned');
+
+      adapter.pinTo(fingerprintOf(ca['CA1']!));
+      expect(installed.value, isNull, reason: 'the store has not been read: nothing is claimed');
+      firstRead.complete();
+      await adapter.reloadPhoneStore();
+      expect(installed.value, isTrue);
+
+      store.clear(); // removed in Settings
+      await adapter.reloadPhoneStore();
+      expect(installed.value, isFalse);
+      expect(adapter.anchored, isFalse);
+
+      store.add(ca['CA1']!);
+      await adapter.reloadPhoneStore();
+      expect(installed.value, isTrue);
+
+      adapter.pinTo(null);
+      expect(installed.value, isNull, reason: 'nothing pinned any more');
+    });
+  });
+
   group('PIN: a server is trusted through the one CA it was connected through', () {
     test('a server the system roots verify is pinned to nothing, and gets no user CA', () async {
       final front = await _Front.start();

@@ -108,6 +108,42 @@ void main() {
       },
     );
 
+    test(
+      'a copied credential is marked sensitive on Android 13+, through the same channel (L2)',
+      () {
+        final activity = File('$main/kotlin/app/budgetowl/budget_owl/MainActivity.kt')
+            .readAsStringSync()
+            .replaceAll(RegExp('//.*'), '')
+            .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '');
+        final dart = File('lib/core/platform/sensitive_clipboard.dart').readAsStringSync();
+        expect(activity, contains('CLIPBOARD_CHANNEL = "app.budgetowl/clipboard"'));
+        expect(
+          dart,
+          contains("MethodChannel('app.budgetowl/clipboard')"),
+          reason: 'the same channel',
+        );
+        expect(activity, contains('SET_SENSITIVE = "setSensitive"'));
+        expect(dart, contains("invokeMethod<void>('setSensitive', {'text': text})"));
+        expect(activity, contains('CLEAR = "clear"'));
+        expect(dart, contains("invokeMethod<void>('clear')"));
+        expect(
+          activity,
+          matches(
+            RegExp(
+              r'SDK_INT >= Build\.VERSION_CODES\.TIRAMISU\) \{\s*clip\.description\.extras =\s*'
+              r'PersistableBundle\(\)\.apply \{\s*'
+              r'putBoolean\(ClipDescription\.EXTRA_IS_SENSITIVE, true\)',
+            ),
+          ),
+        );
+        expect(
+          activity,
+          contains('ClipData.newPlainText("", text'),
+          reason: 'no label describes it',
+        );
+      },
+    );
+
     test('the app asks for the network and for nothing else', () {
       final permissions = RegExp('<uses-permission android:name="([^"]+)"')
           .allMatches(manifest)

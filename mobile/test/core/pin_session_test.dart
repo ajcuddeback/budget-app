@@ -1,17 +1,13 @@
-import 'dart:typed_data';
-
 import 'package:budget_owl/app.dart';
-import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/http/user_trust.dart';
 import 'package:budget_owl/core/server/server_address.dart';
-import 'package:budget_owl/core/server/server_check.dart';
 import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/session/session.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/fake_trust.dart';
 import '../support/fixture_server.dart';
 import '../support/harness.dart';
 
@@ -24,9 +20,6 @@ void main() {
   const nameKey = 'budget_owl.server_ca_name';
   final pinned = 'c1' * 32;
   final pin = CaPin(pinned, subject: 'Rivera Household CA');
-  const sentence =
-      "Trusted through 'Rivera Household CA', a certificate authority installed on this "
-      'phone.';
 
   ProviderContainer containerFor(TestPhone phone) {
     final container = ProviderContainer(overrides: phone.overrides, retry: noRetry);
@@ -52,7 +45,7 @@ void main() {
   ) as AddressAccepted).address;
 
   test('connecting stores the pin the check chose, with the address, and applies it', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'connect'), pinOnConnect: pin);
+    final trust = FakeTrust(FixtureServer.load('demo', state: 'connect'), pinOnConnect: pin);
     final phone = TestPhone(server: trust);
     final c = containerFor(phone);
     await until<SessionNoServer>(c);
@@ -70,7 +63,7 @@ void main() {
   });
 
   test('a server the system roots verify stores no pin at all', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'connect'));
+    final trust = FakeTrust(FixtureServer.load('demo', state: 'connect'));
     final phone = TestPhone(server: trust);
     final c = containerFor(phone);
     await until<SessionNoServer>(c);
@@ -82,7 +75,7 @@ void main() {
   });
 
   test('every start gives the transport its pin before anything is sent', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'demo'));
+    final trust = FakeTrust(FixtureServer.load('demo', state: 'demo'));
     final phone = TestPhone(server: trust)..signedIn('owner');
     phone.store.values
       ..[pinKey] = pinned
@@ -97,7 +90,7 @@ void main() {
   });
 
   test('a stored pin that is not a fingerprint is no pin: the system roots only', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'connect'));
+    final trust = FakeTrust(FixtureServer.load('demo', state: 'connect'));
     final phone = TestPhone(server: trust)..connected();
     phone.store.values[pinKey] = 'not-a-fingerprint';
     final c = containerFor(phone);
@@ -108,7 +101,7 @@ void main() {
   });
 
   test('a sign-out keeps the pin with the address; a change of server clears both', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'demo'));
+    final trust = FakeTrust(FixtureServer.load('demo', state: 'demo'));
     final phone = TestPhone(server: trust)..signedIn('owner');
     phone.store.values[pinKey] = pinned;
     final c = containerFor(phone);
@@ -124,10 +117,21 @@ void main() {
     expect(c.read(pinnedCaProvider), isNull);
   });
 
-  group('S1: the screens say which CA, and only when there is one', () {
-    TestPhone pinnedPhone({required bool signedIn}) {
+  group('S1, T1, T3: the screens say which CA, and only when there is one', () {
+    const lead = 'Trusted through a certificate authority installed on this phone:';
+    const gone =
+        'The certificate authority this server was trusted through is no longer installed on '
+        'this phone:';
+    final fsi = String.fromCharCode(0x2068);
+    final pdi = String.fromCharCode(0x2069);
+    final nameLine = '${fsi}Rivera Household CA$pdi  ${fsi}C1:C1:C1:C1$pdi';
+
+    TestPhone pinnedPhone({required bool signedIn, bool? installed}) {
       final phone = TestPhone(
-        server: FixtureServer.load('demo', state: signedIn ? 'demo' : 'connect'),
+        server: FakeTrust(
+          FixtureServer.load('demo', state: signedIn ? 'demo' : 'connect'),
+          installed: installed,
+        ),
       );
       if (signedIn) {
         phone.signedIn('owner');
@@ -140,28 +144,63 @@ void main() {
       return phone;
     }
 
+    /// The rich text whose whole plain text is [text].
+    Finder richText(String text) => find.byWidgetPredicate(
+      (w) => w is RichText && w.text.toPlainText() == text,
+      description: 'RichText "$text"',
+    );
+
     testWidgets("the connect screen's choices", (tester) async {
-      await pumpApp(tester, pinnedPhone(signedIn: false));
+      await pumpApp(tester, pinnedPhone(signedIn: false, installed: true));
 
       expect(find.text('Connected to owl.example.test'), findsOneWidget);
-      expect(find.text(sentence), findsOneWidget);
+      expect(find.text(lead), findsOneWidget);
+      expect(richText(nameLine), findsOneWidget, reason: 'the name on its own line, isolated');
     });
 
     testWidgets('More, under Server', (tester) async {
-      await pumpApp(tester, pinnedPhone(signedIn: true));
+      await pumpApp(tester, pinnedPhone(signedIn: true, installed: true));
       await tapVisible(tester, find.text('More').last);
 
-      final tile = find.ancestor(of: find.text(sentence), matching: find.byType(ListTile));
+      final tile = find.ancestor(of: find.text(lead), matching: find.byType(ListTile));
       expect(tile, findsOneWidget);
       expect(find.descendant(of: tile, matching: find.text('owl.example.test')), findsOneWidget);
+      expect(find.descendant(of: tile, matching: richText(nameLine)), findsOneWidget);
+    });
+
+    testWidgets('T1: the name is its own isolated span, never inside our sentence', (tester) async {
+      final phone = pinnedPhone(signedIn: false, installed: true);
+      phone.store.values[nameKey] = "Home CA', not one you installed. Nothing to check";
+      await pumpApp(tester, phone);
+
+      expect(find.text(lead), findsOneWidget, reason: 'our sentence, whole and alone');
+      final shown = richText(
+        '${fsi}Home CA, not one you installed. Nothing to check$pdi  ${fsi}C1:C1:C1:C1$pdi',
+      );
+      expect(shown, findsOneWidget, reason: 'cleaned again as it is read: no quote');
+      final spans = <TextSpan>[];
+      tester.widget<RichText>(shown).text.visitChildren((span) {
+        if (span is TextSpan && span.text != null) spans.add(span);
+        return true;
+      });
+      final span = spans.first;
+      expect(span.text, '${fsi}Home CA, not one you installed. Nothing to check$pdi');
+      expect(span.style?.fontWeight, FontWeight.w600, reason: 'styled as a name, not as prose');
     });
 
     testWidgets('a CA with no name is shown by its fingerprint', (tester) async {
-      final phone = pinnedPhone(signedIn: false);
+      final phone = pinnedPhone(signedIn: false, installed: true);
       phone.store.values.remove(nameKey);
       await pumpApp(tester, phone);
 
-      expect(find.textContaining('fingerprint C1:C1:C1:C1:C1:C1:C1:C1…'), findsOneWidget);
+      expect(
+        find.text(
+          'Trusted through a certificate authority installed on this phone. It has no name; its '
+          'fingerprint begins:',
+        ),
+        findsOneWidget,
+      );
+      expect(richText('${fsi}C1:C1:C1:C1:C1:C1:C1:C1…$pdi'), findsOneWidget);
     });
 
     testWidgets('a server the system roots verify: nothing extra', (tester) async {
@@ -171,42 +210,52 @@ void main() {
       );
 
       expect(find.text('Connected to owl.example.test'), findsOneWidget);
-      expect(find.textContaining('Trusted through'), findsNothing);
+      expect(find.textContaining('certificate authority'), findsNothing);
+    });
+
+    testWidgets('T3: a CA no longer on the phone is said to be gone, not trusted', (tester) async {
+      await pumpApp(tester, pinnedPhone(signedIn: false, installed: false));
+
+      expect(find.text(lead), findsNothing);
+      expect(find.text(gone), findsOneWidget);
+      expect(richText(nameLine), findsOneWidget, reason: 'which one, so it can be put back');
+      expect(
+        find.text(
+          'Connections to the server will fail until it is installed again, or until you use '
+          '“Use a different server” below.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('T3: More points to Change server', (tester) async {
+      await pumpApp(tester, pinnedPhone(signedIn: true, installed: false));
+      await tapVisible(tester, find.text('More').last);
+
+      final tile = find.ancestor(of: find.text(gone), matching: find.byType(ListTile));
+      expect(tile, findsOneWidget);
+      expect(
+        find.descendant(of: tile, matching: find.textContaining('“Change server” below')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('T3: removed while the screen is open, the note changes', (tester) async {
+      final phone = pinnedPhone(signedIn: false, installed: true);
+      await pumpApp(tester, phone);
+      expect(find.text(lead), findsOneWidget);
+
+      (phone.server as FakeTrust).installed.value = false;
+      await tester.pump();
+      expect(find.text(lead), findsNothing);
+      expect(find.text(gone), findsOneWidget);
+    });
+
+    testWidgets('T3: before the phone store is read, nothing is claimed missing', (tester) async {
+      await pumpApp(tester, pinnedPhone(signedIn: false));
+
+      expect(find.text(lead), findsOneWidget);
+      expect(find.text(gone), findsNothing);
     });
   });
-}
-
-/// A transport that is a [ServerTrust], over the fixture server, recording what the session asked.
-final class _Trust implements ServerTrust {
-  _Trust(this._server, {this.pinOnConnect});
-
-  final FixtureServer _server;
-  final CaPin? pinOnConnect;
-  final List<String> events = [];
-
-  @override
-  Future<CaPin?> checkAndPin(ServerAddress address) async {
-    events.add('checkAndPin');
-    await ServerCheck(_server).check(address);
-    return pinOnConnect;
-  }
-
-  @override
-  void pinTo(String? fingerprint) => events.add('pinTo $fingerprint');
-
-  @override
-  Future<void> reloadPhoneStore() async => events.add('reload');
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) {
-    events.add('fetch ${options.path}');
-    return _server.fetch(options, requestStream, cancelFuture);
-  }
-
-  @override
-  void close({bool force = false}) => _server.close(force: force);
 }

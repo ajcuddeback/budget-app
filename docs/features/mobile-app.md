@@ -69,10 +69,21 @@ such, and says plainly that changes have to wait.
   again whenever the app comes back to the foreground: a pinned CA removed in Settings is no
   longer trusted for any new connection, and the server fails as "certificate not trusted". A
   sign-out keeps the pin with the address; changing server clears both. **The pin is shown**:
-  the Connect screen's choices and More → Server say *"Trusted through '{name}', a certificate
-  authority installed on this phone."*, the name being the CA certificate's subject CN (or O; the
-  start of its fingerprint when it has neither), so a CA the person does not recognise can be
-  noticed. Nothing extra is said for a server the system roots verify. The chain and the host
+  the Connect screen's choices and More → Server say *"Trusted through a certificate authority
+  installed on this phone:"*, and then, on its own line, the CA's name in bold with the first 8
+  hex digits of its fingerprint beside it (with no name, *"…It has no name; its fingerprint
+  begins:"* and 16 digits). The name is the CA certificate's subject CN, else its O, so a CA the
+  person does not recognise can be noticed. It is the CA maker's own text, so it is never put
+  inside a sentence or quotes: it is its own span, inside a first-strong isolate (U+2068…U+2069),
+  and it is cleaned by an allow-list (letters, digits, spaces, punctuation that is not a quote,
+  at most two combining marks per character; every format, private-use, unassigned and
+  default-ignorable code point dropped; at most 64 characters), again when it is read back from
+  storage. **When the pinned CA is no longer on the phone** (removed in Settings, or the store
+  could not be read), the first line says so instead — *"The certificate authority this server
+  was trusted through is no longer installed on this phone:"* — and a third says connections
+  will fail until it is installed again or the person uses the screen's change-server control.
+  Before the phone's store has been read, nothing is claimed either way. Nothing extra is said
+  for a server the system roots verify. The chain and the host
   name are always verified, and a store that cannot be read means the system roots only (fails
   closed). This **needs checking on a device** (Known gaps). The error screen distinguishes, in its
   own words: host not found, connection refused or timed out, certificate not trusted,
@@ -114,7 +125,11 @@ The one new API route. Public, so the app can identify a server before anyone si
 - `GET /api/meta` joins the short list of public routes in `authentication-and-households.md`;
   that list and `AuthorizationIT`'s public-route set are updated with it.
 - *Wipe local state* means: the token, the Drift database file and its key, the cached user and
-  household, and any in-memory state. Only the server address survives a sign-out (so signing
+  household, what the app or a plugin left in the temporary directory (an exported CSV in
+  `budget-owl-export/`, share_plus's copies of our exports, file_selector_android's
+  `<uuid>/<name>` copy of a picked statement: `core/storage/temp_files.dart`), and any in-memory
+  state. The temporary-directory sweep also runs once at every start-up, for an app that was
+  killed mid-share. Only the server address survives a sign-out (so signing
   back in is one screen), and it is removed when the user changes server.
 
 ### The cache
@@ -492,6 +507,22 @@ After the round-3 audit:
 | S3 wipes waited for, not timed | `settleUntil`, `untilSignedOut`, `untilSession`; `pumpApp` waits for start-up (which wipes when there is no token) | The wipe slowed by 1 s | With the waits every feature, journey and golden test passed; the no-household test on the old fixed settle failed with the cache key still stored |
 | Guard the shared transport | `httpAdapterProvider` hands out a `SharedTransport` whose `close()` throws in a debug build; the grep guard is an allow-list of file and receiver | `close()` quiet in debug; a `ref.read(httpAdapterProvider).close()` in `session.dart` (a receiver the old name list never matched) | `real_transport_test` H1; `guards_test` |
 
+After the round-4 audit:
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| T1 a CA's name cannot speak for the app | `cleanCaName` is an allow-list (see Rules); the note is our sentence, then the name as its own bold span in a first-strong isolate with 8 hex digits of the fingerprint; the DER reader refuses a multi-byte tag and a UniversalString beyond U+10FFFF; goldens `connect-choices-pinned` and `more-pinned` re-rendered and read | Quote look-alikes kept; initial/final quotes kept; default-ignorables kept; combining marks unlimited; the isolate removed; the multi-byte-tag check removed | The quote test, the "nothing left" test and the widget's own-span test; the quote test; the invisible-letters test; the marks test; 5 widget tests; the multi-byte-tag test. Removing the odd-BMPString or the beyond-Unicode check fails nothing: Dart's own `RangeError` already makes each `null`, so those checks are a second layer |
+| DER bounds | Tests: indefinite length, a length field over 4 bytes, a child past its parent, an odd BMPString, a UniversalString above U+10FFFF, a multi-byte tag — each falls back to the fingerprint | A child bounded by the buffer, not its parent; length fields of up to 8 bytes | The child-past-parent test; the over-4-bytes test |
+| T2 nothing closes the transport | `PhoneTrustAdapter.close()` refuses as `SharedTransport.close()` does; the guard's regex sees `?.close`, `..close` and tear-offs, with a self-test; `_inner` left the allow-list; `Icons` is allowed anywhere (`Icons.close` is an icon) | `close()` closing `_inner` again; `ref.onDispose(adapter.close)` in `httpAdapterProvider`; the regex back to called closes only | The T2 unit test and `guards_test`; `guards_test`; the regex self-test |
+| T3 a lost CA is said | `ServerTrust.pinnedCaInstalled` (null until the store has been read since the pin was set); `pinnedCaInstalledProvider`; the note's missing-CA lines; goldens `connect-choices-pin-missing` (light, dark, RTL, text 2×) and `more-pin-missing` (light, dark, text 2×), read | Always "installed"; claimed before the store is read; the note ignoring it; the provider not following changes | The T3 unit test; the same; 3 widget tests and 7 goldens; the "removed while the screen is open" test |
+| M1 exports swept | `core/storage/temp_files.dart`: `sweepExports` (all of `budget-owl-export/`, our names in `share_plus/`), run by every wipe and once at start-up | The wipe step removed; the start-up sweep removed; `budget-owl-export/` not swept; any file in `share_plus/` swept | The wipe tests and the insights share-then-401 test; the killed-mid-share start-up test; the sweep, iOS and start-up tests; the sweep test and insights' "only ours" |
+| L1 picker copies swept | `sweepPickerCopies` (Android): a real UUID-named directory under temp with exactly one regular file; `isInsideDirectory` shared with the picker | Any folder name; any number of files; links followed (listing and type check both); on iOS too; the inside check always true | The picker-copies test (and start-up); the picker-copies test; the link test; the iOS test; the temp_files and import_test outside-file tests. Following links in only one of the two places fails nothing: each alone still refuses a link |
+| L2 the invitation link on the clipboard | `SensitiveClipboard` over `ClipboardPlatform`; MainActivity's `setSensitive` and `clear`; the sheet takes the link back on revoke and close, if still held | Android through the plain clipboard; cleared whatever it holds; close not clearing; revoke not clearing; the Kotlin flag removed | 3 channel tests and `platform_config_test`; 3 tests; the household copy test; the revoke test; `platform_config_test` |
+
+The `insights_test` CSV tests waited a fixed `settle` after the tap; under the gate's load the
+export's real file work outlasted it once (a dismissed share's `forget` not yet recorded). They now
+wait until the button no longer says *"Preparing the file…"*.
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -658,8 +689,12 @@ was needed (the invite sheet is a full-screen dialog on the root navigator).
   `acceptPath`, refused unless it stays on that origin and is exactly `/join/<token>`
   (`buildInviteLink`). It is shown once, selectable, left to right in every layout, with the web's
   *"treat this link like a password"* warning, role and expiry; **Copy link** is the only thing
-  that puts it on the clipboard; **Revoke link** (`DELETE …/invitations/{id}`) takes it off the
-  screen too; closing the sheet drops it. The token never reaches the cache, secure storage, a
+  that puts it on the clipboard, **marked sensitive** on Android 13+
+  (`ClipDescription.EXTRA_IS_SENSITIVE`, through MainActivity's `app.budgetowl/clipboard`
+  channel; a plain copy below 13 and on iOS); **Revoke link** (`DELETE …/invitations/{id}`) takes
+  it off the screen too; closing the sheet drops it. On revoke and on close the sheet reads the
+  clipboard back and clears it **only if it still holds that link**, so whatever the person
+  copied since is left alone (`SensitiveClipboard`). The token never reaches the cache, secure storage, a
   provider or a log: the response goes through `ApiClient.write`, and `Invitation` keeps only
   `acceptPath` and prints only its id.
 - **Preferences** (`features/preferences/`): display currency and language for the member, saved
@@ -741,8 +776,10 @@ length counter (removed); three scenarios scrolled past what they were meant to 
 - **At text 2.0 the shared `Screen` header breaks "Administration" mid-word** (one word wider than
   the phone). A shared-widget fix (scale a title down to fit) for every area; not done here.
 - **The invite link wraps at a hyphen**, as the web's text box does; *Copy link* copies it exactly.
-- **Android 13+ shows copied text in a clipboard preview**; Flutter's `Clipboard` cannot mark it
-  sensitive (`ClipDescription.EXTRA_IS_SENSITIVE`). The copy still happens only on a tap.
+- **The clipboard's sensitive flag and clearing need checking on a device.** Tests prove what the
+  Dart side asks MainActivity for, and `platform_config_test` pins the Kotlin, but nothing here
+  shows what Android 13+'s copy preview or a keyboard's clipboard suggestions then do. Below
+  Android 13 there is no flag, so a copied link is a plain clip until the sheet takes it back.
 - **An administrator with no household membership cannot reach the console on the phone**: core's
   `redirectFor` sends every signed-in route to *not in a household* first. The web allows it.
 - **The invite-link golden has no 2× variant**: the test driver does not land the create tap at 2×
@@ -931,15 +968,20 @@ network calls of its own.
   over `file_picker`, whose federation is wider and whose no-copy mode cannot return bytes. Both
   platforms copy the picked file into the app's cache (Android `cacheDir/<uuid>/`, iOS `tmp/` via
   `asCopy`). `SystemStatementPicker` reads the bytes into memory, then deletes that copy in
-  `finally`, but only a file inside the temporary directory, together with its emptied folder. The
+  `finally`, but only a file inside the temporary directory, together with its emptied folder. A
+  copy whose path never came back (the pick failed, or the app died first) is swept at the next
+  start-up and every wipe: a real directory directly under the temporary directory, named as a
+  UUID, holding exactly one regular file (Android only; links are never followed). The
   app never writes the statement itself.
 - `share_plus` 13.3.1 (fluttercommunity.dev; `share_plus_platform_interface` 7.2.0, and
   `url_launcher_*` on desktop and web only). It adds a non-exported `FileProvider` (authority
   `${applicationId}.flutter.share_provider`, `cache/share_plus/`) and a non-exported receiver.
   Android copies the shared file into `cache/share_plus/` and clears it only on the next share. A
   dismissed or failed share's copy is deleted at once. After a successful share the copy is left
-  for the receiving app and swept, only files named like our exports, on the next export or when
-  Insights opens. iOS shares the original.
+  for the receiving app and swept, only files named like our exports, on the next export, when
+  Insights opens, at the next start-up and at every wipe (sign-out, `401`, change of server).
+  `budget-owl-export/` is swept whole at the same times, so an export the app was killed holding
+  does not outlive the session. iOS shares the original.
 - **Permissions.** The merged manifest holds only `INTERNET` and AndroidX's app-private
   `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `AndroidManifest.xml` strips every storage and media
   permission with `tools:node="remove"`, so a future plugin cannot add one silently, and
@@ -979,11 +1021,12 @@ empty).
   Categories, and Unmap of a charge rule on Bills. The check-in summary links to those tabs and
   entries as they stand.
 - **The platform copies need checking on a device.** No test here runs the real picker or share
-  sheet. Check on Android that `cache/<uuid>/` is empty after picking, and that
-  `cache/share_plus/` is emptied on a dismissed share and on the next Insights visit. Check on iOS
-  that `tmp/` holds no statement copy.
-- **A shared export stays in `cache/share_plus/` until the next export or Insights visit**
-  (Android): the receiving app may still be reading it.
+  sheet. Check on Android that `cache/<uuid>/` is empty after picking (and after a pick that
+  failed, once the app restarts), and that `cache/share_plus/` is emptied on a dismissed share,
+  the next Insights visit, a sign-out and the next start. Check on iOS that `tmp/` holds no
+  statement copy.
+- **A shared export stays in `cache/share_plus/` until the next export, Insights visit, start-up
+  or wipe** (Android): the receiving app may still be reading it.
 - **An import history screen** beyond the recent-imports list is not built. The web has none
   either.
 - No backend API gaps were found for these three areas.

@@ -5808,14 +5808,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers_updated => 'Transfer saved.';
 
   @override
-  String trust_through(String name) {
-    return 'Trusted through \'$name\', a certificate authority installed on this phone.';
+  String get trust_missing =>
+      'The certificate authority this server was trusted through is no longer installed on this phone:';
+
+  @override
+  String trust_missingHelp(String action) {
+    return 'Connections to the server will fail until it is installed again, or until you use “$action” below.';
   }
 
   @override
-  String trust_throughUnnamed(String fingerprint) {
-    return 'Trusted through a certificate authority installed on this phone, fingerprint $fingerprint.';
-  }
+  String get trust_through => 'Trusted through a certificate authority installed on this phone:';
+
+  @override
+  String get trust_throughUnnamed =>
+      'Trusted through a certificate authority installed on this phone. It has no name; its fingerprint begins:';
 
   @override
   String get validation_amount => 'Enter an amount using digits and a dot, like 1250.00 or -400.';

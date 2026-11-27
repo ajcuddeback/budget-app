@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/features/insights/data/csv_export.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -32,6 +35,29 @@ final class FakeSharer implements FileSharer {
   Future<void> sweep(Directory temporary) async => sweeps++;
 }
 
+/// Android's share_plus, stood in for: the file is copied into `share_plus/` and left there for the
+/// app that received it, and the sheet says it was shared.
+final class CopyingSharer extends FakeSharer {
+  CopyingSharer(this.temporary) : super(ShareOutcome.shared);
+
+  final Directory temporary;
+
+  @override
+  Future<ShareOutcome> share(File file, {required String mimeType, Rect? origin}) async {
+    final outcome = await super.share(file, mimeType: mimeType, origin: origin);
+    final copies = Directory('${temporary.path}/share_plus')..createSync(recursive: true);
+    file.copySync('${copies.path}/${file.uri.pathSegments.last}');
+    return outcome;
+  }
+
+  @override
+  Future<void> sweep(Directory temporary) async {
+    sweeps++;
+    // The real sweep, so the export's own sweep is exercised too.
+    await const SharePlusSharer().sweep(temporary);
+  }
+}
+
 void main() {
   Future<FixtureServer> openInsights(
     WidgetTester tester, {
@@ -44,11 +70,8 @@ void main() {
     final server = FixtureServer.load(file, state: state);
     await pumpApp(
       tester,
-      TestPhone(server: server)..signedIn(who),
-      overrides: [
-        if (sharer != null) fileSharerProvider.overrideWithValue(sharer),
-        if (temporary != null) exportDirectoryProvider.overrideWith((ref) async => temporary),
-      ],
+      TestPhone(server: server, temporaryDirectory: temporary)..signedIn(who),
+      overrides: [if (sharer != null) fileSharerProvider.overrideWithValue(sharer)],
     );
     await tester.tap(find.text('More'));
     await settle(tester);
@@ -141,7 +164,13 @@ void main() {
     Future<void> download(WidgetTester tester) async {
       // The income card's, the first of the two.
       await tapVisible(tester, find.text('Download CSV').first);
-      await settle(tester);
+      // The export writes, shares and deletes real files: wait for it to finish, not for a fixed
+      // time, which a loaded machine outlasts (a dismissed share's forget was once not yet done).
+      await settleUntil(
+        tester,
+        () => find.text('Preparing the file…').evaluate().isEmpty,
+        what: 'the export finished',
+      );
     }
 
     testWidgets("shares the server's own file by Accept, then deletes it", (tester) async {
@@ -165,6 +194,36 @@ void main() {
       expect(Directory('${temporary.path}/budget-owl-export').existsSync(), isFalse);
       expect(sharer.forgotten, isEmpty, reason: 'a shared copy is left for the app receiving it');
       expect(sharer.sweeps, greaterThanOrEqualTo(1));
+    });
+
+    testWidgets('M1: a share that went through, then a 401: no export is left anywhere', (
+      tester,
+    ) async {
+      final temporary = scratch();
+      final sharer = CopyingSharer(temporary);
+      final server = await openInsights(tester, sharer: sharer, temporary: temporary);
+
+      await download(tester);
+      final copy = File(
+        '${temporary.path}/share_plus/budget-owl-income-and-spending-2025-09-2026-08.csv',
+      );
+      expect(copy.existsSync(), isTrue, reason: 'left for the app that received it');
+
+      // The session ends as a 401 ends it: the interceptor calls sessionEnded() (session_test
+      // proves that half against the demo fixture's revoked state).
+      // Offline from here: the sign-in screen's own reads are not what this test is about.
+      server.offline = true;
+      final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      unawaited(container.read(sessionProvider.notifier).sessionEnded());
+      await untilSignedOut(tester);
+
+      expect(copy.existsSync(), isFalse);
+      expect(Directory('${temporary.path}/budget-owl-export').existsSync(), isFalse);
+      expect(
+        temporary.listSync(recursive: true).whereType<File>(),
+        isEmpty,
+        reason: 'no export in either folder',
+      );
     });
 
     testWidgets('a dismissed sheet deletes the file, and the platform copy too', (tester) async {

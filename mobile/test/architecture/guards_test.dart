@@ -73,18 +73,49 @@ void main() {
     const allowed = {
       'lib/core/cache/cache_holder.dart': {')'}, // `(await opening).close()`: the cache database
       'lib/core/cache/cache_store.dart': {'_db'}, // the cache database
-      // A throwaway probe, the inner client being replaced, and the inner client of an adapter a
-      // test closes — never the shared one.
-      'lib/core/http/http_adapter.dart': {'probe', 'previous', '_inner'},
+      // A throwaway probe, and the inner client being replaced: never the shared one. (Neither
+      // adapter the app sends through can be closed: both refuse, round 4 T2.)
+      'lib/core/http/http_adapter.dart': {'probe', 'previous'},
     };
-    final close = RegExp(r'([A-Za-z_]\w*|\))\s*\.{1,2}\s*close\s*\(');
+    // `Icons.close` is an icon, not a close.
+    const anywhere = {'Icons'};
     final unlisted = [
       for (final entry in sources.entries)
-        for (final match in close.allMatches(entry.value))
-          if (!(allowed[entry.key]?.contains(match.group(1)) ?? false))
-            '${entry.key}: ${match.group(1)}.close(',
+        for (final match in _close.allMatches(entry.value))
+          if (!anywhere.contains(match.group(1)) &&
+              !(allowed[entry.key]?.contains(match.group(1)) ?? false))
+            '${entry.key}: ${match.group(0)}',
     ];
     expect(unlisted, isEmpty);
+  });
+
+  test('the close rule sees every way of closing: called, null-aware, cascaded, torn off', () {
+    for (final code in const [
+      'adapter.close();',
+      'adapter.close(force: true);',
+      'adapter?.close();',
+      'adapter..close();',
+      'adapter?..close();',
+      'ref.onDispose(adapter.close);',
+      'ref.onDispose(adapter?.close);',
+      'final shut = adapter.close;',
+      'register(adapter.close, later);',
+      'final all = [adapter.close];',
+      'adapter\n    .close()',
+      'adapter . close ( )',
+      '(await opening).close();',
+      'clients[0].close();',
+    ]) {
+      expect(_close.hasMatch(code), isTrue, reason: code);
+    }
+    for (final code in const [
+      'adapter.closed;',
+      'closeAll();',
+      'adapter.closeSink();',
+      'close();',
+    ]) {
+      expect(_close.hasMatch(code), isFalse, reason: code);
+    }
   });
 
   test('nothing prints: a log line is how a token or a balance leaves the phone', () {
@@ -157,3 +188,9 @@ String _code(String source) => source
     // A comment starts a line or follows whitespace; `https://` in a string does neither.
     .map((line) => line.replaceFirst(RegExp(r'(^|\s)//.*$'), ''))
     .join('\n');
+
+/// A close of anything: a receiver (a name, or what a call or index returns), then `.`, `?.`, `..`
+/// or `?..`, then `close` called or torn off — followed by `(`, `)`, `,`, `;`, `]` or `}`.
+final RegExp _close = RegExp(
+  r'([A-Za-z_]\w*|[)\]])\s*(?:\?\.\.|\?\.|\.\.|\.)\s*close\s*(?=[(),;\]}])',
+);

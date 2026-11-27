@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
+import 'package:budget_owl/core/platform/sensitive_clipboard.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/storage/install_marker.dart';
 import 'package:budget_owl/core/storage/secure_store.dart';
+import 'package:budget_owl/core/storage/temp_files.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -43,6 +45,35 @@ final class MemorySecureStore implements SecureStore {
   Future<void> write(String key, String value) async => values[key] = value;
 }
 
+/// The phone's clipboard: what is on it, and whether it was marked sensitive.
+final class MemoryClipboard implements ClipboardPlatform {
+  String? text;
+  bool sensitive = false;
+  int clears = 0;
+
+  @override
+  Future<void> setSensitive(String text) async {
+    this.text = text;
+    sensitive = true;
+  }
+
+  @override
+  Future<String?> read() async => text;
+
+  @override
+  Future<void> clear() async {
+    clears++;
+    text = null;
+    sensitive = false;
+  }
+
+  /// The person copies something else, in this app or another.
+  void copiedElsewhere(String other) {
+    text = other;
+    sensitive = false;
+  }
+}
+
 /// Everything a widget test controls about the phone around the app.
 final class TestPhone {
   TestPhone({
@@ -50,12 +81,15 @@ final class TestPhone {
     MemorySecureStore? store,
     Directory? cacheDirectory,
     Directory? supportDirectory,
+    Directory? temporaryDirectory,
     this.allowLocalCleartext = false,
     bool freshInstall = false,
   }) : store = store ?? MemorySecureStore(),
        cacheDirectory = cacheDirectory ?? Directory.systemTemp.createTempSync('budget-owl-cache'),
        supportDirectory =
-           supportDirectory ?? Directory.systemTemp.createTempSync('budget-owl-support') {
+           supportDirectory ?? Directory.systemTemp.createTempSync('budget-owl-support'),
+       temporaryDirectory =
+           temporaryDirectory ?? Directory.systemTemp.createTempSync('budget-owl-temp') {
     // Every phone has run the app before, unless a test says this launch is its first.
     if (!freshInstall) File(installMarker).writeAsStringSync('');
   }
@@ -66,6 +100,11 @@ final class TestPhone {
 
   /// Application Support, where the install marker lives.
   final Directory supportDirectory;
+
+  /// The temporary directory: exports, and the plugins' copies (core/storage/temp_files.dart).
+  final Directory temporaryDirectory;
+
+  final MemoryClipboard clipboard = MemoryClipboard();
 
   String get installMarker => '${supportDirectory.path}/${InstallMarker.fileName}';
   final bool allowLocalCleartext;
@@ -86,6 +125,8 @@ final class TestPhone {
     secureStoreProvider.overrideWithValue(store),
     cacheDirectoryProvider.overrideWith((ref) async => cacheDirectory),
     supportDirectoryProvider.overrideWith((ref) async => supportDirectory),
+    temporaryDirectoryProvider.overrideWith((ref) async => temporaryDirectory),
+    clipboardPlatformProvider.overrideWithValue(clipboard),
     clockProvider.overrideWithValue(() => now),
     allowLocalCleartextProvider.overrideWithValue(allowLocalCleartext),
     targetPlatformProvider.overrideWithValue(TargetPlatform.android),

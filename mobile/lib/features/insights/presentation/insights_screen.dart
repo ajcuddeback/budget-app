@@ -5,6 +5,7 @@ import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/money/money.dart';
+import 'package:budget_owl/core/storage/temp_files.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/features/insights/data/csv_export.dart';
@@ -55,7 +56,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
   Future<void> _sweep() async {
     try {
-      final temporary = await ref.read(exportDirectoryProvider.future);
+      final temporary = await ref.read(temporaryDirectoryProvider.future);
       await ref.read(fileSharerProvider).sweep(temporary);
     } on Object {
       // Nowhere to sweep: the next export sweeps again.

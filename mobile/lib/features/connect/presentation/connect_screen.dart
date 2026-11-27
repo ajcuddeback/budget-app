@@ -165,7 +165,8 @@ class _Choices extends ConsumerWidget {
         children: [
           Lede(fresh ? l.connect_setUpHint : l.connect_connectedLede),
           // Which CA on this phone vouches for this server, when one does (S1).
-          if (ref.watch(pinnedCaProvider) != null) const Gutter(child: TrustedThroughNote()),
+          if (ref.watch(pinnedCaProvider) != null)
+            Gutter(child: TrustedThroughNote(changeServer: l.connect_changeServer)),
           if (fresh)
             Gutter(
               child: FilledButton(

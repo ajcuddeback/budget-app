@@ -47,7 +47,7 @@ class MoreScreen extends ConsumerWidget {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const TrustedThroughNote(),
+                        TrustedThroughNote(changeServer: l.more_changeServer),
                         const SizedBox(height: SpaceTokens.s1),
                         Text(l.more_changeServer),
                       ],
