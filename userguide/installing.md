@@ -53,10 +53,14 @@ walkthrough is in [Create your account and household](features/create-your-accou
 
 ## 4. Reach it from your phone
 
-_Awaiting slice 15._
+The Budget Owl phone app connects only over `https://`, with a certificate the phone trusts. As
+installed, your server answers only at `http://localhost:8080` on the machine itself, so give it an
+HTTPS address first: [Give your server an HTTPS address](give-your-server-an-https-address.md)
+covers three ways, from a Tailscale name to your own certificate authority.
 
-Will cover: pointing the mobile app at your server, what to do about certificates on a local
-network, and reaching it from outside your house safely.
+Then make the app for your household's phones and help them connect:
+[Use Budget Owl on your phone](features/use-budget-owl-on-your-phone.md), whose last section is
+for you.
 
 ## 5. Back it up
 

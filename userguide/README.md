@@ -23,7 +23,8 @@ account to seeing your first month's budget.
 | [Your display currency and language](features/your-display-settings.md)         | Choose the currency and language you see                                                                         |
 | [See who can sign in to your server](features/see-who-can-sign-in.md)           | The Admin screen: what this server is running, who looks after it, and who has an account                        |
 | [Choose how people sign in](features/choose-how-people-sign-in.md)              | Open registration, email and password sign-in, and using your own sign-in provider                               |
-| _Using the mobile app_                                                          | Not written yet                                                                                                  |
+| [Give your server an HTTPS address](give-your-server-an-https-address.md)       | For whoever runs the server: what the phone app needs before it will connect, three ways to provide it           |
+| [Use Budget Owl on your phone](features/use-budget-owl-on-your-phone.md)        | Get the app on Android or iPhone, connect to your server, use it without a signal, and sign out a lost phone     |
 | [Add an account](features/add-an-account.md)                                    | Tell Budget Owl where your money sits, and what an opening balance is                                            |
 | [Archive or delete an account](features/archive-or-delete-an-account.md)        | Put away an account you have closed, bring it back, or remove one for good                                       |
 | [Record a transaction](features/record-a-transaction.md)                        | Write down what you spent or received, and fix it if you get it wrong                                            |
