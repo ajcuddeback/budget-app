@@ -21,7 +21,7 @@
 #
 # It does NOT touch passwords, accounts or any financial data. It turns one boolean back on.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 DRY_RUN=0
 while [ $# -gt 0 ]; do
@@ -51,6 +51,8 @@ before=$(psql -At -c "SELECT password_login_enabled || ' ' || oidc_enabled FROM 
   echo "Could not read instance_settings. Is this the right database?" >&2
   exit 1
 }
+# Word splitting is the point: "t f" becomes $1 and $2.
+# shellcheck disable=SC2086
 set -- $before
 password_login="$1"; oidc="$2"
 

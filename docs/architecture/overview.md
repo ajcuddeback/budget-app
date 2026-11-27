@@ -80,8 +80,13 @@ Consequences that shape the code, not just the ops story:
   serves requests connects as a role with DML and no DDL, so the schema's constraints are
   enforced against the application and not merely by it. The role is created by
   `deploy/db-init/10-create-app-role.sh`, which the `db` service mounts into
-  `/docker-entrypoint-initdb.d/` — the only thing in `deploy/` today, and where anything else
-  the deployable unit needs at container start belongs.
+  `/docker-entrypoint-initdb.d/`; anything else the deployable unit needs at container start
+  belongs beside it.
+- **Backups, restores and upgrades are scripts the operator runs** (`deploy/backup.sh`,
+  `restore.sh`, `upgrade.sh`). They work inside the `db` container, so no password crosses a
+  command line, and `tools/deploy-check.sh` proves a restore on every packaging run
+  ([deployment.md](../features/deployment.md)). Images are built from the checkout today; none
+  are published yet.
 - **First run must work** with nothing configured beyond a database password.
 - **We cannot see failing instances.** Diagnostics are things the user can run and choose to
   share, which makes clear error messages a product feature rather than a nicety.

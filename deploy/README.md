@@ -12,6 +12,34 @@ Mounted into the PostgreSQL container on first start. It creates the non-owning 
 application connects as, so the application cannot alter its own schema at runtime (ADR-0030).
 Migrations run as the owning role; the app does not.
 
+## `backup.sh`, `restore.sh`, `upgrade.sh`
+
+Backups, restores and upgrades. The operator's steps are in `userguide/installing.md` (sections
+5 and 6), and the rules and the threat model are in `docs/features/deployment.md`.
+
+```bash
+deploy/backup.sh --out /mnt/backups/budgetowl [--age-recipient age1...] [--keep 14]
+deploy/restore.sh BACKUP [--replace] [--age-identity KEY]
+deploy/upgrade.sh --backup-dir /mnt/backups/budgetowl [--ref TAG]
+```
+
+All three run the database tools **inside the `db` container** over its local socket
+(`lib.sh`), so no password is read, passed or printed. `restore.sh` behaves like this:
+
+- it checks the checksum first;
+- it refuses a database with data in it unless you give `--replace`;
+- it restores into a scratch database and checks the result before it touches the live one;
+- it takes a safety backup before swapping.
+
+`tools/deploy-check.sh` proves the whole cycle against the real stack. It is part of
+`tools/verify.sh packaging` and CI.
+
+## `proxmox/`
+
+`create-vm.sh` runs on a Proxmox VE host. It makes a Debian 13 VM whose first boot runs
+`bootstrap-vm.sh`. That installs Docker from Debian's archive, sets a firewall that lets in SSH
+only, generates `.env` on the VM and starts the stack. See `userguide/run-it-on-proxmox.md`.
+
 ## Behind a reverse proxy: which address the rate limits see (known gap)
 
 Every public route (sign-in, setup, invitations, the phone app's `GET /api/meta`) is rate-limited
