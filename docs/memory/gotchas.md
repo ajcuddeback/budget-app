@@ -1367,6 +1367,18 @@ in Settings is still trusted (Dart reads the system directory itself).
 _Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
 2 (pinned to one CA per server)._
 
+## Two clean-up steps in one `try` means the first failure skips the second
+
+**Symptom.** Round 5 moved sign-out's state change into a `finally` but left the token's removal
+and the wipe in one `try`: when secure storage refused to delete the token, the revoke and the
+whole wipe were skipped, and the screen still said signed out, with the token, cache and key on
+the phone.
+
+**What to do.** Give each independent clean-up step its own `try`, then check the outcome that
+matters (here: is the token still stored?) before saying the job is done.
+
+_Added 2026-11-27 — slice 15 phase 2, round 6._
+
 ## A `FutureProvider` answers from its cache: invalidate it after changing what it reads
 
 **Symptom.** A test set `TestPhone.temporaryDirectoryFails` after start-up and expected the next
