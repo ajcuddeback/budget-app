@@ -62,8 +62,8 @@ final class Transaction {
       id: json.string('id'),
       accountId: json.string('accountId'),
       accountName: json.string('accountName'),
-      date: CalendarDate.parse(json.string('date')),
-      amount: Money.fromWire(wire, json.string('currency')),
+      date: _date(json, 'date'),
+      amount: wireMoney(wire, json.string('currency'), 'amount'),
       wireAmount: wire,
       payeeName: json.stringOrNull('payeeName'),
       categoryId: json.stringOrNull('categoryId'),
@@ -123,7 +123,7 @@ final class Ledger {
     final currency = json.stringOrNull('pageTotalCurrency');
     return Ledger(
       content: [for (final row in json.objects('content')) Transaction.fromJson(row)],
-      pageTotal: total == null || currency == null ? null : Money.fromWire(total, currency),
+      pageTotal: total == null || currency == null ? null : wireMoney(total, currency, 'pageTotal'),
       page: json.integer('page'),
       totalElements: json.integer('totalElements'),
       totalPages: json.integer('totalPages'),
@@ -255,11 +255,11 @@ final class Transfer {
       fromAccountName: json.string('fromAccountName'),
       toAccountId: json.string('toAccountId'),
       toAccountName: json.string('toAccountName'),
-      fromDate: CalendarDate.parse(json.string('fromDate')),
-      toDate: CalendarDate.parse(json.string('toDate')),
-      sent: Money.fromWire(sent, json.string('sentCurrency')),
+      fromDate: _date(json, 'fromDate'),
+      toDate: _date(json, 'toDate'),
+      sent: wireMoney(sent, json.string('sentCurrency'), 'sent'),
       sentWire: sent,
-      received: Money.fromWire(received, json.string('receivedCurrency')),
+      received: wireMoney(received, json.string('receivedCurrency'), 'received'),
       receivedWire: received,
       crossCurrency: json.boolean('crossCurrency'),
       impliedRate: json.stringOrNull('impliedRate'),
@@ -289,4 +289,15 @@ final class Transfer {
 
   /// The pair's version: the sum of the legs'. What a `PATCH` must send back.
   final int version;
+}
+
+/// A calendar date from a response body, or [UnexpectedJson] naming [key]. `CalendarDate.parse`
+/// throws a [FormatException], which the readers do not map — the same escape as a bare
+/// `Money.fromWire` (see [wireMoney]).
+CalendarDate _date(JsonMap json, String key) {
+  try {
+    return CalendarDate.parse(json.string(key));
+  } on FormatException {
+    throw UnexpectedJson('$key is not a date');
+  }
 }

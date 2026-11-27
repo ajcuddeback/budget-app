@@ -1,3 +1,4 @@
+import 'package:budget_owl/core/json/json.dart';
 import 'package:decimal/decimal.dart';
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
@@ -37,6 +38,20 @@ final class Money {
   /// Not a display string — use [formatMoney]. Exists for test failure messages only.
   @override
   String toString() => 'Money($amount $currency)';
+}
+
+/// An amount from a response body, or [UnexpectedJson] naming [field] when it is not one.
+///
+/// **Use this, not [Money.fromWire], in a `fromJson`.** `fromWire` throws a [FormatException],
+/// which no reader maps: a repository turns only [UnexpectedJson] into the generic "unexpected
+/// answer" error, so a bare `fromWire` lets one malformed amount escape a read as an uncaught
+/// error instead of the screen's error state (docs/memory/gotchas.md).
+Money wireMoney(String wire, String currency, String field) {
+  try {
+    return Money.fromWire(wire, currency);
+  } on FormatException {
+    throw UnexpectedJson(field);
+  }
 }
 
 final RegExp _wireAmount = RegExp(r'^-?[0-9]{1,15}(\.[0-9]{1,4})?$');

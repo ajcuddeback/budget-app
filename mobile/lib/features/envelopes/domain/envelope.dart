@@ -1,7 +1,6 @@
 import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/core/json/json.dart';
 import 'package:budget_owl/core/money/money.dart';
-import 'package:budget_owl/features/accounts/data/accounts.dart' show wireMoney;
 import 'package:decimal/decimal.dart';
 import 'package:intl/intl.dart';
 

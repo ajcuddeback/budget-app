@@ -71,16 +71,6 @@ final class Account {
   String get label => lastFour == null ? name : '$name •$lastFour';
 }
 
-/// An amount the server sent, or [UnexpectedJson] naming the field when it is not one — so the
-/// cache's reader shows the generic error instead of meeting an exception it does not expect.
-Money wireMoney(String wire, String currency, String field) {
-  try {
-    return Money.fromWire(wire, currency);
-  } on FormatException {
-    throw UnexpectedJson(field);
-  }
-}
-
 /// A page of accounts: the rows, and how many the server holds in all, so a screen can say how
 /// many it is not showing rather than quietly showing part of a list of money.
 final class AccountList extends UnmodifiableListView<Account> {

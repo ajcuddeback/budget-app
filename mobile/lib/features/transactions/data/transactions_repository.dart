@@ -73,9 +73,17 @@ final class TransactionsWriter {
 
   /// The transfer a leg belongs to, fetched rather than assembled from the row: the sheet needs
   /// both accounts, both figures and the pair's current version, and a leg carries none of them.
-  Future<Transfer> transfer(String transferGroupId) async => Transfer.fromJson(
-    await _api.getJson('/api/transfers/${Uri.encodeComponent(transferGroupId)}'),
-  );
+  ///
+  /// The body is read here, not in `getJson`, so a shape this client cannot read is mapped here: the
+  /// screen catches [AppError] only, and an [UnexpectedJson] would escape it as an uncaught error.
+  Future<Transfer> transfer(String transferGroupId) async {
+    final body = await _api.getJson('/api/transfers/${Uri.encodeComponent(transferGroupId)}');
+    try {
+      return Transfer.fromJson(body);
+    } on UnexpectedJson {
+      throw const AppError.unexpected();
+    }
+  }
 
   Future<void> createTransfer(TransferForm form, {required bool crossCurrency}) =>
       _write('POST', '/api/transfers', createTransferBody(form, crossCurrency: crossCurrency));

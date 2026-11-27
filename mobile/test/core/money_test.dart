@@ -1,3 +1,4 @@
+import 'package:budget_owl/core/json/json.dart';
 import 'package:budget_owl/core/money/money.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -140,4 +141,26 @@ void main() {
     expect(Money.fromWire('-1', 'USD').isNegative, isTrue);
     expect(Money.fromWire('1', 'USD').toString(), contains('USD'));
   });
+
+  test(
+    'wireMoney turns a refused wire amount into UnexpectedJson naming the field, not the value',
+    () {
+      expect(wireMoney('-42.5000', 'USD', 'amount'), Money.fromWire('-42.5000', 'USD'));
+      for (final malformed in ['1e9', '12.34567', '1234567890123456', '+1', '']) {
+        expect(
+          () => wireMoney(malformed, 'USD', 'amount'),
+          throwsA(
+            isA<UnexpectedJson>()
+                .having((e) => e.what, 'what', 'amount')
+                .having(
+                  (e) => e.toString(),
+                  'toString',
+                  isNot(contains(malformed.isEmpty ? '#' : malformed)),
+                ),
+          ),
+          reason: malformed,
+        );
+      }
+    },
+  );
 }
