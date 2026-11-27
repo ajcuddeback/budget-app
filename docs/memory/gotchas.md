@@ -1367,6 +1367,18 @@ in Settings is still trusted (Dart reads the system directory itself).
 _Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
 2 (pinned to one CA per server)._
 
+## Asynchronous file I/O stalls a widget test that only pumps
+
+**Symptom.** A sign-out marker written with `await file.writeAsString(...)` left start-up on its
+spinner and a sign-out half done in widget tests (`pumpAndSettle timed out`): real I/O completes
+only when real time passes, and `tester.pump` does not let it.
+
+**What to do.** For a few bytes on a session's critical path, use the synchronous calls
+(`createSync`, `writeAsStringSync`, `deleteSync`); otherwise wait with `settleUntil`, which lets
+real time through.
+
+_Added 2026-11-27 — slice 15 phase 2, round 7._
+
 ## Two clean-up steps in one `try` means the first failure skips the second
 
 **Symptom.** Round 5 moved sign-out's state change into a `finally` but left the token's removal

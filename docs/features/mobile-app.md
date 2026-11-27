@@ -145,7 +145,15 @@ The one new API route. Public, so the app can identify a server before anyone si
   reach sign-in or the connect screen. **If it is not** — the next launch would resume with it —
   the phone says *"This phone couldn't finish signing out. Try again, or remove Budget Owl from
   the phone."* with *Try again* (`SessionSignOutIncomplete`), never the plain signed-out screen.
-  A failed sign-in's clean-up does the same. Nothing of the session is in memory either way. `connect()` turns a failed wipe into its own failure, *"This phone could
+  A failed sign-in's clean-up and a failed start-up's recovery do the same (round 7, W1).
+  Nothing of the session is in memory either way. **The unfinished state survives a relaunch**
+  (round 7, W2): every path that ends a session first writes a marker file in Application
+  Support (`budget_owl.sign_out_pending`, beside the install marker; it records whether the
+  sign-out was a change of server), and removes it only once the token is confirmed gone. A
+  launch that finds it ends the session again — the wipe, no token loaded, the delete tried
+  again — before reading anything else, and shows the unfinished state again if the token is
+  still there. A new sign-in, whose token replaces the old one, removes it too. A marker that
+  cannot be written is logged (debug builds) and the sign-out goes on. `connect()` turns a failed wipe into its own failure, *"This phone could
   not clear what it held for the previous server, so nothing was connected"*: no server is saved
   or current, so a half-wiped phone is never connected to a new origin.
 
@@ -433,6 +441,7 @@ drives the real API as the phone does and writes
 | Category path separator | The web's `transactions.categoryPath`, *"{parent} → {name}"* | Mobile strings **`transactions.categoryTrail`** and **`transfers.accountsTrail`** with **"›"** | The bundled Figtree has no U+2192, so the arrow drew as a box. "›" is in the font and mirrors in RTL |
 | Offline on Transactions | — | **No standing offline banner**: the stale label says the copy is old; *"You're offline — this needs a connection"* appears when a write is attempted. The record button stays opaque (`surface`/`muted`, field border) and explains on a tap | The design has no disabled-colour token; the web's 45% opacity let the row beneath show through the button |
 | Token storage | The token in secure storage | The token **and the origin that issued it**; a token whose origin is not the server about to be called is deleted, not loaded | Audit L3: no stored state can carry one server's token to another |
+| Unfinished sign-out | — | A second marker file in Application Support (`budget_owl.sign_out_pending`), written before a session's wipe and removed once the token is confirmed gone; a launch that finds it ends the session again before reading anything | Round 7, W2: an app closed on "couldn't finish signing out" would otherwise resume with the surviving token |
 | First run | — | A marker file in Application Support; when it is missing, secure storage is wiped before anything is read | Audit L5: the iOS Keychain survives an uninstall |
 | Sign-out order | "revokes the token server-side … and wipes local state whether or not the server answered" | The token leaves secure storage and memory **first**; the logout is sent with the copy; then the cache and key go | Audit N1: an app killed mid-sign-out while offline resumed signed in |
 | Launch version check | — | Runs **in sequence** inside start-up, before `/api/auth/me` (after the cached member is shown, when there is one) | Audit H-b: run beside start-up, the two could overwrite each other's state |
@@ -560,6 +569,20 @@ After the round-6 audit:
 | V1 a token that cannot be deleted | `_endToken` revokes the copy it took even when the delete fails; `_endLocally` runs it and the wipe in separate tries, then `TokenStore.isStored` (an unreadable store cannot confirm); if the token survives, `SessionSignOutIncomplete` with *Try again*, for sign-out, a `401` and a failed sign-in | One try for both again (round 5's regression); the survival not checked; no revoke when the delete fails; a failed sign-in ignoring it; a `401` ignoring it; an unreadable store taken as no token | 6 tests; 5; 2; the sign-in test; the `401` test; the `isStored` test |
 | V2 the receipt kept in Dart | `setSensitive` returns the timestamp (Android 8+), a digest (below 8 only) or `changeCount` (iOS); Dart passes it back to `clearIfUnchanged`; MainActivity and AppDelegate keep nothing about a copy (only Android's deferred check waits on the activity) | Dart not handing it back; Android keeping the copy again; the digest computed on 8+; iOS keeping the copy again | The receipt tests and `platform_config_test`; `platform_config_test` (×3) |
 | V3 the picker's delete across a linked root | `forgetPlatformCopy` resolves the copy's folder and the root before comparing; the inside check after resolving; a link as the copy deleted as a link | The root not resolved; the folder not resolved; the inside check dropped | The linked-root test; it and the link-outside test; the outside tests in `temp_files_test` and `import_test` and the link-outside test |
+
+After the round-7 audit:
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| W1 the failed-start recovery checks too | `_recoverFromFailedStart` runs `_endLocally(forgetServer: server == null)` and shows `SessionSignOutIncomplete` when the token survives | The round-6 recovery restored (wipe errors swallowed, "your session ended" unchecked) | The failed-start test whose token cannot be deleted |
+| W2 the unfinished state survives a relaunch | `SignOutMarker`: placed first in `_endLocally`, removed only when `isStored()` says the token is gone, and by a new sign-in; start-up finishes a pending sign-out before reading anything; a change of server recorded in it; writing it is best effort | No marker placed; start-up ignoring it; removed whether or not the token went; a change of server not recorded; a sign-in leaving it; a write failure stopping the sign-out | The relaunch test (and W1's); the relaunch test; both; the change-of-server relaunch test; the sign-in test; the unwritable-marker test |
+
+The first gate run failed four tests. The marker used asynchronous file I/O, which a widget test's
+pumps never complete, so start-up and a household sign-out stalled: its file work is synchronous
+now (one word, on disk before the wipe begins). And `start_up_test`'s token that could not be
+deleted had expected *"Your session ended"* — exactly what W1 refuses; it now expects the
+unfinished state. The test store's `unreadable` also threw for a key already deleted, which no
+Keystore does; it now throws only while a value is stored.
 
 ### What reading the screenshots changed
 
@@ -832,6 +855,10 @@ length counter (removed); three scenarios scrolled past what they were meant to 
 - **At text 2.0 the shared `Screen` header breaks "Administration" mid-word** (one word wider than
   the phone). A shared-widget fix (scale a title down to fit) for every area; not done here.
 - **The invite link wraps at a hyphen**, as the web's text box does; *Copy link* copies it exactly.
+- **An unfinished sign-out is remembered only if Application Support can be written.** The
+  marker is best effort: on a phone where that write also fails, closing the app on *"couldn't
+  finish signing out"* and opening it again resumes with the surviving token, as before round 7.
+  The wipe still ran (cache, key and the rest are gone), and the screen said it had not finished.
 - **Below Android 13 a copied link cannot be marked sensitive** (round 5, U4): the platform has
   no such flag, and nothing more is possible. It is a plain clip — shown in a keyboard's
   clipboard suggestions — until the sheet takes it back on revoke or close. If the app is killed
