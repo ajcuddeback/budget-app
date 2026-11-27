@@ -84,3 +84,21 @@ doc.capture('name', 'caption', { fullPage: true });      // whole scrollable pag
 
 Desktop-only (1280×720) and single-project, so a guide shows one consistent view. Every capture
 is stamped into `userguide/images/manifest.json`.
+
+## Phone screenshots
+
+The web capture cannot draw the Flutter app. The mobile golden tests can: every phone screen at
+390×844, from fixtures recorded from the real API, byte for byte reproducible
+(`mobile/test/goldens/png/<scenario>__<variant>.png`, rendered by `tools/mobile-check.sh`).
+
+1. **List the shot** in `userguide/images/mobile-captures.txt`:
+   `<guide-slug> <name> <golden-scenario> <caption>`.
+2. **Copy**: `tools/userguide-mobile.sh` (add `--render` to re-render the goldens first). It
+   copies the light variant to `userguide/images/<guide-slug>--<name>.png` and stamps the manifest
+   like a web capture, plus `source`, the golden it came from.
+3. **Read every image**, as for the web.
+
+`tools/userguide-check.sh` judges an entry with a `source` under `mobile/` against the last change
+to `mobile/`, not `frontend/`, and warns when the copy no longer matches its golden. A screen with
+no golden is not invented: add the scenario to the golden tests first, or leave the step without
+a picture and say so.
