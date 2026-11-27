@@ -127,7 +127,13 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
         nameEverything(stable);
 
         // Step 1: the gym's three months at once, prepaid.
-        answer(record, owner, "started", "prepaid", "odd." + ids.get("gymCharge"), "{\"choice\":\"PREPAID\"}");
+        answer(
+                record,
+                owner,
+                "started",
+                "prepaid",
+                "odd." + ids.get("gymCharge"),
+                "{\"choice\":\"PREPAID\"}");
         // Step 2: three categories, and "always file" ticked on the first.
         String blue = "cat." + ids.get("blueBottle");
         answer(
@@ -261,12 +267,7 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
     }
 
     private static void answer(
-            Recorder record,
-            Caller owner,
-            String from,
-            String to,
-            String itemKey,
-            String body) {
+            Recorder record, Caller owner, String from, String to, String itemKey, String body) {
         record.in(from);
         ApiResponse answered =
                 record.sendThen(to, owner, "PUT", CanvasWeek.W34 + "/answers/" + itemKey, body);
@@ -323,8 +324,8 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
 
     /**
      * The demo household's twelve months, as Insights reads them on 20 August 2026: every range a
-     * chip asks for and every month "where it went" steps to, each as JSON and as the CSV the
-     * share sheet sends — for the owner, and identically for a viewer.
+     * chip asks for and every month "where it went" steps to, each as JSON and as the CSV the share
+     * sheet sends — for the owner, and identically for a viewer.
      */
     @Test
     void the_committed_mobile_insights_fixtures_are_what_the_application_returns()
@@ -437,8 +438,7 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
         accounts.put(
                 "acc-0002", account(owner, "Emergency Fund", null, "SAVINGS", "USD", "5620.00"));
         accounts.put(
-                "acc-0003",
-                account(owner, "Travel Card", "8820", "CREDIT_CARD", "USD", "-215.24"));
+                "acc-0003", account(owner, "Travel Card", "8820", "CREDIT_CARD", "USD", "-215.24"));
         for (String[] row : DemoFixtureIT.DEMO_LEDGER) {
             ApiResponse created =
                     owner.post(
@@ -591,8 +591,7 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
                         preview.get("previewDigest").asString(),
                         ",\"suspectedDuplicates\":\"EXCLUDE\",\"overrides\":[{\"row\":%d,\"include\":true}]"
                                 .formatted(suspected));
-        ApiResponse committed =
-                record.sendThen("imported", owner, "POST", "/api/imports", commit);
+        ApiResponse committed = record.sendThen("imported", owner, "POST", "/api/imports", commit);
         CanvasWeek.ok(committed, 201);
         record.in("imported");
         readImport(record, owner);
@@ -657,7 +656,11 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
     private static String fileBody(UUID accountId, String format, String file, String options) {
         String base64 = Base64.getEncoder().encodeToString(file.getBytes(StandardCharsets.UTF_8));
         return "{\"accountId\":\"%s\",\"format\":\"%s\",\"file\":\"%s\"%s}"
-                .formatted(accountId, format, base64, options == null ? "" : ",\"options\":" + options);
+                .formatted(
+                        accountId,
+                        format,
+                        base64,
+                        options == null ? "" : ",\"options\":" + options);
     }
 
     private static String commitBody(String previewBody, String digest, String decisions) {
@@ -991,13 +994,20 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
             return exchange(caller, method, path, body, null, then);
         }
 
-        /** A {@code GET} asking for one representation, recorded with the {@code Accept} it sent. */
+        /**
+         * A {@code GET} asking for one representation, recorded with the {@code Accept} it sent.
+         */
         ApiResponse accepting(Caller caller, String path, String accept) {
             return exchange(caller, "GET", path, null, accept, null);
         }
 
         private ApiResponse exchange(
-                Caller caller, String method, String path, String body, String accept, String then) {
+                Caller caller,
+                String method,
+                String path,
+                String body,
+                String accept,
+                String then) {
             ApiResponse response =
                     accept == null
                             ? caller.client().send(method, path, body)

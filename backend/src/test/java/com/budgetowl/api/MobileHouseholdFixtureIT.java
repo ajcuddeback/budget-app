@@ -22,17 +22,18 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Credentials are placeholders by construction.</b> Every bearer token and the one invitation
  * token this story creates are registered with {@link MobileRecorder#secret}, so the file holds
- * {@code fixture-token-owner} and {@code fixture-invitation-edsger} where the real values were —
- * in the invitation's {@code token} and in its {@code acceptPath}. The OIDC client secret the
- * console sends is a value this class makes up, and says so in its name.
+ * {@code fixture-token-owner} and {@code fixture-invitation-edsger} where the real values were — in
+ * the invitation's {@code token} and in its {@code acceptPath}. The OIDC client secret the console
+ * sends is a value this class makes up, and says so in its name.
  *
  * <p>Some states are recorded out of the order a phone meets them, deliberately: {@code
  * grace-demoted} is what Grace's phone read while she was an owner, followed by what the server
  * said to her write after she had been demoted on the web — the case "the client offered it, the
  * server refused it" exists only across two moments. Each response is still the application's own.
  *
- * <p>Regenerate: {@code mvn -f backend -B verify -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false
- * -Dit.test='MobileHouseholdFixtureIT*' -Dfixtures.write=true}.
+ * <p>Regenerate: {@code mvn -f backend -B verify -Dtest=none
+ * -Dsurefire.failIfNoSpecifiedTests=false -Dit.test='MobileHouseholdFixtureIT*'
+ * -Dfixtures.write=true}.
  */
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class MobileHouseholdFixtureIT extends ApiTestBase {
@@ -123,7 +124,11 @@ class MobileHouseholdFixtureIT extends ApiTestBase {
         // ---- preferences: a viewer may set their own (self-scoped, no role needed).
         record.in("household");
         record.sendThen(
-                "prefs-saved", viewer, "PATCH", OWN, "{\"displayCurrency\":\"EUR\",\"locale\":\"de-DE\"}");
+                "prefs-saved",
+                viewer,
+                "PATCH",
+                OWN,
+                "{\"displayCurrency\":\"EUR\",\"locale\":\"de-DE\"}");
         record.in("prefs-saved");
         readTheShell(record, viewer);
         // "Follow the default" is null, which is a meaning rather than a gap.
@@ -165,7 +170,11 @@ class MobileHouseholdFixtureIT extends ApiTestBase {
         readTheShell(record, owner);
         readTheConsole(record, owner);
         record.sendThen(
-                "oidc-off", owner, "PATCH", ADMIN_SETTINGS, "{\"oidcEnabled\":false,\"version\":2}");
+                "oidc-off",
+                owner,
+                "PATCH",
+                ADMIN_SETTINGS,
+                "{\"oidcEnabled\":false,\"version\":2}");
         record.in("oidc-off");
         afterASave(record, owner);
 
