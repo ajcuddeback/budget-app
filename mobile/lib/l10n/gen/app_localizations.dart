@@ -2288,6 +2288,12 @@ abstract class AppLocalizations {
   /// **'Pay down {debt}'**
   String checkIn_choice_debt(String debt);
 
+  /// Web en.json "checkIn.choice.debtCarriesInterest".
+  ///
+  /// In en, this message translates to:
+  /// **'It would be {debt}\'s first payment this month, so it carries this month\'s interest of {interest}. Your regular payment later this month then comes off the balance in full.'**
+  String checkIn_choice_debtCarriesInterest(String debt, String interest);
+
   /// Web en.json "checkIn.choice.debtMoves".
   ///
   /// In en, this message translates to:
@@ -4472,11 +4478,23 @@ abstract class AppLocalizations {
   /// **'Digits and a dot, like 445.00.'**
   String get debt_payment_amountHint;
 
+  /// Web en.json "debt.payment.carriesMonthInterest".
+  ///
+  /// In en, this message translates to:
+  /// **'This includes {month}\'s interest of {interest}. Interest is charged once a month, on the first payment dated in that month — any further payment in {month} comes off the balance in full.'**
+  String debt_payment_carriesMonthInterest(String month, String interest);
+
   /// Web en.json "debt.payment.lede".
   ///
   /// In en, this message translates to:
   /// **'Filled in with what your plan puts against this one. Change the amount if you paid something else.'**
   String get debt_payment_lede;
+
+  /// Web en.json "debt.payment.monthInterestAlreadyCharged".
+  ///
+  /// In en, this message translates to:
+  /// **'No interest on this one: {month}\'s interest was charged on an earlier payment, so all of it comes off the balance.'**
+  String debt_payment_monthInterestAlreadyCharged(String month);
 
   /// Web en.json "debt.payment.noAccount".
   ///

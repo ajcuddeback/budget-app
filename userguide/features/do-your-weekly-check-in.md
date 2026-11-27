@@ -56,11 +56,18 @@ a goal, you still make that payment or move that money at your bank.
 
 6. In **Next week**, choose where this week's leftover money goes.
 
-   ![Step 4, Next week: you came in $63.00 under, the surplus put towards Emergency fund ($2,340.00 → $2,403.00 of $6,000.00), and next week you can spend $480.00, about $68.57 a day.](../images/do-your-weekly-check-in--next-week.png)
+   ![Step 4, Next week: you came in $63.00 under; Pay down Visa •8823 says it would carry this month's interest of $128.70; the surplus put towards Emergency fund ($2,340.00 → $2,403.00 of $6,000.00), and next week you can spend $480.00, about $68.57 a day.](../images/do-your-weekly-check-in--next-week.png)
 
    Nothing is chosen for you. Each choice says what it does: paying down a debt says whether it
    moves the month you'll be clear of it, a goal shows its new total, and **Roll it into next
    week** shows next week's bigger figure. **Next week you can spend** changes as you choose.
+
+   Interest on a debt is charged once a month, on the first payment dated in that month. If the
+   leftover would be the debt's first payment this month, the choice says so: here, _"It would be
+   Visa •8823's first payment this month, so it carries this month's interest of $128.70."_ The
+   debt's balance can then read higher than before, because $63.00 is less than the month's
+   interest. Your regular payment later in the month comes off the balance in full, so the month
+   still costs one month's interest, and paying the extra never pushes the payoff month later.
 
 7. Select **Finish check-in**.
 

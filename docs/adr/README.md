@@ -67,3 +67,4 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0040](0040-next-weeks-figure-is-built-from-the-plan.md) | Next week's spending figure is built from the plan, not from balances | Accepted      | 2026-11-26 |
 | [0041](0041-payee-and-charge-rules-act-only-through-a-completed-check-in.md) | Payee and charge rules act only through a completed check-in | Accepted      | 2026-11-26 |
 | [0042](0042-the-mobile-app-reaches-a-server-over-verified-https-and-keeps-an-encrypted-cache.md) | The mobile app reaches a server only over verified HTTPS, and keeps an encrypted, read-only cache | Accepted      | 2026-11-26 |
+| [0043](0043-interest-is-charged-once-per-debt-per-month.md) | Interest is charged once per debt per calendar month | Accepted      | 2026-11-27 |

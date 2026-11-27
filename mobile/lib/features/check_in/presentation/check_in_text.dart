@@ -248,7 +248,14 @@ final class CheckInWords {
                   ? l.checkIn_choice_debtSameMonth(debt)
                   : l.checkIn_choice_debtMoves(debt, month(now), month(withIt))
             : l.checkIn_choice_debtNoDate(debt);
-        return [moved, l.checkIn_choice_debtNeverMoves(surplus, debt)];
+        // The server says when the surplus would carry the month's interest (ADR-0043); the
+        // phone only words it, with the server's figure.
+        final interest = choice.monthInterest;
+        return [
+          moved,
+          if (interest != null) l.checkIn_choice_debtCarriesInterest(debt, money(interest)),
+          l.checkIn_choice_debtNeverMoves(surplus, debt),
+        ];
       case AnswerChoice.goal:
         final goal = choice.goalName ?? '';
         return [

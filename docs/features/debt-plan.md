@@ -5,11 +5,12 @@
   the **Owed** card, the demo fixtures and the user guide have all shipped. See
   [What slice 10 has built](#what-slice-10-has-built) and [Known gaps](#known-gaps)
 - **Owner:** Repository owner
-- **Last updated:** 2026-11-24
+- **Last updated:** 2026-11-27 (ADR-0043: interest is charged once per debt per month)
 - **Depends on:** accounts (3), transactions (5), bills & income (7)
 - **Related:** ADR-0006 (money), ADR-0017 (households), ADR-0022 (currency), ADR-0025 (a plan
   record is not a transaction), ADR-0031 (one transaction, one entry), ADR-0032 (projected, not
-  generated), ADR-0033 (a linked pair), `bills-and-income.md`, `transfers.md`,
+  generated), ADR-0033 (a linked pair), ADR-0043 (interest once per debt per month),
+  `bills-and-income.md`, `transfers.md`,
   `../domain/model.md`
 - **Designs:** `design/canvas/` section `v1` — six artboards: *Debt plan, two structures* ·
   *Debt plan absorbs the debt table* · *Debt detail — terms in, payments out* · *Debt detail on
@@ -249,8 +250,8 @@ every allocation and the debt-free month follow from the order, and only the ser
 **The page names what the household's own order costs.** The two comparison cards are always
 avalanche and snowball — that is the product requirement — so under `CUSTOM` neither of them is
 the plan in force, and without a line for it the page would show two totals nobody is paying and
-never name the one they are. Rearranging the demo ladder moves the interest from $2,847.88 to
-$4,570.98; both cards carry on reading as before. The line is omitted under the two named
+never name the one they are. Rearranging the demo ladder moves the interest from $2,677.02 to
+$4,346.72 (ADR-0043 figures); both cards carry on reading as before. The line is omitted under the two named
 strategies, where the matching card already says it.
 
 **Choosing it from the avalanche order makes all three chart lines identical**, which is the first
@@ -333,12 +334,112 @@ Consequences, stated so nobody rediscovers them:
   exists now so that a figure somebody asserted never becomes indistinguishable from one the app
   inferred.
 
-**The split.** A logged payment's `interest` is `round(balance × apr ÷ 100 ÷ 12, minor unit, HALF_EVEN)`
-at the time, `principal` is `amount − interest`, and `balanceAfter` is the previous balance minus
-`principal`. `interest + principal = amount` exactly, by construction — the interest is rounded and
-the principal takes the remainder, so no payment ever loses or invents a cent. Because the interest
-is a whole number of cents, a payment in cents splits into two cent figures that each display
-exactly and still add up, and the balance it leaves is on the cent grid too.
+**The split: interest is charged once per debt per calendar month** (ADR-0043, decided by the
+owner on 2026-11-27). The **first** payment recorded for a debt in a calendar month, by the
+payment's date, carries that month's interest, `round(balance × apr ÷ 100 ÷ 12, minor unit,
+HALF_EVEN)` on the balance at the time. **Every further payment for that debt dated in the same
+month has interest 0** and is all principal. `principal` is `amount − interest` and `balanceAfter`
+is the previous balance minus `principal`. `interest + principal = amount` exactly, by construction:
+the interest is rounded and the principal takes the remainder, so no payment ever loses or invents
+a cent. Because the interest is a whole number of cents, a payment in cents splits into two cent
+figures that each display exactly and still add up, and the balance it leaves is on the cent grid
+too.
+
+Until this rule, every payment was charged a whole month of interest, so two payments in one month
+paid two months. Slice 14's check-in found it: a $63 surplus on the canvas Visa (22.9%) was charged
+$117.94, its balance went up, and the payoff moved later. Slice 14 patched only the check-in, with
+a special case on `CHECK_IN`. That special case is gone. **One rule applies to every way a payment
+is recorded**: by hand, a past payment, the check-in's bill prompt (_"Also record this against
+…"_), and its surplus. All of them build the row through `DebtPaymentService.draft`, which asks
+`MonthInterest.decide`, the only place the decision is taken. A statement correction is not a
+payment: it carries no interest and never books a month.
+
+The canvas Visa, $6,180.00 at 22.9%, accrues `6180 × 22.9 ÷ 1200 = 117.935 → $117.94` a month:
+
+| Recorded | Date   | Interest | Principal | Balance after | Why                                 |
+| -------- | ------ | -------- | --------- | ------------- | ----------------------------------- |
+| $445.00  | Aug 5  | $117.94  | $327.06   | $5,852.94     | August's first payment              |
+| $50.00   | Aug 20 | $0.00    | $50.00    | $5,802.94     | August's interest is already booked |
+| $445.00  | Sep 2  | $110.74  | $334.26   | $5,468.68     | September's first payment           |
+
+How the edge cases are decided, so nobody re-derives them:
+
+1. **"First" is read off the stored rows, not the order things arrive in.** A month is _booked_ when
+   a stored payment for the same debt, dated in that month, carries non-zero interest. A payment
+   back-dated to earlier in a booked month (a $100 payment dated Aug 3, logged after the Aug 20
+   one above) is principal only. The month's interest is already in the history, and the stored
+   split of the payment that carries it is **not rewritten**. Splits are stored as at the time,
+   because they record what was true then and a statement may have corrected them since (_What is
+   stored and what is recomputed_, above). A month whose only rows carry no interest (a statement
+   correction, a payment made while nothing was owed, a slice-14 check-in row stored
+   principal-only) is not booked. Its next payment carries the interest, so the month never loses
+   it.
+2. **Deleting the payment that carried a month's interest un-books that month.** The API allows it
+   (`DELETE /api/debts/{id}/payments/{paymentId}`). The other payments in that month keep their
+   stored principal-only splits, because history is not re-split. **The next payment recorded in
+   that month carries the interest again**, against the balance at that time. If none is, the month
+   stands uncharged until a statement says otherwise, and the confirmation's correction row is
+   where the difference shows. Never lost silently, never charged twice. For example: delete the
+   Aug 5 carrier above and the $50 stays $0.00 / $50.00. The balance is $6,130.00, so a $100
+   payment logged on Aug 20 carries `6130 × 22.9 ÷ 1200 = $116.98`, its principal is −$16.98, and
+   it leaves $6,146.98. August is charged $116.98, once. **A correction (`PATCH`) that moves a
+   payment carrying interest into another month that is already booked makes it principal only**,
+   as a payment logged there would have been, and un-books the month it left. Moving a
+   principal-only payment never gives it interest, because that would be a split against a balance
+   from another day.
+3. **A check-in surplus that is the month's first payment carries the month's interest.** In the
+   canvas week the regular Visa payment is due on the 28th and the check-in is on the 21st, so the
+   surplus comes first. At 22.9%, $63 carries $117.94: principal −$54.94, balance after $6,234.94,
+   **higher than before**. The regular $185 later in August is then all principal, so August ends
+   at $6,049.94, exactly $63 below the $6,112.94 the regular payment alone would leave. The month is
+   charged once. Three consequences are built in:
+   - **(a) No projection charges the booked month again.** The plan's month 1 is the current month
+     (`PayoffPlanService.firstMonth`), and a debt's own projection starts at its next payment
+     month, often this one. Each charged month 1 its interest on today's balance. That is right
+     when the month is unbooked and a double count when it is booked. Now `DebtFacts` carries
+     whether the current month is booked, and a projection whose month 1 is that month charges it
+     nothing: `LadderDebt.firstMonthInterestBooked` in the ladder, and
+     `DebtTerms.firstMonthInterestBooked` in `DebtTermsSolver`'s projection, payment search and
+     rate search. `monthsLeft`, `payoffMonth` and `totalInterestLeft` all follow from those. The
+     check-in's what-if (`PayoffPlanService.oneOffPayment`) is told whether the surplus would book
+     the month, so the projection after it does not charge the month a second time.
+   - **(b) The guarantee holds: a surplus never moves the payoff later, and never makes total
+     interest higher than not paying it.** The plan after the surplus starts $63 lower than the
+     plan without it, once the booked interest is counted on both sides. On the demo ladder ($905 a
+     month, avalanche) the plan projects $2,847.88 of interest without the surplus. With it, the
+     plan projects $2,701.45 plus the $117.94 already booked, $2,819.39 in all, $28.49 less. The
+     Visa clears in Dec 2027 either way. Without (a) it would have been $2,874.29 + $117.94 =
+     $2,992.23. The canvas test's "never later" assertion fails if (a) is removed: the canvas's
+     24.99% Visa then moves later. `PayoffLadderTest` asserts the property over 200 random
+     surpluses, booked and unbooked.
+   - **(c) The copy explains a balance that rises.** The preview carries `monthInterest`
+     (`CARRIED` · `ALREADY_CARRIED` · `NONE`) and `interestMonth`, and the check-in's debt choice
+     carries `monthInterest` (the interest the surplus would carry, or null). The web and the phone
+     word them: _"This includes August 2026's interest of $117.94. Interest is charged once a month,
+     on the first payment dated in that month…"_, _"No interest on this one: August 2026's interest
+     was charged on an earlier payment…"_, and on the check-in, _"It would be Visa's first payment
+     this month, so it carries this month's interest of $117.94…"_. Neither client computes
+     anything.
+4. **Confirmed estimates and the check-in's matched charges take the same path.** There is one
+   split function, `DebtPaymentService.draft` → `MonthInterest.decide`, and every writer of a
+   payment row calls it: `log` (by hand, a bill occurrence's _"also record this"_, and the
+   check-in's bill prompt for a marked or attached charge), `logFromCheckIn` (the surplus), and both
+   previews. The two rows that are not payments do not split: a balance confirmation's
+   `STATEMENT_CORRECTION`, which carries interest 0, and confirming an estimate, which writes only an
+   anchor. `AUTO_MATCHED` has no writer yet (slice 16). When it gets one, it must call `draft`.
+5. **Two payments at once cannot both take the interest.** Every payment write (`log`,
+   `logFromCheckIn`, `correct`, `delete`, and `DebtService.confirmBalance`) first takes `SELECT …
+FOR UPDATE` on the debt row (`DebtRepository.lockByIdAndHouseholdId`). The second writer waits,
+   then sees the first one's row. `@Version` could not do this, because a payment does not touch
+   the debt row unless it settles it. Without the lock, six concurrent $100 payments produced three
+   or four interest-carrying rows. With it, exactly one (`MonthInterestIT`). The preview reads
+   without the lock: it writes nothing, and a stale preview is corrected by the recorded split.
+6. **Existing data is not rewritten.** No migration touches a stored row. Slice-14 `CHECK_IN` rows
+   keep their principal-only split, and because they carry no interest they do not book their month
+   (rule 1). Months that were charged twice before this change stay charged twice in the history,
+   and the next statement confirmation reconciles the balance. No schema change was needed:
+   `ix_debt_payments_debt_paid_date` already serves the month look-up, and "this row carries the
+   month" is `interest <> 0`, not a second column that could disagree with it.
 
 **A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
 difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
@@ -518,7 +619,7 @@ existed:
 | `POST` | `/api/debts/{id}/archive` · `/unarchive` | Retire without deleting, as accounts do |
 | `GET` | `/api/debts/{id}/payments` | The history, **paginated** (page envelope, `api-style.md`) |
 | `POST` | `/api/debts/{id}/payments` | Log one. Accepts an optional `transactionId` |
-| `POST` | `/api/debts/{id}/payments/preview` | What logging `{"amount"}` **would** record — the split and the resulting balance — writing nothing. Built through the same code path as logging, so it cannot disagree with it. A `POST` to keep the amount out of URLs; a `VIEWER` is refused it, as for any non-`GET` |
+| `POST` | `/api/debts/{id}/payments/preview` | What logging `{"amount", "paidDate"?}` **would** record — the split, the resulting balance, and `monthInterest` / `interestMonth` (ADR-0043) — writing nothing. Built through the same code path as logging, so it cannot disagree with it. A `POST` to keep the amount out of URLs; a `VIEWER` is refused it, as for any non-`GET` |
 | `PATCH` · `DELETE` | `/api/debts/{id}/payments/{paymentId}` | Correct · remove |
 | `POST` | `/api/debts/{id}/balance` | Confirm or correct the balance. Writes the anchor, and a `STATEMENT_CORRECTION` row when it disagrees with the arithmetic |
 | `GET` | `/api/debt-plan` | Strategy, amount, order, **both** projections and the comparison |
@@ -738,8 +839,12 @@ which become dialogs on desktop with identical fields in identical order:
      like JSON produces that same message rather than a split with three blanks in it.
 
    `POST
-   /api/debts/{id}/payments/preview` with `{"amount": "445.00"}` returns the interest, the
-   principal, the balance the split is taken against and the balance it would leave. It **cannot
+   /api/debts/{id}/payments/preview` with `{"amount": "445.00"}` (and optionally `"paidDate"`,
+   today when absent) returns the interest, the principal, the balance the split is taken against,
+   the balance it would leave, and **why the interest is what it is**: `monthInterest` (`CARRIED`,
+   the month's first payment; `ALREADY_CARRIED`, an earlier payment in `interestMonth` carried it;
+   `NONE`) and `interestMonth`. The sheet words the first two under the split, so a first payment
+   that leaves the balance higher, or a second one with no interest, explains itself (ADR-0043). It **cannot
    disagree** with logging: `DebtPaymentService.preview` and `.log` both build the row through one
    private `draft` method — `log` saves it, `preview` reads four figures off it and discards it —
    and `DebtIT.the_preview_is_exactly_what_logging_then_records` asserts the two match, so an edit
@@ -1097,7 +1202,24 @@ bounded and these unbounded:
   household forgot last month is `round(balance_now × apr ÷ 1200)`, not the balance as it stood on
   that date: reconstructing a balance as at an arbitrary past day needs a per-day ledger this slice
   does not keep. The stored split is still what it always is — what was true when it was recorded —
-  and `interest + principal = amount` holds.
+  and `interest + principal = amount` holds. *Whether* it carries interest is decided for its own
+  month (ADR-0043), so a payment back-dated into a month with no payment yet carries that month's
+  interest, taken against today's balance.
+- **The plan's month 1 still assumes this month's planned payment is still to come** (ADR-0043).
+  The ladder pays every debt its allocation in the current month, whether or not a payment has
+  already been logged this month. Before ADR-0043, month 1 also charged the month's interest a
+  second time, and the two roughly cancelled, so a debt paid this month projected as if month 1
+  were next month. Now the booked month is not charged again, which is right, but the extra payment
+  is still assumed. On the demo Visa (paid Aug 20, read Aug 20) the plan shows it clearing in **Nov
+  2027 instead of Dec 2027**, with $910.35 of interest still to come instead of $1,069.36. The plan's
+  total goes from $2,847.88 to $2,677.02. For a surplus that is the month's first payment, with the
+  regular payment still to come, month 1 is exactly right. The fix is to net the month's recorded
+  plan payments (not `CHECK_IN` extras) out of the ladder's month-1 allocation. That changes the
+  shape of every projection, so it is the owner's call and is not made here.
+- **The sheets preview today's month.** `POST /api/debts/{id}/payments/preview` takes an optional
+  `paidDate`, but neither client sends the date field's value yet. A payment back-dated across a
+  month boundary is therefore previewed for the current month. The sheet names that month (*"August
+  2026's interest…"*), and the recorded banner reports the split that was actually stored.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
 
@@ -1320,6 +1442,35 @@ is what keeps a malformed figure a `400` naming its field.
 
 Beyond `../guides/testing-style.md`. The solver is the part that will be wrong silently, so most of
 this is about it.
+
+- **Interest once per debt per month (ADR-0043).** `MonthInterestTest` is the rule as a unit:
+  first, second, back-dated, another month, another debt, a month whose rows carry no interest,
+  the payment being corrected, a zero rate, nothing owed, a payment smaller than the interest.
+  `MonthInterestIT` takes it through the API on a stopped clock: a second hand-logged payment, a
+  back-dated one, the next month, another debt, the preview (both answers, `paidDate`, a future
+  date refused), delete and re-book, a `PATCH` into a booked month, the check-in's bill prompt
+  after a hand-logged payment, the surplus after and before the regular payment (with "never
+  later" and "no more interest in total"), and six concurrent writers. `PayoffLadderTest` and
+  `DebtTermsSolverTest` cover a booked month 1, including the never-later property over random
+  surpluses. Every rule-carrying line was broken and seen to fail a named test, then restored from
+  git:
+
+  | Broken | Failed |
+  | ------ | ------ |
+  | `isBooked` ignored (always charge interest) | `MonthInterestTest` (2), `MonthInterestIT` (8) |
+  | Booking judged by date order, not stored rows (the latest takes it) | `MonthInterestTest`, `MonthInterestIT.a_payment_back_dated…` |
+  | Debt id not checked | `MonthInterestTest.another_debts_interest…` |
+  | Month not checked | `MonthInterestTest.a_payment_in_another_month…` |
+  | A zero-interest row books the month | `MonthInterestTest.a_month_whose_only_rows…`, `MonthInterestIT.deleting_…` |
+  | The corrected payment books its own month | `MonthInterestTest.the_payment_being_corrected…` |
+  | The debt row lock dropped | `MonthInterestIT.payments_logged_at_the_same_moment…`: 3 and 4 carriers on two runs |
+  | `CHECK_IN` special case restored | `CheckInIT.a_surplus_that_is_the_months_first_payment…`, `MonthInterestIT.a_surplus_that_is…` |
+  | A move into a booked month keeps its interest | `MonthInterestIT.moving_…` |
+  | The preview ignores `paidDate` | `MonthInterestIT.the_preview_says…`, `…a_preview_dated_in_the_future…` |
+  | The ladder charges a booked month 1 | three `PayoffLadderTest` tests, `CheckInIT.the_canvas_week_reconciles…` ("never later"), `MonthInterestIT.a_surplus_that_is…` |
+  | The check-in's what-if not told the surplus books the month | `CheckInIT.the_canvas_week_reconciles…`, `MonthInterestIT.a_surplus_that_is…` |
+  | The solver charges a booked month 1 | two `DebtTermsSolverTest` tests |
+  | `DebtFacts` never sees a booked month · a debt's own projection ignores it | `DemoFixtureIT.the_committed_debt_fixtures…` (the generated figures move) |
 
 - **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
   - **Round-trip identity, stated exactly:** a *solved* field is a **fixed point** of the round

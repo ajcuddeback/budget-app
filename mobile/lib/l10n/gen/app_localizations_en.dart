@@ -1270,6 +1270,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String checkIn_choice_debtCarriesInterest(String debt, String interest) {
+    return 'It would be $debt\'s first payment this month, so it carries this month\'s interest of $interest. Your regular payment later this month then comes off the balance in full.';
+  }
+
+  @override
   String checkIn_choice_debtMoves(String debt, String from, String to) {
     return 'Moves $debt from $from to $to.';
   }
@@ -2654,8 +2659,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get debt_payment_amountHint => 'Digits and a dot, like 445.00.';
 
   @override
+  String debt_payment_carriesMonthInterest(String month, String interest) {
+    return 'This includes $month\'s interest of $interest. Interest is charged once a month, on the first payment dated in that month — any further payment in $month comes off the balance in full.';
+  }
+
+  @override
   String get debt_payment_lede =>
       'Filled in with what your plan puts against this one. Change the amount if you paid something else.';
+
+  @override
+  String debt_payment_monthInterestAlreadyCharged(String month) {
+    return 'No interest on this one: $month\'s interest was charged on an earlier payment, so all of it comes off the balance.';
+  }
 
   @override
   String get debt_payment_noAccount => 'Somewhere I do not track';

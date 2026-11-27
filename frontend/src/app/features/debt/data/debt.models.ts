@@ -275,6 +275,15 @@ export interface PaymentPreview {
   principal: string;
   balanceBefore: string;
   balanceAfter: string;
+  /**
+   * Why the interest is what it is (ADR-0043: interest is charged once per debt per month).
+   * `CARRIED` — the first payment dated in `interestMonth`, so it carries that month's interest;
+   * `ALREADY_CARRIED` — an earlier payment did, so this one is all principal; `NONE` — nothing to
+   * charge. Optional so an older server's preview still renders its split.
+   */
+  monthInterest?: 'CARRIED' | 'ALREADY_CARRIED' | 'NONE';
+  /** `YYYY-MM`: the month that decision was taken for. */
+  interestMonth?: string;
 }
 
 /**

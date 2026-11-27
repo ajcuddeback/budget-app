@@ -336,11 +336,11 @@ which one to attack first.
 
 5. Choose an **Order of attack** — **Avalanche**, **Snowball** or **Your own order**.
 
-   ![The Avalanche or snowball card: Avalanche, in use, debt-free April 2029 with $2,847.88 of interest; Snowball, debt-free April 2029 with $2,896.49 of interest; then the sentence saying either is a good answer.](images/choose-how-to-clear-your-debts--compare.png)
+   ![The Avalanche or snowball card: Avalanche, in use, debt-free April 2029 with $2,677.02 of interest; Snowball, debt-free April 2029 with $2,727.28 of interest; then the sentence saying either is a good answer.](images/choose-how-to-clear-your-debts--compare.png)
 
 **Budget Owl works both orders out and refuses to pick for you.** Avalanche goes at the highest rate
 first, snowball at the smallest balance first. For the household above they finish in the same
-month and differ by about $49 of interest, and the page says so: _"Either is a good answer."_ How
+month and differ by about $50 of interest, and the page says so: _"Either is a good answer."_ How
 much you put in moves the date far more than which order you put it in. **Your own order** lets you
 rank the debts yourself, and the page tells you what your order costs next to the other two.
 

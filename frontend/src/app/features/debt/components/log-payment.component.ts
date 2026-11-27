@@ -11,7 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs/operators';
 import { ApiError } from '../../../core/api-error';
-import { MoneyPipe } from '../../../core/i18n/format.pipes';
+import { MoneyPipe, PeriodPipe } from '../../../core/i18n/format.pipes';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { addAmounts, isAmount, trimAmount } from '../../../core/money';
 import { ErrorAlertComponent } from '../../../shared/components/error-alert.component';
@@ -62,6 +62,7 @@ const PREVIEW_SETTLES_AFTER_MS = 350;
     ReactiveFormsModule,
     TranslatePipe,
     MoneyPipe,
+    PeriodPipe,
     ModalDirective,
     FieldErrorComponent,
     ErrorAlertComponent,

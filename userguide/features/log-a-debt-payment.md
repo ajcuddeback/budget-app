@@ -32,20 +32,32 @@ well, [record it as a transaction](record-a-transaction.md).
 
 4. Read the split, the line just under the two buttons.
 
-   ![The Log a payment window with 445 in Amount paid, and the line $117.94 interest · $327.06 principal · balance after $5,852.94 circled, just under the two buttons.](../images/log-a-debt-payment--preview.png)
+   ![The Log a payment window with 445 in Amount paid, and the line $0.00 interest · $445.00 principal · balance after $5,735.00 circled, just under the two buttons, with the note underneath that August 2026's interest was charged on an earlier payment.](../images/log-a-debt-payment--preview.png)
 
    Before you record anything, Budget Owl shows what this amount would do: how much goes on
-   interest, how much comes off the balance, and what the balance will be afterwards. For $445.00
-   against this card it reads **$117.94 interest · $327.06 principal · balance after $5,852.94**.
-   Interest and principal always add up to exactly the amount in the box.
+   interest, how much comes off the balance, and what the balance will be afterwards. Interest and
+   principal always add up to exactly the amount in the box.
+
+   **Interest is charged once a month, on the first payment dated in that month.** This card
+   already has a payment on August 20, and that one carried August's interest. So for $445.00 the
+   line reads **$0.00 interest · $445.00 principal · balance after $5,735.00**, and the note under
+   it says why: _"No interest on this one: August 2026's interest was charged on an earlier
+   payment, so all of it comes off the balance."_
+
+   For the first payment in a month, the note says how much of it is that month's interest
+   instead: _"This includes September 2026's interest of …"_. If that first payment is smaller than
+   the month's interest, the balance after it is higher than before. That's expected: the
+   month's interest is charged once, and everything else you pay that month comes off the balance
+   in full.
 
    The split follows the amount. If you type a different figure, it updates once you stop typing.
    If you select one of the buttons, it updates straight away:
 
-   ![The same window after selecting $495.00: Amount paid now 495, and the line underneath reading $117.94 interest · $377.06 principal · balance after $5,802.94.](../images/log-a-debt-payment--preview-extra.png)
+   ![The same window after selecting $495.00: Amount paid now 495, and the line underneath reading $0.00 interest · $495.00 principal · balance after $5,685.00, with the same note about August's interest.](../images/log-a-debt-payment--preview-extra.png)
 
-   The interest stays at $117.94, because it's worked out on the balance you owe now. All of the
-   extra $50.00 comes off the balance.
+   The interest doesn't change with the amount. It's one month's interest on the balance you owe
+   now, or nothing if the month's interest is already charged. All of the extra $50.00 comes off
+   the balance.
 
 5. Change **Date paid** if it wasn't today.
 
@@ -63,7 +75,7 @@ well, [record it as a transaction](record-a-transaction.md).
 
 8. Select **Record it**.
 
-   ![A banner reading Payment recorded: $117.94 interest · $327.06 principal. Balance now $5,852.94.](../images/log-a-debt-payment--recorded.png)
+   ![A banner reading Payment recorded: $0.00 interest · $445.00 principal. Balance now $5,735.00.](../images/log-a-debt-payment--recorded.png)
 
    The banner gives you the same split you saw in step 4, and the balance now. The payment appears
    at the top of **Payment history**, and the balance on the page has already changed to match.
@@ -133,11 +145,11 @@ you can read off a statement, so it only changes when you say so.
 **Balance now** leads with what you owe and, underneath, how far you've come. That second line only
 appears if you told Budget Owl what the debt started at.
 
-![The Balance over time card: a solid line for what you are paying and a dashed one for the minimum, with the sentence that paying $260.00 extra is buying you 37 months.](../images/log-a-debt-payment--over-time.png)
+![The Balance over time card: a solid line for what you are paying and a dashed one for the minimum, with the sentence that paying $260.00 extra is buying you 36 months.](../images/log-a-debt-payment--over-time.png)
 
 **Balance over time** draws what you're paying against what the minimum alone would do, and says
-what the difference buys: _"Paying $260.00 extra is buying you 37 months: gone by December 2027
-instead of January 2031."_ The dashed line is kinder than reality, and the card says so — a real
+what the difference buys: _"Paying $260.00 extra is buying you 36 months: gone by November 2027
+instead of November 2030."_ The dashed line is kinder than reality, and the card says so — a real
 card minimum falls as the balance falls, which stretches it out further still.
 
 ## Things that can go wrong
@@ -150,6 +162,17 @@ balance, [record a transaction](record-a-transaction.md).
 **"The balance went down by less than I paid."**
 The rest went on interest. The **Interest** and **Principal** columns in the history show the split
 for every payment, and the two always add up to exactly what you paid.
+
+**"The balance went up after I paid."**
+That payment was the first one dated in its month, so it carried that month's interest, and the
+interest was more than the payment. The month's interest is charged only once. Every other payment
+you make that month comes off the balance in full, so by the end of the month the balance is lower
+by everything you paid in it.
+
+**"My second payment this month shows no interest."**
+That's right. Interest is charged once a month, on the first payment dated in that month. If you
+delete that first payment, the next payment you record for that month carries the interest
+instead.
 
 **"I can't see the split."**
 It's the line just under **Amount paid** and its two buttons. If the box is empty or holds something that isn't an amount yet, such as `4.`,

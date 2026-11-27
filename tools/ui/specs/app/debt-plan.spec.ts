@@ -244,16 +244,17 @@ test.describe('one debt, as an owner', () => {
 
     const sheet = page.getByRole('dialog');
     // The server's own figures, built by the same code as logging, so they cannot disagree with
-    // what gets stored. $6,180.00 at 22.9% for $445: 6180 × 22.9 ÷ 1200 = 117.935, which is
-    // $117.94 to the cent, and the principal is the $327.06 left — the two add up to $445.00.
+    // what gets stored. The demo Visa was paid on August 20 and the demo's today is August 20, so
+    // August's interest is already charged (ADR-0043: once per debt per month): the whole $445
+    // comes off $6,180.00, and the server says why.
     await expect(sheet).toContainText(
-      '$117.94 interest · $327.06 principal · balance after $5,852.94',
+      '$0.00 interest · $445.00 principal · balance after $5,735.00',
     );
+    await expect(sheet).toContainText("August 2026's interest was charged on an earlier payment");
 
-    // One tap for fifty more asks again, immediately: the interest is the same and the principal
-    // takes the rest.
+    // One tap for fifty more asks again, immediately: still no interest, and all of it principal.
     await sheet.getByRole('button', { name: /\$495\.00/ }).click();
-    await expect(sheet).toContainText('$117.94 interest · $377.06 principal');
+    await expect(sheet).toContainText('$0.00 interest · $495.00 principal');
 
     await ui.shot('debt-detail-payment-preview');
     expect(await ui.a11y('the log-a-payment sheet, with the split')).toBe(0);
@@ -265,7 +266,7 @@ test.describe('one debt, as an owner', () => {
     await page.getByRole('button', { name: 'Log a payment' }).first().click();
 
     const sheet = page.getByRole('dialog');
-    await expect(sheet).toContainText('$117.94 interest');
+    await expect(sheet).toContainText('$0.00 interest');
 
     // An amount the generator has no answer for. The preview is a convenience and must never be
     // the thing that stops somebody recording what they paid.
@@ -331,10 +332,10 @@ test.describe('the household arranging its own order', () => {
 
   test('changes nothing until something is moved', async ({ page, ui }) => {
     // Choosing Your own order sends the order already on screen, so the plan it comes back with
-    // is the one that was there: debt-free April 2029 and $2,847.88, exactly as under avalanche.
+    // is the one that was there: debt-free April 2029 and $2,677.02, exactly as under avalanche.
     const comparison = page.getByRole('region', { name: /Avalanche or snowball/ });
     await expect(comparison).toContainText(
-      'Your own order: debt-free April 2029, with $2,847.88 of interest',
+      'Your own order: debt-free April 2029, with $2,677.02 of interest',
     );
     await expect(page.getByRole('region', { name: 'Your debts' })).toContainText(
       'Move a debt up or down',
@@ -380,16 +381,16 @@ test.describe('the household arranging its own order', () => {
     await list.getByRole('button', { name: 'Move up: Student loan' }).click();
     await list.getByRole('button', { name: 'Move down: Visa' }).click();
 
-    // Paying the 4.5% loan first costs $1,723 more and finishes two months later, and the page
+    // Paying the 4.5% loan first costs $1,670 more and finishes two months later, and the page
     // says so — the figures are the server's, not a local reshuffle of the old ones.
     const comparison = page.getByRole('region', { name: /Avalanche or snowball/ });
-    // $4,570.98 exactly: interest is rounded to the cent every month, so the total the server
+    // $4,346.72 exactly: interest is rounded to the cent every month, so the total the server
     // sends is already a figure in cents and the page shows it as it is.
     await expect(comparison).toContainText(
-      'Your own order: debt-free June 2029, with $4,570.98 of interest',
+      'Your own order: debt-free June 2029, with $4,346.72 of interest',
     );
     // And both cards still carry their own: the comparison is not a view of the choice.
-    await expect(comparison).toContainText('$2,847.88');
+    await expect(comparison).toContainText('$2,677.02');
 
     await ui.shot('debt-plan-own-order-reversed');
     expect(await ui.a11y('the plan after rearranging')).toBe(0);

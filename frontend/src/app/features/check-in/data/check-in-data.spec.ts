@@ -210,6 +210,16 @@ describe('step 4, in the server’s figures', () => {
     expect(choiceEffect({ ...debt, payoffMonthWith: '2027-04' }, CANVAS, f)[0].key).toBe(
       'checkIn.choice.debtSameMonth',
     );
+    // Interest is charged once a month (ADR-0043): only when the server says the surplus would
+    // carry the month's interest does the page say so, with the server's figure.
+    expect(choiceEffect(debt, CANVAS, f).map((said) => said.key)).toEqual([
+      'checkIn.choice.debtMoves',
+      'checkIn.choice.debtNeverMoves',
+    ]);
+    expect(choiceEffect({ ...debt, monthInterest: usd('128.7000') }, CANVAS, f)[1]).toEqual({
+      key: 'checkIn.choice.debtCarriesInterest',
+      params: { debt: 'Visa •8823', interest: '$128.7000' },
+    });
     expect(
       choiceEffect({ ...goal, choice: 'ROLL_OVER', goalId: null }, CANVAS, f)[0].params,
     ).toEqual({ amount: '$543.0000' });

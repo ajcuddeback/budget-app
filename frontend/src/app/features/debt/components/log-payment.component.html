@@ -57,6 +57,29 @@
           }}
         }
       </p>
+      <!-- Why the interest is what it is, in the server's words: a first payment in a month can
+           leave the balance higher than it found it, and that must not read as a mistake. -->
+      @if (preview(); as split) {
+        @if (split.monthInterest === 'CARRIED' && split.interestMonth) {
+          <p class="card-note">
+            {{
+              'debt.payment.carriesMonthInterest'
+                | t
+                  : {
+                      month: split.interestMonth | period,
+                      interest: split.interest | money: split.currency,
+                    }
+            }}
+          </p>
+        } @else if (split.monthInterest === 'ALREADY_CARRIED' && split.interestMonth) {
+          <p class="card-note">
+            {{
+              'debt.payment.monthInterestAlreadyCharged'
+                | t: { month: split.interestMonth | period }
+            }}
+          </p>
+        }
+      }
       @if (previewUnavailable()) {
         <!-- A convenience that failed. It must never stop somebody recording a payment. -->
         <p class="card-note">{{ 'debt.payment.previewUnavailable' | t }}</p>

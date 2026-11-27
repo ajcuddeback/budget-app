@@ -580,8 +580,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card: one line per order of attack, the assumption underneath, and the headline saying what is left to clear and the debt-free month.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -598,8 +598,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card: two cards side by side, each with its reasoning, its debt-free month, when the first debt goes and the interest along the way, then the sentence that compares them.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -607,8 +607,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--debts.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table: rung, debt, balance, rate, progress, when it clears and what it is paying, with Open and Edit terms on each row.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -643,8 +643,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card under Your own order before anything is moved: one line keyed to all three orders.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -661,8 +661,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card with a line above the two cards saying what your own order costs.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -670,8 +670,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table after moving Car loan up: Car loan on rung 1 with the extra, Visa on rung 2, and new dates.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -679,8 +679,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-chart.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card after the move: your own order drawn as its own line beside avalanche and snowball.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -688,8 +688,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moved-compare.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card after the move: the line above the cards with the new debt-free month and interest, and the two cards unchanged.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -697,8 +697,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--own-order-moves.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table with Move up and Move down on each row, Move up on Car loan circled.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -706,8 +706,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--page.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page: the monthly commitment, the order of attack, the balance-to-zero chart, the two orders compared, and the table of debts.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -724,8 +724,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--viewer.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page for someone whose role is Viewer: every figure and every date, and nothing to click.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -733,8 +733,8 @@
     "file": "userguide/images/choose-how-to-clear-your-debts--viewer-own-order.png",
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table as a viewer when the household uses its own order: the order in a sentence, and no Move up or Move down.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -886,8 +886,8 @@
     "file": "userguide/images/do-your-weekly-check-in--next-week.png",
     "guide": "do-your-weekly-check-in",
     "caption": "Step 4, Next week: you came in $63.00 under, the surplus put towards Emergency fund ($2,340.00 → $2,403.00 of $6,000.00), and next week you can spend $480.00, about $68.57 a day.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1219,8 +1219,8 @@
     "file": "userguide/images/log-a-debt-payment--note.png",
     "guide": "log-a-debt-payment",
     "caption": "The Note box at the foot of the window, above Record it and Cancel.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1228,8 +1228,8 @@
     "file": "userguide/images/log-a-debt-payment--over-time.png",
     "guide": "log-a-debt-payment",
     "caption": "The Balance over time card: what you are paying against the at-the-minimum comparison line, with the sentence saying what the extra is buying.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1237,8 +1237,8 @@
     "file": "userguide/images/log-a-debt-payment--page.png",
     "guide": "log-a-debt-payment",
     "caption": "The page for one debt: its name, the loan terms, the balance now, the balance over time and the payment history.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1246,8 +1246,8 @@
     "file": "userguide/images/log-a-debt-payment--paid-from.png",
     "guide": "log-a-debt-payment",
     "caption": "The Paid from box, with the note that nothing is recorded against that account and no transaction is created.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1255,8 +1255,8 @@
     "file": "userguide/images/log-a-debt-payment--preview.png",
     "guide": "log-a-debt-payment",
     "caption": "The line under Amount paid giving the interest, the principal and the balance after for the amount in the box.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1264,8 +1264,8 @@
     "file": "userguide/images/log-a-debt-payment--preview-extra.png",
     "guide": "log-a-debt-payment",
     "caption": "Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1282,8 +1282,8 @@
     "file": "userguide/images/log-a-debt-payment--recorded.png",
     "guide": "log-a-debt-payment",
     "caption": "The banner after recording a payment, naming how much went on interest, how much came off the balance, and the balance now.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1291,8 +1291,8 @@
     "file": "userguide/images/log-a-debt-payment--sheet.png",
     "guide": "log-a-debt-payment",
     "caption": "The Log a payment to Visa window: Amount paid filled in with what the plan puts against it, the split that amount would record, Date paid, Paid from and Note.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {
@@ -1300,8 +1300,8 @@
     "file": "userguide/images/log-a-debt-payment--terms.png",
     "guide": "log-a-debt-payment",
     "caption": "The Loan terms card: what it started at, the balance now, the annual rate, the minimum payment, what you are paying, months left, when it is gone and the interest still to come, with Solved and From your plan tags.",
-    "capturedAt": "2026-11-26",
-    "commit": "ad98740",
+    "capturedAt": "2026-11-27",
+    "commit": "ee37473",
     "viewport": "1280x720"
   },
   {

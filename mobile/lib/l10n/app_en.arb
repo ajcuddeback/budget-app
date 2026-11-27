@@ -1762,6 +1762,18 @@
       }
     }
   },
+  "checkIn_choice_debtCarriesInterest": "It would be {debt}'s first payment this month, so it carries this month's interest of {interest}. Your regular payment later this month then comes off the balance in full.",
+  "@checkIn_choice_debtCarriesInterest": {
+    "description": "Web en.json \"checkIn.choice.debtCarriesInterest\".",
+    "placeholders": {
+      "debt": {
+        "type": "String"
+      },
+      "interest": {
+        "type": "String"
+      }
+    }
+  },
   "checkIn_choice_debtMoves": "Moves {debt} from {from} to {to}.",
   "@checkIn_choice_debtMoves": {
     "description": "Web en.json \"checkIn.choice.debtMoves\".",
@@ -3996,9 +4008,30 @@
   "@debt_payment_amountHint": {
     "description": "Web en.json \"debt.payment.amountHint\"."
   },
+  "debt_payment_carriesMonthInterest": "This includes {month}'s interest of {interest}. Interest is charged once a month, on the first payment dated in that month — any further payment in {month} comes off the balance in full.",
+  "@debt_payment_carriesMonthInterest": {
+    "description": "Web en.json \"debt.payment.carriesMonthInterest\".",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "interest": {
+        "type": "String"
+      }
+    }
+  },
   "debt_payment_lede": "Filled in with what your plan puts against this one. Change the amount if you paid something else.",
   "@debt_payment_lede": {
     "description": "Web en.json \"debt.payment.lede\"."
+  },
+  "debt_payment_monthInterestAlreadyCharged": "No interest on this one: {month}'s interest was charged on an earlier payment, so all of it comes off the balance.",
+  "@debt_payment_monthInterestAlreadyCharged": {
+    "description": "Web en.json \"debt.payment.monthInterestAlreadyCharged\".",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
   },
   "debt_payment_noAccount": "Somewhere I do not track",
   "@debt_payment_noAccount": {

@@ -333,7 +333,7 @@ test('@doc the split for a one-tap amount', async ({ page, doc }) => {
 
   // The fifty-more button. Its answer is the generated preview for $495.00.
   await dialog.getByRole('button', { name: /\$495\.00/ }).click();
-  await expect(dialog.locator('.preview')).toContainText('$377.06');
+  await expect(dialog.locator('.preview')).toContainText('$495.00 principal');
   await doc.capture(
     'preview-extra',
     'Amount paid after tapping the fifty-more button, with the split underneath already worked out again for that amount.',
@@ -422,7 +422,7 @@ test('@doc setting your own order', async ({ page, doc }) => {
   // One move: the car loan to rung 1. Visa, Car, Student becomes Car, Visa, Student — an order the
   // generator produced, so every figure after it is the server's for that order.
   await list.getByRole('button', { name: 'Move up: Car loan' }).click();
-  await expect(card(page, 'Avalanche or snowball')).toContainText('$3,810.20');
+  await expect(card(page, 'Avalanche or snowball')).toContainText('$3,617.88');
 
   await doc.capture(
     'own-order-moved',

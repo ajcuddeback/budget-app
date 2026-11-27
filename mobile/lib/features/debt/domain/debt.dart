@@ -362,6 +362,8 @@ final class PaymentPreview {
     required this.interest,
     required this.principal,
     required this.balanceAfter,
+    this.monthInterest,
+    this.interestMonth,
   });
 
   factory PaymentPreview.fromJson(JsonMap json) => PaymentPreview(
@@ -369,12 +371,23 @@ final class PaymentPreview {
     interest: json.amount('interest'),
     principal: json.amount('principal'),
     balanceAfter: json.amount('balanceAfter'),
+    monthInterest: json.stringOrNull('monthInterest'),
+    interestMonth: json.monthOrNull('interestMonth'),
   );
 
   final String currency;
   final String interest;
   final String principal;
   final String balanceAfter;
+
+  /// Why the interest is what it is — interest is charged once per debt per month (ADR-0043).
+  /// `CARRIED`: the first payment dated in [interestMonth], so it carries that month's interest.
+  /// `ALREADY_CARRIED`: an earlier payment did, so this one is all principal. `NONE`, or absent
+  /// from an older server: nothing to say. The server decides; the phone only words it.
+  final String? monthInterest;
+
+  /// `YYYY-MM`: the month that decision was taken for.
+  final String? interestMonth;
 
   Money money(String wire) => Money.fromWire(wire, currency);
 }

@@ -10,6 +10,7 @@ import 'package:budget_owl/features/accounts/data/accounts.dart';
 import 'package:budget_owl/features/debt/data/debt_repository.dart';
 import 'package:budget_owl/features/debt/domain/debt.dart';
 import 'package:budget_owl/features/debt/domain/requests.dart';
+import 'package:budget_owl/features/debt/presentation/debt_formats.dart';
 import 'package:budget_owl/shared/figures.dart';
 import 'package:budget_owl/shared/widgets/plan_widgets.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
@@ -222,6 +223,23 @@ class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
         ),
+        // Why the interest is what it is, in the server's words: a month's first payment can leave
+        // the balance higher than it found it, and that must not read as a mistake (ADR-0043).
+        if (preview != null && preview.interestMonth != null)
+          switch (preview.monthInterest) {
+            'CARRIED' => CardNote(
+              l.debt_payment_carriesMonthInterest(
+                formatsOf(context).month(preview.interestMonth),
+                context.money(preview.money(preview.interest)),
+              ),
+            ),
+            'ALREADY_CARRIED' => CardNote(
+              l.debt_payment_monthInterestAlreadyCharged(
+                formatsOf(context).month(preview.interestMonth),
+              ),
+            ),
+            _ => const SizedBox.shrink(),
+          },
         if (_previewUnavailable)
           // A convenience that failed: it never stops somebody recording a payment.
           CardNote(l.debt_payment_previewUnavailable)

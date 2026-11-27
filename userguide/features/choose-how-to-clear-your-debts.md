@@ -45,10 +45,10 @@ a move, or a card you'd rather close first.
 
    **Nothing else moves yet.** Your own order starts from the order already on screen, so the plan
    is the same one you were looking at. Here that's the avalanche order, and the line at the top of
-   **Avalanche or snowball** says so: _"Your own order: debt-free April 2029, with $2,847.88 of
+   **Avalanche or snowball** says so: _"Your own order: debt-free April 2029, with $2,677.02 of
    interest along the way"_ — the same as the **Avalanche** card.
 
-   ![The Avalanche or snowball card under Your own order: the line Your own order: debt-free April 2029, with $2,847.88 of interest along the way, above the Avalanche card at $2,847.88 and the Snowball card at $2,896.49, and a Use avalanche button at the foot.](../images/choose-how-to-clear-your-debts--own-order-compare.png)
+   ![The Avalanche or snowball card under Your own order: the line Your own order: debt-free April 2029, with $2,677.02 of interest along the way, above the Avalanche card at $2,677.02 and the Snowball card at $2,727.28, and a Use avalanche button at the foot.](../images/choose-how-to-clear-your-debts--own-order-compare.png)
 
    The chart draws one line and labels it **Your own order · Avalanche · Snowball**, because all three
    are the same line until you move something.
@@ -64,22 +64,22 @@ a move, or a card you'd rather close first.
    The debt swaps places with its neighbour, and every date on the page is worked out again.
    There's no **Save** button: each move is saved as you make it.
 
-   ![The Your debts table after moving Car loan up: Car loan on rung 1, paying $342.00 minimum + $260.00 extra and clearing February 2028; Visa on rung 2, paying its minimum of $185.00 and clearing September 2028; Student loan on rung 3, clearing May 2029.](../images/choose-how-to-clear-your-debts--own-order-moved.png)
+   ![The Your debts table after moving Car loan up: Car loan on rung 1, paying $342.00 minimum + $260.00 extra and clearing February 2028; Visa on rung 2, paying its minimum of $185.00 and clearing August 2028; Student loan on rung 3, clearing May 2029.](../images/choose-how-to-clear-your-debts--own-order-moved.png)
 
    Here the **Car loan** has moved to rung 1. It now gets its minimum _and_ the $260.00 extra, so it
    clears in **February 2028**. The **Visa** drops to rung 2, pays only its minimum until the car
-   loan is gone, and clears in **September 2028**.
+   loan is gone, and clears in **August 2028**.
 
 3. Repeat step 2 until the debts are in the order you want.
 
 ### What your order costs
 
-![The Avalanche or snowball card after the move: the line Your own order: debt-free May 2029, with $3,810.20 of interest along the way, above the two cards, which still read $2,847.88 and $2,896.49, and below them Adding $50.00 a month would make you debt-free March 2029 — 2 months sooner.](../images/choose-how-to-clear-your-debts--own-order-moved-compare.png)
+![The Avalanche or snowball card after the move: the line Your own order: debt-free May 2029, with $3,617.88 of interest along the way, above the two cards, which still read $2,677.02 and $2,727.28, and below them Adding $50.00 a month would make you debt-free March 2029 — 2 months sooner.](../images/choose-how-to-clear-your-debts--own-order-moved-compare.png)
 
 The line above the two cards is the one to read. After that one move it says _"Your own order:
-debt-free May 2029, with $3,810.20 of interest along the way."_ The **Avalanche** and **Snowball**
+debt-free May 2029, with $3,617.88 of interest along the way."_ The **Avalanche** and **Snowball**
 cards don't change. They always show those two orders, so you can see what yours costs next to
-them. For this household, paying the car loan first costs $962.32 more in interest than avalanche
+them. For this household, paying the car loan first costs $940.86 more in interest than avalanche
 does, and finishes a month later.
 
 That isn't a reason not to do it. It's what the choice costs, so you can decide whether your reason
@@ -115,7 +115,7 @@ To change it:
 
 ## What the two cards are telling you
 
-![The Avalanche or snowball card: Avalanche, in use, debt-free April 2029, first one gone December 2027, $2,847.88 of interest; Snowball, debt-free April 2029, first one gone December 2027, $2,896.49 of interest; the sentence saying either is a good answer, and the line about adding $50.00 a month.](../images/choose-how-to-clear-your-debts--compare.png)
+![The Avalanche or snowball card: Avalanche, in use, debt-free April 2029, first one gone November 2027, $2,677.02 of interest; Snowball, debt-free April 2029, first one gone November 2027, $2,727.28 of interest; the sentence saying either is a good answer, and the line about adding $50.00 a month.](../images/choose-how-to-clear-your-debts--compare.png)
 
 Budget Owl works out **both** orders every time, whichever one you've chosen, so the card is a
 comparison and not a view of your choice. (Under **Your own order**, a line above the two cards gives
@@ -128,8 +128,8 @@ your order's figures — see [What your order costs](#what-your-order-costs).) E
 
 Then the sentence underneath compares them in words. For this household it reads: _"Avalanche costs
 less in interest, and both clear your first debt in the same month. Either is a good answer."_ And
-it means it — the two orders finish in **April 2029** either way, and the gap between $2,847.88 and
-$2,896.49 is about $49 of interest spread over two and a half years.
+it means it — the two orders finish in **April 2029** either way, and the gap between $2,677.02 and
+$2,727.28 is about $50 of interest spread over two and a half years.
 
 **That is a real answer, not a missing one.** With these three balances the order barely matters, so
 pick the one you'll actually stick to. With a different set of debts — one small balance at a

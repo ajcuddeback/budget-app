@@ -159,6 +159,12 @@ void main() {
       for (final next in ['Next: categorize', 'Next: bills', 'Next: next week']) {
         await tapText(tester, next);
       }
+      // The server says the surplus would be the Visa's first payment in August, so it would carry
+      // August's interest (ADR-0043); the phone words the server's figure and works nothing out.
+      expect(
+        find.textContaining(r"so it carries this month's interest of $128.70"),
+        findsOneWidget,
+      );
 
       await tapText(tester, 'Roll it into next week');
 

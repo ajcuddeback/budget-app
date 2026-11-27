@@ -438,6 +438,40 @@ describe('DebtDetailPage', () => {
     );
   });
 
+  it('says when the amount carries the month’s interest, and when it was already charged', async () => {
+    // Interest is charged once per debt per month (ADR-0043). The server says which; the sheet
+    // words it and works nothing out.
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+    debtsService.previewPayment.mockReturnValue(
+      of({ ...PREVIEW, monthInterest: 'CARRIED', interestMonth: '2026-08' }),
+    );
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+
+    expect(root.querySelector('dialog')?.textContent).toContain(
+      "This includes August 2026's interest of £117.94.",
+    );
+
+    debtsService.previewPayment.mockReturnValue(
+      of({
+        ...PREVIEW,
+        interest: '0.0000',
+        principal: '495.0000',
+        balanceAfter: '5685.0000',
+        monthInterest: 'ALREADY_CARRIED',
+        interestMonth: '2026-08',
+      }),
+    );
+    buttonNamed(root, '£495.00').click();
+    await settle(fixture);
+
+    expect(root.querySelector('dialog')?.textContent).toContain(
+      "No interest on this one: August 2026's interest was charged on an earlier payment",
+    );
+  });
+
   it('asks again, immediately, for a one-tap amount', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;

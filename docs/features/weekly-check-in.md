@@ -354,7 +354,7 @@ decision for the person. The whole surplus goes to one place. Splitting it is ou
 
 | Choice | Offered when | Shows | Writes, at completion |
 |---|---|---|---|
-| **A debt** | The plan's rung-1 debt (`debt-plan.md`, Strategies) in the base currency and not paid off. With no plan, a picker of active base-currency debts. Only when `free(M) ≥ surplus` | The payoff month now and with the payment, in **months**: *"Moves Visa •8823 from Apr 2027 to Mar 2027"*, or *"Doesn't move the month"* | A `DebtPayment` of `surplus`, dated the completion day, provenance `CHECK_IN`, through the same logging path as `POST /api/debts/{id}/payments` (interest split, balance after) |
+| **A debt** | The plan's rung-1 debt (`debt-plan.md`, Strategies) in the base currency and not paid off. With no plan, a picker of active base-currency debts. Only when `free(M) ≥ surplus` | The payoff month now and with the payment, in **months**: *"Moves Visa •8823 from Apr 2027 to Mar 2027"*, or *"Doesn't move the month"*. When the surplus would be the debt's first payment this month, also the month's interest it carries (ADR-0043) | A `DebtPayment` of `surplus`, dated the completion day, provenance `CHECK_IN`, through the same logging path as `POST /api/debts/{id}/payments` (interest split, balance after; interest once per debt per month) |
 | **A goal** | Unarchived base-currency goals that are not yet reached, in `/goals` order. Only when `free(M) ≥ surplus` | *"Emergency fund · $2,340 → $2,403 of $6,000"* | A goal contribution of `surplus`, dated the completion day, provenance `CHECK_IN`, through the `POST /api/goals/{id}/contributions` path |
 | **Roll into next week** | Always | *"Weekly target becomes $543"* | Nothing outside the check-in. `rolled_over = surplus` and `next_week_target = base + surplus` on the check-in row |
 
@@ -1310,7 +1310,7 @@ recaptured because the nav changed.
 | `base` | `Σ daily(d)` | **Rounded `HALF_EVEN` to the currency's minor unit** before *per day* and *rolled over* | The canvas's $480 is `7 × 548.57 ÷ 8 = 479.99875`. A figure a person is told to spend is in cents; per day is then rounded down as stated |
 | Overdue items | `DUE` on or before the window's last day | Read from **the window's months** (the month of the window's end and of its start) | Bounded: an occurrence projected years back is not a weekly question. Bills & Income still shows every overdue one |
 | Goal `stillToCome` | Unchanged by decision 6 | **Uses `recordedOther`** | Otherwise a check-in's $63 would read as part of the month's plan having been paid |
-| Debt payment from the surplus | "through the same logging path … (interest split, balance after)" | Same path, **principal only: interest 0** | The shipped split charges every payment a month of interest. On the canvas Visa (22.9%) that is $117.94 against a $63 surplus, so recording the surplus raised the balance and the preview said the payoff month moved **later**. The surplus is an extra on top of the month the plan already pays. Hand-logged payments are unchanged; see Known gaps |
+| Debt payment from the surplus | "through the same logging path … (interest split, balance after)" | Same path, **and since ADR-0043 the same split as every payment: interest once per debt per month** | Slice 14 first recorded the surplus with interest 0, a special case on `CHECK_IN`, because the shipped split charged every payment a month of interest ($117.94 against a $63 surplus on the canvas Visa, so the balance rose and the preview said the payoff moved **later**). That special case is gone (2026-11-27). The surplus follows the general rule: all principal when the month's interest is already booked, and carrying it when the surplus is the month's first payment. The regular payment later that month is then all principal, so the month is charged once. The debt choice gains `monthInterest`, the interest the surplus would carry, or null, and the what-if projection is told the month is booked, so paying more never moves the payoff later (`debt-plan.md`, The split) |
 | Debt preview balance | — | `balanceAfterCheckInPayment` checks **membership only**, not write access | It is a read, used to build a `VIEWER`'s figures too. It writes nothing |
 | Income line | *"$40 less than expected"* | **"As expected", or "Your plan expects $2,620.00"** | The browser does no money arithmetic, even a difference. The comparison is an exact equality of the two strings' values |
 | Step 3 statuses | *"In 3 days"* | **"Due Aug 24, 2026"** | A count of days needs today's date in the browser, and a screenshot of it would change every day |
@@ -1333,7 +1333,7 @@ restored from git and confirmed clean.
 | Ledger rows scoped to the household | `t.householdId` predicate alone made always-true | **Nothing failed**: the account join's own `a.householdId` predicate still excluded the other household's row. Each table carries its own predicate on purpose | clean |
 | Ledger rows scoped to the household | Both the `t` and the `a` predicates made always-true | `CheckInConstraintsIT.another_households_rows_and_draft_never_reach_ours`: the other household's $1.00 row appeared as an item in ours | clean |
 | A completed check-in is read-only | `lockDraft`'s completed check short-circuited | `CheckInCompletionIT.a_retry_after_completion_is_check_in_completed_and_writes_nothing`. The concurrent-completion test still passed: the row lock and the version check hold it on their own | clean |
-| A surplus debt payment is principal only | `CHECK_IN` given the shipped interest split | `CheckInIT`: `a_surplus_paid_to_a_debt_is_principal_only…` and the canvas test's "never later" payoff assertion | clean |
+| A surplus debt payment follows the general rule (ADR-0043, replacing slice 14's principal-only special case) | The `CHECK_IN` special case restored; the ladder made to charge a booked month 1; the what-if not told the surplus books the month | `CheckInIT.a_surplus_that_is_the_months_first_payment_carries_the_months_interest_once` and `MonthInterestIT.a_surplus_that_is…`; the canvas test's "never later" payoff assertion fails on both projection breaks | clean |
 
 Every restore was confirmed with `git diff --quiet` on the file.
 
@@ -1359,9 +1359,9 @@ fixed, and three Lows: one fixed, two recorded below.
 
 ### Known gaps
 
-- **A hand-logged debt payment made in the same month as the plan's payment is charged a second
-  month of interest.** The check-in's own payment no longer is (above), but the shipped split in
-  `debt-plan.md` still treats every logged payment as a month's. That is a debt-plan question.
+- ~~**A hand-logged debt payment made in the same month as the plan's payment is charged a second
+  month of interest.**~~ Closed by ADR-0043 (2026-11-27): interest is charged once per debt per
+  calendar month, for every way a payment is recorded, the check-in's included.
 - **There is no history screen.** `GET /api/check-ins` exists and is tested; nothing lists it yet.
 - **The completed summary does not say what was left** (*"1 charge left uncategorised"*). The
   completed view returns what was written, not what was skipped.

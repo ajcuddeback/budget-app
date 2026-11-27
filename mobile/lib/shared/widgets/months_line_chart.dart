@@ -248,9 +248,14 @@ class MonthsLineChart extends StatelessWidget {
         ExcludeSemantics(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Flexible, so two long month names at a large text size wrap rather than overflow:
+            // "August 2026" and "November 2030" at 2× did not fit a phone's width.
             children: [
-              Text(plot.firstMonth.long(locale), style: muted),
-              Text(plot.lastMonth.long(locale), style: muted),
+              Flexible(child: Text(plot.firstMonth.long(locale), style: muted)),
+              const SizedBox(width: SpaceTokens.s2),
+              Flexible(
+                child: Text(plot.lastMonth.long(locale), style: muted, textAlign: TextAlign.end),
+              ),
             ],
           ),
         ),

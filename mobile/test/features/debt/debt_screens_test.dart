@@ -105,6 +105,11 @@ void main() {
       await p.tap('Log a payment');
       await settlePreview(tester);
       expect(p.writes, ['POST /api/debts/deb-0001/payments/preview'], reason: 'the scheduled 445');
+      // The demo Visa's August interest is already charged, and the server says so (ADR-0043).
+      expect(
+        find.textContaining("August 2026's interest was charged on an earlier payment"),
+        findsOneWidget,
+      );
       await p.tap(r'$495.00');
       await settlePreview(tester);
       await tapVisible(tester, find.text('Somewhere I do not track'));

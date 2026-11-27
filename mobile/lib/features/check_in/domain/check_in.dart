@@ -473,6 +473,7 @@ final class Choice {
     this.savedNow,
     this.savedWith,
     this.target,
+    this.monthInterest,
   });
 
   factory Choice.fromJson(JsonMap json) => Choice(
@@ -486,6 +487,7 @@ final class Choice {
     savedNow: _moneyOrNull(json, 'savedNow'),
     savedWith: _moneyOrNull(json, 'savedWith'),
     target: _moneyOrNull(json, 'target'),
+    monthInterest: _moneyOrNull(json, 'monthInterest'),
   );
 
   final AnswerChoice choice;
@@ -500,6 +502,10 @@ final class Choice {
   final Money? savedNow;
   final Money? savedWith;
   final Money? target;
+
+  /// For a debt: this month's interest the payment would carry, because it would be the debt's
+  /// first payment this month (ADR-0043). Null when the month's interest is already charged.
+  final Money? monthInterest;
 }
 
 final class DueLine {

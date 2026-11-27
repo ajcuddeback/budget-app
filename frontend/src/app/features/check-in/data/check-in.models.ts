@@ -173,6 +173,11 @@ export interface Choice {
   savedNow: Money | null;
   savedWith: Money | null;
   target: Money | null;
+  /**
+   * For a debt: this month's interest the payment would carry, because it would be the debt's
+   * first payment this month (ADR-0043). Null when the month's interest is already charged.
+   */
+  monthInterest?: Money | null;
 }
 
 export interface DueLine {

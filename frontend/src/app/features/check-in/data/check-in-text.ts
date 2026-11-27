@@ -354,7 +354,22 @@ export function choiceEffect(choice: Choice, figures: Figures, f: Formatters): S
                 },
               }
           : { key: 'checkIn.choice.debtNoDate', params: { debt } };
-      return [moved, { key: 'checkIn.choice.debtNeverMoves', params: { amount: surplus, debt } }];
+      const never: Said = {
+        key: 'checkIn.choice.debtNeverMoves',
+        params: { amount: surplus, debt },
+      };
+      // The server says when the surplus would carry the month's interest (ADR-0043); the page
+      // only words it. Without the sentence a payment that leaves the balance higher reads wrong.
+      return choice.monthInterest
+        ? [
+            moved,
+            {
+              key: 'checkIn.choice.debtCarriesInterest',
+              params: { debt, interest: f.money(choice.monthInterest) },
+            },
+            never,
+          ]
+        : [moved, never];
     }
     case 'GOAL':
       return [
