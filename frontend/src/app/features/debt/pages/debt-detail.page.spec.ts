@@ -431,7 +431,10 @@ describe('DebtDetailPage', () => {
     buttonNamed(root, 'Log a payment').click();
     await settle(fixture);
 
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '445' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '445',
+      paidDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
     const sheet = root.querySelector('dialog');
     expect(sheet?.textContent).toContain(
       '£117.94 interest · £327.06 principal · balance after £5,852.94',
@@ -472,6 +475,27 @@ describe('DebtDetailPage', () => {
     );
   });
 
+  it('asks again for the date chosen, so a back-dated payment is previewed for its own month', async () => {
+    const fixture = await render();
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+    debtsService.previewPayment.mockClear();
+
+    const date = root.querySelector<HTMLInputElement>('#payment-date')!;
+    date.value = '2026-07-15';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle(fixture);
+
+    // Interest is charged once per debt per month (ADR-0043): July's answer can differ from this
+    // month's, so the server is asked about July.
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '445',
+      paidDate: '2026-07-15',
+    });
+  });
+
   it('asks again, immediately, for a one-tap amount', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
@@ -484,7 +508,10 @@ describe('DebtDetailPage', () => {
     await settle(fixture);
 
     // Nobody is typing, so there is nothing to wait to settle.
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '495' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '495',
+      paidDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
   });
 
   it('waits for typing to settle before asking', async () => {
@@ -501,7 +528,10 @@ describe('DebtDetailPage', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 450));
     await settle(fixture);
-    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', { amount: '500.00' });
+    expect(debtsService.previewPayment).toHaveBeenCalledWith('deb-0001', {
+      amount: '500.00',
+      paidDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
   });
 
   it('asks nothing about an amount it cannot read yet', async () => {

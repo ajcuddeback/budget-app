@@ -363,14 +363,21 @@ class MobilePlansFixtureIT extends ApiTestBase {
         readDebtPlan(record, owner);
         readDebtDetails(record, owner, plans, debts);
         // What the log-a-payment sheet asks before anything is recorded: the Visa at what the plan
-        // gives it, and at that plus the sheet's one-tap fifty.
+        // gives it, and at that plus the sheet's one-tap fifty, on the date the sheet opens with:
+        // which month's interest a payment carries depends on its date (ADR-0043).
         for (String amount : List.of("445", "495")) {
             record.send(
                     owner,
                     "POST",
                     "/api/debts/" + plans.id("deb-0001") + "/payments/preview",
-                    "{\"amount\":\"" + amount + "\"}");
+                    "{\"amount\":\"" + amount + "\",\"paidDate\":\"2026-08-20\"}");
         }
+        // And back-dated into February, which has no payment: it would carry that month's interest.
+        record.send(
+                owner,
+                "POST",
+                "/api/debts/" + plans.id("deb-0001") + "/payments/preview",
+                "{\"amount\":\"445\",\"paidDate\":\"2026-02-25\"}");
 
         record.in("viewer");
         readHome(record, phones.viewer());

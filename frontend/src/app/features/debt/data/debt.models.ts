@@ -475,6 +475,11 @@ export interface UpdateDebtRequest {
 /** The amount a sheet is about to record, asked about before it is. */
 export interface PreviewPaymentRequest {
   amount: string;
+  /**
+   * `YYYY-MM-DD`: the date the sheet will record. Which month's interest the payment carries
+   * depends on it (ADR-0043), so a back-dated payment is previewed for its own month.
+   */
+  paidDate?: string;
 }
 
 /** A payment to log. `transactionId` is evidence of a real movement, not authority for it. */

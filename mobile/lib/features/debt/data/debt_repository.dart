@@ -1,4 +1,5 @@
 import 'package:budget_owl/core/cache/cached_resource.dart';
+import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/json/json.dart';
@@ -143,11 +144,11 @@ final class DebtWriter {
 
   /// What logging [amount] **would** record, writing nothing — so nothing re-reads after it.
   /// Read strictly: anything not shaped like a preview is no preview.
-  Future<PaymentPreview> preview(Debt debt, String amount) async {
+  Future<PaymentPreview> preview(Debt debt, String amount, CalendarDate paidDate) async {
     final body = await _send(
       'POST',
       '${_debt(debt.id)}/payments/preview',
-      previewBody(amount),
+      previewBody(amount, paidDate),
       bump: false,
     );
     if (body == null) throw const AppError.unexpected();

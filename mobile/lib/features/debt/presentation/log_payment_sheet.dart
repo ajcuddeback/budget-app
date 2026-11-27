@@ -92,8 +92,12 @@ class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
   Future<void> _ask(String typed) async {
     if (!mounted) return;
     final figure = isTypedAmount(typed) ? typed.trim() : '';
-    if (figure == _asked) return;
-    _asked = figure;
+    // The date is part of the question: interest is charged once per debt per month (ADR-0043),
+    // so a back-dated payment is asked about in its own month.
+    final paidDate = _paidDate;
+    final key = '$figure|${paidDate.iso}';
+    if (key == _asked) return;
+    _asked = key;
     final request = ++_request;
     if (figure.isEmpty) {
       setState(() {
@@ -103,7 +107,7 @@ class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
       return;
     }
     try {
-      final answer = await ref.read(debtWriterProvider).preview(widget.debt, figure);
+      final answer = await ref.read(debtWriterProvider).preview(widget.debt, figure, paidDate);
       if (!mounted || request != _request) return;
       setState(() {
         _preview = answer;
@@ -125,7 +129,11 @@ class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
       firstDate: DateTime(1970),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _paidDate = CalendarDate.of(picked));
+    if (picked != null) {
+      setState(() => _paidDate = CalendarDate.of(picked));
+      // A different date can be a different month, and so a different answer.
+      unawaited(_ask(_amount.text));
+    }
   }
 
   Future<void> _save() async {

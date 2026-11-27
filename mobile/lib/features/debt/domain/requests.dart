@@ -206,8 +206,12 @@ Map<String, Object?> logPaymentBody(PaymentForm form) => {
   if (form.note.trim().isNotEmpty) 'note': form.note.trim(),
 };
 
-/// `POST /api/debts/{id}/payments/preview`: the amount in a body, never a URL.
-Map<String, Object?> previewBody(String amount) => {'amount': amount.trim()};
+/// `POST /api/debts/{id}/payments/preview`: the amount in a body, never a URL, and the date the
+/// payment will carry — which month's interest it carries depends on it (ADR-0043).
+Map<String, Object?> previewBody(String amount, CalendarDate paidDate) => {
+  'amount': amount.trim(),
+  'paidDate': paidDate.iso,
+};
 
 /// `POST /api/debts/{id}/balance`: what a statement says, and when that was true. A statement wins.
 Map<String, Object?> confirmBalanceBody({

@@ -276,7 +276,7 @@
     [error]="dialogError()"
     [preview]="preview()"
     [previewUnavailable]="previewUnavailable()"
-    (amountChanged)="askPreview($event)"
+    (previewAsked)="askPreview($event)"
     (submitted)="submitPayment($event)"
     (closed)="closeDialogs()"
   />

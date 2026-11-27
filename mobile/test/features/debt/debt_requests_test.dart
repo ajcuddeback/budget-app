@@ -158,8 +158,12 @@ void main() {
       expect(body.keys, isNot(contains('interest')));
     });
 
-    test('a preview puts the amount in a body, not a URL', () {
-      expect(previewBody('445'), {'amount': '445'});
+    test('a preview puts the amount and the date in a body, not a URL', () {
+      // The date the sheet will record: which month's interest the payment carries depends on it.
+      expect(
+        previewBody(' 445 ', CalendarDate.parse('2026-08-20')),
+        recorded.sent('plans', 'POST', '/api/debts/deb-0001/payments/preview'),
+      );
       expect(recorded.writesIn('plans'), contains('POST /api/debts/deb-0001/payments/preview'));
     });
 

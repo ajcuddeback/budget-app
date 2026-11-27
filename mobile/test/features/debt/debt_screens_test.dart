@@ -125,6 +125,28 @@ void main() {
       expect(find.textContaining('Payment recorded'), findsOneWidget);
     });
 
+    testWidgets('a back-dated payment is previewed for its own month', (tester) async {
+      final p = await detail(tester);
+
+      await p.tap('Log a payment');
+      await settlePreview(tester);
+      // The sheet opens on Aug 20, and August's interest is already charged (ADR-0043).
+      expect(find.textContaining("August 2026's interest was charged"), findsOneWidget);
+
+      // Pick February 25th: no payment was made in February, so a payment dated then would carry
+      // February's interest — the server is asked about February, not this month.
+      await tapVisible(tester, find.byIcon(Icons.calendar_today_outlined));
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, '02/25/2026');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await settlePreview(tester);
+
+      expect(p.writes.last, 'POST /api/debts/deb-0001/payments/preview');
+      expect(find.textContaining("This includes February 2026's interest of"), findsOneWidget);
+    });
+
     testWidgets('editing the terms sends only what changed', (tester) async {
       final p = await detail(tester, state: 'payment-logged');
 

@@ -50,6 +50,7 @@ import {
   DebtDetail,
   DebtPayment,
   PaymentPreview,
+  PreviewPaymentRequest,
   SeriesPoint,
   TermSource,
   balanceSourceKey,
@@ -652,17 +653,17 @@ export class DebtDetailPage {
    * even as a fallback, because having two implementations of the interest formula is the thing
    * this request exists to avoid.
    */
-  protected async askPreview(amount: string): Promise<void> {
+  protected async askPreview(asked: PreviewPaymentRequest): Promise<void> {
     const debt = this.debt();
     const request = ++this.previewRequest;
-    if (!debt || amount === '') {
+    if (!debt || asked.amount === '') {
       this.preview.set(null);
       this.previewUnavailable.set(false);
       return;
     }
     try {
       const answer: unknown = await firstValueFrom(
-        this.debtsService.previewPayment(debt.id, { amount }),
+        this.debtsService.previewPayment(debt.id, asked),
       );
       if (request !== this.previewRequest) {
         return;

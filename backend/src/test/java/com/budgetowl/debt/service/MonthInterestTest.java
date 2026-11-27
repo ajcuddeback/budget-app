@@ -155,6 +155,59 @@ class MonthInterestTest {
         assertThat(decision.charge()).isEqualTo(MonthInterest.Charge.CARRIED);
     }
 
+    // -------------------------------- a month's interest that rounds to nothing (ADR-0043)
+
+    @Test
+    void interest_rounds_to_nothing_only_on_a_dust_balance() {
+        // round(balance × apr ÷ 1200) is $0.00 only when balance × apr < 6: under $6 at 1%, under
+        // 27 cents at 22.9%. The smallest balance that is charged a cent at 22.9% is $0.27.
+        assertThat(solver.interestFor(money("0.26"), APR)).isEqualTo(money("0.00"));
+        assertThat(solver.interestFor(money("0.27"), APR)).isEqualTo(money("0.01"));
+        assertThat(solver.interestFor(money("5.99"), new BigDecimal("1.000")))
+                .isEqualTo(money("0.00"));
+    }
+
+    @Test
+    void
+            a_first_payment_whose_interest_rounds_to_nothing_leaves_the_month_to_its_one_real_charge() {
+        // The month's first payment found a dust balance: its interest was $0.00, so it booked
+        // nothing. A later payment in the month can then carry interest only if the balance grew
+        // in between — which only a statement correction does — and then it is the month's ONE
+        // non-zero charge, on the balance the statement gave. What the rule guarantees is exactly
+        // that: at most one non-zero interest charge per debt per month.
+        List<MonthInterestRow> rows =
+                List.of(
+                        paid(
+                                VISA,
+                                LocalDate.of(2026, 8, 3),
+                                "0.20",
+                                "0.00",
+                                PaymentProvenance.USER_LOGGED),
+                        paid(
+                                VISA,
+                                LocalDate.of(2026, 8, 10),
+                                "-6180.00",
+                                "0.00",
+                                PaymentProvenance.STATEMENT_CORRECTION));
+
+        MonthInterest.Decision next = decide(AUG_20, BALANCE, rows);
+        List<MonthInterestRow> after =
+                List.of(
+                        rows.get(0),
+                        rows.get(1),
+                        paid(
+                                VISA,
+                                AUG_20,
+                                "445.00",
+                                next.interest().amount().toPlainString(),
+                                PaymentProvenance.USER_LOGGED));
+
+        assertThat(next.charge()).isEqualTo(MonthInterest.Charge.CARRIED);
+        assertThat(decide(LocalDate.of(2026, 8, 28), BALANCE, after).charge())
+                .as("and once one payment carries a real charge, no other does")
+                .isEqualTo(MonthInterest.Charge.ALREADY_CARRIED);
+    }
+
     // ------------------------------------------------ what counts as paid this month
 
     @Test
