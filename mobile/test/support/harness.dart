@@ -27,6 +27,13 @@ final class MemorySecureStore implements SecureStore {
   /// Once the value is deleted, the read finds nothing and says so, as the Keystore does.
   final Set<String> unreadable = {};
 
+  /// Keys whose read throws whether or not a value is stored: a store that can never say a key is
+  /// gone, so a sign-out deliberately ends at "couldn't finish".
+  final Set<String> alwaysUnreadable = {};
+
+  /// Told of every write, before it lands: for tests of what happens in which order.
+  void Function(String key)? onWrite;
+
   /// Keys whose delete throws.
   final Set<String> undeletable = {};
 
@@ -46,6 +53,9 @@ final class MemorySecureStore implements SecureStore {
 
   @override
   Future<String?> read(String key) async {
+    if (alwaysUnreadable.contains(key)) {
+      throw StateError('secure storage can never read $key');
+    }
     if (unreadable.contains(key) && values.containsKey(key)) {
       throw StateError('secure storage could not read $key');
     }
@@ -53,7 +63,10 @@ final class MemorySecureStore implements SecureStore {
   }
 
   @override
-  Future<void> write(String key, String value) async => values[key] = value;
+  Future<void> write(String key, String value) async {
+    onWrite?.call(key);
+    values[key] = value;
+  }
 }
 
 /// The phone's clipboard, as the native side sees it: what is on it, whether it was marked

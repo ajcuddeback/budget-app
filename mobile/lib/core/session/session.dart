@@ -412,9 +412,11 @@ final class SessionController extends Notifier<SessionState> {
       throw const AppError.unexpected();
     }
     ref.read(cacheHolderProvider).unseal();
-    await _tokens.save(token, origin: current.server.stored);
-    // The new token replaced whatever an unfinished sign-out left: that one is over (W2).
+    // A sign-in is reachable only once the previous sign-out finished, so a marker still here is
+    // stale (its removal failed). It goes **before** the new token is saved: a kill in between
+    // must not leave a marker that makes the next launch wipe this good session (round 8, X2).
     await _signOutMarker.remove();
+    await _tokens.save(token, origin: current.server.stored);
     try {
       final me = await _fetchMe();
       state = SessionSignedIn(current.server, me, ++_epoch);
@@ -471,6 +473,11 @@ final class SessionController extends Notifier<SessionState> {
           ref.read(currentServerProvider.notifier).set(null);
           _gate.unconfirmVersion();
           state = const SessionNoServer();
+        } else if (current is SessionSignOutIncomplete) {
+          // Finished from the unfinished state, which a launch may have reached before setting the
+          // current server or applying its CA pin: start over, so start-up does both, in order,
+          // and the sign-in that follows has a client to send with (round 8, X1).
+          ref.invalidateSelf();
         } else {
           state = SessionSignedOut(server);
         }

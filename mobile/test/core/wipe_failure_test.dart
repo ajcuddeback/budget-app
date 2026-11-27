@@ -345,6 +345,87 @@ void main() {
       expect(phone.store.values.keys, ['budget_owl.server']);
     });
 
+    test(
+      'X1: Try again after a relaunch finishes, and sign-in works without another launch',
+      () async {
+        final server = FixtureServer.load('demo', state: 'demo');
+        final phone = TestPhone(server: server)..signedIn('owner');
+        final first = await launch(phone);
+        phone.store.undeletable.add(tokenKey);
+        await first.read(sessionProvider.notifier).signOut();
+        first.dispose();
+
+        // Relaunched on the unfinished state: no current server, no CA pin applied yet.
+        server.state = 'connect';
+        final c = await launch(phone);
+        addTearDown(c.dispose);
+        expect(c.read(sessionProvider), isA<SessionSignOutIncomplete>());
+        expect(c.read(currentServerProvider), isNull);
+
+        phone.store.undeletable.remove(tokenKey);
+        await c.read(sessionProvider.notifier).signOut();
+        for (var i = 0; i < 400 && c.read(sessionProvider) is! SessionSignedOut; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        expect(c.read(sessionProvider), isA<SessionSignedOut>());
+        expect(c.read(currentServerProvider), isNotNull, reason: 'start-up set it again');
+
+        final body = fixtureRequest(
+          'demo',
+          state: 'connect',
+          path: '/api/auth/token',
+          then: 'demo',
+        );
+        await c
+            .read(sessionProvider.notifier)
+            .signIn(
+              email: body['email']! as String,
+              password: body['password']! as String,
+              deviceLabel: body['deviceLabel']! as String,
+            );
+        expect(c.read(sessionProvider), isA<SessionSignedIn>());
+      },
+    );
+
+    test('X2: a sign-in removes a stale marker before it saves the new token', () async {
+      final phone = TestPhone(server: FixtureServer.load('demo', state: 'connect'))..connected();
+      final c = await launch(phone);
+      addTearDown(c.dispose);
+      markerOf(phone).writeAsStringSync('keep-server');
+      bool? markerWhenTokenSaved;
+      phone.store.onWrite = (key) {
+        if (key == tokenKey) markerWhenTokenSaved = markerOf(phone).existsSync();
+      };
+
+      final body = fixtureRequest('demo', state: 'connect', path: '/api/auth/token', then: 'demo');
+      await c
+          .read(sessionProvider.notifier)
+          .signIn(
+            email: body['email']! as String,
+            password: body['password']! as String,
+            deviceLabel: body['deviceLabel']! as String,
+          );
+
+      expect(markerWhenTokenSaved, isFalse, reason: 'a kill after the save must find no marker');
+    });
+
+    test(
+      'a store that can never read the token ends, deliberately, at "could not finish"',
+      () async {
+        final phone = TestPhone(server: FixtureServer.load('demo', state: 'demo'))
+          ..signedIn('owner');
+        final c = await launch(phone);
+        addTearDown(c.dispose);
+        phone.store.alwaysUnreadable.add(tokenKey);
+
+        await c.read(sessionProvider.notifier).signOut();
+
+        expect(c.read(sessionProvider), isA<SessionSignOutIncomplete>());
+        expect(phone.store.values.containsKey(tokenKey), isFalse, reason: 'deleted, unconfirmable');
+        expect(markerOf(phone).existsSync(), isTrue);
+      },
+    );
+
     test('a new sign-in ends a sign-out still marked pending', () async {
       final phone = TestPhone(server: FixtureServer.load('demo', state: 'connect'))..connected();
       final first = await launch(phone);
