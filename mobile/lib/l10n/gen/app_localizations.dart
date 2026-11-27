@@ -8845,12 +8845,6 @@ abstract class AppLocalizations {
   /// **'Pair this with the other half of a transfer'**
   String get pairing_title;
 
-  /// Mobile only (l10n/mobile.en.json "placeholder.body").
-  ///
-  /// In en, this message translates to:
-  /// **'This screen is coming to the app in the next update. It works on the web today.'**
-  String get placeholder_body;
-
   /// Web en.json "preferences.currency".
   ///
   /// In en, this message translates to:

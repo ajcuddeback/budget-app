@@ -7861,10 +7861,6 @@
   "@pairing_title": {
     "description": "Web en.json \"pairing.title\"."
   },
-  "placeholder_body": "This screen is coming to the app in the next update. It works on the web today.",
-  "@placeholder_body": {
-    "description": "Mobile only (l10n/mobile.en.json \"placeholder.body\")."
-  },
   "preferences_currency": "Show amounts in",
   "@preferences_currency": {
     "description": "Web en.json \"preferences.currency\"."

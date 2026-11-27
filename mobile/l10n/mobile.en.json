@@ -61,8 +61,6 @@
   "more.signOutHeading": "Sign out?",
   "more.signOutMessage": "Everything Budget Owl keeps on this phone is erased. Your household's data stays on the server.",
 
-  "placeholder.body": "This screen is coming to the app in the next update. It works on the web today.",
-
   "offline.write": "You're offline — this needs a connection",
   "offline.versionUnconfirmed": "Changes are off until the server confirms it runs a version this app works with. Refresh to check again.",
   "offline.noCopy": "You're offline, and this phone has no saved copy of this yet.",

@@ -5284,10 +5284,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pairing_title => 'Pair this with the other half of a transfer';
 
   @override
-  String get placeholder_body =>
-      'This screen is coming to the app in the next update. It works on the web today.';
-
-  @override
   String get preferences_currency => 'Show amounts in';
 
   @override

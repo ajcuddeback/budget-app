@@ -1473,7 +1473,6 @@ String? lookupMessage(
     'pairing.splitMessage' => l.pairing_splitMessage,
     'pairing.thisRow' => l.pairing_thisRow,
     'pairing.title' => l.pairing_title,
-    'placeholder.body' => l.placeholder_body,
     'preferences.currency' => l.preferences_currency,
     'preferences.currencyHint' => l.preferences_currencyHint,
     'preferences.followDevice' => l.preferences_followDevice,

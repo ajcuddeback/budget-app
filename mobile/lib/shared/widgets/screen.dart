@@ -1,4 +1,3 @@
-import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:material_ui/material_ui.dart';
@@ -142,15 +141,4 @@ class Overline extends StatelessWidget {
       ),
     ),
   );
-}
-
-/// A screen that is not built yet, named clearly as such (phase 2 builds it).
-class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({required this.title, super.key});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) =>
-      Screen(title: title, body: Lede(context.l10n.placeholder_body));
 }

@@ -13,7 +13,6 @@ import 'package:budget_owl/features/insights/presentation/insights_screen.dart';
 import 'package:budget_owl/features/preferences/presentation/preferences_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
-import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// One place a member can go: a bottom-navigation tab, or an entry under More.
