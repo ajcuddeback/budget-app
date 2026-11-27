@@ -1,7 +1,7 @@
 # Getting started
 
-> **Status: partly written.** Steps 1 to 8 below are written from the running app. Steps 9 and 10
-> are still outlines, and each gets written, with real screenshots, once somebody has run
+> **Status: partly written.** Steps 1 to 8 and 10 below are written from the running app. Step 9
+> is still an outline, and gets written, with real screenshots, once somebody has run
 > `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
 > order.
 >
@@ -390,10 +390,8 @@ Will cover: reading the reports, spotting the category that surprised you, and c
 
 ## 10. Put it on your phone
 
-_Awaiting slice 15._
-
-Will cover: installing the mobile app, pointing it at your own server, and adding a transaction
-while you are standing in the shop — which is where most budgeting actually happens.
+Want Budget Owl on your phone, for the transaction you record standing in the shop? See
+[Use Budget Owl on your phone](features/use-budget-owl-on-your-phone.md).
 
 ## Where to go next
 

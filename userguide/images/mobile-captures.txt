@@ -1,0 +1,21 @@
+# Phone screenshots for the user guide, copied from the Flutter goldens by tools/userguide-mobile.sh.
+#
+#   <guide-slug> <name> <golden-scenario> <caption, to the end of the line>
+#
+# <golden-scenario> is a file in mobile/test/goldens/png/ without "__light.png". The image lands at
+# userguide/images/<guide-slug>--<name>.png. Read every golden before you list it.
+
+use-budget-owl-on-your-phone connect connect The Connect to your server screen, with an empty Server address box and a Connect button.
+use-budget-owl-on-your-phone choices connect-choices Connected to owl.example.test, offering Sign in with my account, I have an invitation link and Use a different server.
+use-budget-owl-on-your-phone sign-in sign-in The Sign in screen for owl.example.test, with Email address, Password and Name for this phone, set to Phone · Android.
+use-budget-owl-on-your-phone join join-disclosure Join a household: who can see your finances, then Your name, Choose a password and Accept and join.
+use-budget-owl-on-your-phone http-refused connect-cleartext-refused An http:// address refused, saying Budget Owl connects only over HTTPS and naming the page Give your server an HTTPS address.
+use-budget-owl-on-your-phone certificate-untrusted connect-certificate-untrusted The Connect screen saying this phone doesn't trust the server's certificate, so Budget Owl sends nothing to it.
+use-budget-owl-on-your-phone trusted-through connect-choices-pinned Connected to owl.example.test, trusted through a certificate authority installed on this phone: Rivera Household CA, C1:C1:C1:C1.
+use-budget-owl-on-your-phone authority-missing connect-choices-pin-missing The certificate authority this server was trusted through is no longer installed on this phone, and connections will fail until it is.
+use-budget-owl-on-your-phone transactions transactions The Transactions tab, with the Record a transaction button and the five tabs along the bottom.
+use-budget-owl-on-your-phone offline-stale transactions-offline-stale Transactions with the note Last updated 2 hours ago — you're offline, above the list.
+use-budget-owl-on-your-phone offline-write preferences-offline Your preferences with Save greyed out and the note You're offline — this needs a connection.
+use-budget-owl-on-your-phone more more The More tab: Debt plan, Goals, Envelopes, Categories, Insights, Import, Household, Devices, Preferences and Admin, then Server.
+use-budget-owl-on-your-phone more-server more-pinned The bottom of the More tab: the server, the certificate authority it is trusted through, Change server, and Sign out.
+use-budget-owl-on-your-phone devices devices The Devices screen, with the row Phone · Android marked This phone and a Sign out here button.
