@@ -65,8 +65,12 @@ it keep on the phone, and how? What happens to an edit made with no signal?
   reads only the system store; for phase 1 a private CA worked on iOS and failed closed on
   Android. Now `MainActivity` reads the user-installed CAs (`AndroidCAStore`, aliases `user:…`)
   through a read-only platform channel (`lib/core/http/user_trust.dart`).
-- **A server is pinned to the one user CA it was connected through** (2026-11-26, slice 15
-  phase 2, round 2; owner-facing, the secure option taken). Trusting every user CA would also
+- **On Android, a server is pinned to the one user CA it was connected through** (2026-11-26,
+  slice 15 phase 2, round 2; owner-facing, the secure option taken). **Android only**: on iOS
+  `dart:io` uses the platform's default trust, so any CA the person has given full trust — an
+  MDM-installed one included — can vouch for the server, and the notes below are not shown there.
+  Closing that needs a platform channel that evaluates `SecTrust` with a pinned anchor (a known
+  gap in mobile-app.md). Trusting every user CA would also
   trust a CA an employer's device management pushed, which can read the token and the balances
   through TLS inspection. So at connect time (`ServerCheck`, through `PhoneTrustAdapter.checkAndPin`)
   the server is checked against the system roots alone: if they verify it, nothing is stored and

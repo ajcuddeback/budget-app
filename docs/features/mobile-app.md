@@ -47,18 +47,21 @@ such, and says plainly that changes have to wait.
 - The address is normalised (`https://` assumed when no scheme is typed; trailing slash and path
   removed; a path other than `/` refused, since the API lives at `/api`) and checked with
   `GET /api/meta` before the sign-in screen is shown.
-- **HTTPS only.** An `http://` address is refused with an explanation and a link to the user
-  guide's "Give your server an HTTPS address" page. The only exception is a **debug build**
+- **HTTPS only.** An `http://` address is refused with an explanation that names the user
+  guide's "Give your server an HTTPS address" page in a sentence; there is no link to it. The only exception is a **debug build**
   talking to `localhost`, `127.0.0.1` or `10.0.2.2` (the Android emulator's host), for
   development. A release build has no such exception. What enforces it is the app's own code:
   the address parser, the origin guard, refused redirects, and a release-only
   `flutter.io.allow_http: false` zone around the app. The platform configs (Android
   `network_security_config`, iOS ATS defaults) declare the same policy but do not govern Dart's
   sockets.
-- **Certificates are verified against the system's trusted CAs and, for a server that needs
-  one, the one CA the person installed for it.** There is no "accept this certificate anyway"
-  button. On iOS, a self-hosted server with its own certificate authority works once that CA
-  profile is installed and enabled. On Android it works once the CA is installed (Settings →
+- **Certificates are verified against the system's trusted CAs and, on Android, for a server
+  that needs one, the one CA the person installed for it.** There is no "accept this certificate
+  anyway" button. On iOS, a self-hosted server with its own certificate authority works once that
+  CA profile is installed and given full trust; **there is no per-server pin on iOS**: `dart:io`
+  uses the platform's default trust there, so any CA the person has given full trust — an
+  MDM-installed one included — can vouch for the server, and the "Trusted through" and "no longer
+  installed" notes below never appear (Known gaps). On Android it works once the CA is installed (Settings →
   Security → Encryption & credentials → Install a certificate → CA certificate) **before the
   server is connected to**: Dart's TLS reads only the system store by itself, so `MainActivity`
   hands it the user-installed CAs through a read-only platform channel, and the app **pins** the
@@ -68,7 +71,8 @@ such, and says plainly that changes have to wait.
   CA, such as one an employer's device management pushed to inspect TLS. The phone's CAs are read
   again whenever the app comes back to the foreground: a pinned CA removed in Settings is no
   longer trusted for any new connection, and the server fails as "certificate not trusted". A
-  sign-out keeps the pin with the address; changing server clears both. **The pin is shown**:
+  sign-out keeps the pin with the address; changing server clears both. Everything in this
+  bullet from here on is **Android only**. **The pin is shown**:
   the Connect screen's choices and More → Server say *"Trusted through a certificate authority
   installed on this phone:"*, and then, on its own line, the CA's name in bold with the first 8
   hex digits of its fingerprint beside it (with no name, *"…It has no name; its fingerprint
@@ -328,7 +332,7 @@ been removed; someone reading a bug report or crash log.
 
 ## Edge cases
 
-- The server's address changes (new domain): Settings → Server → change, which signs out.
+- The server's address changes (new domain): More › Server › Change server, which signs out.
 - The server is upgraded to an API the app does not know: the app says which version each side
   is and offers to retry; it does not try to talk to it.
 - The user is a member of no household (an invited user who has not yet joined): the same
@@ -502,7 +506,7 @@ After the round-2 audit:
 | ---- | ------------ | ---------- | ------ |
 | P1 public writes wait for the check | `SessionController.ensureVersionConfirmed()` waits for the check in flight or runs one, and asks once more if the one it waited on failed; sign-in, setup and join call it before writing | The call removed from join; separately from setup; separately, a failed in-flight check made final | `version_gate_public_writes_test`: join, then setup, on the first tap once meta answers; `version_gate_test` P1 (added after this sabotage first passed) |
 | P3 a failed start-up revokes; a refresh's cache write ends nothing | `_recoverFromFailedStart` calls `_endToken()` first; `_refreshMe` shows the fetched member, then caches best effort; `debugLogFailure` logs the step and the error's type | The `_endToken()` call removed; separately, the refresh's cache write made fatal again | `start_up_test` P3: no `POST /api/auth/logout` with the token; the session wiped by a sealed cache |
-| PIN one user CA per server | `PhoneTrustAdapter.checkAndPin`, `pinTo`; `ServerStore` keeps `server_ca_pin` with the address; `resume()` applies it first; a wipe that forgets the server clears it (`LocalState`, `forgetTrust`) | The system roots never accepted (a user CA always pinned); any user CA counting as the pinned one; a CA that verifies the chain but fails otherwise skipped; connect not storing the pin; start-up not applying it; a server change leaving it stored; leaving the transport pinned | `user_trust_test`: system-roots server pinned to nothing; the MDM test (pinned to CA1 with CA2 first in the store); wrong name; `pin_session_test` ×1, ×2, ×1, ×2 |
+| PIN one user CA per server (Android only) | `PhoneTrustAdapter.checkAndPin`, `pinTo`; `ServerStore` keeps `server_ca_pin` with the address; `resume()` applies it first; a wipe that forgets the server clears it (`LocalState`, `forgetTrust`) | The system roots never accepted (a user CA always pinned); any user CA counting as the pinned one; a CA that verifies the chain but fails otherwise skipped; connect not storing the pin; start-up not applying it; a server change leaving it stored; leaving the transport pinned | `user_trust_test`: system-roots server pinned to nothing; the MDM test (pinned to CA1 with CA2 first in the store); wrong name; `pin_session_test` ×1, ×2, ×1, ×2 |
 | P2 a removed CA stops being trusted | The store is re-read on every return to the foreground (`reloadTrustOnResume`, `AppLifecycleListener`), and the inner client swapped when the trust changes | A re-read not applied; the inner client not swapped; the listener doing nothing on resume; the provider not wiring it | `user_trust_test`: CA removed (twice: direct, and with a keep-alive connection open), the redirect test that pins before the first read; the same plus the shared-transport tests (the old client was closed under them); the foreground test; the source check |
 | AND1, again | — | The pinned CA not added; a trust-anyway callback; a store read failure propagating | 7 `user_trust_test` cases; `guards_test`, `real_transport_test` ×2 and 11 `user_trust_test` cases; the store-failure test |
 
@@ -559,6 +563,15 @@ through (now opaque).
 
 ### Known gaps
 
+- **No per-server pin on iOS.** `dart:io` on iOS evaluates the server's certificate against the
+  system trust store, which includes every profile the person has given full trust — an
+  MDM-installed inspection CA too. Pinning (`PhoneTrustAdapter`) and the "Trusted through" and
+  "no longer installed" notes are Android-only. Closing it needs a platform channel that
+  evaluates `SecTrust` with a pinned anchor.
+- **Invitation links made in the web at `http://localhost:8080` name that origin**, so the phone
+  correctly refuses them (*"That invitation is for localhost:8080…"*). Owners must create
+  invitations from the server's `https://` address. A future fix is a configured public URL for
+  invitation links on the server.
 - **Android user-installed CAs need checking on a device.** The channel (`MainActivity`,
   `AndroidCAStore` `user:` aliases) compiles into the debug APK and its Dart side is proved on real
   sockets with test CAs, but no test here runs Android, so no test shows `AndroidCAStore` itself
