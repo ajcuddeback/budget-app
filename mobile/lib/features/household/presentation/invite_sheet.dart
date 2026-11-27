@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
+import 'package:budget_owl/core/platform/sensitive_clipboard.dart';
 import 'package:budget_owl/core/session/current_user.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
@@ -9,7 +12,6 @@ import 'package:budget_owl/features/household/domain/household.dart';
 import 'package:budget_owl/features/household/presentation/section_card.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:budget_owl/shared/widgets/validation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:material_ui/material_ui.dart';
@@ -31,7 +33,9 @@ Future<void> showInviteSheet(BuildContext context) => Navigator.of(
 /// - it is built from the server this phone is connected to, never from anything the server said
 ///   about its own address ([buildInviteLink]);
 /// - it reaches the clipboard **only when the owner taps "Copy link"**: nothing copies it on its
-///   own, and it is selectable for anybody who would rather copy it by hand;
+///   own, and it is selectable for anybody who would rather copy it by hand. It is copied
+///   **marked sensitive** (Android 13+), and **taken back** — if the clipboard still holds it —
+///   when it is revoked and when the sheet closes ([SensitiveClipboard], round 4 L2);
 /// - the sheet says what the link is — "treat this link like a password" — with the role it
 ///   grants and when it expires, and the owner can revoke it before anybody uses it.
 class InviteSheet extends ConsumerStatefulWidget {
@@ -53,8 +57,15 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   bool _busy = false;
   AppError? _error;
 
+  /// The last link this sheet put on the clipboard, and the clipboard it used: [dispose] cannot
+  /// read providers, so it is kept from the copy.
+  String? _onClipboard;
+  SensitiveClipboard? _clipboard;
+
   @override
   void dispose() {
+    final link = _onClipboard;
+    if (link != null) unawaited(_clipboard?.clearIf(link));
     _email.dispose();
     super.dispose();
   }
@@ -90,6 +101,11 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
     });
     try {
       await ref.read(householdWriterProvider).revokeInvitation(made);
+      final link = _link;
+      if (link != null && link == _onClipboard) {
+        await _clipboard?.clearIf(link);
+        _onClipboard = null;
+      }
       if (!mounted) return;
       // The link is useless now; it leaves the screen, and the sheet's memory, with the revoke.
       setState(() {
@@ -107,7 +123,10 @@ class _InviteSheetState extends ConsumerState<InviteSheet> {
   Future<void> _copy() async {
     final link = _link;
     if (link == null) return;
-    await Clipboard.setData(ClipboardData(text: link));
+    final clipboard = ref.read(sensitiveClipboardProvider);
+    _clipboard = clipboard;
+    await clipboard.copy(link);
+    _onClipboard = link;
     if (mounted) setState(() => _copied = true);
   }
 

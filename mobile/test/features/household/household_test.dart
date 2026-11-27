@@ -5,7 +5,6 @@ import 'package:budget_owl/core/session/current_user.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/features/household/data/household_repository.dart';
 import 'package:budget_owl/features/household/domain/household.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -148,22 +147,8 @@ void main() {
     testWidgets('makes a link for this server, shows it once, and copies it only when asked', (
       tester,
     ) async {
-      final clipboard = <String>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (
-        call,
-      ) async {
-        if (call.method == 'Clipboard.setData') {
-          clipboard.add((call.arguments as Map<Object?, Object?>)['text']! as String);
-        }
-        return null;
-      });
-      addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
-      );
       final (server, phone) = await openHousehold(tester);
+      final clipboard = phone.clipboard;
 
       final cache = await tester.runAsync(
         () => containerOf(tester).read(cacheHolderProvider).obtain(),
@@ -186,9 +171,10 @@ void main() {
       );
       expect(find.textContaining('anyone who has it can join this household as Viewer'), findsOne);
       // Nothing reached the clipboard until the owner asked.
-      expect(clipboard, isEmpty);
+      expect(clipboard.text, isNull);
       await tapVisible(tester, find.text('Copy link'));
-      expect(clipboard, [link]);
+      expect(clipboard.text, link);
+      expect(clipboard.sensitive, isTrue, reason: 'L2: marked sensitive');
       expect(find.text('Link copied.'), findsOneWidget);
 
       // Never kept: not in secure storage, and nothing new in the cache — which is encrypted, so
@@ -196,11 +182,63 @@ void main() {
       expect(phone.store.values.values.where((v) => v.contains('fixture-invitation')), isEmpty);
       expect(await tester.runAsync(cache.count), entriesBefore);
 
-      // Closing drops it: the sheet opens empty the next time.
+      // Closing drops it: the sheet opens empty the next time, and the clipboard is taken back.
       await tapVisible(tester, find.text('Done'));
+      expect(clipboard.text, isNull, reason: 'L2: still held the link, so cleared');
       await tapVisible(tester, find.text('Invite someone'));
       expect(find.text(link), findsNothing);
       expect(find.text('Create link'), findsOneWidget);
+    });
+
+    Future<String> makeLink(WidgetTester tester) async {
+      await tapVisible(tester, find.text('Invite someone'));
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Their email address'),
+        'edsger@example.com',
+      );
+      await tapVisible(tester, find.text('Viewer'));
+      await tapVisible(tester, find.text('Create link'));
+      await tapVisible(tester, find.text('Copy link'));
+      return '$testServerOrigin/join/fixture-invitation-edsger';
+    }
+
+    testWidgets('L2: a revoked link is taken back from the clipboard at once', (tester) async {
+      final (_, phone) = await openHousehold(tester);
+      final link = await makeLink(tester);
+      expect(phone.clipboard.text, link);
+
+      await tapVisible(tester, find.text('Revoke link'));
+
+      expect(find.text('This link has been revoked and can no longer be used.'), findsOneWidget);
+      expect(phone.clipboard.text, isNull);
+    });
+
+    testWidgets('L2: what the person copied since is never cleared', (tester) async {
+      final (_, phone) = await openHousehold(tester);
+      await makeLink(tester);
+      phone.clipboard.copiedElsewhere('flat 4, 12 Mill Lane');
+
+      await tapVisible(tester, find.text('Revoke link'));
+      await tapVisible(tester, find.text('Done'));
+
+      expect(phone.clipboard.text, 'flat 4, 12 Mill Lane');
+      expect(phone.clipboard.clears, 0);
+    });
+
+    testWidgets('L2: closed without copying, the clipboard is not touched', (tester) async {
+      final (_, phone) = await openHousehold(tester);
+      phone.clipboard.copiedElsewhere('earlier');
+      await tapVisible(tester, find.text('Invite someone'));
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Their email address'),
+        'edsger@example.com',
+      );
+      await tapVisible(tester, find.text('Viewer'));
+      await tapVisible(tester, find.text('Create link'));
+      await tapVisible(tester, find.text('Done'));
+
+      expect(phone.clipboard.text, 'earlier');
+      expect(phone.clipboard.clears, 0);
     });
 
     testWidgets('revokes a link before anybody uses it', (tester) async {

@@ -1,7 +1,11 @@
 package app.budgetowl.budget_owl
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.os.Handler
 import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
@@ -57,9 +61,53 @@ class MainActivity : FlutterActivity() {
                     }
                 }.start()
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLIPBOARD_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method != SET_SENSITIVE && call.method != CLEAR) {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                if (handleClipboard(call.method, call.argument<String>("text"))) {
+                    result.success(null)
+                } else {
+                    result.error("unavailable", null, null)
+                }
+            }
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * A credential the person chose to copy (an invitation link), and taking it back. On Android
+     * 13+ the clip is marked ClipDescription.EXTRA_IS_SENSITIVE: the system's copy preview hides
+     * it and keyboards leave it out of clipboard suggestions. Below 13 there is no such flag and
+     * it is a plain copy. The clip has no label, so nothing about it is described either. Dart
+     * reads the clipboard back and asks for "clear" only while it still holds that text
+     * (lib/core/platform/sensitive_clipboard.dart). Needs checking on a device.
+     */
+    private fun handleClipboard(method: String, text: String?): Boolean {
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return false
+        when (method) {
+            SET_SENSITIVE -> {
+                val clip = ClipData.newPlainText("", text ?: return false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    clip.description.extras =
+                        PersistableBundle().apply {
+                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                        }
+                }
+                clipboard.setPrimaryClip(clip)
+            }
+            CLEAR ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    clipboard.clearPrimaryClip()
+                } else {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+                }
+            else -> return false
+        }
+        return true
+    }
 
     /** The DER encoding of every enabled user-installed CA: AndroidCAStore aliases "user:…". */
     private fun userCaCertificates(): List<ByteArray> {
@@ -74,5 +122,8 @@ class MainActivity : FlutterActivity() {
         const val TRUST_CHANNEL = "app.budgetowl/trust"
         const val USER_CA_CERTIFICATES = "userCaCertificates"
         const val USER_ALIAS_PREFIX = "user:"
+        const val CLIPBOARD_CHANNEL = "app.budgetowl/clipboard"
+        const val SET_SENSITIVE = "setSensitive"
+        const val CLEAR = "clear"
     }
 }

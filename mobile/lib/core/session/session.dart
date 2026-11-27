@@ -150,6 +150,13 @@ final class SessionController extends Notifier<SessionState> {
   Future<void> _resume() async {
     // Writes wait for this launch's version check, whatever an earlier start had seen.
     _gate.unconfirmVersion();
+    // An export or a picked statement's copy an earlier run was killed holding (M1, L1). Not a
+    // failed start if it cannot: every wipe sweeps again.
+    try {
+      await _local.sweepTemporary();
+    } on Object catch (error) {
+      debugLogFailure('sweeping the temporary directory', error);
+    }
     // A new installation reads nothing an earlier one left in the Keychain (audit L5).
     var wiped = false;
     final marker = ref.read(installMarkerProvider);

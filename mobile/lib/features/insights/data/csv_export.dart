@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/session/session.dart';
+import 'package:budget_owl/core/storage/temp_files.dart';
 import 'package:budget_owl/features/insights/domain/reports.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// What the share sheet did with the file.
@@ -19,7 +19,8 @@ abstract interface class FileSharer {
   /// Deletes any copy the platform made of the file called [name] to share it.
   Future<void> forget(String name, Directory temporary);
 
-  /// Deletes every export copy the platform still holds from an earlier share.
+  /// Deletes every export the app or the platform still holds from an earlier share
+  /// ([sweepExports]).
   Future<void> sweep(Directory temporary);
 }
 
@@ -28,13 +29,12 @@ abstract interface class FileSharer {
 ///
 /// **Android copies the file** into `cache/share_plus/` before handing the receiving app a content
 /// URI, and only clears that folder at the next share. The receiver may read the URI after the
-/// sheet returns, so a shared copy is left for it and swept at the next export or the next time
-/// Insights opens; a dismissed or failed share's copy is deleted at once. iOS shares the file
-/// itself and returns once the activity is over, so ours is the only copy.
+/// sheet returns, so a shared copy is left for it and swept at the next export, the next time
+/// Insights opens, the next start-up and every wipe (core/storage/temp_files.dart); a dismissed or
+/// failed share's copy is deleted at once. iOS shares the file itself and returns once the
+/// activity is over, so ours is the only copy.
 final class SharePlusSharer implements FileSharer {
   const SharePlusSharer();
-
-  static const String _folder = 'share_plus';
 
   @override
   Future<ShareOutcome> share(File file, {required String mimeType, Rect? origin}) async {
@@ -54,24 +54,12 @@ final class SharePlusSharer implements FileSharer {
   @override
   Future<void> forget(String name, Directory temporary) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
-    await _delete(File('${temporary.path}/$_folder/$name'));
+    await _delete(File('${temporary.path}/${TempFiles.shareFolder}/$name'));
   }
 
   @override
-  Future<void> sweep(Directory temporary) async {
-    if (defaultTargetPlatform != TargetPlatform.android) return;
-    final folder = Directory('${temporary.path}/$_folder');
-    if (!folder.existsSync()) return;
-    for (final entry in folder.listSync()) {
-      if (entry is File && isExportName(entry.uri.pathSegments.last)) await _delete(entry);
-    }
-  }
+  Future<void> sweep(Directory temporary) => sweepExports(temporary);
 }
-
-/// Only the files this app names: `budget-owl-<report>-<from>-<to>.csv`.
-bool isExportName(String name) =>
-    RegExp(r'^budget-owl-(income-and-spending|spending-by-category)-\d{4}-\d{2}-\d{4}-\d{2}\.csv$')
-        .hasMatch(name);
 
 Future<void> _delete(FileSystemEntity entity) async {
   try {
@@ -82,9 +70,6 @@ Future<void> _delete(FileSystemEntity entity) async {
 }
 
 final fileSharerProvider = Provider<FileSharer>((ref) => const SharePlusSharer());
-
-/// The app's temporary directory: where an export lives for as long as the share sheet is open.
-final exportDirectoryProvider = FutureProvider<Directory>((ref) => getTemporaryDirectory());
 
 /// A report as the CSV the web downloads, handed to the share sheet (reporting.md, CSV export;
 /// mobile-app.md, Screens).
@@ -102,8 +87,6 @@ final class CsvExporter {
 
   final Ref _ref;
 
-  static const String folderName = 'budget-owl-export';
-
   static const String _bom = '﻿';
 
   Future<ShareOutcome> export(
@@ -120,10 +103,10 @@ final class CsvExporter {
       query: {'from': from, 'to': to},
       headers: const {'Accept': 'text/csv'},
     );
-    final temporary = await _ref.read(exportDirectoryProvider.future);
+    final temporary = await _ref.read(temporaryDirectoryProvider.future);
     final sharer = _ref.read(fileSharerProvider);
     await sharer.sweep(temporary);
-    final folder = Directory('${temporary.path}/$folderName');
+    final folder = Directory('${temporary.path}/${TempFiles.exportFolder}');
     final file = File('${folder.path}/$name');
     ShareOutcome? outcome;
     try {
