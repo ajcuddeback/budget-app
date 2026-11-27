@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
+import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/storage/install_marker.dart';
 import 'package:budget_owl/core/storage/secure_store.dart';
 import 'package:dio/dio.dart';
@@ -129,6 +130,12 @@ Future<ProviderContainer> pumpApp(
     UncontrolledProviderScope(container: container, child: const BudgetOwlApp()),
   );
   await settle(tester);
+  // Start-up wipes whenever there is no token (R1), and the wipe's deletes are real I/O: wait for
+  // the session to leave its starting state, not for a fixed time.
+  await settleUntil(tester, () {
+    final state = container.read(sessionProvider);
+    return state is! SessionStarting || state.failure != null;
+  }, what: 'start-up finished');
   return container;
 }
 
@@ -139,6 +146,41 @@ Future<void> settle(WidgetTester tester) async {
     await tester.pump(const Duration(milliseconds: 50));
   }
   await tester.pumpAndSettle();
+}
+
+/// Lets real I/O and frames run until [done] holds, for up to [timeout] of real time.
+///
+/// [settle] gives real I/O a fixed ~120 ms. A wipe's secure-storage and file deletes take longer
+/// under load, so an assertion about what a wipe left must wait for the wipe, not for a time.
+Future<void> settleUntil(
+  WidgetTester tester,
+  bool Function() done, {
+  required String what,
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (!done()) {
+    if (DateTime.now().isAfter(end)) fail('never: $what');
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  await tester.pumpAndSettle();
+}
+
+/// Until the session is a [T] — e.g. [SessionSignedOut] after connecting, which wipes first.
+Future<void> untilSession<T extends SessionState>(WidgetTester tester) {
+  final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+  return settleUntil(tester, () => container.read(sessionProvider) is T, what: 'the session is $T');
+}
+
+/// Until the session has ended — signed out or no server. The session moves there only **after**
+/// its wipe has finished (`SessionController.signOut`), so what the wipe left can be asserted then.
+Future<void> untilSignedOut(WidgetTester tester) {
+  final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+  return settleUntil(tester, () {
+    final state = container.read(sessionProvider);
+    return state is SessionSignedOut || state is SessionNoServer;
+  }, what: 'the session ended and its wipe finished');
 }
 
 /// Scrolls the front-most list until [finder] is built and on screen, then taps it.

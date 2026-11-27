@@ -158,7 +158,14 @@ exchanges, fails the test on anything else, and refuses a file that answers one 
 
 - **Never close a Dio or an adapter you were handed.** `Dio.close()` closes its adapter, and the
   app has one shared transport (`httpAdapterProvider`): closing it broke every later request,
-  sign-out's logout included (audit H1). The fakes now fail any request after a close.
+  sign-out's logout included (audit H1). The provider hands out a `SharedTransport` whose
+  `close()` throws in a debug build, whatever the variable is called, and `guards_test` allows a
+  `.close(` in `lib/` only on a listed file and receiver. The fakes fail any request after a close.
+- **Dio runs interceptors asynchronously.** A request built before a sign-out can leave after the
+  token is taken, with none. A test of a request "in flight" must wait until the adapter has seen
+  it.
+- **Assert what a wipe left only after waiting for it**: `untilSignedOut(tester)` or
+  `untilSession<T>(tester)`, never a fixed `settle`. `pumpApp` already waits for start-up.
 - **A stored token is bound to its origin.** `TokenStore.save(token, origin:)` and
   `load(origin:)`; the interceptor also refuses to attach it to a request for any other origin. A
   test phone that is "signed in" carries both (`TestPhone.signedIn`).

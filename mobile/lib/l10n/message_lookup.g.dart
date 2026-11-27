@@ -1630,6 +1630,8 @@ String? lookupMessage(
     'transfers.noteHint' => l.transfers_noteHint,
     'transfers.to' => l.transfers_to,
     'transfers.updated' => l.transfers_updated,
+    'trust.through' => l.trust_through(a('name')),
+    'trust.throughUnnamed' => l.trust_throughUnnamed(a('fingerprint')),
     'validation.amount' => l.validation_amount,
     'validation.currency' => l.validation_currency,
     'validation.email' => l.validation_email,

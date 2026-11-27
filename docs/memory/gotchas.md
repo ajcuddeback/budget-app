@@ -1367,6 +1367,18 @@ in Settings is still trusted (Dart reads the system directory itself).
 _Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
 2 (pinned to one CA per server)._
 
+## Dio runs interceptors asynchronously, so "sent" is later than the call
+
+**Symptom.** A test meant to hold a slow `/api/auth/me` across a sign-out passed with the fix it
+proved removed: the request had not yet reached the auth interceptor when `signOut()` took the
+token, so it went out with no token at all and got another answer.
+
+**What to do.** A test of a request in flight waits until the adapter has seen it (count the
+adapter's requests), then acts. In app code, never assume the token a request will carry is the
+one held when the call was made: the interceptor reads it when it runs.
+
+_Added 2026-11-26 — slice 15 phase 2, round 3._
+
 ## A TLS test that switches servers behind one origin must not use keep-alive
 
 **Symptom.** A pinning test that pointed one origin at a second server failed now and then as

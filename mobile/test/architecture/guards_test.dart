@@ -68,7 +68,23 @@ void main() {
   });
 
   test('no transport is closed: the app has one, shared (security audit H1)', () {
-    expect(offending(RegExp(r'\b(dio|_dio|adapter|_adapter)\s*\.\s*close\s*\(')), isEmpty);
+    // Every close in lib/ is on this list, by file and receiver; anything else fails here, whatever
+    // it is called. The shared transport also throws on close in a debug build (SharedTransport).
+    const allowed = {
+      'lib/core/cache/cache_holder.dart': {')'}, // `(await opening).close()`: the cache database
+      'lib/core/cache/cache_store.dart': {'_db'}, // the cache database
+      // A throwaway probe, the inner client being replaced, and the inner client of an adapter a
+      // test closes — never the shared one.
+      'lib/core/http/http_adapter.dart': {'probe', 'previous', '_inner'},
+    };
+    final close = RegExp(r'([A-Za-z_]\w*|\))\s*\.{1,2}\s*close\s*\(');
+    final unlisted = [
+      for (final entry in sources.entries)
+        for (final match in close.allMatches(entry.value))
+          if (!(allowed[entry.key]?.contains(match.group(1)) ?? false))
+            '${entry.key}: ${match.group(1)}.close(',
+    ];
+    expect(unlisted, isEmpty);
   });
 
   test('nothing prints: a log line is how a token or a balance leaves the phone', () {

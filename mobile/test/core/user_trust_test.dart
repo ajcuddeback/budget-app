@@ -244,6 +244,64 @@ void main() {
     });
   });
 
+  group("S1: a CA's name, for the screen and nothing else", () {
+    /// A self-signed certificate with [subject], as DER.
+    Future<Uint8List> certificateFor(String subject, String file) async {
+      await openssl([
+        'req',
+        '-x509',
+        '-newkey',
+        'rsa:2048',
+        '-nodes',
+        '-utf8',
+        '-keyout',
+        '$file.key',
+        '-out',
+        '$file.pem',
+        '-days',
+        '1',
+        '-subj',
+        subject,
+      ]);
+      await openssl(['x509', '-in', '$file.pem', '-outform', 'DER', '-out', '$file.der']);
+      return File('${pki.path}/$file.der').readAsBytesSync();
+    }
+
+    test('the subject CN, else the O, else nothing', () async {
+      expect(caDisplayName(ca['CA1']!), 'Budget Owl test CA1');
+      expect(
+        caDisplayName(await certificateFor('/O=Rivera Household/CN=Rivera Household CA', 'both')),
+        'Rivera Household CA',
+      );
+      expect(
+        caDisplayName(await certificateFor('/C=GB/O=Rivera Household', 'org')),
+        'Rivera Household',
+      );
+      expect(caDisplayName(await certificateFor('/C=GB/L=Leeds', 'none')), isNull);
+      expect(
+        caDisplayName(await certificateFor('/CN=Ålesund Hjemme-CA', 'utf8')),
+        'Ålesund Hjemme-CA',
+      );
+    });
+
+    test('a name cannot reorder or break the sentence it is shown in', () async {
+      final hostile = await certificateFor('/CN=Acme\u202E AC noitcepsnI\n here', 'hostile');
+      expect(caDisplayName(hostile), 'Acme AC noitcepsnI here', reason: 'no override, no newline');
+      expect(cleanCaName('a${'b' * 100}')!.runes.length, caNameMaxLength);
+      expect(cleanCaName('  \t '), isNull);
+      expect(caDisplayName(Uint8List.fromList([0x30, 0x82, 0xff, 0xff, 0x01])), isNull);
+      expect(caDisplayName(const []), isNull);
+    });
+
+    test('never in a log line: a pin prints without its name', () {
+      const pin = CaPin(
+        'c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1',
+        subject: 'Acme',
+      );
+      expect('$pin', isNot(contains('Acme')));
+    });
+  });
+
   group('PIN: a server is trusted through the one CA it was connected through', () {
     test('a server the system roots verify is pinned to nothing, and gets no user CA', () async {
       final front = await _Front.start();
@@ -270,9 +328,10 @@ void main() {
       final store = [ca['CA2']!, ca['CA1']!]; // the MDM's CA first: order decides nothing
       final adapter = PhoneTrustAdapter(() async => List.of(store), systemRoots: systemWithCa0);
 
-      final pin = await pinFor(adapter, address);
-      expect(pin, fingerprintByOpenssl['CA1']);
-      adapter.pinTo(pin! as String);
+      final pin = (await pinFor(adapter, address))! as CaPin;
+      expect(pin.fingerprint, fingerprintByOpenssl['CA1']);
+      expect(pin.subject, 'Budget Owl test CA1', reason: 'S1: its name, for the screen');
+      adapter.pinTo(pin.fingerprint);
       expect(await check(adapter, address), isA<ServerIdentity>());
 
       // The MDM case: the same origin, intercepted with CA2's certificate. CA2 is on the phone.
@@ -302,7 +361,7 @@ void main() {
         final adapter = PhoneTrustAdapter(() async => List.of(store), systemRoots: systemWithCa0);
         final server = await metaServer(await serverCert('localhost', 'CA1'));
         final address = at(server.port);
-        adapter.pinTo((await pinFor(adapter, address))! as String);
+        adapter.pinTo(((await pinFor(adapter, address))! as CaPin).fingerprint);
         expect(await check(adapter, address), isA<ServerIdentity>());
 
         store.clear();
@@ -364,7 +423,7 @@ void main() {
 
       expect(adapter, isA<PhoneTrustAdapter>());
       final pin = await pinFor(adapter as PhoneTrustAdapter, at(server.port));
-      expect(pin, fingerprintByOpenssl['CA1']);
+      expect((pin! as CaPin).fingerprint, fingerprintByOpenssl['CA1']);
     });
   });
 
@@ -413,7 +472,7 @@ void main() {
       final server = await metaServer(await serverCert('localhost', 'CA1'), seen: seen);
       final address = at(server.port);
       final adapter = phoneWith([ca['CA1']!]);
-      adapter.pinTo((await pinFor(adapter, address))! as String);
+      adapter.pinTo(((await pinFor(adapter, address))! as CaPin).fingerprint);
       seen.clear();
       return (adapter, address, seen);
     }

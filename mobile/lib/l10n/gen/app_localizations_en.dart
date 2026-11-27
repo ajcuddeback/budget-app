@@ -5812,6 +5812,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers_updated => 'Transfer saved.';
 
   @override
+  String trust_through(String name) {
+    return 'Trusted through \'$name\', a certificate authority installed on this phone.';
+  }
+
+  @override
+  String trust_throughUnnamed(String fingerprint) {
+    return 'Trusted through a certificate authority installed on this phone, fingerprint $fingerprint.';
+  }
+
+  @override
   String get validation_amount => 'Enter an amount using digits and a dot, like 1250.00 or -400.';
 
   @override

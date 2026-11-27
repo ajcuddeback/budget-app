@@ -3,6 +3,7 @@ import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/routing/router.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
+import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/features/connect/data/setup_status.dart';
@@ -163,6 +164,8 @@ class _Choices extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Lede(fresh ? l.connect_setUpHint : l.connect_connectedLede),
+          // Which CA on this phone vouches for this server, when one does (S1).
+          if (ref.watch(pinnedCaProvider) != null) const Gutter(child: TrustedThroughNote()),
           if (fresh)
             Gutter(
               child: FilledButton(
