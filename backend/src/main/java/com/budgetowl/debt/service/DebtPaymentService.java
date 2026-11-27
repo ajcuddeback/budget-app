@@ -237,7 +237,7 @@ public class DebtPaymentService {
      * week's figure takes off {@code free(M)} (decision 1). A {@code VIEWER} may read it.
      */
     @Transactional(readOnly = true)
-    public Money checkInPaymentsIn(UUID actorId, java.time.YearMonth period) {
+    public Money checkInPaymentsIn(UUID actorId, YearMonth period) {
         Household household = memberships.requireMembership(actorId).household();
         Currency base = household.baseCurrency();
         java.math.BigDecimal total =
