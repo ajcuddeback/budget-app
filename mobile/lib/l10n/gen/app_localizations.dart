@@ -2042,6 +2042,12 @@ abstract class AppLocalizations {
   /// **'Back'**
   String get checkIn_back;
 
+  /// Mobile only (l10n/mobile.en.json "checkIn.backToCurrent").
+  ///
+  /// In en, this message translates to:
+  /// **'Back to this week'**
+  String get checkIn_backToCurrent;
+
   /// Web en.json "checkIn.bills.amount".
   ///
   /// In en, this message translates to:
@@ -2317,6 +2323,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{goal} · {from} → {to} of {target}'**
   String checkIn_choice_goalMoves(String goal, String from, String to, String target);
+
+  /// Mobile only (l10n/mobile.en.json "checkIn.choice.goalMovesPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'{goal} · {from} › {to} of {target}'**
+  String checkIn_choice_goalMovesPhone(String goal, String from, String to, String target);
 
   /// Web en.json "checkIn.choice.goalNeverMoves".
   ///
@@ -2629,6 +2641,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'≈ {amount}/day'**
   String checkIn_next_perDay(String amount);
+
+  /// Mobile only (l10n/mobile.en.json "checkIn.next.perDayPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'About {amount} a day'**
+  String checkIn_next_perDayPhone(String amount);
 
   /// Web en.json "checkIn.next.short".
   ///
@@ -6788,6 +6806,12 @@ abstract class AppLocalizations {
   /// **'Choose an account'**
   String get import_chooseAccount;
 
+  /// Mobile only (l10n/mobile.en.json "import.chooseFile").
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get import_chooseFile;
+
   /// Web en.json "import.chooseFormat".
   ///
   /// In en, this message translates to:
@@ -7243,6 +7267,12 @@ abstract class AppLocalizations {
   /// **'Include all'**
   String get import_includeAll;
 
+  /// Mobile only (l10n/mobile.en.json "import.kilobytes").
+  ///
+  /// In en, this message translates to:
+  /// **'{count} kB'**
+  String import_kilobytes(String count);
+
   /// Web en.json "import.lede".
   ///
   /// In en, this message translates to:
@@ -7356,6 +7386,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your browser couldn\'t open that file. Try choosing it again.'**
   String get import_readFailed;
+
+  /// Mobile only (l10n/mobile.en.json "import.readFailedPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'This phone couldn\'t open that file. Try choosing it again.'**
+  String get import_readFailedPhone;
 
   /// Web en.json "import.ready".
   ///
@@ -7849,6 +7885,12 @@ abstract class AppLocalizations {
   /// **'Spending'**
   String get insights_legend_spending;
 
+  /// Mobile only (l10n/mobile.en.json "insights.monthRange").
+  ///
+  /// In en, this message translates to:
+  /// **'{from} – {to}'**
+  String insights_monthRange(String from, String to);
+
   /// Web en.json "insights.range.12".
   ///
   /// In en, this message translates to:
@@ -7902,6 +7944,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Spending: {first} in {firstMonth}, to {last} in {lastMonth}.'**
   String insights_said_spending(String first, String firstMonth, String last, String lastMonth);
+
+  /// Mobile only (l10n/mobile.en.json "insights.shareFailed").
+  ///
+  /// In en, this message translates to:
+  /// **'The share sheet could not open, so nothing was shared. Try again.'**
+  String get insights_shareFailed;
 
   /// Web en.json "insights.soFar".
   ///

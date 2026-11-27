@@ -1031,7 +1031,7 @@ class DemoFixtureIT extends ApiTestBase {
      * now-archived Wedding category in May and June, and transfers that must change nothing. The
      * one uncategorised row is August's pending grocery shop.
      */
-    private static final String[][] DEMO_LEDGER = {
+    static final String[][] DEMO_LEDGER = {
         // September 2025
         {"2025-09-01", "3050.00", "acc-0001", "cat-0002", "CLEARED"},
         {"2025-09-01", "-1400.00", "acc-0001", "cat-0004", "CLEARED"},
@@ -1145,7 +1145,7 @@ class DemoFixtureIT extends ApiTestBase {
     };
 
     /** Transfers, both legs: {@code date, amount, from, to}. August's is DEMO_TRANSFER. */
-    private static final String[][] DEMO_TRANSFERS = {
+    static final String[][] DEMO_TRANSFERS = {
         {"2025-10-16", "300.00", "acc-0001", "acc-0002"},
         {"2026-01-16", "300.00", "acc-0001", "acc-0002"},
         {"2026-04-16", "300.00", "acc-0001", "acc-0002"},

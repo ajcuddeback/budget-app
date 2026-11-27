@@ -834,3 +834,141 @@ translations do not have this.
   in a semantics description; there is no tap-for-value.
 - **The month bar reads any month** the user steps to; only July, August and September 2026 are
   recorded, so tests do not step further.
+
+### Phase 2 — Check-in, insights, import
+
+**Built.** Three areas, at parity with the web, reading through `CachedResource` and writing
+online-only through writers that are never queued:
+
+- **Check-in** (bottom-nav tab, `features/check_in/`). One step per screen: What's new,
+  Categorize, Bills, Next week. Each screen names the next ("Next: categorize"), Back and forward
+  keep every answer (the answers live on the server), and the step header shows progress. Not
+  started: the computed week, read-only, with **Start check-in** (`PUT /api/check-ins/{week}`, no
+  body). Draft: every answer control (prepaid, leave it, skip, mark paid with the debt-plan prompt,
+  a category from a sheet with "Always file this payee here", attach to a bill from a sheet, "Yes,
+  map it" to the server's suggestion, not a bill, and the allocation radio group of goal, debt and
+  roll over). A replacement answer carries the answer's `version`. Completion sends
+  `{version, basis}`. Discard asks first. The completed week shows its summary lines, each linking
+  where the web's does. Refusals: `stale-version` (someone else answered first: said, and their
+  answer shown), `check-in-stale` (finishing is refused whole: every listed item marked, the first
+  one's step opened and scrolled to), `check-in-draft-open` (another week's draft is offered with
+  **Open it**, read with `GET /api/check-ins/{week}`, and **Back to this week**), and completed or
+  not-found (read again). A `VIEWER` sees every answer and figure and is told why there is no
+  control. Offline, or with the version unconfirmed, the controls are disabled and `OfflineNote`
+  gives `writesOffText()`.
+- **Insights** (`features/insights/`). Report 1, income and spending: 12, 6 and 3 month chips
+  ending with the phone's own month, a currency switch when there are two, the chart (income solid,
+  spending dashed; a point's height is a ratio the phone gets from `Decimal`, never a `double`),
+  the legend, the negative and coincident notes, the uncategorised line with its link, and the
+  figures table (stacked per month). Report 2, where it went: the last complete month, stepping
+  back and forward (never past the current month), share bars, show all, children. Both reports
+  export CSV. Empty is a sentence, not a flat line. A `VIEWER` sees what an owner sees, export
+  included: export is a read.
+- **Import** (under More, `features/import/`). Account and file (the system picker), format from
+  the file name, the >5 MB courtesy refusal before anything is sent, preview (counts, the balance
+  check, rows that need attention, the suspected duplicate ticked to include), the CSV mapping
+  (roles, date format, delimiter, decimal and grouping separators, header row, direction values,
+  with the server's suggestion and a saved mapping read first), commit, the done screen with
+  **Undo** (`DELETE`), and recent imports (page 0, size 10). `import-preview-stale` (someone
+  imported first) says so and previews again. A `VIEWER` gets a sentence, not a form. Offline or
+  unconfirmed: preview and commit are disabled with `writesOffText()`.
+
+Fixtures come from the real API through `MobileWeeklyFixtureIT` (`check-in`, `insights`,
+`insights-states`, `import`). Goldens: `check_in_`, `insights_`, `import_golden_test.dart`, with
+light and dark throughout, RTL and text 2.0 on each area's main screens, and VIEWER, offline-stale
+and error for each.
+
+**Departures, and why.**
+
+- **Import sends JSON with base64, not multipart.** That is the API's contract (multipart is off
+  server-wide), so `FixtureServer` needed no multipart support.
+- **The CSV's byte-order mark is restored when writing the file.** Dio's UTF-8 decoding drops the
+  server's BOM, and spreadsheet apps need it to read UTF-8. The test asserts the first three
+  bytes.
+- **Another week's open draft is screen state, not a route.** **Back to this week** returns to it.
+  `router.dart` is unchanged.
+- **Answers, start and discard re-read the check-in only.** Completion bumps `dataRevision` (it
+  changes the budget); a draft answer changes nothing elsewhere until then, as on the web.
+- **Two strings are phone-only** because Figtree has no glyph for the web's "→" and "≈":
+  `checkIn.next.perDayPhone` and `checkIn.choice.goalMovesPhone`. Also phone-only:
+  `checkIn.backToCurrent`, `insights.monthRange`, `insights.shareFailed` (an export that could not
+  be shared is the phone's failure, not the server's), `import.chooseFile`,
+  `import.readFailedPhone` and `import.kilobytes`.
+- **The CSV mapping's sample records are stacked cards**, since a wide table does not fit a phone.
+  The figures table in Insights is stacked per month for the same reason.
+- **The chart is not mirrored in RTL.** Time runs left to right in both, as the web draws it.
+- **"See them in the ledger" opens Transactions unfiltered.** Transactions has no route filter
+  yet.
+- **Transactions' pager is now a `Wrap`.** It overflowed at text 2.0 with more than 50 rows, a
+  phase-1 bug found while reading goldens.
+- **Core changes, the minimum:** `ApiClient.getText` takes `headers` (for `Accept: text/csv`);
+  `destinations.dart` points the three placeholders at the new screens. Test support:
+  `FixtureServer` serves a `String` body as is (the CSV), and `pumpApp` takes `overrides` (the fake
+  picker and sharer). `DemoFixtureIT`: `DEMO_LEDGER` and `DEMO_TRANSFERS` made package-private,
+  nothing else.
+
+**Plugins and permissions.** Both are pinned in `pubspec.lock`, and neither has analytics or
+network calls of its own.
+
+- `file_selector` 1.1.0 (flutter.dev; `file_selector_android` 0.5.2+11, `_ios` 0.5.3+7,
+  `_platform_interface` 2.7.0, `cross_file` 0.3.5+5). It opens the system document picker, which
+  needs no permission on either platform, and adds nothing to the merged manifest. It was chosen
+  over `file_picker`, whose federation is wider and whose no-copy mode cannot return bytes. Both
+  platforms copy the picked file into the app's cache (Android `cacheDir/<uuid>/`, iOS `tmp/` via
+  `asCopy`). `SystemStatementPicker` reads the bytes into memory, then deletes that copy in
+  `finally`, but only a file inside the temporary directory, together with its emptied folder. The
+  app never writes the statement itself.
+- `share_plus` 13.3.1 (fluttercommunity.dev; `share_plus_platform_interface` 7.2.0, and
+  `url_launcher_*` on desktop and web only). It adds a non-exported `FileProvider` (authority
+  `${applicationId}.flutter.share_provider`, `cache/share_plus/`) and a non-exported receiver.
+  Android copies the shared file into `cache/share_plus/` and clears it only on the next share. A
+  dismissed or failed share's copy is deleted at once. After a successful share the copy is left
+  for the receiving app and swept, only files named like our exports, on the next export or when
+  Insights opens. iOS shares the original.
+- **Permissions.** The merged manifest holds only `INTERNET` and AndroidX's app-private
+  `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `AndroidManifest.xml` strips every storage and media
+  permission with `tools:node="remove"`, so a future plugin cannot add one silently, and
+  `test/architecture/storage_permission_test.dart` pins that and an iOS `Info.plist` with no photo
+  or file-sharing keys.
+
+**What stays off disk.** Statement bytes live in `ChosenFile`, in memory, and are sent as base64.
+`import_test` finishes an import, then scans the cache, support and system temporary directories
+for text from the statement, raw and base64, and finds none. CSV text is written only to
+`<temp>/budget-owl-export/<name>` and deleted in `finally`, whatever the share's outcome.
+Import previews, CSV text and the bodies of answers sent never pass through `CachedResource`.
+Only the normal read responses are cached: the week (which shows its answers, as the web's read
+does), the two reports and import history. Nothing in these areas logs anything.
+
+### Proving the phase-2 controls can fail
+
+Each was broken, its tests seen to fail, and the file restored with `git checkout` (`lib/` diff
+empty).
+
+| Control                              | Broken how                                            | Failed                                                                                                                                                                                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export file deleted                  | The `finally` delete removed                          | `insights_test`: shared, dismissed and failed (3)                                                                                                                                                                                                                                                   |
+| BOM kept                             | The BOM restoration removed                           | `insights_test`: the server's own file, by bytes                                                                                                                                                                                                                                                    |
+| Picker copy deleted                  | `forgetPlatformCopy` not called                       | `import_test`: picker deletes on success, and when reading fails                                                                                                                                                                                                                                    |
+| Delete only inside temp              | `_isInside` returned `true`                           | `import_test`: never deletes a file outside the temporary directory                                                                                                                                                                                                                                 |
+| Statement never on disk              | The picked bytes written to the system temp directory | `import_test`: not a file, not the cache                                                                                                                                                                                                                                                            |
+| Check-in writer refuses offline      | The writer's `canWrite` check removed                 | **Nothing failed at first**: the test also took the fixture server offline, which refused instead. The test now keeps the network up. Then `check_in_test` offline failed. The unconfirmed-version variant stays green, because core `ApiClient` refuses a non-`GET` before sending: a second guard |
+| Import writer refuses offline        | The same in `ImportsWriter`                           | The same story; then `import_test` offline failed                                                                                                                                                                                                                                                   |
+| Check-in `VIEWER` gets no control    | `_canWrite` true for anyone signed in                 | `check_in_test`: viewer not started; viewer draft                                                                                                                                                                                                                                                   |
+| Import `VIEWER` gets no form         | The role branch skipped                               | `import_test`: viewer told plainly; the viewer's preview                                                                                                                                                                                                                                            |
+| Replacement answer carries `version` | `withVersion` returned the body unchanged             | `requests_test`; `check_in_test`: always file at its version; re-answering a stale item                                                                                                                                                                                                             |
+| No storage permission                | One `tools:node="remove"` line deleted                | `storage_permission_test`                                                                                                                                                                                                                                                                           |
+
+### Phase 2 known gaps (check-in, insights, import)
+
+- **Cross-area pieces not built here:** the check-in prompt on Transactions, payee rules on
+  Categories, and Unmap of a charge rule on Bills. The check-in summary links to those tabs and
+  entries as they stand.
+- **The platform copies need checking on a device.** No test here runs the real picker or share
+  sheet. Check on Android that `cache/<uuid>/` is empty after picking, and that
+  `cache/share_plus/` is emptied on a dismissed share and on the next Insights visit. Check on iOS
+  that `tmp/` holds no statement copy.
+- **A shared export stays in `cache/share_plus/` until the next export or Insights visit**
+  (Android): the receiving app may still be reading it.
+- **An import history screen** beyond the recent-imports list is not built. The web has none
+  either.
+- No backend API gaps were found for these three areas.

@@ -1119,6 +1119,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkIn_back => 'Back';
 
   @override
+  String get checkIn_backToCurrent => 'Back to this week';
+
+  @override
   String get checkIn_bills_amount => 'Amount';
 
   @override
@@ -1294,6 +1297,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String checkIn_choice_goalMoves(String goal, String from, String to, String target) {
     return '$goal · $from → $to of $target';
+  }
+
+  @override
+  String checkIn_choice_goalMovesPhone(String goal, String from, String to, String target) {
+    return '$goal · $from › $to of $target';
   }
 
   @override
@@ -1488,6 +1496,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String checkIn_next_perDay(String amount) {
     return '≈ $amount/day';
+  }
+
+  @override
+  String checkIn_next_perDayPhone(String amount) {
+    return 'About $amount a day';
   }
 
   @override
@@ -4072,6 +4085,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_chooseAccount => 'Choose an account';
 
   @override
+  String get import_chooseFile => 'Choose a file';
+
+  @override
   String get import_chooseFormat => 'Choose a format';
 
   @override
@@ -4327,6 +4343,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get import_includeAll => 'Include all';
 
   @override
+  String import_kilobytes(String count) {
+    return '$count kB';
+  }
+
+  @override
   String get import_lede =>
       'Bring in transactions from a file your bank exported. You\'ll see exactly what will be added before anything is.';
 
@@ -4392,6 +4413,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get import_readFailed => 'Your browser couldn\'t open that file. Try choosing it again.';
+
+  @override
+  String get import_readFailedPhone =>
+      'This phone couldn\'t open that file. Try choosing it again.';
 
   @override
   String get import_ready => 'Preview ready.';
@@ -4680,6 +4705,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insights_legend_spending => 'Spending';
 
   @override
+  String insights_monthRange(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
   String get insights_range_12 => '12 mo';
 
   @override
@@ -4709,6 +4739,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String insights_said_spending(String first, String firstMonth, String last, String lastMonth) {
     return 'Spending: $first in $firstMonth, to $last in $lastMonth.';
   }
+
+  @override
+  String get insights_shareFailed =>
+      'The share sheet could not open, so nothing was shared. Try again.';
 
   @override
   String insights_soFar(String month) {

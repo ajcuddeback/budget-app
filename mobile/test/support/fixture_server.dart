@@ -149,8 +149,15 @@ final class FixtureServer implements HttpClientAdapter {
     served.add(line);
     if (offlineAfter != null && line.startsWith(offlineAfter!)) offline = true;
     if (match.then != null) state = match.then!;
+    // A recorded string is a text representation (a report's CSV), served as the bytes the API
+    // sent; anything else is a JSON document. No API route answers a bare JSON string.
+    final answer = match.body;
     return ResponseBody.fromString(
-      match.body == null ? '' : jsonEncode(match.body),
+      answer == null
+          ? ''
+          : answer is String
+          ? answer
+          : jsonEncode(answer),
       match.status,
       headers: {
         Headers.contentTypeHeader: [

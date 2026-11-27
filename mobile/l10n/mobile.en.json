@@ -98,5 +98,14 @@
   "preferences.themeDark": "Dark",
   "preferences.themeHint": "Automatic follows this phone’s own light or dark setting. Your choice is kept on this phone only, and is never sent to your server.",
 
-  "privacy.hidden": "Budget Owl is hidden while the app is in the background."
+  "privacy.hidden": "Budget Owl is hidden while the app is in the background.",
+
+  "checkIn.backToCurrent": "Back to this week",
+  "checkIn.next.perDayPhone": "About {amount} a day",
+  "checkIn.choice.goalMovesPhone": "{goal} · {from} › {to} of {target}",
+  "insights.monthRange": "{from} – {to}",
+  "insights.shareFailed": "The share sheet could not open, so nothing was shared. Try again.",
+  "import.chooseFile": "Choose a file",
+  "import.readFailedPhone": "This phone couldn't open that file. Try choosing it again.",
+  "import.kilobytes": "{count} kB"
 }

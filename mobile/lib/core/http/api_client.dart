@@ -71,12 +71,16 @@ final class ApiClient {
 
   /// A `GET`, returning the body exactly as received — what the cache stores (ADR-0042: "API
   /// response bodies as received").
+  ///
+  /// [headers] is for asking for another representation of the same resource: the reports answer
+  /// `Accept: text/csv` with a file (reporting.md, CSV export). It replaces the JSON `Accept`.
   Future<String> getText(
     String path, {
     Map<String, String> query = const {},
+    Map<String, String> headers = const {},
     bool public = false,
   }) async {
-    final response = await _send('GET', path, query: query, public: public);
+    final response = await _send('GET', path, query: query, headers: headers, public: public);
     return response.data ?? '';
   }
 

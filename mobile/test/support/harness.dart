@@ -102,6 +102,8 @@ Future<ProviderContainer> pumpApp(
   TextDirection? direction,
   double textScale = 1,
   Size size = const Size(390, 844),
+  // A feature's own platform seams (a share sheet, a document picker) stood in for by its test.
+  List<Override> overrides = const [],
 }) async {
   tester.view
     ..physicalSize = size
@@ -118,6 +120,7 @@ Future<ProviderContainer> pumpApp(
       ...phone.overrides,
       themeModeProvider.overrideWithValue(themeMode),
       textDirectionOverrideProvider.overrideWithValue(direction),
+      ...overrides,
     ],
     retry: noRetry,
   );
