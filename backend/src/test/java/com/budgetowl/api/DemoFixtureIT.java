@@ -63,7 +63,7 @@ class DemoFixtureIT extends ApiTestBase {
      * The instant the demo household lives at — inside `2026-08`, the month every other fixture
      * uses. Mid-month and mid-day so no boundary rounding is load-bearing.
      */
-    private static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
+    static final Instant DEMO_TODAY = Instant.parse("2026-08-20T12:00:00Z");
 
     /**
      * The amounts the log-a-payment sheet offers without typing: the plan's allocation for each
@@ -622,7 +622,7 @@ class DemoFixtureIT extends ApiTestBase {
      * <p>Shared by both scenarios: the demo household the guide is captured from, and the balance
      * states that household deliberately does not have.
      */
-    private static void compareOrWrite(String document, Path committed, Path regenerated)
+    static void compareOrWrite(String document, Path committed, Path regenerated)
             throws IOException {
         if (Boolean.getBoolean("fixtures.write")) {
             Files.createDirectories(committed.getParent());

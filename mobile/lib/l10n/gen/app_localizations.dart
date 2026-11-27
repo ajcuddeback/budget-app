@@ -8833,11 +8833,53 @@ abstract class AppLocalizations {
   /// **'Text appears in this language where a translation exists, and in English otherwise. Dates and numbers always follow your choice.'**
   String get preferences_localeHint;
 
+  /// Mobile only (l10n/mobile.en.json "preferences.localeHintPhone").
+  ///
+  /// In en, this message translates to:
+  /// **'Saved with your membership, and used by Budget Owl on the web. This app is in English for now, with English dates and numbers, whatever you choose here.'**
+  String get preferences_localeHintPhone;
+
   /// Web en.json "preferences.saved".
   ///
   /// In en, this message translates to:
   /// **'Preferences saved.'**
   String get preferences_saved;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.theme").
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get preferences_theme;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.themeDark").
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get preferences_themeDark;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.themeHeading").
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get preferences_themeHeading;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.themeHint").
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic follows this phone’s own light or dark setting. Your choice is kept on this phone only, and is never sent to your server.'**
+  String get preferences_themeHint;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.themeLight").
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get preferences_themeLight;
+
+  /// Mobile only (l10n/mobile.en.json "preferences.themeSystem").
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get preferences_themeSystem;
 
   /// Web en.json "preferences.title".
   ///

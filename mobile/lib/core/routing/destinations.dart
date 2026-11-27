@@ -1,7 +1,10 @@
 import 'package:budget_owl/features/accounts/presentation/accounts_screen.dart';
+import 'package:budget_owl/features/admin/presentation/admin_screen.dart';
 import 'package:budget_owl/features/categories/presentation/categories_screen.dart';
 import 'package:budget_owl/features/devices/presentation/devices_screen.dart';
 import 'package:budget_owl/features/envelopes/presentation/envelopes_screen.dart';
+import 'package:budget_owl/features/household/presentation/household_screen.dart';
+import 'package:budget_owl/features/preferences/presentation/preferences_screen.dart';
 import 'package:budget_owl/features/transactions/presentation/transactions_screen.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
@@ -109,7 +112,7 @@ final List<Destination> moreEntries = [
     path: '/more/household',
     label: (l) => l.nav_household,
     icon: Icons.home_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_household),
+    screen: (_) => const HouseholdScreen(),
   ),
 
   Destination(
@@ -123,14 +126,14 @@ final List<Destination> moreEntries = [
     path: '/more/preferences',
     label: (l) => l.nav_preferences,
     icon: Icons.tune_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_preferences),
+    screen: (_) => const PreferencesScreen(),
   ),
 
   Destination(
     path: '/more/admin',
     label: (l) => l.nav_admin,
     icon: Icons.admin_panel_settings_outlined,
-    screen: (context) => PlaceholderScreen(title: AppLocalizations.of(context).title_admin),
+    screen: (_) => const AdminScreen(),
     adminOnly: true,
   ),
 ];
