@@ -30,6 +30,11 @@ well, [record it as a transaction](record-a-transaction.md).
    The two buttons underneath fill the box for you: **$445.00 — what is scheduled**, and **$495.00**
    — fifty more, for a month you can put a bit extra at it.
 
+   The fifty-more button is there only for the debt your plan is paying off first. Extra money does
+   the most good there. Put it on a debt further down the order and the plan has that much less
+   for the first one this month, so it can end up later. You can still type any amount for any
+   debt.
+
 4. Read the split, the line just under the two buttons.
 
    ![The Log a payment window with 445 in Amount paid, and the line $0.00 interest · $445.00 principal · balance after $5,735.00 circled, just under the two buttons, with the note underneath that August 2026's interest was charged on an earlier payment.](../images/log-a-debt-payment--preview.png)

@@ -496,6 +496,22 @@ describe('DebtDetailPage', () => {
     });
   });
 
+  it('offers fifty more only on the plan’s first rung, and no date after today', async () => {
+    // An extra logged against a cheaper debt counts as paid this month and comes out of what the
+    // first rung would have had (ADR-0043), so the sheet does not suggest one there.
+    const fixture = await render({ detail: detailOf(CAR) });
+    const root = fixture.nativeElement as HTMLElement;
+
+    buttonNamed(root, 'Log a payment').click();
+    await settle(fixture);
+
+    const sheet = root.querySelector('dialog')!;
+    expect(sheet.textContent).toContain('what is scheduled');
+    expect(sheet.textContent).not.toContain('£495.00');
+    const date = root.querySelector<HTMLInputElement>('#payment-date')!;
+    expect(date.getAttribute('max')).toBe(date.value);
+  });
+
   it('asks again, immediately, for a one-tap amount', async () => {
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;

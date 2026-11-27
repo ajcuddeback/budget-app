@@ -95,6 +95,7 @@
         class="input"
         type="date"
         formControlName="paidDate"
+        [attr.max]="today()"
         aria-describedby="payment-date-error"
         [attr.aria-invalid]="
           form.controls.paidDate.invalid && form.controls.paidDate.touched ? 'true' : null

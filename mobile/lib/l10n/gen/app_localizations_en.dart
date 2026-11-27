@@ -3489,6 +3489,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get error_read_only_role => 'Your role in this household is read-only.';
 
   @override
+  String get error_record_busy =>
+      'Someone else is changing this right now. Nothing has been saved — try again in a moment.';
+
+  @override
   String error_reference(String id) {
     return 'Reference: $id';
   }

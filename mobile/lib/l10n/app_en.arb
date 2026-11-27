@@ -5158,6 +5158,10 @@
   "@error_read_only_role": {
     "description": "Web en.json \"error.read-only-role\"."
   },
+  "error_record_busy": "Someone else is changing this right now. Nothing has been saved — try again in a moment.",
+  "@error_record_busy": {
+    "description": "Web en.json \"error.record-busy\"."
+  },
   "error_reference": "Reference: {id}",
   "@error_reference": {
     "description": "Web en.json \"error.reference\".",

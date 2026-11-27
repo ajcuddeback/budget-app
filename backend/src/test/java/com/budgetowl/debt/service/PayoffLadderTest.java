@@ -697,6 +697,63 @@ class PayoffLadderTest {
         assertThat(then.totalInterest()).isLessThanOrEqualTo(now.totalInterest());
     }
 
+    @Property(tries = 200)
+    void anExtraLoggedToTheFirstRungNeverMakesThePlanLaterOrDearer(
+            @ForAll @IntRange(min = 0, max = 900) int alreadyPaidPounds,
+            @ForAll @IntRange(min = 1, max = 3_000) int extraPounds) {
+        // Logging more against the plan's own rung 1 is the plan's own advice taken early: it is
+        // counted as paid (decision 10), and it is principal on the debt the plan attacks first.
+        // It can never cost more — unlike an extra on a cheaper debt (debt-plan.md decision 10).
+        Money already = money(alreadyPaidPounds + ".00");
+        Money extra = money(extraPounds + ".00");
+        Money after = visa.balance().minus(extra);
+        Assume.that(after.isPositive());
+        LadderDebt before = withFirstMonth(visa, visa.balance(), new FirstMonth(true, already));
+        LadderDebt logged = withFirstMonth(visa, after, new FirstMonth(true, already.plus(extra)));
+
+        PayoffProjection.Ranked now =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, before),
+                                DECEMBER);
+        PayoffProjection.Ranked then =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, logged),
+                                DECEMBER);
+
+        assertThat(then.rungs().get(0).debt().id()).isEqualTo(visa.id());
+        assertThat(rungFor(then, visa.id()).payoffMonth())
+                .isBeforeOrEqualTo(rungFor(now, visa.id()).payoffMonth());
+        assertThat(then.debtFreeMonth()).isBeforeOrEqualTo(now.debtFreeMonth());
+        assertThat(then.totalInterest()).isLessThanOrEqualTo(now.totalInterest());
+    }
+
+    @Test
+    void whatWasPaidToADebtThatLeftTheLadderStillCountsAsSpentThisMonth() {
+        // A debt this month's payments cleared is no longer a rung, but the $100 paid to it was
+        // spent this month all the same: month 1 has $805 left, not the whole $905 — the three
+        // minimums and $160 more for rung 1.
+        PayoffProjection.Ranked plan =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, visa),
+                                DECEMBER,
+                                money("100.00"));
+
+        assertThat(monthOneSpend(plan)).isEqualTo(money("805.00"));
+        assertThat(rungFor(plan, visa.id()).months().get(0).amount()).isEqualTo(money("345.00"));
+        assertThat(rungFor(plan, visa.id()).extra())
+                .as("the standing allocation is unchanged")
+                .isEqualTo(money("260.00"));
+    }
+
     private static Money monthOneSpend(PayoffProjection.Ranked plan) {
         Money spent = money("0.00");
         for (PayoffProjection.Rung rung : plan.rungs()) {

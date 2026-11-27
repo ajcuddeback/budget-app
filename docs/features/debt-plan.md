@@ -398,9 +398,8 @@ How the edge cases are decided, so nobody re-derives them:
      month, often this one. Each charged month 1 its interest on today's balance. That is right
      when the month is unbooked and a double count when it is booked. Now `DebtFacts` carries
      whether the current month is booked, and a projection whose month 1 is that month charges it
-     nothing: `LadderDebt.firstMonthInterestBooked` in the ladder, and
-     `DebtTerms.firstMonthInterestBooked` in `DebtTermsSolver`'s projection, payment search and
-     rate search. `monthsLeft`, `payoffMonth` and `totalInterestLeft` all follow from those. The
+     nothing: `FirstMonth.interestBooked`, carried on `LadderDebt` in the ladder and on `DebtTerms`
+     in `DebtTermsSolver`'s projection, payment search and rate search. `monthsLeft`, `payoffMonth` and `totalInterestLeft` all follow from those. The
      check-in's what-if (`PayoffPlanService.oneOffPayment`) is told whether the surplus would book
      the month, so the projection after it does not charge the month a second time.
    - **(b) The guarantee holds: a surplus never moves the payoff later, and never makes total
@@ -428,9 +427,19 @@ How the edge cases are decided, so nobody re-derives them:
    `STATEMENT_CORRECTION`, which carries interest 0, and confirming an estimate, which writes only an
    anchor. `AUTO_MATCHED` has no writer yet (slice 16). When it gets one, it must call `draft`.
 5. **Two payments at once cannot both take the interest.** Every payment write (`log`,
-   `logFromCheckIn`, `correct`, `delete`, and `DebtService.confirmBalance`) first takes `SELECT …
-FOR UPDATE` on the debt row (`DebtRepository.lockByIdAndHouseholdId`). The second writer waits,
-   then sees the first one's row. `@Version` could not do this, because a payment does not touch
+   `logFromCheckIn`, `correct`, `delete`, and `DebtService.confirmBalance`) first locks the debt
+   row `FOR UPDATE` through `DebtLocks`: a household-scoped find, then `EntityManager.refresh` under
+   `PESSIMISTIC_WRITE`. The second writer waits, then sees the first one's row. **The lock is a
+   refresh, not a query**, because a query hands back an entity the transaction already loaded
+   exactly as it was loaded. A check-in completion reads its picture (and so its debts) before it
+   writes, so a locking query would have let it decide against a paid-off flag or an anchor from
+   before the wait (`DebtLockingIT.a_completion_decides_against_the_debt_as_it_is_once_locked…`).
+   **Every wait is bounded**: `DebtLocks` sets `SET LOCAL lock_timeout = '3s'` before it locks, and
+   running out, like losing a deadlock, is `PessimisticLockingFailureException`, which
+   `ApiExceptionHandler` answers with a retryable **`409 record-busy`** in the normal problem shape
+   (_"Someone else is changing this right now. Nothing has been saved — try again in a moment."_ on
+   both clients). Without the bound, a transaction that hung holding a debt would hold every writer
+   to it, and the request thread with them. `@Version` could not do this, because a payment does not touch
    the debt row unless it settles it. Without the lock, six concurrent $100 payments produced three
    or four interest-carrying rows. With it, exactly one (`MonthInterestIT`). The preview reads
    without the lock: it writes nothing, and a stale preview is corrected by the recorded split.
@@ -438,7 +447,15 @@ FOR UPDATE` on the debt row (`DebtRepository.lockByIdAndHouseholdId`). The secon
    text, which is PostgreSQL's `uuid` order): `DebtPaymentService.lockInOrder`, which a check-in's
    completion calls before it records a bill prompt's payment and the surplus. Each write would
    otherwise lock its own debt in item order, and two transactions taking the same two debts the
-   other way round deadlock. `DebtLockingIT` proves it deterministically, and proves the locks on
+   other way round deadlock. **Setting your own order** (`PayoffPlanService.applyCustomOrder`), the
+   one other write that touches several debt rows, writes them in the same order
+   (`DebtLocks.lockOrder`). Two writes outside this rule are recorded rather than reordered:
+   deleting an account or a bill nulls `debts.account_id` / `debts.bill_id` (`ON DELETE SET NULL`)
+   in whatever order PostgreSQL visits the rows. A bill links at most one debt (`bill_id` is
+   unique), so it takes one debt row and cannot deadlock on debts alone. An account can link
+   several. If such a delete does deadlock with a completion, PostgreSQL aborts one of the two and
+   that one is answered `409 record-busy`, with nothing half-written. `DebtLockingIT` proves the
+   completion's order deterministically, and proves the locks on
    `correct` (six concurrent moves into one month leave one carrier, not six), `delete` (a delete
    racing a payment never leaves a debt settled with a balance) and `confirmBalance` (a statement
    racing a payment still chains in the history).
@@ -458,6 +475,24 @@ FOR UPDATE` on the debt row (`DebtRepository.lockByIdAndHouseholdId`). The secon
    was considered and rejected: it needs a migration and a three-state rule for old rows (slice-14
    check-in rows carry interest 0 and must not book their month), to prevent a case that charges
    at most one real month of interest anyway.
+8. **The month comes from the household's date, so the server accepts it** (`DebtDates`). There is
+   no household time zone, and the server's clock is UTC. A household in Sydney paying on the
+   morning of Sept 1 is still on Aug 31 by the server. Refusing Sept 1 as "in the future" would
+   push them to date it Aug 31, into a month already booked, and September would never be charged.
+   So a `paidDate` on log, preview and correct, and a `balanceDate` on a debt or a statement
+   confirmation, may be **as late as today in UTC+14**, the latest date anywhere on Earth: the
+   device's own date is always accepted, and the interest month follows it
+   (`MonthInterestIT.a_payment_dated_the_first_by_a_household_east_of_utc…`: at 23:00 UTC on Aug 31
+   a payment dated Sept 1 carries September's interest, `111.69 / 333.31 → 5,519.63`, and a Sept 2
+   payment is principal only). The slack is the same as the check-in's week range and reporting's
+   months. The same dates may be **no earlier than 1900-01-01**: `-5000-01-01` parsed and reached
+   PostgreSQL as a `500`, and is now `400 validation-failed` naming the field. The web and phone
+   date pickers stop at the device's own today, so the slack is never offered, only accepted.
+   **The check-in's surplus keeps the server's date** (`balances.today()`, UTC), because the
+   completion request carries no date. Near a month boundary that can put the surplus in the
+   household's previous month. It is still charged by the one rule there, so no month is charged
+   twice. The month it lands in may be a day off the household's calendar, which is the same
+   accepted risk as reporting's months.
 
 **A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
 difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
@@ -829,7 +864,8 @@ which become dialogs on desktop with identical fields in identical order:
    connected account; not in slice 10** (slice 16). The *"and always"* answer is a standing rule,
    which is a `ChargeRule`-shaped idea and lands with the same slice.
 2. **Log it by hand** — prefilled with what is scheduled (*"Change the amount if you paid something
-   else"*), with `+$50` and `Other` as one-tap alternatives, a date, the account it was paid from,
+   else"*), with `+$50` (rung 1 only, decision 10) and `Other` as one-tap alternatives, a date
+   (no later than the device's today), the account it was paid from,
    the live split (*"$33.38 interest · $84.62 principal"*) and the resulting balance **shown before
    it is recorded**. This is the slice-10 path.
 3. **Confirm the estimate** — the estimate, what it assumed, what it was last confirmed at, and
@@ -1225,6 +1261,22 @@ bounded and these unbounded:
   interest, taken against today's balance.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
+- **The projection's month 1 is the server's UTC month.** A payment's own month follows the date
+  the household gave it (The split, rule 8), but which month a projection starts in, and so which
+  payments count as this month's (decision 10), comes from the application `Clock`. Near a month
+  boundary, a household well east or west of UTC will disagree with the server for up to about
+  fourteen hours about which month is current. For those hours the plan may count a payment dated
+  the 1st as next month's, or plan a month the household has already left. That is an accepted
+  risk and a house-wide fact (`reporting.md`, decision 10), and it moves a projection, never a
+  stored split.
+- **A payment back-dated before the anchor can say it carries interest that moves nothing.** The
+  balance is the anchor plus the payments dated on or after it (_The anchor is the figure as at
+  the start of its date_). A payment dated earlier is in the history but not in the balance, and
+  if its month has no other carrier its split takes that month's interest (`CARRIED` in the
+  preview). Both the interest and the principal are then outside the balance, so the balance is
+  unchanged either way; only the split on that history row reads as charged. Not changed, because
+  the alternative is a second rule for whether a month can be charged, keyed on the anchor, for a
+  row that affects no figure. A statement confirmation is the real answer to an old payment.
 
 ## Decisions
 
@@ -1335,6 +1387,35 @@ Decided on 2026-11-25, during implementation, and numbered after the eighth abov
     and the middle column was two months early because it kept the payment and dropped only the
     interest. The plan's total rises, because August's $260 of extra was already spent on the Visa
     and nothing more reaches the other debts this month.
+
+    **A debt paid off this month still counts.** It leaves the ladder's rungs, but what was paid to
+    it this month was spent from this month's amount. `PayoffPlanService.paidOutsideTheLadder`
+    sums it (unarchived, same currency, not in the plan) and the ladder takes it off month 1 apart
+    from the rungs (`PayoffLadder.project(…, paidOutsideTheRungs)`). Forgetting it handed the other
+    debts the whole month again (`MonthInterestIT.paying_a_debt_off_to_the_cent_still_counts…`,
+    `PayoffLadderTest.whatWasPaidToADebtThatLeftTheLadder…`). The check-in's what-if adds the
+    surplus's own debt to it when the surplus would clear that debt. That only moves the
+    debt-free month, which no screen shows yet, so it is covered by the same code path and not by
+    a test of its own.
+
+    **The consequence the owner accepted: an extra paid to the wrong debt makes the plan worse.**
+    Counted as paid, an extra logged to a debt below rung 1 is money the plan would have sent to
+    rung 1 this month, so the dearest debt gets less. Two debts on $500 a month, avalanche:
+
+    | $500/mo, 25% $5,000 (min $100) and 3% $5,000 (min $100) | 25% debt clears | Debt-free | Plan interest |
+    |---|---|---|---|
+    | Nothing extra this month | Oct 2027 | Jun 2028 | $1,053.16 |
+    | $300 extra logged to the 3% debt | **Nov 2027** | Jun 2028 | **$1,136.26** |
+    | $300 extra logged to the 25% debt | Oct 2027 | May 2028 | $911.56 |
+
+    That is true arithmetic about where the money went, so the plan says it rather than hiding it.
+    The opposite holds for the debt the plan would pay anyway: **an extra logged to rung 1 never
+    makes the plan later or dearer** (`PayoffLadderTest.anExtraLoggedToTheFirstRungNeverMakesThePlanLaterOrDearer`,
+    over random ladders and extras). So **the payment form's _"+$50 more"_ shortcut is offered on
+    rung 1 only**, on the web and the phone (`debt-detail.page.spec.ts`: "offers fifty more only on
+    the plan's first rung…", `debt_screens_test.dart`: "fifty more is offered on the plan's first
+    rung only"). Offering it on a lower rung would be the app suggesting a move that can make the
+    plan worse. Any amount can still be typed for any debt.
 
 ## Where the designs and the docs disagree
 
@@ -1488,14 +1569,17 @@ this is about it.
 - **Interest once per debt per month (ADR-0043).** `MonthInterestTest` is the rule as a unit:
   first, second, back-dated, another month, another debt, a month whose rows carry no interest,
   the payment being corrected, a zero rate, nothing owed, a payment smaller than the interest.
-  `DebtLockingIT` covers the locks on the other writers and the order a completion takes two
-  debts in. `MonthInterestIT` takes it through the API on a stopped clock: a second hand-logged payment, a
-  back-dated one, the next month, another debt, the preview (both answers, `paidDate`, a future
-  date refused), delete and re-book, a `PATCH` into a booked month, the check-in's bill prompt
+  `DebtLockingIT` covers the locks on the other writers, the order a completion and your own order
+  take debts in, the fresh read under the lock and the bounded wait. Its waits are scoped to the
+  test's own connections (`pg_blocking_pids` of the holder's `pg_backend_pid`), so another test's
+  backend cannot satisfy them. `MonthInterestIT` takes it through the API on a stopped clock: a
+  second hand-logged payment, a back-dated one, the next month, another debt, the preview (both
+  answers, `paidDate`, a future date refused), the 1st of a month dated east of UTC, a date before
+  1900, a debt paid off this month, delete and re-book, a `PATCH` into a booked month, the check-in's bill prompt
   after a hand-logged payment, the surplus after and before the regular payment (with "never
   later" and "no more interest in total"), and six concurrent writers. `PayoffLadderTest` and
   `DebtTermsSolverTest` cover a booked month 1, including the never-later property over random
-  surpluses. Every rule-carrying line was broken and seen to fail a named test, then restored from
+  surpluses and the same property for an extra logged to rung 1. Every rule-carrying line was broken and seen to fail a named test, then restored from
   git:
 
   | Broken | Failed |
@@ -1525,6 +1609,16 @@ this is about it.
   | `confirmBalance` without the lock | `DebtLockingIT.a_statement_and_a_payment…`: payment 1000→980 and correction 1000→950 |
   | The web form does not re-ask when the date changes | `debt-detail.page.spec.ts`: "asks again for the date chosen…" |
   | The phone sheet does not re-ask when a date is picked | `debt_screens_test.dart`: "a back-dated payment is previewed for its own month" |
+  | The latest date bounded at UTC, not UTC+14 | `MonthInterestIT.a_payment_dated_the_first_by_a_household_east_of_utc…`: `400` for Sept 1 at 23:00 UTC on Aug 31 |
+  | No earliest date | `MonthInterestIT.a_date_before_1900_is_refused…`: `500` for `-5000-01-01` |
+  | A debt paid off this month forgotten by month 1 | `MonthInterestIT.paying_a_debt_off_to_the_cent…` |
+  | The ladder ignores what was paid outside its rungs | `PayoffLadderTest.whatWasPaidToADebtThatLeftTheLadder…` |
+  | The lock taken by a `FOR UPDATE` query, without a fresh read | `DebtLockingIT.a_completion_decides_against_the_debt_as_it_is_once_locked…`: the completion answered `200` against a paid-off flag from before the wait |
+  | Your own order written in name order | `DebtLockingIT.setting_your_own_order_writes_the_debts_in_the_global_lock_order`: one side lost a deadlock (`409 record-busy`) |
+  | No lock timeout (`lock_timeout = 0`) | `DebtLockingIT.a_debt_held_too_long…`: still waiting after 15s |
+  | The lock-failure handler removed | `DebtLockingIT.a_debt_held_too_long…`: `500`, not `409` |
+  | _"+$50 more"_ on every rung, web · phone | `debt-detail.page.spec.ts`: "offers fifty more only on the plan's first rung…" · `debt_screens_test.dart`: "fifty more is offered on the plan's first rung only" |
+  | The web date picker not capped at today | `debt-detail.page.spec.ts`: "…and no date after today" |
 
 - **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
   - **Round-trip identity, stated exactly:** a *solved* field is a **fixed point** of the round

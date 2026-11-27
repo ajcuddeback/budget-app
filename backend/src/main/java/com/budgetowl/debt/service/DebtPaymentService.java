@@ -20,10 +20,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Currency;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +52,9 @@ import org.springframework.transaction.annotation.Transactional;
  *       rule for every writer — a hand-logged payment, a check-in's bill prompt and its surplus —
  *       because all of them build the row through {@link #draft}, and {@link MonthInterest} is the
  *       only place the decision is taken.
- *   <li><b>Writes to one debt are serialised</b> by a row lock on the debt ({@code
- *       DebtRepository.lockByIdAndHouseholdId}), so two payments recorded at once cannot both find
- *       the month unbooked, nor both take their split against the same balance.
+ *   <li><b>Writes to one debt are serialised</b> by a row lock on the debt ({@code DebtLocks}), so
+ *       two payments recorded at once cannot both find the month unbooked, nor both take their
+ *       split against the same balance.
  *   <li><b>The split is computed once and stored.</b> The principal takes the remainder of the
  *       interest, so {@code interest + principal = amount} exactly and no payment loses or invents
  *       a cent — and a payment in cents splits into two cent figures that each display exactly.
@@ -84,18 +82,21 @@ public class DebtPaymentService {
     private final DebtPaymentRepository payments;
     private final DebtBalanceService balances;
     private final DebtLinks links;
+    private final DebtLocks locks;
 
     public DebtPaymentService(
             MembershipService memberships,
             DebtRepository debts,
             DebtPaymentRepository payments,
             DebtBalanceService balances,
-            DebtLinks links) {
+            DebtLinks links,
+            DebtLocks locks) {
         this.memberships = memberships;
         this.debts = debts;
         this.payments = payments;
         this.balances = balances;
         this.links = links;
+        this.locks = locks;
     }
 
     /**
@@ -243,27 +244,16 @@ public class DebtPaymentService {
      * which records a bill prompt's payment against one debt and the surplus against another. Each
      * write takes its debt's row lock on its own ({@link #lock}), in whatever order the writes
      * come, and two transactions taking the same two debts in opposite orders deadlock. Taking them
-     * all here first, in the order {@link #lockOrder} gives, means every multi-debt writer waits
-     * rather than deadlocks. A debt that is not this household's, or no longer exists, is skipped:
-     * the write that names it answers for it.
+     * all here first, in the order {@link DebtLocks#lockOrder} gives, means every multi-debt writer
+     * waits rather than deadlocks. A debt that is not this household's, or no longer exists, is
+     * skipped: the write that names it answers for it.
      *
      * @throws org.springframework.transaction.IllegalTransactionStateException outside a
      *     transaction, where a lock is released at once and protects nothing
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockInOrder(UUID actorId, Collection<UUID> debtIds) {
-        UUID householdId = memberships.requireWriteAccess(actorId).household().id();
-        for (UUID debtId : lockOrder(debtIds)) {
-            debts.lockByIdAndHouseholdId(debtId, householdId);
-        }
-    }
-
-    /**
-     * The one order debt rows are locked in when more than one is: by the id's text, which is also
-     * PostgreSQL's order for a {@code uuid}. Distinct, so a debt named twice is locked once.
-     */
-    static List<UUID> lockOrder(Collection<UUID> debtIds) {
-        return debtIds.stream().distinct().sorted(Comparator.comparing(UUID::toString)).toList();
+        locks.lockInOrder(memberships.requireWriteAccess(actorId).household().id(), debtIds);
     }
 
     /**
@@ -604,10 +594,9 @@ public class DebtPaymentService {
                 .orElseThrow(() -> new NotFoundException("no such debt"));
     }
 
-    /** Resolved through the household and locked until the transaction ends — see the class. */
+    /** Resolved through the household, locked until the transaction ends and read fresh. */
     private Debt lock(UUID debtId, UUID householdId) {
-        return debts.lockByIdAndHouseholdId(debtId, householdId)
-                .orElseThrow(() -> new NotFoundException("no such debt"));
+        return locks.lock(debtId, householdId);
     }
 
     private DebtPayment requirePayment(UUID householdId, UUID debtId, UUID paymentId) {
@@ -615,20 +604,13 @@ public class DebtPaymentService {
                 .orElseThrow(() -> new NotFoundException("no such payment"));
     }
 
+    /**
+     * A payment's date: see {@link DebtDates}. Not before 1900, and not after today anywhere on
+     * Earth, so a household east of UTC can date a payment with its own today, and the month whose
+     * interest it carries is the household's month.
+     */
     private LocalDate requireNotInTheFuture(LocalDate date, String field) {
-        if (date == null) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED, "a date is required", Map.of("field", field));
-        }
-        if (date.isAfter(balances.today())) {
-            // A payment somebody intends to make is not a payment. The balance would move for a
-            // month that has not happened, and the audit trail would carry a future fact.
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "a payment cannot be dated in the future",
-                    Map.of("field", field));
-        }
-        return date;
+        return DebtDates.requirePlausible(date, field, balances.now());
     }
 
     /** See {@code AccountService.requireCurrentVersion} — the clear message, not the control. */

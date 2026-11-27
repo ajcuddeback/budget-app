@@ -1495,3 +1495,20 @@ machine you work on, also run `flutter config --no-analytics` and `dart --disabl
 ADR-0016: nothing we ship or run may report to a service on anyone's behalf.
 
 _Added 2026-11-27 — slice 15._
+
+## A locking query hands back the entity you already loaded, unlocked state and all
+
+**Symptom.** A check-in completion read its debts for the picture, then locked them with a Spring
+Data `@Lock(PESSIMISTIC_WRITE)` finder and decided against a paid-off flag from before the wait.
+The `SELECT … FOR UPDATE` did run and did wait. But the persistence context already held those
+entities, so Hibernate returned the managed instances as they were first loaded and threw away the
+fresh row.
+
+**What to do.** Lock by refreshing: find the entity through its household-scoped finder, then
+`entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE)`, which re-reads the row under the
+lock. `DebtLocks` does exactly that and also sets `SET LOCAL lock_timeout` so the wait is bounded.
+`em.lock(entity, PESSIMISTIC_WRITE)` is not a substitute on a `@Version` entity: it compares the
+version and fails with a stale-state error instead of reading the new state.
+`DebtLockingIT.a_completion_decides_against_the_debt_as_it_is_once_locked…` is the proof.
+
+_Added 2026-11-27 — ADR-0043, round 3._

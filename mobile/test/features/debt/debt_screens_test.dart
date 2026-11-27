@@ -125,6 +125,24 @@ void main() {
       expect(find.textContaining('Payment recorded'), findsOneWidget);
     });
 
+    testWidgets("fifty more is offered on the plan's first rung only", (tester) async {
+      // An extra logged against a cheaper debt counts as paid this month and comes out of what
+      // the first rung would have had (ADR-0043), so the sheet does not suggest one there.
+      final p = await detail(tester);
+      await p.tap('Log a payment');
+      await settlePreview(tester);
+      expect(find.text(r'$495.00'), findsOneWidget, reason: 'the Visa is rung 1');
+      Navigator.of(tester.element(find.text(r'$495.00'))).pop();
+      await tester.pumpAndSettle();
+
+      await p.tap('Next: Car loan');
+      await p.tap('Log a payment');
+      await settlePreview(tester);
+
+      expect(find.textContaining('what is scheduled'), findsOneWidget);
+      expect(find.text(r'$392.00'), findsNothing, reason: 'the car loan is rung 2');
+    });
+
     testWidgets('a back-dated payment is previewed for its own month', (tester) async {
       final p = await detail(tester);
 

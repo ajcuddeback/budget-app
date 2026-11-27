@@ -42,10 +42,15 @@ class LogPaymentSheet extends ConsumerStatefulWidget {
 class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
   final _form = GlobalKey<FormState>();
   late final String _scheduled = trimAmount(widget.debt.payment ?? widget.debt.minimumPayment);
-  late final String? _more = switch (addForQuery(_scheduled, '50')) {
-    final String sum => trimAmount(sum),
-    null => null,
-  };
+  // Fifty more, offered on the plan's first rung only: the plan already sends every extra pound
+  // there, and an extra logged against another debt is counted as paid this month (ADR-0043), so
+  // on a cheaper debt it makes the plan dearer. Any amount can still be typed.
+  late final String? _more = widget.debt.rung != 1
+      ? null
+      : switch (addForQuery(_scheduled, '50')) {
+          final String sum => trimAmount(sum),
+          null => null,
+        };
   late final _amount = TextEditingController(text: _scheduled);
   final _note = TextEditingController();
   late CalendarDate _paidDate = CalendarDate.of(ref.read(clockProvider)());
@@ -127,7 +132,9 @@ class _LogPaymentSheetState extends ConsumerState<LogPaymentSheet> {
       context: context,
       initialDate: _paidDate.forPicker,
       firstDate: DateTime(1970),
-      lastDate: DateTime(2100),
+      // The device's own today: a payment cannot be dated in the future, and the server accepts
+      // any date that is today somewhere on Earth, so the household's local date is always fine.
+      lastDate: ref.read(clockProvider)(),
     );
     if (picked != null) {
       setState(() => _paidDate = CalendarDate.of(picked));

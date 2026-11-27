@@ -102,6 +102,7 @@ public class DebtService {
     private final DebtBalanceService balances;
     private final PayoffPlanService plans;
     private final DebtLinks links;
+    private final DebtLocks locks;
 
     public DebtService(
             MembershipService memberships,
@@ -109,13 +110,15 @@ public class DebtService {
             DebtPaymentRepository payments,
             DebtBalanceService balances,
             PayoffPlanService plans,
-            DebtLinks links) {
+            DebtLinks links,
+            DebtLocks locks) {
         this.memberships = memberships;
         this.debts = debts;
         this.payments = payments;
         this.balances = balances;
         this.plans = plans;
         this.links = links;
+        this.locks = locks;
     }
 
     // ----------------------------------------------------------------------------------- debts
@@ -419,9 +422,7 @@ public class DebtService {
         Household household = membership.household();
         // Locked as every payment write is: the correction is taken against the derived balance,
         // and a payment logged in between would leave the anchor disagreeing with the statement.
-        Debt debt =
-                debts.lockByIdAndHouseholdId(debtId, household.id())
-                        .orElseThrow(() -> new NotFoundException("no such debt"));
+        Debt debt = locks.lock(debtId, household.id());
         Currency currency = debt.currency();
 
         Money confirmed =
@@ -1029,19 +1030,9 @@ public class DebtService {
         }
     }
 
+    /** A balance's date: see {@link DebtDates} — not before 1900, not after today anywhere. */
     private LocalDate requireNotInTheFuture(LocalDate date, String field) {
-        if (date == null) {
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED, "a date is required", Map.of("field", field));
-        }
-        if (date.isAfter(balances.today())) {
-            // A balance that was true tomorrow is not a balance anybody confirmed.
-            throw new InvalidRequestException(
-                    ErrorCode.VALIDATION_FAILED,
-                    "a date cannot be in the future",
-                    Map.of("field", field));
-        }
-        return date;
+        return DebtDates.requirePlausible(date, field, balances.now());
     }
 
     /**

@@ -1005,10 +1005,11 @@ class DebtIT extends ApiTestBase {
                                 """
                                 {"paidDate":"%s","amount":"445.0000"}
                                 """
-                                        .formatted(LocalDate.now(ZoneOffset.UTC).plusDays(1)));
+                                        .formatted(LocalDate.now(ZoneOffset.UTC).plusDays(2)));
 
         // A payment somebody intends to make is not a payment: the balance would move for a month
-        // that has not happened.
+        // that has not happened. Two days, not one: tomorrow by UTC can already be today in
+        // UTC+14, and a household there may date a payment with its own today (ADR-0043).
         assertThat(refused.status()).isEqualTo(400);
         assertThat(refused.body()).contains("paidDate");
     }

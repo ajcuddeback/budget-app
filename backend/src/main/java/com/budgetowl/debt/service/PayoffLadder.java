@@ -70,6 +70,23 @@ public final class PayoffLadder {
             Money monthlyAmount,
             List<LadderDebt> debts,
             YearMonth firstMonth) {
+        return project(
+                strategy, monthlyAmount, debts, firstMonth, Money.zero(monthlyAmount.currency()));
+    }
+
+    /**
+     * The same, counting {@code paidOutsideTheRungs} as already spent this month too: what was paid
+     * this month towards debts that are no longer in the ladder — one this month's payments cleared
+     * (ADR-0043, debt-plan.md decision 10). Without it, paying a debt off to the cent would hand
+     * the whole month's amount back to the plan, and paying it to within a cent would not.
+     */
+    public PayoffProjection project(
+            PayoffStrategy strategy,
+            Money monthlyAmount,
+            List<LadderDebt> debts,
+            YearMonth firstMonth,
+            Money paidOutsideTheRungs) {
+        Objects.requireNonNull(paidOutsideTheRungs, "paidOutsideTheRungs");
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(monthlyAmount, "monthlyAmount");
         Objects.requireNonNull(firstMonth, "firstMonth");
@@ -99,7 +116,7 @@ public final class PayoffLadder {
             return new PayoffProjection.None(Projection.Reason.BELOW_MINIMUMS);
         }
 
-        return run(order, monthlyAmount, firstMonth);
+        return run(order, monthlyAmount, firstMonth, paidOutsideTheRungs);
     }
 
     /**
@@ -161,14 +178,17 @@ public final class PayoffLadder {
      * one month stops that debt's interest a month earlier and can come out ahead.
      */
     private PayoffProjection run(
-            List<LadderDebt> order, Money monthlyAmount, YearMonth firstMonth) {
+            List<LadderDebt> order,
+            Money monthlyAmount,
+            YearMonth firstMonth,
+            Money paidOutsideTheRungs) {
         int count = order.size();
         Currency currency = monthlyAmount.currency();
         List<Money> owed = new ArrayList<>(count);
         List<Money> interestPaid = new ArrayList<>(count);
         List<YearMonth> payoffMonths = new ArrayList<>(count);
         List<List<ProjectionMonth>> rows = new ArrayList<>(count);
-        Money paidThisMonth = Money.zero(currency);
+        Money paidThisMonth = paidOutsideTheRungs;
         List<Money> deductions = new ArrayList<>(count);
         for (LadderDebt debt : order) {
             owed.add(debt.balance());

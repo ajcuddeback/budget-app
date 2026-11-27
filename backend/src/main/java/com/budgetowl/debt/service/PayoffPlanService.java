@@ -230,7 +230,12 @@ public class PayoffPlanService {
         for (Map.Entry<Currency, List<DebtFacts>> group : groupByCurrency(facts).entrySet()) {
             Money amount = groupAmount(plan, base, group.getKey(), group.getValue());
             PayoffProjection projection =
-                    ladder.project(strategy, amount, ladderDebts(group.getValue()), firstMonth());
+                    ladder.project(
+                            strategy,
+                            amount,
+                            ladderDebts(group.getValue()),
+                            firstMonth(),
+                            paidOutsideTheLadder(facts, group.getKey()));
             if (projection instanceof PayoffProjection.Ranked ranked) {
                 for (PayoffProjection.Rung rung : ranked.rungs()) {
                     allocations.put(
@@ -319,8 +324,9 @@ public class PayoffPlanService {
         Currency base = household.baseCurrency();
         PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
         PayoffStrategy strategy = strategyOf(plan);
+        List<DebtFacts> all = balances.factsFor(household.id(), false);
         List<DebtFacts> now = new ArrayList<>();
-        for (DebtFacts facts : balances.factsFor(household.id(), false)) {
+        for (DebtFacts facts : all) {
             if (facts.isInThePlan() && facts.debt().currency().equals(base)) {
                 now.add(facts);
             }
@@ -328,20 +334,28 @@ public class PayoffPlanService {
         if (now.isEmpty()) {
             return new OneOffPayoff(null, null, null, null);
         }
+        Money outside = paidOutsideTheLadder(all, base);
+        Money outsideWith = outside;
         List<DebtFacts> with = new ArrayList<>(now.size());
         for (DebtFacts facts : now) {
             if (!facts.id().equals(debtId)) {
                 with.add(facts);
             } else if (balanceAfter.isPositive()) {
                 with.add(facts.afterCheckInPayment(balanceAfter, booksTheMonth));
+            } else {
+                // Cleared by the payment, so it leaves the ladder — but what was already paid
+                // towards it this month was still spent this month.
+                outsideWith = outsideWith.plus(facts.firstMonthAt(firstMonth()).alreadyPaid());
             }
         }
         Money amount = groupAmount(plan, base, base, now);
-        PayoffProjection before = ladder.project(strategy, amount, ladderDebts(now), firstMonth());
+        PayoffProjection before =
+                ladder.project(strategy, amount, ladderDebts(now), firstMonth(), outside);
         PayoffProjection after =
                 with.isEmpty()
                         ? null
-                        : ladder.project(strategy, amount, ladderDebts(with), firstMonth());
+                        : ladder.project(
+                                strategy, amount, ladderDebts(with), firstMonth(), outsideWith);
         boolean clearedByIt = with.size() < now.size();
         return new OneOffPayoff(
                 payoffMonthOf(before, debtId),
@@ -396,7 +410,15 @@ public class PayoffPlanService {
             }
             boolean planCurrency = currency.equals(base);
             Money amount = planCurrency ? monthlyAmount : minimums;
-            groups.add(group(strategy, currency, planCurrency, amount, minimums, inCurrency));
+            groups.add(
+                    group(
+                            strategy,
+                            currency,
+                            planCurrency,
+                            amount,
+                            minimums,
+                            inCurrency,
+                            paidOutsideTheLadder(facts, currency)));
         }
         return new PlanView(
                 strategy.name(),
@@ -413,7 +435,8 @@ public class PayoffPlanService {
             boolean planCurrency,
             Money amount,
             Money minimums,
-            List<DebtFacts> inCurrency) {
+            List<DebtFacts> inCurrency,
+            Money paidOutside) {
         List<LadderDebt> ladderDebts = ladderDebts(inCurrency);
         Map<UUID, DebtFacts> byId = new HashMap<>();
         for (DebtFacts facts : inCurrency) {
@@ -424,7 +447,8 @@ public class PayoffPlanService {
         for (PayoffStrategy candidate :
                 List.of(PayoffStrategy.AVALANCHE, PayoffStrategy.SNOWBALL, strategy)) {
             runs.computeIfAbsent(
-                    candidate, named -> ladder.project(named, amount, ladderDebts, firstMonth()));
+                    candidate,
+                    named -> ladder.project(named, amount, ladderDebts, firstMonth(), paidOutside));
         }
 
         Money owed = Money.zero(currency);
@@ -619,8 +643,16 @@ public class PayoffPlanService {
             throw new NotFoundException("no such debt");
         }
 
-        boolean moved = false;
+        // Written in the global lock order (DebtLocks.lockOrder), not name order: each UPDATE
+        // takes the debt's row lock, and a writer taking several debts in another order could
+        // deadlock with a check-in completion taking the same ones (ADR-0043).
+        Map<UUID, Debt> byId = new HashMap<>();
         for (Debt debt : ours) {
+            byId.put(debt.id(), debt);
+        }
+        boolean moved = false;
+        for (UUID id : DebtLocks.lockOrder(byId.keySet())) {
+            Debt debt = byId.get(id);
             Integer position = positions.get(debt.id());
             if (!java.util.Objects.equals(debt.customOrder().orElse(null), position)) {
                 debt.placeAt(position);
@@ -674,6 +706,25 @@ public class PayoffPlanService {
                     .add(debt);
         }
         return grouped;
+    }
+
+    /**
+     * What was paid this month in {@code currency} towards debts that are not in the ladder — in
+     * practice, a debt this month's payments cleared. It was spent this month all the same, so
+     * month 1 counts it as paid (debt-plan.md decision 10). Archived debts are left out: the
+     * household took them out of the plan.
+     */
+    private Money paidOutsideTheLadder(List<DebtFacts> facts, Currency currency) {
+        YearMonth first = firstMonth();
+        Money paid = Money.zero(currency);
+        for (DebtFacts debt : facts) {
+            if (!debt.isInThePlan()
+                    && !debt.debt().isArchived()
+                    && debt.debt().currency().equals(currency)) {
+                paid = paid.plus(debt.firstMonthAt(first).alreadyPaid());
+            }
+        }
+        return paid;
     }
 
     private static Money totalMinimums(List<DebtFacts> facts) {

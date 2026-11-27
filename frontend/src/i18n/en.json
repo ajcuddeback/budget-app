@@ -46,6 +46,7 @@
   "error.last-owner": "A household must keep at least one owner. Make someone else an owner first.",
   "error.conflict": "That conflicts with a change made elsewhere. Reload the page and try again.",
   "error.stale-version": "Somebody else changed this while you were editing it. Nothing has been saved.",
+  "error.record-busy": "Someone else is changing this right now. Nothing has been saved — try again in a moment.",
   "error.account-not-empty": "This account has transactions recorded against it, so it cannot be deleted. Archive it instead — it keeps its history and disappears from your lists.",
   "error.account-currency-immutable": "This account's currency cannot be changed now that it has transactions. The amounts already recorded would mean something different.",
   "error.rate-limited": "Too many attempts. Wait {minutes} and try again.",

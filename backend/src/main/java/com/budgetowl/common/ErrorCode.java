@@ -214,6 +214,12 @@ public enum ErrorCode {
     CONFLICT("conflict", 409, "Conflict"),
 
     /**
+     * Another change to the same record is still in progress, or two changes deadlocked and this
+     * one was chosen to give way. Nothing was written; the same request can simply be sent again.
+     */
+    RECORD_BUSY("record-busy", 409, "Someone else is changing this right now"),
+
+    /**
      * All three of {@code apr}, {@code payment} and the horizon were entered.
      *
      * <p>One equation among four quantities has three degrees of freedom, so a third entered value

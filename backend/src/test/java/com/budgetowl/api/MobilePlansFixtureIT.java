@@ -372,6 +372,12 @@ class MobilePlansFixtureIT extends ApiTestBase {
                     "/api/debts/" + plans.id("deb-0001") + "/payments/preview",
                     "{\"amount\":\"" + amount + "\",\"paidDate\":\"2026-08-20\"}");
         }
+        // The car loan's sheet, which opens on its minimum and offers no fifty more: it is rung 2.
+        record.send(
+                owner,
+                "POST",
+                "/api/debts/" + plans.id("deb-0002") + "/payments/preview",
+                "{\"amount\":\"342\",\"paidDate\":\"2026-08-20\"}");
         // And back-dated into February, which has no payment: it would carry that month's interest.
         record.send(
                 owner,

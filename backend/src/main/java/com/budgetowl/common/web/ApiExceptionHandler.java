@@ -211,6 +211,33 @@ public class ApiExceptionHandler {
     }
 
     /**
+     * A row lock this request needed was not granted: another transaction held it past the lock
+     * timeout, or PostgreSQL broke a deadlock by rolling this one back.
+     *
+     * <p>A {@code 409 record-busy}, never a {@code 500}: nothing was written — the transaction
+     * rolled back whole — and the same request can be sent again. Debts take their row locks with a
+     * short timeout for exactly this (ADR-0043, {@code DebtLocks}). Both the Spring and the JPA
+     * forms are listed: a lock taken through the {@code EntityManager} directly, rather than a
+     * repository, is not translated into Spring's.
+     */
+    @ExceptionHandler({
+        org.springframework.dao.PessimisticLockingFailureException.class,
+        jakarta.persistence.PessimisticLockException.class,
+        jakarta.persistence.LockTimeoutException.class
+    })
+    ResponseEntity<Map<String, Object>> handleLockNotGranted(
+            RuntimeException exception, HttpServletRequest request) {
+        String correlationId = ApiProblem.newCorrelationId();
+        log(ErrorCode.RECORD_BUSY, correlationId, null);
+        return problem(
+                ApiProblem.of(
+                        ErrorCode.RECORD_BUSY,
+                        ApiProblem.instanceOf(request),
+                        Map.of(),
+                        correlationId));
+    }
+
+    /**
      * The database refused the write.
      *
      * <p>The only thing read out of the exception is the violated constraint's <em>name</em>, and

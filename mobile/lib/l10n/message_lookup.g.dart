@@ -974,6 +974,7 @@ String? lookupMessage(
     'error.payee-rule-limit-reached' => l.error_payee_rule_limit_reached,
     'error.rate-limited' => l.error_rate_limited(a('minutes')),
     'error.read-only-role' => l.error_read_only_role,
+    'error.record-busy' => l.error_record_busy,
     'error.reference' => l.error_reference(a('id')),
     'error.report-range-invalid' => l.error_report_range_invalid,
     'error.report-range-too-long' => l.error_report_range_too_long(a('maximumMonths')),

@@ -147,8 +147,16 @@ export class LogPaymentComponent {
    * button offers £495.00 and the field should then hold `495`, not `495.0000`. It fills a form
    * field rather than being sent anywhere — what reaches the server is the figure the household
    * submitted as their own.
+   *
+   * **Offered on the plan's first rung only.** The plan already sends every pound beyond the
+   * minimums to rung 1, and an extra logged against any other debt is counted as paid this month
+   * (ADR-0043), so it comes out of what rung 1 would have had: on a cheaper debt it makes the plan
+   * dearer. The household can still type any amount; the app just does not suggest that one.
    */
   protected readonly withExtra = computed(() => {
+    if (this.debt().rung !== 1) {
+      return null;
+    }
     const more = addAmounts([this.scheduled(), EXTRA_STEP]);
     return more === null ? null : trimAmount(more);
   });

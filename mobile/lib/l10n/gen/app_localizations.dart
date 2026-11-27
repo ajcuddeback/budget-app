@@ -5846,6 +5846,12 @@ abstract class AppLocalizations {
   /// **'Your role in this household is read-only.'**
   String get error_read_only_role;
 
+  /// Web en.json "error.record-busy".
+  ///
+  /// In en, this message translates to:
+  /// **'Someone else is changing this right now. Nothing has been saved — try again in a moment.'**
+  String get error_record_busy;
+
   /// Web en.json "error.reference".
   ///
   /// In en, this message translates to:

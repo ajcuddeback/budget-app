@@ -291,6 +291,106 @@ class MonthInterestIT extends CheckInTestBase {
                 .isLessThanOrEqualTo(interestBefore);
     }
 
+    // ------------------------------------------------------- the month boundary and dates
+
+    @Test
+    void a_payment_dated_the_first_by_a_household_east_of_utc_carries_the_new_months_interest() {
+        // 23:00 UTC on August 31st is already September 1st in Sydney. The household's own date is
+        // accepted — it is today somewhere on Earth — and so the payment is September's first
+        // and carries September's interest, rather than being refused into August, whose interest
+        // is already booked, which would leave September never charged.
+        ApiClient owner = augustHousehold().owner();
+        UUID visa = visa(owner);
+        log(owner, visa, "2026-08-05", "445.00");
+        at(Instant.parse("2026-08-31T23:00:00Z"));
+
+        ApiResponse asked =
+                preview(owner, visa, "{\"amount\":\"445.00\",\"paidDate\":\"2026-09-01\"}");
+        ApiResponse logged = log(owner, visa, "2026-09-01", "445.00");
+        ApiResponse tooLate =
+                owner.post(
+                        "/api/debts/" + visa + "/payments",
+                        "{\"paidDate\":\"2026-09-02\",\"amount\":\"10.00\"}");
+
+        assertThat(asked.status()).isEqualTo(200);
+        assertThat(asked.stringField("monthInterest")).isEqualTo("CARRIED");
+        assertThat(asked.stringField("interestMonth")).isEqualTo("2026-09");
+        // 5852.94 × 22.9 ÷ 1200 = 111.6936… → 111.69.
+        assertThat(split(logged)).isEqualTo("111.6900 333.3100 5519.6300");
+        assertThat(asked.stringField("balanceAfter")).isEqualTo(logged.stringField("balanceAfter"));
+        assertThat(tooLate.status())
+                .as("September 2nd is not yet today anywhere on Earth")
+                .isEqualTo(400);
+    }
+
+    @Test
+    void a_date_before_1900_is_refused_as_invalid_on_log_preview_and_correct() {
+        ApiClient owner = augustHousehold().owner();
+        UUID visa = visa(owner);
+        ApiResponse payment = log(owner, visa, "2026-08-05", "445.00");
+
+        for (String date : List.of("-5000-01-01", "1899-12-31")) {
+            ApiResponse logged =
+                    owner.post(
+                            "/api/debts/" + visa + "/payments",
+                            "{\"paidDate\":\"%s\",\"amount\":\"10.00\"}".formatted(date));
+            ApiResponse asked =
+                    preview(
+                            owner,
+                            visa,
+                            "{\"amount\":\"10.00\",\"paidDate\":\"%s\"}".formatted(date));
+            ApiResponse corrected =
+                    owner.patch(
+                            "/api/debts/" + visa + "/payments/" + payment.stringField("id"),
+                            "{\"paidDate\":\"%s\",\"version\":%d}"
+                                    .formatted(date, payment.numberField("version")));
+
+            for (ApiResponse refused : List.of(logged, asked, corrected)) {
+                assertThat(refused.status()).as(date + " " + refused.body()).isEqualTo(400);
+                assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+                assertThat(refused.body()).contains("paidDate");
+            }
+        }
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM debt_payments WHERE debt_id = ?",
+                                Long.class,
+                                visa))
+                .isEqualTo(1L);
+    }
+
+    // ----------------------------------------------- a debt paid off this month (decision 10)
+
+    @Test
+    void paying_a_debt_off_to_the_cent_still_counts_what_was_paid_this_month() {
+        // T $5,000 at 25%, S $600 at 0%, $500 a month. Paying S $599.99 this month counts as
+        // paid, so month 1 has nothing left to give T beyond its minimum. Paying the last cent
+        // clears S and takes it out of the ladder — and what was paid towards it was still spent
+        // this month. Before the fix the plan forgot it, handed T the whole $500 and the plan's
+        // interest fell by a hundred dollars for one cent.
+        ApiClient owner = augustHousehold().owner();
+        UUID t = createAugustDebt(owner, "T", "5000.00", "25.000", "100.00");
+        UUID s = createAugustDebt(owner, "S", "600.00", "0.000", "50.00");
+        long version = owner.get("/api/debt-plan").numberField("version");
+        ok(
+                owner.put(
+                        "/api/debt-plan",
+                        "{\"strategy\":\"AVALANCHE\",\"monthlyAmount\":\"500.00\",\"version\":%d}"
+                                .formatted(version)),
+                200);
+        log(owner, s, "2026-08-20", "599.99");
+        BigDecimal toTheCent = planInterest(owner);
+
+        log(owner, s, "2026-08-21", "0.01");
+        BigDecimal cleared = planInterest(owner);
+
+        assertThat(owner.get("/api/debts/" + s).body()).doesNotContain("\"paidOffAt\":null");
+        assertThat(cleared.subtract(toTheCent).abs())
+                .as("one cent paid changes the plan's interest by cents, not by a month of T's")
+                .isLessThan(new BigDecimal("1.00"));
+        assertThat(t).isNotNull();
+    }
+
     // --------------------------------------------------------------------- two at once
 
     @Test

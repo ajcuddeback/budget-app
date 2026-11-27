@@ -3061,6 +3061,25 @@
   }, {
     "state" : "plans",
     "method" : "POST",
+    "path" : "/api/debts/deb-0002/payments/preview",
+    "auth" : "owner",
+    "request" : {
+      "amount" : "342",
+      "paidDate" : "2026-08-20"
+    },
+    "status" : 200,
+    "body" : {
+      "currency" : "USD",
+      "interest" : "56.8000",
+      "principal" : "285.2000",
+      "balanceBefore" : "10650.0000",
+      "balanceAfter" : "10364.8000",
+      "monthInterest" : "CARRIED",
+      "interestMonth" : "2026-08"
+    }
+  }, {
+    "state" : "plans",
+    "method" : "POST",
     "path" : "/api/debts/deb-0001/payments/preview",
     "auth" : "owner",
     "request" : {

@@ -1,11 +1,9 @@
 package com.budgetowl.debt.persistence;
 
 import com.budgetowl.debt.domain.Debt;
-import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -39,21 +37,6 @@ public interface DebtRepository extends Repository<Debt, UUID> {
     void delete(Debt debt);
 
     Optional<Debt> findByIdAndHouseholdId(UUID id, UUID householdId);
-
-    /**
-     * The same row, locked {@code FOR UPDATE} until the transaction ends.
-     *
-     * <p><b>What serialises every write to one debt's payments.</b> A payment's split reads the
-     * debt's balance and whether its month's interest is already booked, then inserts a row that
-     * changes both (ADR-0043). Two members logging at the same moment would otherwise both read the
-     * month as unbooked and both be charged its interest, and both take their split against the
-     * same balance. Optimistic {@code @Version} does not help: neither write touches the debt row
-     * unless it settles it.
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select d from Debt d where d.id = :id and d.householdId = :householdId")
-    Optional<Debt> lockByIdAndHouseholdId(
-            @Param("id") UUID id, @Param("householdId") UUID householdId);
 
     /**
      * One household's debts, archived ones included or not.
