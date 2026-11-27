@@ -21,6 +21,7 @@ Backups, restores and upgrades. The operator's steps are in `userguide/installin
 deploy/backup.sh --out /mnt/backups/budgetowl [--age-recipient age1...] [--keep 14]
 deploy/restore.sh BACKUP [--replace] [--age-identity KEY]
 deploy/upgrade.sh --backup-dir /mnt/backups/budgetowl [--ref TAG]
+deploy/test-restore.sh BACKUP      # into a separate copy on :8481; --clean removes it
 ```
 
 All three run the database tools **inside the `db` container** over its local socket

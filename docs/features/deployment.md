@@ -96,7 +96,9 @@ backups features, not afterthoughts. This is that feature.
 17. **What came back is checked before it is used**: a Flyway history must exist, it must have no
     failed migration, and its schema must not be **newer** than the highest migration in this
     version's api image (read from the jar without starting it). A newer backup exits 5: this
-    version cannot run it, and migrations cannot be undone.
+    version cannot run it, and migrations cannot be undone. **If the image cannot be read, that is
+    also exit 5** (fail closed); `--skip-version-check` is the explicit override. An earlier
+    version failed open here under Compose 2.26, and the deploy check caught it.
 18. With `--replace`, a **safety backup** of the current database is taken with `backup.sh
     --label pre-restore` (optionally encrypted with `--safety-age-recipient` /
     `--safety-gpg-recipient`) **before** the swap. If it fails, nothing is replaced.
@@ -108,6 +110,11 @@ backups features, not afterthoughts. This is that feature.
     is safe: the grants always match this install's role, whatever the backup's was.
 21. It prints the number of people, households, accounts and transactions before and after, then
     starts the stack and waits for the api to be healthy. `--no-start` leaves it stopped.
+
+**Test restore (`deploy/test-restore.sh BACKUP`)** restores into a second Compose project,
+`budgetowl-restore-test`, on `127.0.0.1:8481`, beside the real instance. `--clean` removes it.
+The project name is fixed in the script, so neither the restore nor `--clean` can reach the real
+instance's volume. The operator never has to type a project name next to `down -v`.
 
 ### Upgrades: `deploy/upgrade.sh`
 
@@ -326,3 +333,16 @@ takes 90 s.
   docker-compose 2.26.1** against the host's daemon.
 - Not tested: `qm`, `pvesm`, `qm importdisk` and cloud-init on a real first boot, which depend on
   Proxmox VE and a real VM.
+- The Proxmox flags were written from general knowledge, with partial confirmation from search
+  results. `pve.proxmox.com` was not reachable from the sandbox: `--cicustom
+  user=<storage>:snippets/<file>` replaces `ciuser`/`sshkeys`, and `qm importdisk` is the older
+  form of `qm set --scsi0 <storage>:0,import-from=…`.
+
+**Found by testing, and fixed:**
+
+- Debian 13's `docker.io` only *Recommends* `docker-cli`, so with `--no-install-recommends` the
+  VM had no `docker` command. The bootstrap now names `docker-cli`.
+- Compose 2.26 does not accept `docker compose run --pull never`. `restore.sh`'s newer-backup check
+  read the resulting empty answer as "cannot tell" and went ahead with a schema-9999 backup. It
+  now finds the image another way and fails closed (rule 17).
+- `DB_APP_PASSWORD` set without `DB_APP_USER` makes the api fail on every start (Edge cases).
