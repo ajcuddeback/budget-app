@@ -2,12 +2,15 @@ import 'dart:typed_data';
 
 import 'package:budget_owl/app.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
+import 'package:budget_owl/core/http/user_trust.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
+import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../support/fixture_server.dart';
 import '../support/harness.dart';
@@ -18,7 +21,12 @@ import '../support/harness.dart';
 /// address is forgotten. The sockets half is user_trust_test.dart.
 void main() {
   const pinKey = 'budget_owl.server_ca_pin';
+  const nameKey = 'budget_owl.server_ca_name';
   final pinned = 'c1' * 32;
+  final pin = CaPin(pinned, subject: 'Rivera Household CA');
+  const sentence =
+      "Trusted through 'Rivera Household CA', a certificate authority installed on this "
+      'phone.';
 
   ProviderContainer containerFor(TestPhone phone) {
     final container = ProviderContainer(overrides: phone.overrides, retry: noRetry);
@@ -44,7 +52,7 @@ void main() {
   ) as AddressAccepted).address;
 
   test('connecting stores the pin the check chose, with the address, and applies it', () async {
-    final trust = _Trust(FixtureServer.load('demo', state: 'connect'), pinOnConnect: pinned);
+    final trust = _Trust(FixtureServer.load('demo', state: 'connect'), pinOnConnect: pin);
     final phone = TestPhone(server: trust);
     final c = containerFor(phone);
     await until<SessionNoServer>(c);
@@ -52,8 +60,13 @@ void main() {
 
     await c.read(sessionProvider.notifier).connect(testServer());
 
-    expect(phone.store.values, {'budget_owl.server': testServerOrigin, pinKey: pinned});
+    expect(phone.store.values, {
+      'budget_owl.server': testServerOrigin,
+      pinKey: pinned,
+      nameKey: 'Rivera Household CA',
+    });
     expect(trust.events, ['checkAndPin', 'pinTo null', 'pinTo $pinned']);
+    expect(c.read(pinnedCaProvider), pin, reason: 'S1: the screens are told which CA');
   });
 
   test('a server the system roots verify stores no pin at all', () async {
@@ -65,17 +78,21 @@ void main() {
     await c.read(sessionProvider.notifier).connect(testServer());
 
     expect(phone.store.values, {'budget_owl.server': testServerOrigin});
+    expect(c.read(pinnedCaProvider), isNull);
   });
 
   test('every start gives the transport its pin before anything is sent', () async {
     final trust = _Trust(FixtureServer.load('demo', state: 'demo'));
     final phone = TestPhone(server: trust)..signedIn('owner');
-    phone.store.values[pinKey] = pinned;
+    phone.store.values
+      ..[pinKey] = pinned
+      ..[nameKey] = 'Rivera\u202E Household CA';
     final c = containerFor(phone);
 
     await until<SessionSignedIn>(c);
 
     expect(trust.events.first, 'pinTo $pinned');
+    expect(c.read(pinnedCaProvider), pin, reason: 'its name cleaned again as it is read');
     expect(trust.events.where((e) => e.startsWith('fetch')).first, 'fetch /api/meta');
   });
 
@@ -104,6 +121,58 @@ void main() {
     await c.read(sessionProvider.notifier).signOut(forgetServer: true);
     expect(phone.store.values, isEmpty);
     expect(trust.events, contains('pinTo null'));
+    expect(c.read(pinnedCaProvider), isNull);
+  });
+
+  group('S1: the screens say which CA, and only when there is one', () {
+    TestPhone pinnedPhone({required bool signedIn}) {
+      final phone = TestPhone(
+        server: FixtureServer.load('demo', state: signedIn ? 'demo' : 'connect'),
+      );
+      if (signedIn) {
+        phone.signedIn('owner');
+      } else {
+        phone.connected();
+      }
+      phone.store.values
+        ..[pinKey] = pinned
+        ..[nameKey] = 'Rivera Household CA';
+      return phone;
+    }
+
+    testWidgets("the connect screen's choices", (tester) async {
+      await pumpApp(tester, pinnedPhone(signedIn: false));
+
+      expect(find.text('Connected to owl.example.test'), findsOneWidget);
+      expect(find.text(sentence), findsOneWidget);
+    });
+
+    testWidgets('More, under Server', (tester) async {
+      await pumpApp(tester, pinnedPhone(signedIn: true));
+      await tapVisible(tester, find.text('More').last);
+
+      final tile = find.ancestor(of: find.text(sentence), matching: find.byType(ListTile));
+      expect(tile, findsOneWidget);
+      expect(find.descendant(of: tile, matching: find.text('owl.example.test')), findsOneWidget);
+    });
+
+    testWidgets('a CA with no name is shown by its fingerprint', (tester) async {
+      final phone = pinnedPhone(signedIn: false);
+      phone.store.values.remove(nameKey);
+      await pumpApp(tester, phone);
+
+      expect(find.textContaining('fingerprint C1:C1:C1:C1:C1:C1:C1:C1…'), findsOneWidget);
+    });
+
+    testWidgets('a server the system roots verify: nothing extra', (tester) async {
+      await pumpApp(
+        tester,
+        TestPhone(server: FixtureServer.load('demo', state: 'connect'))..connected(),
+      );
+
+      expect(find.text('Connected to owl.example.test'), findsOneWidget);
+      expect(find.textContaining('Trusted through'), findsNothing);
+    });
   });
 }
 
@@ -112,11 +181,11 @@ final class _Trust implements ServerTrust {
   _Trust(this._server, {this.pinOnConnect});
 
   final FixtureServer _server;
-  final String? pinOnConnect;
+  final CaPin? pinOnConnect;
   final List<String> events = [];
 
   @override
-  Future<String?> checkAndPin(ServerAddress address) async {
+  Future<CaPin?> checkAndPin(ServerAddress address) async {
     events.add('checkAndPin');
     await ServerCheck(_server).check(address);
     return pinOnConnect;

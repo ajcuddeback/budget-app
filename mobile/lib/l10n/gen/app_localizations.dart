@@ -9673,6 +9673,18 @@ abstract class AppLocalizations {
   /// **'Transfer saved.'**
   String get transfers_updated;
 
+  /// Mobile only (l10n/mobile.en.json "trust.through").
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted through \'{name}\', a certificate authority installed on this phone.'**
+  String trust_through(String name);
+
+  /// Mobile only (l10n/mobile.en.json "trust.throughUnnamed").
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted through a certificate authority installed on this phone, fingerprint {fingerprint}.'**
+  String trust_throughUnnamed(String fingerprint);
+
   /// Web en.json "validation.amount".
   ///
   /// In en, this message translates to:

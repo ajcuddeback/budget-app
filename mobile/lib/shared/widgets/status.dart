@@ -2,7 +2,9 @@ import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/reachability.dart';
+import 'package:budget_owl/core/http/user_trust.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
+import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
 import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/l10n/gen/app_localizations.dart';
@@ -174,6 +176,31 @@ bool canWriteNow(WidgetRef ref) => ref.watch(reachabilityProvider).canWrite;
 /// Why writes are off, in a sentence: offline, or the server's version not yet confirmed.
 String writesOffText(AppLocalizations l, Reachability reachability) =>
     reachability == Reachability.unconfirmed ? l.offline_versionUnconfirmed : l.offline_write;
+
+/// Which certificate authority installed on this phone the server is trusted through (S1): its
+/// name, or — when its certificate names none — the start of its fingerprint. Only for a server
+/// pinned to a user CA; a server the system roots verify gets no sentence at all.
+String trustedThroughText(AppLocalizations l, CaPin pin) {
+  final name = pin.subject;
+  if (name != null) return l.trust_through(name);
+  final pairs = [for (var i = 0; i < 16; i += 2) pin.fingerprint.substring(i, i + 2).toUpperCase()];
+  return l.trust_throughUnnamed('${pairs.join(':')}…');
+}
+
+/// The sentence above, quiet, under the server it is about. Nothing when there is no pin.
+class TrustedThroughNote extends ConsumerWidget {
+  const TrustedThroughNote({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pin = ref.watch(pinnedCaProvider);
+    if (pin == null) return const SizedBox.shrink();
+    return Text(
+      trustedThroughText(context.l10n, pin),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
+    );
+  }
+}
 
 /// The note under a disabled write control, saying why it is disabled.
 class OfflineNote extends ConsumerWidget {

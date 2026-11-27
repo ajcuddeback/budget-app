@@ -7,6 +7,7 @@ import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/api_client.dart';
 import 'package:budget_owl/core/http/http_adapter.dart';
 import 'package:budget_owl/core/http/reachability.dart';
+import 'package:budget_owl/core/http/user_trust.dart';
 import 'package:budget_owl/core/json/json.dart';
 import 'package:budget_owl/core/server/server_address.dart';
 import 'package:budget_owl/core/server/server_check.dart';
@@ -168,8 +169,9 @@ final class SessionController extends Notifier<SessionState> {
     }
     // Trust only what this server was pinned to when it was connected to (Android): the system
     // roots, plus its one user CA while that is still on the phone. Before anything is sent to it.
-    final trust = serverTrustOf(ref.read(httpAdapterProvider));
-    if (trust != null) trust.pinTo(await _servers.readCaPin());
+    final pin = await _servers.readCaPin();
+    serverTrustOf(ref.read(httpAdapterProvider))?.pinTo(pin?.fingerprint);
+    ref.read(pinnedCaProvider.notifier).set(pin);
     ref.read(currentServerProvider.notifier).set(server);
     // Only a token this server issued (audit L3). Anything another origin's token left behind —
     // the cache and its key — goes with it (audit N2). **No token at all means the same** (R1): a
@@ -324,7 +326,7 @@ final class SessionController extends Notifier<SessionState> {
     // through from now on: none when the system roots verify it, else the one that does (pinned).
     final transport = ref.read(httpAdapterProvider);
     final trust = serverTrustOf(transport);
-    String? caPin;
+    CaPin? caPin;
     if (trust != null) {
       caPin = await trust.checkAndPin(address);
     } else {
@@ -332,7 +334,10 @@ final class SessionController extends Notifier<SessionState> {
     }
     await _local.wipe(forgetServer: true);
     await _servers.save(address, caPin: caPin);
-    trust?.pinTo(caPin);
+    trust?.pinTo(caPin?.fingerprint);
+    // Said on the Connect screen's choices and under More → Server, so a CA the person does not
+    // recognise can be noticed (S1): the pin is trust-on-first-use.
+    ref.read(pinnedCaProvider.notifier).set(caPin);
     ref.read(currentServerProvider.notifier).set(address);
     // The check above was this server's, this launch: writes (sign-in, setup, join) may follow.
     _gate.confirmVersion();

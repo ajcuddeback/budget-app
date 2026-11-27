@@ -8478,6 +8478,24 @@
   "@transfers_updated": {
     "description": "Web en.json \"transfers.updated\"."
   },
+  "trust_through": "Trusted through '{name}', a certificate authority installed on this phone.",
+  "@trust_through": {
+    "description": "Mobile only (l10n/mobile.en.json \"trust.through\").",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "trust_throughUnnamed": "Trusted through a certificate authority installed on this phone, fingerprint {fingerprint}.",
+  "@trust_throughUnnamed": {
+    "description": "Mobile only (l10n/mobile.en.json \"trust.throughUnnamed\").",
+    "placeholders": {
+      "fingerprint": {
+        "type": "String"
+      }
+    }
+  },
   "validation_amount": "Enter an amount using digits and a dot, like 1250.00 or -400.",
   "@validation_amount": {
     "description": "Web en.json \"validation.amount\"."

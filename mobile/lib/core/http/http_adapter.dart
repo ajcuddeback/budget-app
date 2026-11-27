@@ -47,10 +47,10 @@ HttpClient _httpClient(SecurityContext? context) => HttpClient(context: context)
 /// A transport that decides, per server, which user-installed CA — if any — it trusts.
 abstract interface class ServerTrust implements HttpClientAdapter {
   /// The connect-time `GET /api/meta` check of [address], which also decides its trust: null when
-  /// the system roots verify it (no user CA is ever added for it), or the fingerprint of the one
-  /// user CA that does. Throws the check's [ConnectFailure] otherwise, "not trusted" when no CA
+  /// the system roots verify it (no user CA is ever added for it), or the one user CA that does —
+  /// its fingerprint, and its name for the screen (S1). Throws the check's [ConnectFailure] otherwise, "not trusted" when no CA
   /// on the phone verifies it. Nothing is changed: the caller stores the answer and [pinTo]s it.
-  Future<String?> checkAndPin(ServerAddress address);
+  Future<CaPin?> checkAndPin(ServerAddress address);
 
   /// From now on, trust the system roots and, while it is on the phone, the CA [fingerprint] names.
   /// Null — or anything that is not a fingerprint — is the system roots only.
@@ -127,7 +127,7 @@ final class PhoneTrustAdapter implements ServerTrust {
   }
 
   @override
-  Future<String?> checkAndPin(ServerAddress address) async {
+  Future<CaPin?> checkAndPin(ServerAddress address) async {
     await _pending;
     final bySystem = await _probe(address, null);
     if (bySystem == null) return null;
@@ -137,7 +137,9 @@ final class PhoneTrustAdapter implements ServerTrust {
     // API) is that failure, said as such.
     for (final candidate in _store) {
       final failure = await _probe(address, candidate);
-      if (failure == null) return fingerprintOf(candidate);
+      if (failure == null) {
+        return CaPin(fingerprintOf(candidate), subject: caDisplayName(candidate));
+      }
       if (failure.problem != ConnectProblem.certificateUntrusted) throw failure;
     }
     throw bySystem;

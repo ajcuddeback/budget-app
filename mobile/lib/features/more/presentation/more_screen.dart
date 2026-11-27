@@ -1,7 +1,9 @@
 import 'package:budget_owl/core/l10n/l10n.dart';
 import 'package:budget_owl/core/routing/destinations.dart';
+import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/session/session.dart';
 import 'package:budget_owl/core/theme/app_theme.dart';
+import 'package:budget_owl/core/theme/tokens.dart';
 import 'package:budget_owl/shared/widgets/screen.dart';
 import 'package:budget_owl/shared/widgets/status.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,7 +41,17 @@ class MoreScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.dns_outlined),
               title: Text(server.display),
-              subtitle: Text(l.more_changeServer),
+              // Beside the address: the CA on this phone it is trusted through, if any (S1).
+              subtitle: ref.watch(pinnedCaProvider) == null
+                  ? Text(l.more_changeServer)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const TrustedThroughNote(),
+                        const SizedBox(height: SpaceTokens.s1),
+                        Text(l.more_changeServer),
+                      ],
+                    ),
               onTap: () async {
                 final confirmed = await confirmAction(
                   context,
