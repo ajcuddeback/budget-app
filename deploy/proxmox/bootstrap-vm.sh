@@ -49,9 +49,10 @@ export DEBIAN_FRONTEND=noninteractive
 say "1. Docker Engine, Compose, and the tools the deploy scripts use"
 # Debian's own packages: signed by the Debian archive key the image already trusts, and kept
 # patched by the security updates below. No third-party apt repository, no key to pin.
+# docker-cli is its own package in Debian 13 and only a Recommends of docker.io, so it is named.
 apt-get update -q
 apt-get install -y -q --no-install-recommends \
-  docker.io docker-compose docker-buildx \
+  docker.io docker-cli docker-compose docker-buildx \
   git openssl age ca-certificates curl nftables qemu-guest-agent unattended-upgrades \
   apt-listchanges
 docker compose version >/dev/null || { echo "docker compose is not available" >&2; exit 1; }
