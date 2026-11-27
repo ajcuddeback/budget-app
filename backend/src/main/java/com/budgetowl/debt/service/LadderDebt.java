@@ -27,6 +27,9 @@ import java.util.UUID;
  * @param customOrder the household's position for this debt under {@link PayoffStrategy#CUSTOM}, or
  *     null for a debt it has not placed. Ignored by the two named strategies, which derive the
  *     order from the numbers
+ * @param firstMonthInterestBooked the plan's first month is the current one, and a payment recorded
+ *     in it already carried its interest, so the ladder charges this debt none in month 1 —
+ *     interest is charged once per debt per month (ADR-0043)
  */
 public record LadderDebt(
         UUID id,
@@ -34,7 +37,19 @@ public record LadderDebt(
         Money balance,
         BigDecimal apr,
         Money minimumPayment,
-        Integer customOrder) {
+        Integer customOrder,
+        boolean firstMonthInterestBooked) {
+
+    /** A debt whose first month has not had its interest charged yet: the ordinary case. */
+    public LadderDebt(
+            UUID id,
+            String name,
+            Money balance,
+            BigDecimal apr,
+            Money minimumPayment,
+            Integer customOrder) {
+        this(id, name, balance, apr, minimumPayment, customOrder, false);
+    }
 
     public LadderDebt {
         Objects.requireNonNull(id, "id");

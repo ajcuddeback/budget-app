@@ -33,13 +33,18 @@ import java.util.Objects;
  * @param firstPaymentMonth the month the projection's first period starts in — the debt's next
  *     payment date. Not one of the four quantities: it is the anchor that turns a month count into
  *     a payoff month and back
+ * @param firstMonthInterestBooked the first month's interest is already in {@code balance}, because
+ *     a payment recorded in that month carried it — interest is charged once per debt per month
+ *     (ADR-0043), so month 1 is charged none. Only ever true when month 1 is the current month;
+ *     false for a pure calculation that reads no household data
  */
 public record DebtTerms(
         Money balance,
         BigDecimal apr,
         Money payment,
         Horizon horizon,
-        YearMonth firstPaymentMonth) {
+        YearMonth firstPaymentMonth,
+        boolean firstMonthInterestBooked) {
 
     public DebtTerms {
         Objects.requireNonNull(balance, "balance");
@@ -47,6 +52,16 @@ public record DebtTerms(
         if (payment != null && !payment.currency().equals(balance.currency())) {
             throw new CurrencyMismatchException(balance.currency(), payment.currency());
         }
+    }
+
+    /** Terms whose first month has not had its interest charged yet: the ordinary case. */
+    public DebtTerms(
+            Money balance,
+            BigDecimal apr,
+            Money payment,
+            Horizon horizon,
+            YearMonth firstPaymentMonth) {
+        this(balance, apr, payment, horizon, firstPaymentMonth, false);
     }
 
     /** A debt with no plan and no entered horizon: the horizon is the solve target. */
@@ -71,15 +86,23 @@ public record DebtTerms(
     }
 
     public DebtTerms withApr(BigDecimal solvedApr) {
-        return new DebtTerms(balance, solvedApr, payment, horizon, firstPaymentMonth);
+        return new DebtTerms(
+                balance, solvedApr, payment, horizon, firstPaymentMonth, firstMonthInterestBooked);
     }
 
     public DebtTerms withPayment(Money solvedPayment) {
-        return new DebtTerms(balance, apr, solvedPayment, horizon, firstPaymentMonth);
+        return new DebtTerms(
+                balance, apr, solvedPayment, horizon, firstPaymentMonth, firstMonthInterestBooked);
     }
 
     public DebtTerms withHorizon(Horizon solvedHorizon) {
-        return new DebtTerms(balance, apr, payment, solvedHorizon, firstPaymentMonth);
+        return new DebtTerms(
+                balance, apr, payment, solvedHorizon, firstPaymentMonth, firstMonthInterestBooked);
+    }
+
+    /** The same terms, with month 1's interest already booked or not (ADR-0043). */
+    public DebtTerms withFirstMonthInterestBooked(boolean booked) {
+        return new DebtTerms(balance, apr, payment, horizon, firstPaymentMonth, booked);
     }
 
     /** The horizon's second face, or null when there is no horizon to show. */

@@ -229,6 +229,22 @@ public class DebtPayment implements HouseholdOwned {
         apply(corrected, Money.of(interest, currency), Money.of(balanceBefore(), currency));
     }
 
+    /**
+     * Makes the payment principal only, keeping its amount and the balance it was taken against.
+     *
+     * <p>For one case only: a correction moves this payment into a month whose interest another
+     * payment already carries. Interest is charged once per debt per month (ADR-0043), and a
+     * payment logged into that month would have been principal only, so a payment moved there is
+     * too — otherwise the month would be charged twice.
+     */
+    public void carryNoInterest(Currency currency) {
+        Objects.requireNonNull(currency, "currency");
+        apply(
+                Money.of(amount, currency),
+                Money.zero(currency),
+                Money.of(balanceBefore(), currency));
+    }
+
     /** Links the payment to the real movement, or clears the link. Evidence, not authority. */
     public void settledBy(UUID newTransactionId) {
         this.transactionId = newTransactionId;

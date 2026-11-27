@@ -12,10 +12,12 @@ import com.budgetowl.debt.domain.DebtPayment;
 import com.budgetowl.debt.domain.PaymentProvenance;
 import com.budgetowl.debt.persistence.DebtPaymentRepository;
 import com.budgetowl.debt.persistence.DebtRepository;
+import com.budgetowl.debt.persistence.MonthInterestRow;
 import com.budgetowl.household.domain.Household;
 import com.budgetowl.household.domain.HouseholdMember;
 import com.budgetowl.household.service.MembershipService;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
@@ -40,13 +42,21 @@ import org.springframework.transaction.annotation.Transactional;
  * account balance that is too high — the same gap bills have, for the same reason, and it is
  * visible rather than hidden.
  *
- * <p>Four rules are specific to this service:
+ * <p>Five rules are specific to this service:
  *
  * <ul>
- *   <li><b>The split is computed once and stored.</b> {@code interest = round(balance × apr ÷ 100 ÷
- *       12, minor unit, HALF_EVEN)} at the time, the principal takes the remainder, so {@code
- *       interest + principal = amount} exactly and no payment loses or invents a cent — and a
- *       payment in cents splits into two cent figures that each display exactly.
+ *   <li><b>Interest is charged once per debt per calendar month</b> (ADR-0043). The first payment
+ *       recorded for a debt in a month, by its date, carries {@code round(balance × apr ÷ 100 ÷ 12,
+ *       minor unit, HALF_EVEN)}; every further payment dated in that month is all principal. One
+ *       rule for every writer — a hand-logged payment, a check-in's bill prompt and its surplus —
+ *       because all of them build the row through {@link #draft}, and {@link MonthInterest} is the
+ *       only place the decision is taken.
+ *   <li><b>Writes to one debt are serialised</b> by a row lock on the debt ({@code
+ *       DebtRepository.lockByIdAndHouseholdId}), so two payments recorded at once cannot both find
+ *       the month unbooked, nor both take their split against the same balance.
+ *   <li><b>The split is computed once and stored.</b> The principal takes the remainder of the
+ *       interest, so {@code interest + principal = amount} exactly and no payment loses or invents
+ *       a cent — and a payment in cents splits into two cent figures that each display exactly.
  *   <li><b>A correction keeps the interest.</b> Recomputing it against today's rate would rewrite
  *       history to agree with the present.
  *   <li><b>Overpaying is not clamped.</b> A payment whose principal exceeds the balance takes it
@@ -141,7 +151,7 @@ public class DebtPaymentService {
             UUID actorId, UUID debtId, NewDebtPayment requested, Currency expected) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
-        Debt debt = require(debtId, household.id());
+        Debt debt = lock(debtId, household.id());
         if (expected != null && !expected.equals(debt.currency())) {
             throw new IllegalArgumentException("the amount is not in the debt's currency");
         }
@@ -154,7 +164,7 @@ public class DebtPaymentService {
                 AmountText.parse(requested.amount(), currency, AmountText.Sign.POSITIVE, "amount");
         LocalDate paidDate = requireNotInTheFuture(requested.paidDate(), "paidDate");
 
-        DebtPayment payment = draft(debt, paidDate, amount);
+        DebtPayment payment = draft(debt, paidDate, amount, PaymentProvenance.USER_LOGGED).row();
         payment.annotate(requested.note());
         if (requested.transactionId() != null) {
             payment.settledBy(link(requested.transactionId(), household.id(), payment.id()));
@@ -187,9 +197,15 @@ public class DebtPaymentService {
      * Records a completed weekly check-in's surplus against a debt, dated today, with provenance
      * {@code CHECK_IN} (docs/features/weekly-check-in.md, decision 5).
      *
-     * <p><b>The same path as {@link #log}</b>: the role first, the debt through the household, the
-     * paid-off refusal, the shared cap, the same {@link #draft} split and the same
+     * <p><b>The same path as {@link #log}</b>: the role first, the debt through the household and
+     * locked, the paid-off refusal, the shared cap, the same {@link #draft} split and the same
      * settle-or-reopen. Nothing moves at a bank; this is a plan record (ADR-0035).
+     *
+     * <p><b>No special case for its interest.</b> Slice 14 recorded the surplus principal-only,
+     * keyed on this provenance, because the split then charged every payment a month of interest.
+     * Under ADR-0043 it follows the general rule: principal only when the month's interest is
+     * already booked, and carrying it when the surplus is the month's first payment — in which case
+     * the regular payment later that month is all principal, so the month is still charged once.
      *
      * @throws ConflictException {@code debt-paid-off}, or {@code conflict} at the payment cap
      */
@@ -197,13 +213,14 @@ public class DebtPaymentService {
     public DebtPaymentView logFromCheckIn(UUID actorId, UUID debtId, Money amount) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
-        Debt debt = require(debtId, household.id());
+        Debt debt = lock(debtId, household.id());
         requireNotSettled(debt);
         requireRoomForAPayment(payments, household.id(), debt.id());
         if (!amount.currency().equals(debt.currency()) || !amount.isPositive()) {
             throw new IllegalArgumentException("a check-in pays a positive amount in the debt's");
         }
-        DebtPayment saved = save(draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN));
+        DebtPayment saved =
+                save(draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN).row());
         settleOrReopen(debt);
         log.info(
                 "debt payment recorded from a check-in householdId={} debtId={} paymentId={}"
@@ -238,20 +255,39 @@ public class DebtPaymentService {
      * <p>The stored interest stands and the principal takes the difference — see {@code
      * PaymentChanges}. A household editing its own payment record is not an attack; it is the
      * feature.
+     *
+     * <p><b>One exception, so a month is never charged twice</b> (ADR-0043): moving a payment that
+     * carries interest into another month whose interest a different payment already carries makes
+     * it principal only, exactly as a payment logged there would have been. The month it left is
+     * then unbooked, and the next payment recorded in that month books it, as after a delete.
+     * Moving a principal-only payment never gives it interest: that would be a split taken against
+     * a balance from another day.
      */
     @Transactional
     public DebtPaymentView correct(
             UUID actorId, UUID debtId, UUID paymentId, PaymentChanges changes) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
-        Debt debt = require(debtId, household.id());
+        Debt debt = lock(debtId, household.id());
         DebtPayment payment = requirePayment(household.id(), debt.id(), paymentId);
         Currency currency = debt.currency();
 
         requireCurrentVersion(payment.version(), changes.version());
 
         if (changes.paidDate() != null) {
-            payment.on(requireNotInTheFuture(changes.paidDate(), "paidDate"));
+            LocalDate moved = requireNotInTheFuture(changes.paidDate(), "paidDate");
+            YearMonth into = YearMonth.from(moved);
+            boolean leavesItsMonth = !into.equals(YearMonth.from(payment.paidDate()));
+            payment.on(moved);
+            if (leavesItsMonth
+                    && payment.interest().signum() != 0
+                    && MonthInterest.isBooked(
+                            debt.id(),
+                            into,
+                            rowsIn(household.id(), debt.id(), into),
+                            payment.id())) {
+                payment.carryNoInterest(currency);
+            }
         }
         if (changes.amount() != null) {
             payment.correctAmount(
@@ -298,12 +334,18 @@ public class DebtPaymentService {
      *
      * <p>The balance moves back, because it was derived from this row and no other. Nothing in the
      * ledger is touched: a payment that named a transaction was pointing at it, not owning it.
+     *
+     * <p><b>Deleting the payment that carried a month's interest un-books that month</b>
+     * (ADR-0043). The other payments in it keep their stored principal-only splits — history is not
+     * rewritten — and the next payment recorded in that month carries the interest again. If none
+     * is, the month stands uncharged until a statement says otherwise, and the confirmation's
+     * correction row is where the difference shows. It is never charged twice.
      */
     @Transactional
     public void delete(UUID actorId, UUID debtId, UUID paymentId) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         UUID householdId = membership.household().id();
-        Debt debt = require(debtId, householdId);
+        Debt debt = lock(debtId, householdId);
         payments.delete(requirePayment(householdId, debt.id(), paymentId));
         settleOrReopen(debt);
         log.info(
@@ -334,7 +376,8 @@ public class DebtPaymentService {
      * a write a {@code VIEWER} is refused. It exists only to serve the log-a-payment sheet, which a
      * {@code VIEWER} never sees, so least privilege costs nobody anything. The split is taken
      * against today's balance whatever date the payment will carry, exactly as {@code log} does (a
-     * known gap, recorded in the feature doc).
+     * known gap, recorded in the feature doc). <b>Whether it carries a month's interest is decided
+     * for {@code paidDate}'s month</b>, today's when none is given, by the same rule logging uses.
      *
      * @throws com.budgetowl.common.ForbiddenException for a {@code VIEWER}
      * @throws NotFoundException if the debt is not this household's
@@ -342,76 +385,95 @@ public class DebtPaymentService {
      */
     @Transactional(readOnly = true)
     public PaymentPreview preview(UUID actorId, UUID debtId, String amountText) {
+        return preview(actorId, debtId, amountText, null);
+    }
+
+    /**
+     * The same, for a payment dated {@code paidDate} — today when null.
+     *
+     * @throws InvalidRequestException for a date in the future, as logging would be
+     */
+    @Transactional(readOnly = true)
+    public PaymentPreview preview(
+            UUID actorId, UUID debtId, String amountText, LocalDate paidDate) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Debt debt = require(debtId, membership.household().id());
         requireNotSettled(debt);
 
         Currency currency = debt.currency();
         Money amount = AmountText.parse(amountText, currency, AmountText.Sign.POSITIVE, "amount");
-        DebtPayment unsaved = draft(debt, balances.today(), amount);
-        return new PaymentPreview(
-                Money.of(unsaved.interest(), currency),
-                Money.of(unsaved.principal(), currency),
-                Money.of(unsaved.balanceBefore(), currency),
-                Money.of(unsaved.balanceAfter(), currency));
+        LocalDate date =
+                paidDate == null ? balances.today() : requireNotInTheFuture(paidDate, "paidDate");
+        return previewOf(draft(debt, date, amount, PaymentProvenance.USER_LOGGED), currency);
     }
 
     /**
-     * The balance a payment of {@code amount} would leave, built by {@link #draft} and discarded:
-     * the weekly check-in's debt choice, which every member reads. <b>Membership, not write
-     * access</b>, unlike {@link #preview}: the amount is the server's own surplus, never a figure a
-     * caller supplied, so a {@code VIEWER} reading the week learns nothing they could not already
-     * read on the debt's page.
+     * What a check-in payment of {@code amount} today would record, built by {@link #draft} and
+     * discarded: the weekly check-in's debt choice, which every member reads. <b>Membership, not
+     * write access</b>, unlike {@link #preview}: the amount is the server's own surplus, never a
+     * figure a caller supplied, so a {@code VIEWER} reading the week learns nothing they could not
+     * already read on the debt's page.
+     *
+     * <p>The split is the general one (ADR-0043): when the surplus would be the month's first
+     * payment it carries the month's interest, and the preview says so, so the plan's projection
+     * after it can leave that month's interest out rather than charge it a second time.
      */
     @Transactional(readOnly = true)
-    public Money balanceAfterCheckInPayment(UUID actorId, UUID debtId, Money amount) {
+    public PaymentPreview previewCheckInPayment(UUID actorId, UUID debtId, Money amount) {
         HouseholdMember membership = memberships.requireMembership(actorId);
         Debt debt = require(debtId, membership.household().id());
-        return Money.of(
-                draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN).balanceAfter(),
-                debt.currency());
+        return previewOf(
+                draft(debt, balances.today(), amount, PaymentProvenance.CHECK_IN), debt.currency());
     }
 
     // ------------------------------------------------------------------------------- internals
 
     /**
-     * The row logging {@code amount} against this debt right now would write — built, never saved.
+     * The row logging {@code amount} against this debt would write — built, never saved — and why
+     * it carries the interest it does.
      *
-     * <p>The single place a payment's split is decided. {@link #log} saves what this returns and
-     * {@link #preview} reads it and discards it, so the figure a household is shown before it
-     * commits is the figure it gets after.
+     * <p>The single place a payment's split is decided, for every writer: {@link #log} (by hand,
+     * and the check-in's bill prompt), {@link #logFromCheckIn}, and both previews. {@link
+     * MonthInterest#decide} takes the decision from the debt's stored payments in {@code
+     * paidDate}'s month, so the figure a household is shown before it commits is the figure it gets
+     * after. A writer holds the debt's row lock before calling this.
      */
-    private DebtPayment draft(Debt debt, LocalDate paidDate, Money amount) {
-        return draft(debt, paidDate, amount, PaymentProvenance.USER_LOGGED);
-    }
-
-    private DebtPayment draft(
+    private Drafted draft(
             Debt debt, LocalDate paidDate, Money amount, PaymentProvenance provenance) {
         DebtFacts facts = balances.factsFor(debt);
         Money balanceBefore = facts.balance();
-        // A check-in's surplus is an EXTRA payment, on top of the month the plan already pays and
-        // whose interest that payment carries. Charging it a second month of interest made paying
-        // $63 more move a 22.9% card's payoff month LATER: $117.94 of interest against $63 left the
-        // balance higher than before. So it is principal only (weekly-check-in.md, "What slice 14
-        // has built"). A hand-logged payment keeps the shipped split.
-        Money interest =
-                provenance == PaymentProvenance.CHECK_IN
-                        ? Money.zero(balanceBefore.currency())
-                        : interestOn(balanceBefore, facts);
-        return DebtPayment.of(debt, paidDate, amount, interest, balanceBefore, provenance);
+        MonthInterest.Decision decision =
+                MonthInterest.decide(
+                        debt.id(),
+                        paidDate,
+                        balanceBefore,
+                        facts.apr(),
+                        rowsIn(debt.householdId(), debt.id(), YearMonth.from(paidDate)),
+                        null,
+                        balances.solver());
+        return new Drafted(
+                DebtPayment.of(
+                        debt, paidDate, amount, decision.interest(), balanceBefore, provenance),
+                decision);
     }
 
-    /**
-     * What a settled or overpaid balance accrues: nothing.
-     *
-     * <p>{@code interestFor} is arithmetic and would happily return a negative figure on a negative
-     * balance, which would then be reported as interest somebody was charged. A debt below zero is
-     * owed nothing and charged nothing.
-     */
-    private Money interestOn(Money balanceBefore, DebtFacts facts) {
-        return balanceBefore.isPositive()
-                ? balances.solver().interestFor(balanceBefore, facts.apr())
-                : Money.zero(balanceBefore.currency());
+    /** A drafted row and the interest decision it was built from. */
+    private record Drafted(DebtPayment row, MonthInterest.Decision decision) {}
+
+    private static PaymentPreview previewOf(Drafted drafted, Currency currency) {
+        DebtPayment unsaved = drafted.row();
+        return new PaymentPreview(
+                Money.of(unsaved.interest(), currency),
+                Money.of(unsaved.principal(), currency),
+                Money.of(unsaved.balanceBefore(), currency),
+                Money.of(unsaved.balanceAfter(), currency),
+                drafted.decision().charge(),
+                drafted.decision().month());
+    }
+
+    private List<MonthInterestRow> rowsIn(UUID householdId, UUID debtId, YearMonth month) {
+        return payments.monthInterestRows(
+                householdId, debtId, month.atDay(1), month.atEndOfMonth());
     }
 
     /**
@@ -505,6 +567,12 @@ public class DebtPaymentService {
 
     private Debt require(UUID debtId, UUID householdId) {
         return debts.findByIdAndHouseholdId(debtId, householdId)
+                .orElseThrow(() -> new NotFoundException("no such debt"));
+    }
+
+    /** Resolved through the household and locked until the transaction ends — see the class. */
+    private Debt lock(UUID debtId, UUID householdId) {
+        return debts.lockByIdAndHouseholdId(debtId, householdId)
                 .orElseThrow(() -> new NotFoundException("no such debt"));
     }
 

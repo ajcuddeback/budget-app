@@ -208,6 +208,63 @@ class DebtTermsSolverTest {
         assertThat(((Projection.Cleared) projection).monthsLeft()).isEqualTo(rowsInALedger);
     }
 
+    // ------------------------------------------------- month 1 already booked (ADR-0043)
+
+    @Test
+    void aFirstMonthWhoseInterestIsBookedIsChargedNoneAndTheRestAsEver() {
+        Projection.Cleared plain =
+                (Projection.Cleared)
+                        solver.project(money("6180.00"), apr("22.900"), money("445.00"), DECEMBER);
+        Projection.Cleared booked =
+                (Projection.Cleared)
+                        solver.project(
+                                money("6180.00"), apr("22.900"), money("445.00"), DECEMBER, true);
+
+        assertThat(booked.months().get(0).interest()).isEqualTo(money("0.00"));
+        assertThat(booked.months().get(0).balanceAfter()).isEqualTo(money("5735.00"));
+        // Month 2: 5735.00 × 22.9 ÷ 1200 = 109.444… → 109.44, the ordinary recurrence.
+        assertThat(booked.months().get(1).interest()).isEqualTo(money("109.44"));
+        assertThat(booked.totalInterest()).isLessThan(plain.totalInterest());
+        assertThat(booked.payoffMonth()).isBeforeOrEqualTo(plain.payoffMonth());
+    }
+
+    @Test
+    void aBookedFirstMonthAsksWhetherThePaymentCoversMonthTwosInterest() {
+        // £50 against £6,180 at 22.9% never clears either way: month 2's interest on £6,130 is
+        // £116.98. Booking month 1 must not make a payment that never clears look as if it did.
+        Projection projection =
+                solver.project(money("6180.00"), apr("22.900"), money("50.00"), DECEMBER, true);
+
+        assertThat(projection).isInstanceOf(Projection.None.class);
+        assertThat(((Projection.None) projection).reason())
+                .isEqualTo(Projection.Reason.NEVER_CLEARS);
+    }
+
+    @Test
+    void aBookedFirstMonthNeedsNoLargerAPaymentToReachTheSameHorizon() {
+        Horizon twelve = Horizon.ofMonths(12);
+        Money plain =
+                ((TermsSolution.Solved)
+                                solver.solve(
+                                        DebtTerms.solvingPayment(
+                                                money("6180.00"), apr("22.900"), twelve, DECEMBER)))
+                        .terms()
+                        .payment();
+        Money booked =
+                ((TermsSolution.Solved)
+                                solver.solve(
+                                        DebtTerms.solvingPayment(
+                                                        money("6180.00"),
+                                                        apr("22.900"),
+                                                        twelve,
+                                                        DECEMBER)
+                                                .withFirstMonthInterestBooked(true)))
+                        .terms()
+                        .payment();
+
+        assertThat(booked).isLessThan(plain);
+    }
+
     // ----------------------------------------------------------------- solving the horizon
 
     @Test

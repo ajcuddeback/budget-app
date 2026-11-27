@@ -111,6 +111,25 @@ public final class DebtTermsSolver {
      */
     public Projection project(
             Money balance, BigDecimal apr, Money payment, YearMonth firstPaymentMonth) {
+        return project(balance, apr, payment, firstPaymentMonth, false);
+    }
+
+    /**
+     * The same, with month 1's interest already booked or not.
+     *
+     * <p><b>Interest is charged once per debt per calendar month</b> (ADR-0043). When a payment
+     * recorded this month already carried this month's interest, the balance includes it, and a
+     * projection whose month 1 is this month charges month 1 none — otherwise every payment logged
+     * before the plan's own would make the plan count that month's interest twice.
+     *
+     * @param firstMonthInterestBooked month 1's interest is already in {@code balance}
+     */
+    public Projection project(
+            Money balance,
+            BigDecimal apr,
+            Money payment,
+            YearMonth firstPaymentMonth,
+            boolean firstMonthInterestBooked) {
         Objects.requireNonNull(payment, "payment");
         Objects.requireNonNull(firstPaymentMonth, "firstPaymentMonth");
         if (!balance.isPositive()) {
@@ -120,10 +139,12 @@ public final class DebtTermsSolver {
             throw new IllegalArgumentException("A projection needs a non-negative APR");
         }
 
-        // payment ≤ interest(1): the balance grows every month and there is no horizon to solve
-        // for. The normal case for a card minimum read off last month's statement, so it is an
-        // answer and not an exception.
-        if (payment.compareTo(interestFor(balance, apr)) <= 0) {
+        // payment ≤ the interest it first has to cover: the balance never falls and there is no
+        // horizon to solve for. The normal case for a card minimum read off last month's
+        // statement, so it is an answer and not an exception. With month 1's interest booked, the
+        // first interest the payment meets is month 2's, on what month 1 leaves.
+        Money tested = firstMonthInterestBooked ? balance.minus(payment) : balance;
+        if (tested.isPositive() && payment.compareTo(interestFor(tested, apr)) <= 0) {
             return new Projection.None(Projection.Reason.NEVER_CLEARS);
         }
 
@@ -132,7 +153,7 @@ public final class DebtTermsSolver {
         Money totalInterest = Money.zero(balance.currency());
         for (int monthNumber = 1; monthNumber <= MAX_MONTHS; monthNumber++) {
             YearMonth month = firstPaymentMonth.plusMonths(monthNumber - 1L);
-            Money interest = interestFor(owed, apr);
+            Money interest = interestIn(monthNumber, owed, apr, firstMonthInterestBooked);
             ProjectionMonth row = ProjectionMonth.of(monthNumber, month, owed, payment, interest);
             months.add(row);
             totalInterest = totalInterest.plus(interest);
@@ -142,6 +163,14 @@ public final class DebtTermsSolver {
             owed = row.balanceAfter();
         }
         return new Projection.None(Projection.Reason.EXCEEDS_MONTH_CAP);
+    }
+
+    /** One month's interest, and none in month 1 when a recorded payment already carried it. */
+    private Money interestIn(
+            int monthNumber, Money owed, BigDecimal apr, boolean firstMonthInterestBooked) {
+        return monthNumber == 1 && firstMonthInterestBooked
+                ? Money.zero(owed.currency())
+                : interestFor(owed, apr);
     }
 
     /**
@@ -185,7 +214,12 @@ public final class DebtTermsSolver {
 
     private TermsSolution solveHorizon(DebtTerms terms) {
         Projection projection =
-                project(terms.balance(), terms.apr(), terms.payment(), terms.firstPaymentMonth());
+                project(
+                        terms.balance(),
+                        terms.apr(),
+                        terms.payment(),
+                        terms.firstPaymentMonth(),
+                        terms.firstMonthInterestBooked());
         return switch (projection) {
             case Projection.Cleared cleared ->
                     new TermsSolution.Solved(
@@ -215,15 +249,17 @@ public final class DebtTermsSolver {
         Money balance = terms.balance();
         BigDecimal apr = terms.apr();
         int target = terms.horizon().monthsLeft();
+        boolean booked = terms.firstMonthInterestBooked();
         Currency currency = balance.currency();
         int scale = paymentScale(currency);
         BigDecimal unit = BigDecimal.ONE.movePointLeft(scale);
 
         // The bracket, by construction rather than by search:
         //   lo — a payment at or below the first month's interest never clears, so it never
-        //        reaches the horizon either;
+        //        reaches the horizon either. With that interest already booked there is none to
+        //        cover, and zero is the payment that certainly never clears;
         //   hi — balance plus that interest clears in month 1, so it reaches any horizon.
-        Money firstInterest = interestFor(balance, apr);
+        Money firstInterest = interestIn(1, balance, apr, booked);
         BigDecimal low = firstInterest.amount().setScale(scale, RoundingMode.FLOOR);
         BigDecimal high =
                 balance.plus(firstInterest).amount().setScale(scale, RoundingMode.CEILING);
@@ -233,7 +269,7 @@ public final class DebtTermsSolver {
                 closedFormPayment(balance, apr, target).setScale(scale, RoundingMode.CEILING);
         if (seed.compareTo(low) > 0 && seed.compareTo(high) < 0) {
             steps++;
-            if (clearsWithin(balance, apr, Money.of(seed, currency), target)) {
+            if (clearsWithin(balance, apr, Money.of(seed, currency), target, booked)) {
                 high = seed;
             } else {
                 low = seed;
@@ -250,7 +286,7 @@ public final class DebtTermsSolver {
             // midpoint, floored to the grid, is strictly inside it. The loop cannot stall.
             BigDecimal middle = low.add(high).divide(TWO, scale, RoundingMode.FLOOR);
             steps++;
-            if (clearsWithin(balance, apr, Money.of(middle, currency), target)) {
+            if (clearsWithin(balance, apr, Money.of(middle, currency), target, booked)) {
                 high = middle;
             } else {
                 low = middle;
@@ -262,7 +298,7 @@ public final class DebtTermsSolver {
         return new TermsSolution.Solved(
                 solved,
                 TermField.PAYMENT,
-                project(balance, apr, payment, terms.firstPaymentMonth()),
+                project(balance, apr, payment, terms.firstPaymentMonth(), booked),
                 steps);
     }
 
@@ -304,6 +340,7 @@ public final class DebtTermsSolver {
         Money balance = terms.balance();
         Money payment = terms.payment();
         int target = terms.horizon().monthsLeft();
+        boolean booked = terms.firstMonthInterestBooked();
 
         BigDecimal low = BigDecimal.ZERO.setScale(APR_SCALE, RoundingMode.UNNECESSARY);
         BigDecimal high =
@@ -312,14 +349,14 @@ public final class DebtTermsSolver {
         // The bracket, probed rather than assumed: a rate of zero is the fastest this payment can
         // ever clear the balance, and a rate just under the ceiling the slowest.
         int steps = 1;
-        if (!clearsWithin(balance, low, payment, target)) {
+        if (!clearsWithin(balance, low, payment, target, booked)) {
             return new TermsSolution.Unsolvable(
                     TermField.HORIZON,
                     "this payment cannot clear this balance by that month at any rate, including"
                             + " zero");
         }
         steps++;
-        if (clearsWithin(balance, high, payment, target)) {
+        if (clearsWithin(balance, high, payment, target, booked)) {
             return new TermsSolution.Unsolvable(
                     TermField.PAYMENT,
                     "this payment clears this balance before that month at every rate under "
@@ -335,7 +372,7 @@ public final class DebtTermsSolver {
             }
             BigDecimal middle = low.add(high).divide(TWO, APR_SCALE, RoundingMode.FLOOR);
             steps++;
-            if (clearsWithin(balance, middle, payment, target)) {
+            if (clearsWithin(balance, middle, payment, target, booked)) {
                 low = middle;
             } else {
                 high = middle;
@@ -346,7 +383,7 @@ public final class DebtTermsSolver {
         return new TermsSolution.Solved(
                 solved,
                 TermField.APR,
-                project(balance, low, payment, terms.firstPaymentMonth()),
+                project(balance, low, payment, terms.firstPaymentMonth(), booked),
                 steps);
     }
 
@@ -360,10 +397,11 @@ public final class DebtTermsSolver {
      * answers are not wanted. Bounded twice over: by the horizon asked about, which is never more
      * than {@link #MAX_MONTHS}, and by the balance ceasing to fall.
      */
-    private boolean clearsWithin(Money balance, BigDecimal apr, Money payment, int months) {
+    private boolean clearsWithin(
+            Money balance, BigDecimal apr, Money payment, int months, boolean firstMonthBooked) {
         Money owed = balance;
         for (int month = 1; month <= Math.min(months, MAX_MONTHS); month++) {
-            Money after = owed.plus(interestFor(owed, apr)).minus(payment);
+            Money after = owed.plus(interestIn(month, owed, apr, firstMonthBooked)).minus(payment);
             if (!after.isPositive()) {
                 return true;
             }

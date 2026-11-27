@@ -306,10 +306,15 @@ public class PayoffPlanService {
      * projection uses.
      *
      * @param balanceAfter what the debt would owe after the payment, in its currency
+     * @param booksTheMonth the payment would carry this month's interest — it is the first in the
+     *     month (ADR-0043) — so the projection after it must not charge this month's interest
+     *     again. Without this, a surplus that is the month's first payment is charged a month of
+     *     interest by the split and a second by the plan, and paying more moves the payoff later
      * @return the months, each null where a ladder does not clear or the debt is not in it
      */
     @Transactional(readOnly = true)
-    public OneOffPayoff oneOffPayment(UUID actorId, UUID debtId, Money balanceAfter) {
+    public OneOffPayoff oneOffPayment(
+            UUID actorId, UUID debtId, Money balanceAfter, boolean booksTheMonth) {
         Household household = memberships.requireMembership(actorId).household();
         Currency base = household.baseCurrency();
         PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
@@ -329,20 +334,11 @@ public class PayoffPlanService {
                 with.add(facts);
             } else if (balanceAfter.isPositive()) {
                 with.add(
-                        new DebtFacts(
-                                facts.debt(),
+                        facts.afterOnePayment(
                                 balanceAfter,
-                                facts.anchoredBalance(),
-                                facts.balanceSource(),
-                                facts.balanceAsOf(),
-                                facts.estimatedMonths(),
-                                facts.stale(),
-                                facts.apr(),
-                                facts.aprSource(),
-                                facts.aprDerivable(),
-                                facts.paymentCount() + 1,
-                                facts.lastPaidDate(),
-                                facts.firstPaymentMonth()));
+                                booksTheMonth || facts.monthInterestBookedIn(firstMonth())
+                                        ? firstMonth()
+                                        : null));
             }
         }
         Money amount = groupAmount(plan, base, base, now);
@@ -648,7 +644,8 @@ public class PayoffPlanService {
      * feature doc rather than hidden: the debt keeps its minimum and its place rather than
      * disappearing from the plan.
      */
-    private static List<LadderDebt> ladderDebts(List<DebtFacts> facts) {
+    private List<LadderDebt> ladderDebts(List<DebtFacts> facts) {
+        YearMonth first = firstMonth();
         List<LadderDebt> ladderDebts = new ArrayList<>(facts.size());
         for (DebtFacts debt : facts) {
             ladderDebts.add(
@@ -658,7 +655,11 @@ public class PayoffPlanService {
                             debt.balance(),
                             debt.apr(),
                             debt.debt().minimumPayment(),
-                            debt.debt().customOrder().orElse(null)));
+                            debt.debt().customOrder().orElse(null),
+                            // The plan's month 1 is this month. A payment already recorded in it
+                            // carried its interest, so the plan does not charge it twice
+                            // (ADR-0043).
+                            debt.monthInterestBookedIn(first)));
         }
         return List.copyOf(ladderDebts);
     }

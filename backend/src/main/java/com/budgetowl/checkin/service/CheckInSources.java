@@ -6,6 +6,7 @@ import com.budgetowl.common.Money;
 import com.budgetowl.debt.service.DebtPaymentService;
 import com.budgetowl.debt.service.DebtService;
 import com.budgetowl.debt.service.DebtView;
+import com.budgetowl.debt.service.PaymentPreview;
 import com.budgetowl.debt.service.PayoffPlanService;
 import com.budgetowl.debt.service.PayoffPlanService.OneOffPayoff;
 import com.budgetowl.debt.service.PlanView;
@@ -123,11 +124,37 @@ public class CheckInSources {
     /**
      * What a one-off payment of {@code amount} would do, by the real payment path's split
      * (discarded) and the plan's own ladder.
+     *
+     * <p>Interest is charged once per debt per month (ADR-0043). When the surplus would be the
+     * month's first payment it carries the month's interest, and the ladder is told so: the
+     * projection after it then charges this month none, or the month would be charged twice and
+     * paying more could move the payoff later.
      */
     @Transactional(readOnly = true)
-    public OneOffPayoff oneOffPayment(UUID actorId, UUID debtId, Money amount) {
-        Money after = payments.balanceAfterCheckInPayment(actorId, debtId, amount);
-        return plans.oneOffPayment(actorId, debtId, after);
+    public DebtChoiceFigures oneOffPayment(UUID actorId, UUID debtId, Money amount) {
+        PaymentPreview preview = payments.previewCheckInPayment(actorId, debtId, amount);
+        OneOffPayoff moved =
+                plans.oneOffPayment(
+                        actorId, debtId, preview.balanceAfter(), preview.booksTheMonth());
+        return new DebtChoiceFigures(
+                moved.payoffMonthNow(),
+                moved.payoffMonthWith(),
+                preview.booksTheMonth() ? preview.interest() : null);
+    }
+
+    /**
+     * The debt choice's figures.
+     *
+     * @param monthInterest the month's interest the payment would carry, when it is the month's
+     *     first; null when the month's interest is already booked or there is none
+     */
+    public record DebtChoiceFigures(
+            YearMonth payoffMonthNow, YearMonth payoffMonthWith, Money monthInterest) {
+
+        @Override
+        public String toString() {
+            return "DebtChoiceFigures[]";
+        }
     }
 
     /** Members' display names by user id, for "answered by". */

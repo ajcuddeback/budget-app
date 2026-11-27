@@ -307,6 +307,10 @@ public final class CheckInViews {
      * One place the surplus can go. Its figures come from the real write paths' previews.
      *
      * @param payoffMonthNow and {@code payoffMonthWith}: months, never days
+     * @param monthInterest for a debt: this month's interest the payment would carry, because it
+     *     would be the debt's first payment this month (ADR-0043). Null when the month's interest
+     *     is already booked, or there is none. The clients say it in words — the payment can leave
+     *     the balance higher than it found it — and compute nothing
      */
     public record ChoiceView(
             AnswerChoice choice,
@@ -318,7 +322,8 @@ public final class CheckInViews {
             String goalName,
             Money savedNow,
             Money savedWith,
-            Money target) {
+            Money target,
+            Money monthInterest) {
 
         @Override
         public String toString() {

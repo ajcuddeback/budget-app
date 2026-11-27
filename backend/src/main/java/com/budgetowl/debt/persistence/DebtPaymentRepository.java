@@ -156,6 +156,48 @@ public interface DebtPaymentRepository extends Repository<DebtPayment, UUID> {
             @Param("from") java.time.LocalDate from,
             @Param("to") java.time.LocalDate to);
 
+    /**
+     * The payments recorded against one debt between two dates, reduced to what deciding that
+     * month's interest needs (ADR-0043: interest is charged once per debt per calendar month).
+     *
+     * <p>Every row in the range, whatever it carried: {@code MonthInterest} is the one place that
+     * decides which of them books the month, so this query does not pre-judge it. Bounded by {@code
+     * DebtService.MAXIMUM_PAYMENTS_PER_DEBT} and served by {@code ix_debt_payments_debt_paid_date}.
+     */
+    @Query(
+            """
+            select new com.budgetowl.debt.persistence.MonthInterestRow(
+                       p.id, p.debtId, p.paidDate, p.interest, p.provenance)
+            from DebtPayment p
+            where p.householdId = :householdId
+              and p.debtId = :debtId
+              and p.paidDate >= :from
+              and p.paidDate <= :to
+            """)
+    List<MonthInterestRow> monthInterestRows(
+            @Param("householdId") UUID householdId,
+            @Param("debtId") UUID debtId,
+            @Param("from") java.time.LocalDate from,
+            @Param("to") java.time.LocalDate to);
+
+    /**
+     * The same rows for every debt in the household at once, for the projections: a month whose
+     * interest is already booked is not charged it again (ADR-0043).
+     */
+    @Query(
+            """
+            select new com.budgetowl.debt.persistence.MonthInterestRow(
+                       p.id, p.debtId, p.paidDate, p.interest, p.provenance)
+            from DebtPayment p
+            where p.householdId = :householdId
+              and p.paidDate >= :from
+              and p.paidDate <= :to
+            """)
+    List<MonthInterestRow> monthInterestRowsForHousehold(
+            @Param("householdId") UUID householdId,
+            @Param("from") java.time.LocalDate from,
+            @Param("to") java.time.LocalDate to);
+
     /** When each debt was last paid, and how many times, for every debt at once. */
     @Query(
             """

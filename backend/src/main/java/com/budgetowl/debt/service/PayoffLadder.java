@@ -204,7 +204,12 @@ public final class PayoffLadder {
                     paid.add(Money.zero(currency));
                     continue;
                 }
-                Money monthsInterest = solver.interestFor(balance, order.get(rung).apr());
+                // Once per debt per month (ADR-0043): a payment already recorded this month carried
+                // month 1's interest, and the balance includes it.
+                Money monthsInterest =
+                        monthNumber == 1 && order.get(rung).firstMonthInterestBooked()
+                                ? Money.zero(currency)
+                                : solver.interestFor(balance, order.get(rung).apr());
                 Money owedNow = balance.plus(monthsInterest);
                 Money minimum = order.get(rung).minimumPayment();
                 Money floor = minimum.compareTo(owedNow) <= 0 ? minimum : owedNow;

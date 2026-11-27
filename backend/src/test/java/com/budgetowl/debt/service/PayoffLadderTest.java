@@ -515,6 +515,110 @@ class PayoffLadderTest {
                 ladder.project(PayoffStrategy.AVALANCHE, MONTHLY, threeDebts(), DECEMBER);
     }
 
+    // ------------------------------------------- once per debt per month (ADR-0043)
+
+    @Test
+    void aDebtWhoseMonthIsAlreadyBookedIsChargedNoInterestInMonthOne() {
+        LadderDebt booked = booked(visa, visa.balance());
+
+        PayoffProjection.Ranked plan =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, booked),
+                                DECEMBER);
+
+        PayoffProjection.Rung rung = rungFor(plan, visa.id());
+        assertThat(rung.months().get(0).interest()).isEqualTo(money("0.00"));
+        assertThat(rung.months().get(1).interest().isPositive())
+                .as("only month 1 is booked; month 2 is charged as ever")
+                .isTrue();
+        assertThat(rungFor(plan, car.id()).months().get(0).interest().isPositive())
+                .as("the other debts' month 1 is untouched")
+                .isTrue();
+    }
+
+    @Test
+    void aSurplusThatIsTheMonthsFirstPaymentNeverMovesThePayoffLaterNorRaisesTheInterest() {
+        // The canvas Visa: £6,180.00 at 22.9%, £63 of surplus as the month's first payment. It
+        // carries the month's £117.94, so the balance it leaves is £6,234.94 — higher than now —
+        // but the month is then booked and the plan charges it no second month of interest.
+        Money monthsInterest = money("117.94");
+        Money after = visa.balance().plus(monthsInterest).minus(money("63.00"));
+        assertThat(after).isEqualTo(money("6234.94"));
+
+        PayoffProjection.Ranked now = avalanche();
+        PayoffProjection.Ranked with =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, booked(visa, after)),
+                                DECEMBER);
+
+        assertThat(rungFor(with, visa.id()).payoffMonth())
+                .isBeforeOrEqualTo(rungFor(now, visa.id()).payoffMonth());
+        assertThat(with.debtFreeMonth()).isBeforeOrEqualTo(now.debtFreeMonth());
+        assertThat(with.totalInterest().plus(monthsInterest))
+                .as("the interest the surplus booked, plus what the plan still projects")
+                .isLessThanOrEqualTo(now.totalInterest());
+    }
+
+    @Property(tries = 200)
+    void aOneOffPaymentNeverMovesThePayoffLaterWhicheverWayItsMonthIsBooked(
+            @ForAll @IntRange(min = 1, max = 2_000) int surplusPounds,
+            @ForAll boolean alreadyBooked) {
+        Money surplus = money(surplusPounds + ".00");
+        Money monthsInterest = new DebtTermsSolver().interestFor(visa.balance(), visa.apr());
+        // Already booked: the surplus is all principal. Not yet: it carries the month's interest
+        // and books the month. Either way the plan after it charges this month nothing more.
+        Money after =
+                alreadyBooked
+                        ? visa.balance().minus(surplus)
+                        : visa.balance().plus(monthsInterest).minus(surplus);
+        Assume.that(after.isPositive());
+        LadderDebt before = alreadyBooked ? booked(visa, visa.balance()) : visa;
+
+        PayoffProjection.Ranked now =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, before),
+                                DECEMBER);
+        PayoffProjection.Ranked with =
+                (PayoffProjection.Ranked)
+                        ladder.project(
+                                PayoffStrategy.AVALANCHE,
+                                MONTHLY,
+                                List.of(car, student, booked(visa, after)),
+                                DECEMBER);
+
+        assertThat(rungFor(with, visa.id()).payoffMonth())
+                .isBeforeOrEqualTo(rungFor(now, visa.id()).payoffMonth());
+        Money booked = alreadyBooked ? money("0.00") : monthsInterest;
+        assertThat(with.totalInterest().plus(booked)).isLessThanOrEqualTo(now.totalInterest());
+    }
+
+    private static LadderDebt booked(LadderDebt debt, Money balance) {
+        return new LadderDebt(
+                debt.id(),
+                debt.name(),
+                balance,
+                debt.apr(),
+                debt.minimumPayment(),
+                debt.customOrder(),
+                true);
+    }
+
+    private static PayoffProjection.Rung rungFor(PayoffProjection.Ranked plan, UUID id) {
+        return plan.rungs().stream()
+                .filter(rung -> rung.debt().id().equals(id))
+                .findFirst()
+                .orElseThrow();
+    }
+
     private List<String> names(List<LadderDebt> debts) {
         return debts.stream().map(LadderDebt::name).toList();
     }

@@ -59,6 +59,30 @@ class DebtPaymentTest {
     }
 
     @Test
+    void a_payment_smaller_than_the_months_interest_it_carries_leaves_the_balance_higher() {
+        // The month's first payment carries the month's interest whatever its size (ADR-0043):
+        // $63 against $117.94 is −$54.94 of principal, and the debt then owes more than before.
+        DebtPayment payment = payment(Money.of("63.00", "GBP"), Money.of("117.94", "GBP"));
+
+        assertThat(payment.principal()).isEqualByComparingTo("-54.94");
+        assertThat(payment.balanceAfter()).isEqualByComparingTo("6234.94");
+        assertThat(payment.interest().add(payment.principal()))
+                .isEqualByComparingTo(payment.amount());
+    }
+
+    @Test
+    void carrying_no_interest_makes_the_whole_amount_principal_against_the_same_balance() {
+        DebtPayment payment = payment(Money.of("445.00", "GBP"), Money.of("117.94", "GBP"));
+
+        payment.carryNoInterest(GBP);
+
+        assertThat(payment.interest()).isEqualByComparingTo("0");
+        assertThat(payment.principal()).isEqualByComparingTo("445.00");
+        assertThat(payment.balanceBefore()).isEqualByComparingTo("6180.00");
+        assertThat(payment.balanceAfter()).isEqualByComparingTo("5735.00");
+    }
+
+    @Test
     void a_statement_correction_runs_the_other_way_and_is_still_a_payment_row() {
         Debt debt = debt();
 

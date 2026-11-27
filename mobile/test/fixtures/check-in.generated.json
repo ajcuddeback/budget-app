@@ -307,6 +307,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -326,17 +345,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -383,25 +402,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -440,25 +440,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -469,6 +450,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -1386,6 +1386,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -1405,17 +1424,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -1462,25 +1481,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -1519,25 +1519,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -1548,6 +1529,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -2904,6 +2904,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -2923,17 +2942,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -2980,25 +2999,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -3037,25 +3037,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -3066,6 +3047,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -3995,6 +3995,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -4014,17 +4033,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -4071,25 +4090,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -4128,25 +4128,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -4157,6 +4138,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -5497,6 +5497,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -5516,17 +5535,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -5573,25 +5592,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -5630,25 +5630,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -5659,6 +5640,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -7022,6 +7022,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -7041,17 +7060,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -7098,25 +7117,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -7155,25 +7155,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -7184,6 +7165,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -8585,6 +8585,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -8604,17 +8623,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -8661,25 +8680,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -8718,25 +8718,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -8747,6 +8728,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -10167,6 +10167,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -10186,17 +10205,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -10243,25 +10262,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -10300,25 +10300,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -10329,6 +10310,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -11496,7 +11496,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -11516,7 +11520,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -11527,7 +11532,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -11844,6 +11850,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -11863,17 +11888,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -11920,25 +11945,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -11977,25 +11983,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -12006,6 +11993,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -12711,7 +12717,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -12731,7 +12741,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -12742,7 +12753,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -13287,7 +13299,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -13307,7 +13323,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -13318,7 +13335,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -13635,6 +13653,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -13654,17 +13691,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -13711,25 +13748,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -13768,25 +13786,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -13797,6 +13796,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -14520,7 +14538,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -14540,7 +14562,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -14551,7 +14574,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -15116,7 +15140,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -15136,7 +15164,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -15147,7 +15176,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -15464,6 +15494,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -15483,17 +15532,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -15540,25 +15589,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -15597,25 +15627,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -15626,6 +15637,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -16367,7 +16397,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -16387,7 +16421,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -16398,7 +16433,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -16734,6 +16770,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -16753,17 +16808,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -16810,25 +16865,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -16867,25 +16903,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -16896,6 +16913,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -17658,7 +17694,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -17678,7 +17718,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -17689,7 +17730,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -18274,7 +18316,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -18294,7 +18340,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -18305,7 +18352,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -18622,6 +18670,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -18641,17 +18708,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -18698,25 +18765,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -18755,25 +18803,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -18784,6 +18813,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -19546,7 +19594,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -19566,7 +19618,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -19577,7 +19630,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -19893,6 +19947,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -19912,17 +19985,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -19969,25 +20042,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -20026,25 +20080,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -20055,6 +20090,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -20817,7 +20871,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -20837,7 +20895,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -20848,7 +20907,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -21183,6 +21243,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -21202,17 +21281,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -21259,25 +21338,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -21316,25 +21376,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -21345,6 +21386,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -22531,7 +22591,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -22551,7 +22615,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -22562,7 +22627,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -22606,8 +22672,8 @@
       "correlationId" : "fixture-correlation",
       "params" : {
         "items" : [ {
-          "itemKey" : "cat.row-2026-08-20-chase-out-94.1",
-          "reason" : "subject-changed"
+          "reason" : "subject-changed",
+          "itemKey" : "cat.row-2026-08-20-chase-out-94.1"
         }, {
           "reason" : "basis-changed"
         } ]
@@ -22906,6 +22972,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -22925,17 +23010,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -22982,25 +23067,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 1
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -23039,25 +23105,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -23068,6 +23115,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -23830,7 +23896,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -23850,7 +23920,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -23861,7 +23932,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -24446,7 +24518,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -24466,7 +24542,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -24477,7 +24554,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -24794,6 +24872,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -24813,17 +24910,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -24870,25 +24967,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 1
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -24927,25 +25005,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -24956,6 +25015,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -25718,7 +25796,11 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : {
+            "amount" : "128.7000",
+            "currency" : "USD"
+          }
         }, {
           "choice" : "GOAL",
           "debtId" : null,
@@ -25738,7 +25820,8 @@
           "target" : {
             "amount" : "6000.0000",
             "currency" : "USD"
-          }
+          },
+          "monthInterest" : null
         }, {
           "choice" : "ROLL_OVER",
           "debtId" : null,
@@ -25749,7 +25832,8 @@
           "goalName" : null,
           "savedNow" : null,
           "savedWith" : null,
-          "target" : null
+          "target" : null,
+          "monthInterest" : null
         } ],
         "dueNextWeek" : [ {
           "billId" : "bill-car-payment",
@@ -26229,6 +26313,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -26248,17 +26351,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 1
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -26305,25 +26408,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 2
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -26362,25 +26446,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -26391,6 +26456,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",
@@ -27049,6 +27133,25 @@
     "status" : 200,
     "body" : {
       "content" : [ {
+        "id" : "row-2026-08-21-chase-out-38",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-21",
+        "amount" : "-38.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-amc-theatres",
+        "payeeName" : "AMC Theatres",
+        "categoryId" : "cat-entertainment",
+        "categoryName" : "Entertainment",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
         "id" : "row-2026-08-21-chase-out-81.4",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -27068,17 +27171,17 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 1
       }, {
-        "id" : "row-2026-08-21-chase-out-38",
+        "id" : "row-2026-08-20-chase-out-56",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
-        "date" : "2026-08-21",
-        "amount" : "-38.0000",
+        "date" : "2026-08-20",
+        "amount" : "-56.0000",
         "currency" : "USD",
-        "payeeId" : "payee-amc-theatres",
-        "payeeName" : "AMC Theatres",
-        "categoryId" : "cat-entertainment",
-        "categoryName" : "Entertainment",
-        "categoryParentName" : null,
+        "payeeId" : "payee-shell",
+        "payeeName" : "Shell",
+        "categoryId" : "cat-fuel",
+        "categoryName" : "Fuel",
+        "categoryParentName" : "Transport",
         "note" : null,
         "status" : "CLEARED",
         "transferGroupId" : null,
@@ -27125,25 +27228,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 2
       }, {
-        "id" : "row-2026-08-20-chase-out-56",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-20",
-        "amount" : "-56.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-shell",
-        "payeeName" : "Shell",
-        "categoryId" : "cat-fuel",
-        "categoryName" : "Fuel",
-        "categoryParentName" : "Transport",
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-19-chase-out-18.5",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -27182,25 +27266,6 @@
         "updatedAt" : "2026-08-20T12:00:00Z",
         "version" : 0
       }, {
-        "id" : "row-2026-08-18-chase-out-126",
-        "accountId" : "acc-chase",
-        "accountName" : "Chase",
-        "date" : "2026-08-18",
-        "amount" : "-126.0000",
-        "currency" : "USD",
-        "payeeId" : "payee-mountain-strength-co",
-        "payeeName" : "Mountain Strength Co",
-        "categoryId" : "cat-health",
-        "categoryName" : "Health",
-        "categoryParentName" : null,
-        "note" : null,
-        "status" : "CLEARED",
-        "transferGroupId" : null,
-        "transfer" : false,
-        "createdAt" : "2026-08-20T12:00:00Z",
-        "updatedAt" : "2026-08-20T12:00:00Z",
-        "version" : 0
-      }, {
         "id" : "row-2026-08-18-chase-out-250.8",
         "accountId" : "acc-chase",
         "accountName" : "Chase",
@@ -27211,6 +27276,25 @@
         "payeeName" : "Target",
         "categoryId" : "cat-shopping",
         "categoryName" : "Shopping",
+        "categoryParentName" : null,
+        "note" : null,
+        "status" : "CLEARED",
+        "transferGroupId" : null,
+        "transfer" : false,
+        "createdAt" : "2026-08-20T12:00:00Z",
+        "updatedAt" : "2026-08-20T12:00:00Z",
+        "version" : 0
+      }, {
+        "id" : "row-2026-08-18-chase-out-126",
+        "accountId" : "acc-chase",
+        "accountName" : "Chase",
+        "date" : "2026-08-18",
+        "amount" : "-126.0000",
+        "currency" : "USD",
+        "payeeId" : "payee-mountain-strength-co",
+        "payeeName" : "Mountain Strength Co",
+        "categoryId" : "cat-health",
+        "categoryName" : "Health",
         "categoryParentName" : null,
         "note" : null,
         "status" : "CLEARED",

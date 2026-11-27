@@ -43,7 +43,6 @@ import com.budgetowl.checkin.service.Picture.Target;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.schedule.ScheduleKind;
 import com.budgetowl.debt.service.DebtView;
-import com.budgetowl.debt.service.PayoffPlanService.OneOffPayoff;
 import com.budgetowl.goal.service.GoalViews.GoalView;
 import com.budgetowl.household.domain.Household;
 import com.budgetowl.income.service.IncomeView;
@@ -1040,7 +1039,8 @@ public class CheckInPictures {
                     debts = active;
                 }
                 for (DebtView debt : debts) {
-                    OneOffPayoff moved = sources.oneOffPayment(actorId, debt.id(), surplus);
+                    CheckInSources.DebtChoiceFigures moved =
+                            sources.oneOffPayment(actorId, debt.id(), surplus);
                     choices.add(
                             new ChoiceView(
                                     AnswerChoice.DEBT,
@@ -1052,10 +1052,15 @@ public class CheckInPictures {
                                     null,
                                     null,
                                     null,
-                                    null));
+                                    null,
+                                    moved.monthInterest()));
                     figures.offeredDebts.add(debt.id());
                     fingerprint.add(
-                            "debt", debt.id(), moved.payoffMonthNow(), moved.payoffMonthWith());
+                            "debt",
+                            debt.id(),
+                            moved.payoffMonthNow(),
+                            moved.payoffMonthWith(),
+                            moved.monthInterest());
                 }
                 for (GoalView goal : sources.goals(actorId)) {
                     if (goal.archived()
@@ -1075,7 +1080,8 @@ public class CheckInPictures {
                                     goal.name(),
                                     saved,
                                     saved.plus(surplus),
-                                    goal.targetAmount()));
+                                    goal.targetAmount(),
+                                    null));
                     figures.offeredGoals.add(goal.id());
                     fingerprint.add("goal", goal.id(), saved);
                 }
@@ -1083,6 +1089,7 @@ public class CheckInPictures {
             choices.add(
                     new ChoiceView(
                             AnswerChoice.ROLL_OVER,
+                            null,
                             null,
                             null,
                             null,

@@ -77,8 +77,16 @@ class CheckInIT extends CheckInTestBase {
                         java.time.YearMonth.parse(debt.get("payoffMonthNow").asString()));
     }
 
+    /**
+     * Slice 14 recorded the surplus principal-only by a special case on {@code CHECK_IN}. Under
+     * ADR-0043 it follows the general rule, and in the canvas week it is the Visa's first payment
+     * in August (the regular one falls on the 28th), so it carries August's interest: {@code 6180 ×
+     * 24.99 ÷ 1200 = 128.6985 → 128.70}. The canvas test above still holds the "never later"
+     * guarantee, and {@code MonthInterestIT} proves the month is charged once and the surplus after
+     * the regular payment is all principal.
+     */
     @Test
-    void a_surplus_paid_to_a_debt_is_principal_only_and_lowers_the_balance_by_exactly_itself() {
+    void a_surplus_that_is_the_months_first_payment_carries_the_months_interest_once() {
         Canvas canvas = canvasWeek();
         ApiClient owner = canvas.household().owner();
         answerTheCanvas(canvas, owner);
@@ -92,11 +100,11 @@ class CheckInIT extends CheckInTestBase {
 
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT interest || ' ' || principal FROM debt_payments"
-                                        + " WHERE provenance = 'CHECK_IN'",
+                                "SELECT interest || ' ' || principal || ' ' || balance_after"
+                                        + " FROM debt_payments WHERE provenance = 'CHECK_IN'",
                                 String.class))
-                .as("an extra payment carries no second month of interest")
-                .isEqualTo("0.0000 63.0000");
+                .as("the general rule: the month's first payment carries the month's interest")
+                .isEqualTo("128.7000 -65.7000 6245.7000");
     }
 
     @Test

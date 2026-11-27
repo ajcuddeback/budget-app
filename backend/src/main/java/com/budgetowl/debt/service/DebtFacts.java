@@ -44,6 +44,9 @@ import java.util.Optional;
  *     which projects from its anchor and is an ordinary state, not an empty one
  * @param firstPaymentMonth the month the projection's first period falls in: the linked bill's next
  *     occurrence, otherwise the day-of-month of the most recent payment, otherwise today
+ * @param monthInterestBooked the current month when a stored payment already carries its interest,
+ *     otherwise null. Interest is charged once per debt per month (ADR-0043), so a projection whose
+ *     first month is this one must not charge it again — see {@link #monthInterestBookedIn}
  */
 public record DebtFacts(
         Debt debt,
@@ -58,7 +61,8 @@ public record DebtFacts(
         boolean aprDerivable,
         long paymentCount,
         LocalDate lastPaidDate,
-        YearMonth firstPaymentMonth) {
+        YearMonth firstPaymentMonth,
+        YearMonth monthInterestBooked) {
 
     public DebtFacts {
         Objects.requireNonNull(debt, "debt");
@@ -69,6 +73,43 @@ public record DebtFacts(
         Objects.requireNonNull(apr, "apr");
         Objects.requireNonNull(aprSource, "aprSource");
         Objects.requireNonNull(firstPaymentMonth, "firstPaymentMonth");
+    }
+
+    /**
+     * Whether {@code month}'s interest is already in this balance, so a projection starting in it
+     * charges that month none (ADR-0043). Only ever true of the current month: no payment is dated
+     * in the future, and a past month is not where a projection starts.
+     */
+    public boolean monthInterestBookedIn(YearMonth month) {
+        return month.equals(monthInterestBooked);
+    }
+
+    /** Whether this debt's own projection starts in a month whose interest is already booked. */
+    public boolean firstMonthInterestBooked() {
+        return monthInterestBookedIn(firstPaymentMonth);
+    }
+
+    /**
+     * The same debt as it would stand after one more payment, which leaves {@code newBalance} and
+     * books {@code newMonthInterestBooked} (null for none). Computed, never stored: the weekly
+     * check-in's what-if.
+     */
+    public DebtFacts afterOnePayment(Money newBalance, YearMonth newMonthInterestBooked) {
+        return new DebtFacts(
+                debt,
+                newBalance,
+                anchoredBalance,
+                balanceSource,
+                balanceAsOf,
+                estimatedMonths,
+                stale,
+                apr,
+                aprSource,
+                aprDerivable,
+                paymentCount + 1,
+                lastPaidDate,
+                firstPaymentMonth,
+                newMonthInterestBooked);
     }
 
     public java.util.UUID id() {

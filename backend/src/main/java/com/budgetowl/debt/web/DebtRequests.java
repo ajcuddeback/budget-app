@@ -290,15 +290,19 @@ public final class DebtRequests {
     }
 
     /**
-     * A payment to preview: the amount, and nothing else.
+     * A payment to preview: the amount, and optionally the date it will carry.
      *
      * <p>In a body rather than a query string, so it does not land in a reverse proxy's access log
      * or in Spring's own {@code DispatcherServlet} line at {@code DEBUG} — which masks the decoded
      * parameters but prints the raw query string beside them. A payment somebody is about to make
      * is not secret, but it is theirs, and a URL is the one part of a request every layer logs.
+     *
+     * <p>{@code paidDate} decides which month's interest the payment would carry (ADR-0043); absent
+     * means today, which is what the sheets ask about. A future date is refused, as logging is.
      */
     public record PreviewPaymentRequest(
-            @NotNull @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String amount) {
+            @NotNull @Pattern(regexp = AMOUNT, message = AMOUNT_MESSAGE) String amount,
+            LocalDate paidDate) {
 
         /** Redacted — the amount is a payment somebody is about to make. */
         @Override

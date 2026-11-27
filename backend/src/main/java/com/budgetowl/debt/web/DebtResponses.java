@@ -248,13 +248,21 @@ public final class DebtResponses {
      *
      * <p>The same split and closing balance the household gets once it commits, because both come
      * off the one row {@code DebtPaymentService} builds — see {@code PaymentPreview}.
+     *
+     * <p>{@code monthInterest} says why the interest is what it is — {@code CARRIED} (the first
+     * payment in {@code interestMonth}, so it carries that month's interest), {@code
+     * ALREADY_CARRIED} (another payment in that month does, so this one is all principal) or {@code
+     * NONE} (nothing to charge). Interest is charged once per debt per month (ADR-0043); the
+     * clients word a balance that rises after a payment from this, and compute nothing.
      */
     public record PaymentPreviewResponse(
             String currency,
             BigDecimal interest,
             BigDecimal principal,
             BigDecimal balanceBefore,
-            BigDecimal balanceAfter) {
+            BigDecimal balanceAfter,
+            String monthInterest,
+            String interestMonth) {
 
         static PaymentPreviewResponse of(PaymentPreview preview) {
             return new PaymentPreviewResponse(
@@ -262,7 +270,9 @@ public final class DebtResponses {
                     plainAmount(preview.interest()),
                     plainAmount(preview.principal()),
                     plainAmount(preview.balanceBefore()),
-                    plainAmount(preview.balanceAfter()));
+                    plainAmount(preview.balanceAfter()),
+                    preview.monthInterest().name(),
+                    month(preview.interestMonth()));
         }
 
         /** Redacted: four amounts, two of them what this household owes. */
