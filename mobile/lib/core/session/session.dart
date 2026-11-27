@@ -15,6 +15,7 @@ import 'package:budget_owl/core/session/current_user.dart';
 import 'package:budget_owl/core/session/local_state.dart';
 import 'package:budget_owl/core/session/server_store.dart';
 import 'package:budget_owl/core/storage/install_marker.dart';
+import 'package:budget_owl/core/storage/sign_out_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Why the sign-in screen is showing, when it is not the first time.
@@ -122,6 +123,7 @@ final class SessionController extends Notifier<SessionState> {
 
   LocalState get _local => ref.read(localStateProvider);
   TokenStore get _tokens => ref.read(tokenStoreProvider);
+  SignOutMarker get _signOutMarker => ref.read(signOutMarkerProvider);
   ServerStore get _servers => ref.read(serverStoreProvider);
   bool get _allowCleartext => ref.read(allowLocalCleartextProvider);
 
@@ -176,6 +178,21 @@ final class SessionController extends Notifier<SessionState> {
       await _local.wipe(forgetServer: true);
       wiped = true;
       await marker.place();
+    }
+    // A sign-out that had not finished when the app last closed (round 7, W2): end it again —
+    // wipe, no token loaded, the delete tried again — before anything is read.
+    final pending = await _signOutMarker.read();
+    if (pending != null) {
+      final finished = await _endLocally(forgetServer: pending.forgetServer, revoke: false);
+      if (!finished) {
+        final at = pending.forgetServer
+            ? null
+            : await _servers.read(allowLocalCleartext: _allowCleartext);
+        if (!ref.mounted) return;
+        state = SessionSignOutIncomplete(server: at, forgetServer: pending.forgetServer);
+        return;
+      }
+      wiped = true;
     }
     final server = await _servers.read(allowLocalCleartext: _allowCleartext);
     if (server == null) {
@@ -311,23 +328,20 @@ final class SessionController extends Notifier<SessionState> {
     if (!ref.mounted) return;
     final server = ref.read(currentServerProvider);
     _ending = true;
+    var finished = false;
     try {
       // A token that was loaded is ended on the server too, not only dropped here: it is taken out
-      // of storage first, then revoked best effort (audit N1, L4).
-      try {
-        await _endToken();
-      } on Object catch (error) {
-        debugLogFailure('ending the token after a failed start-up', error);
-      }
-      await _local.wipe(forgetServer: server == null);
-    } on Object {
-      // Every step was attempted (LocalState.wipe); what storage refused, it refused.
+      // of storage first, then revoked best effort (audit N1, L4) — and whether it is gone is
+      // checked, as every other path that ends a session does (round 7, W1).
+      finished = await _endLocally(forgetServer: server == null);
     } finally {
       _ending = false;
     }
     if (!ref.mounted) return;
     _gate.unconfirmVersion();
-    if (server == null) {
+    if (!finished) {
+      state = SessionSignOutIncomplete(server: server, forgetServer: server == null);
+    } else if (server == null) {
       state = const SessionNoServer();
     } else {
       state = SessionSignedOut(server, notice: SignInNotice.expired);
@@ -399,6 +413,8 @@ final class SessionController extends Notifier<SessionState> {
     }
     ref.read(cacheHolderProvider).unseal();
     await _tokens.save(token, origin: current.server.stored);
+    // The new token replaced whatever an unfinished sign-out left: that one is over (W2).
+    await _signOutMarker.remove();
     try {
       final me = await _fetchMe();
       state = SessionSignedIn(current.server, me, ++_epoch);
@@ -494,7 +510,11 @@ final class SessionController extends Notifier<SessionState> {
   /// in its own try, so neither stops the other, and the wipe's own steps are each attempted
   /// (LocalState.wipe; its token step retries the delete). True only when the token is then
   /// confirmed gone from secure storage (round 6, V1).
+  ///
+  /// It is marked pending on disk first ([SignOutMarker]) and unmarked only then, so an app closed
+  /// before it finished ends it at its next launch rather than resuming (round 7, W2).
   Future<bool> _endLocally({bool forgetServer = false, bool revoke = true}) async {
+    await _signOutMarker.place(forgetServer: forgetServer);
     if (revoke) {
       try {
         await _endToken();
@@ -507,7 +527,9 @@ final class SessionController extends Notifier<SessionState> {
     } on Object catch (error) {
       debugLogFailure('wiping local state', error);
     }
-    return !await _tokens.isStored();
+    final gone = !await _tokens.isStored();
+    if (gone) await _signOutMarker.remove();
+    return gone;
   }
 
   /// How long a sign-out waits for the server to confirm the revocation.

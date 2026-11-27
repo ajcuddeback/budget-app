@@ -203,9 +203,10 @@ void main() {
       phone.store.undeletable.add(tokenKey);
 
       final again = containerFor(phone);
-      final state = await until<SessionSignedOut>(again);
+      // The token is still stored, so this is not "your session ended" (round 7, W1): the phone
+      // says it could not finish, and remembers to try again at the next launch (W2).
+      await until<SessionSignOutIncomplete>(again);
 
-      expect(state.notice, SignInNotice.expired);
       expect(phone.cacheFile.existsSync(), isFalse, reason: 'each step of the wipe is attempted');
       expect(phone.store.values.containsKey(cacheKey), isFalse);
       expect(again.read(tokenStoreProvider).hasToken, isFalse, reason: 'and none in memory');

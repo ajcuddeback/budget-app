@@ -23,7 +23,8 @@ final DateTime demoNow = DateTime.utc(2026, 8, 20, 12);
 final class MemorySecureStore implements SecureStore {
   final Map<String, String> values = {};
 
-  /// Keys whose read throws, as a Keystore that cannot decrypt a value does.
+  /// Keys whose read throws while a value is stored, as a Keystore that cannot decrypt it does.
+  /// Once the value is deleted, the read finds nothing and says so, as the Keystore does.
   final Set<String> unreadable = {};
 
   /// Keys whose delete throws.
@@ -45,7 +46,9 @@ final class MemorySecureStore implements SecureStore {
 
   @override
   Future<String?> read(String key) async {
-    if (unreadable.contains(key)) throw StateError('secure storage could not read $key');
+    if (unreadable.contains(key) && values.containsKey(key)) {
+      throw StateError('secure storage could not read $key');
+    }
     return values[key];
   }
 
