@@ -48,29 +48,46 @@ if [ -d "$IMAGES" ]; then
 fi
 
 # 3. Stale screenshots: captured before the UI they depict last changed.
-if [ -f "$MANIFEST" ] && [ -d frontend ]; then
+# A phone screenshot (its manifest entry has a `source` under mobile/, written by
+# tools/userguide-mobile.sh) is a copy of a Flutter golden, so it is judged against mobile/;
+# every other screenshot against frontend/.
+if [ -f "$MANIFEST" ] && { [ -d frontend ] || [ -d mobile ]; }; then
   ui_changed=$(git log -1 --format=%cs -- frontend/ 2>/dev/null || echo "")
-  if [ -n "$ui_changed" ]; then
-    stale=0
-    while IFS=$'\t' read -r name captured; do
+  mobile_changed=$(git log -1 --format=%cs -- mobile/ 2>/dev/null || echo "")
+  stale=0; stale_web=0; stale_mobile=0
+  while IFS=$'\t' read -r name captured source; do
+    if [ -n "$source" ]; then
+      [ -n "$mobile_changed" ] || continue
       # String compare works: both are YYYY-MM-DD.
+      if [[ "$captured" < "$mobile_changed" ]]; then
+        warn "stale screenshot: $name copied $captured, mobile changed $mobile_changed"
+        stale=$((stale + 1)); stale_mobile=1
+      elif [ -f "$source" ] && ! cmp -s "$source" "$IMAGES/$name.png"; then
+        # The date alone misses a golden re-rendered the same day; the bytes do not.
+        warn "stale screenshot: $name differs from its golden $source"
+        stale=$((stale + 1)); stale_mobile=1
+      fi
+    else
+      [ -n "$ui_changed" ] || continue
       if [[ "$captured" < "$ui_changed" ]]; then
         warn "stale screenshot: $name captured $captured, frontend changed $ui_changed"
-        stale=$((stale + 1))
+        stale=$((stale + 1)); stale_web=1
       fi
-    done < <(python3 -c "
+    fi
+  done < <(python3 -c "
 import json,sys
 for s in json.load(open('$MANIFEST')):
-    print(s['name'], s['capturedAt'], sep='\t')
+    src = s.get('source', '')
+    print(s['name'], s['capturedAt'], src if src.startswith('mobile/') else '', sep='\t')
 " 2>/dev/null)
-    if [ "$stale" -eq 0 ]; then
-      pass "no screenshots older than the last frontend change"
-    else
-      printf '      Re-capture with: tools/userguide-capture.sh --serve\n'
-    fi
+  if [ "$stale" -eq 0 ]; then
+    pass "no screenshots older than the last change to the app they show"
+  else
+    [ "$stale_web" -eq 1 ] && printf '      Re-capture with: tools/userguide-capture.sh --serve\n'
+    [ "$stale_mobile" -eq 1 ] && printf '      Re-copy with: tools/userguide-mobile.sh --render\n'
   fi
 else
-  pass "staleness check not applicable yet (no frontend/)"
+  pass "staleness check not applicable yet (no frontend/ or mobile/)"
 fi
 
 # 4. Manifest and disk agree.

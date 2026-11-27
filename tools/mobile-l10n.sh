@@ -8,6 +8,8 @@
 # two clients stay in step; mobile/l10n/mobile.en.json holds the phone's own text under keys the web
 # does not have. See mobile/tool/l10n/generate_l10n.dart for the two rules it enforces.
 set -euo pipefail
+# Never let the flutter or dart tool report usage from this repo's scripts (ADR-0016).
+export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
 cd "$(dirname "$0")/../mobile"
 
 if [ "${1:-}" = "--check" ]; then

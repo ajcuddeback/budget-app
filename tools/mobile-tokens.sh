@@ -12,6 +12,8 @@
 # fontTools. That step needs python3 with fontTools and brotli (pip install fonttools brotli);
 # --check does not, so the gate runs on a machine without them.
 set -euo pipefail
+# Never let the flutter or dart tool report usage from this repo's scripts (ADR-0016).
+export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
 cd "$(dirname "$0")/../mobile"
 
 if [ "${1:-}" = "--check" ]; then

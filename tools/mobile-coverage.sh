@@ -7,6 +7,8 @@
 # with a floor. A file under lib/core that no test loads is missing from lcov.info entirely; it is
 # counted here as wholly uncovered rather than quietly left out of the denominator.
 set -euo pipefail
+# Never let the flutter or dart tool report usage from this repo's scripts (ADR-0016).
+export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
 cd "$(dirname "$0")/../mobile"
 
 MINIMUM="${1:-80}"
