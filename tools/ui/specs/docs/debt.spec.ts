@@ -422,7 +422,7 @@ test('@doc setting your own order', async ({ page, doc }) => {
   // One move: the car loan to rung 1. Visa, Car, Student becomes Car, Visa, Student — an order the
   // generator produced, so every figure after it is the server's for that order.
   await list.getByRole('button', { name: 'Move up: Car loan' }).click();
-  await expect(card(page, 'Avalanche or snowball')).toContainText('$3,617.88');
+  await expect(card(page, 'Avalanche or snowball')).toContainText('$3,811.53');
 
   await doc.capture(
     'own-order-moved',

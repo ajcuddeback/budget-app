@@ -581,7 +581,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card: one line per order of attack, the assumption underneath, and the headline saying what is left to clear and the debt-free month.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -599,7 +599,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card: two cards side by side, each with its reasoning, its debt-free month, when the first debt goes and the interest along the way, then the sentence that compares them.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -608,7 +608,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table: rung, debt, balance, rate, progress, when it clears and what it is paying, with Open and Edit terms on each row.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -644,7 +644,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card under Your own order before anything is moved: one line keyed to all three orders.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -662,7 +662,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card with a line above the two cards saying what your own order costs.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -671,7 +671,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table after moving Car loan up: Car loan on rung 1 with the extra, Visa on rung 2, and new dates.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -680,7 +680,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Balance to zero card after the move: your own order drawn as its own line beside avalanche and snowball.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -689,7 +689,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Avalanche or snowball card after the move: the line above the cards with the new debt-free month and interest, and the two cards unchanged.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -698,7 +698,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table with Move up and Move down on each row, Move up on Car loan circled.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -707,7 +707,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page: the monthly commitment, the order of attack, the balance-to-zero chart, the two orders compared, and the table of debts.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -725,7 +725,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Debt plan page for someone whose role is Viewer: every figure and every date, and nothing to click.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -734,7 +734,7 @@
     "guide": "choose-how-to-clear-your-debts",
     "caption": "The Your debts table as a viewer when the household uses its own order: the order in a sentence, and no Move up or Move down.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -1229,7 +1229,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Balance over time card: what you are paying against the at-the-minimum comparison line, with the sentence saying what the extra is buying.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -1238,7 +1238,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The page for one debt: its name, the loan terms, the balance now, the balance over time and the payment history.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {
@@ -1301,7 +1301,7 @@
     "guide": "log-a-debt-payment",
     "caption": "The Loan terms card: what it started at, the balance now, the annual rate, the minimum payment, what you are paying, months left, when it is gone and the interest still to come, with Solved and From your plan tags.",
     "capturedAt": "2026-11-27",
-    "commit": "ee37473",
+    "commit": "a5f669e",
     "viewport": "1280x720"
   },
   {

@@ -38,10 +38,18 @@ already added it.
   build the row through `DebtPaymentService.draft`, which asks `MonthInterest.decide`. The `CHECK_IN`
   special case is removed.
 - Writes to one debt are serialised by a `FOR UPDATE` lock on the debt row, so two payments recorded
-  at once cannot both find the month unbooked.
+  at once cannot both find the month unbooked. A transaction that writes to two debts takes both
+  locks first, in one global order, so it cannot deadlock with another taking them the other way.
 - A projection whose first month is the current month charges that month no interest when it is
   already booked: the ladder, a debt's own projection, and the solver's searches. The check-in's
   what-if passes the same fact for a surplus that would book the month.
+- **This month's payments count as paid** (owner, the same day). Month 1 plans only what is still
+  to come: the month's amount loses what was already paid, each debt's minimum what was paid
+  towards it, minimums are still met, nothing is planned negative, and an overpayment is not
+  carried forward. Statement corrections and check-in surpluses do not count: a correction is not a
+  payment, and a surplus is paid on top of the plan. Both strategies get the same month-1 cash.
+- What is guaranteed, exactly, is at most one **non-zero** interest charge per debt per month. A
+  first payment whose interest rounds to $0.00 (a dust balance: `balance × apr < 6`) books nothing.
 - A confirmed statement still overrides the arithmetic, as before.
 
 ## Alternatives considered
@@ -70,15 +78,15 @@ interest goes from $2,847.88 to $2,701.45 projected plus $117.94 booked, $28.49 
 - Deleting the carrier, or moving it to another month, un-books its month. The next payment in it
   carries the interest again. If no payment follows, the month stays uncharged until a statement
   corrects it. Nothing is re-split.
-- **The plan's month 1 still assumes the month's planned payment is still to come**, as it always
-  has. Before, the double-charged interest roughly cancelled that out. Now it does not: a debt
-  whose regular payment is already logged this month is projected as if it got a second,
-  interest-free payment this month. On the demo Visa (paid August 20, read August 20) the payoff
-  moves from Dec 2027 to Nov 2027 and its interest still to come from $1,069.36 to $910.35. Recorded
-  as a known gap in `debt-plan.md`.
+- Counting this month as paid moves the demo Visa (paid Aug 20, read Aug 20) from Dec 2027 to Jan
+  2028, with $1,069.36 still to come either way, and the plan's interest from $2,847.88 to
+  $2,880.41. That is the true figure: August is paid, and the old one planned a second August
+  payment. Charging interest once without counting the month as paid would have shown Nov 2027 and
+  $910.35, two months early. `debt-plan.md`, decision 10, has the table.
 - The per-debt lock adds a little contention between two members logging against the same debt at
   the same moment. That is the point of it.
 
-**Follow-ups:** net this month's recorded plan payments out of the plan's month 1 (see the known
-gap). Have the clients send the sheet's `paidDate` to the preview, so a back-dated payment across a
-month boundary is previewed for its own month.
+**Follow-ups:** none open. Both follow-ups first recorded here are done in the same change: the
+plan's month 1 counts this month as paid, and both clients send the sheet's `paidDate`, so a
+back-dated payment is previewed for its own month. `AUTO_MATCHED` (slice 16) must write through
+`DebtPaymentService.draft` and take the debt's lock when it gets a writer.

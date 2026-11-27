@@ -250,8 +250,8 @@ every allocation and the debt-free month follow from the order, and only the ser
 **The page names what the household's own order costs.** The two comparison cards are always
 avalanche and snowball — that is the product requirement — so under `CUSTOM` neither of them is
 the plan in force, and without a line for it the page would show two totals nobody is paying and
-never name the one they are. Rearranging the demo ladder moves the interest from $2,677.02 to
-$4,346.72 (ADR-0043 figures); both cards carry on reading as before. The line is omitted under the two named
+never name the one they are. Rearranging the demo ladder moves the interest from $2,880.41 to
+$4,568.81 (ADR-0043 figures); both cards carry on reading as before. The line is omitted under the two named
 strategies, where the matching card already says it.
 
 **Choosing it from the avalanche order makes all three chart lines identical**, which is the first
@@ -434,12 +434,30 @@ FOR UPDATE` on the debt row (`DebtRepository.lockByIdAndHouseholdId`). The secon
    the debt row unless it settles it. Without the lock, six concurrent $100 payments produced three
    or four interest-carrying rows. With it, exactly one (`MonthInterestIT`). The preview reads
    without the lock: it writes nothing, and a stale preview is corrected by the recorded split.
+   **A transaction that writes to two debts takes both locks first, in one global order** (the id's
+   text, which is PostgreSQL's `uuid` order): `DebtPaymentService.lockInOrder`, which a check-in's
+   completion calls before it records a bill prompt's payment and the surplus. Each write would
+   otherwise lock its own debt in item order, and two transactions taking the same two debts the
+   other way round deadlock. `DebtLockingIT` proves it deterministically, and proves the locks on
+   `correct` (six concurrent moves into one month leave one carrier, not six), `delete` (a delete
+   racing a payment never leaves a debt settled with a balance) and `confirmBalance` (a statement
+   racing a payment still chains in the history).
 6. **Existing data is not rewritten.** No migration touches a stored row. Slice-14 `CHECK_IN` rows
    keep their principal-only split, and because they carry no interest they do not book their month
    (rule 1). Months that were charged twice before this change stay charged twice in the history,
    and the next statement confirmation reconciles the balance. No schema change was needed:
    `ix_debt_payments_debt_paid_date` already serves the month look-up, and "this row carries the
    month" is `interest <> 0`, not a second column that could disagree with it.
+7. **A month's interest that rounds to $0.00 books nothing, and that is the right answer.** What the
+   rule guarantees, stated exactly, is **at most one non-zero interest charge per debt per month**.
+   `round(balance × apr ÷ 1200)` is zero only on a dust balance, `balance × apr < 6` in dollars:
+   under $6 at 1%, under 27 cents at 22.9% (`MonthInterestTest`). Such a first payment charged the
+   month nothing. A later payment in the same month then carries interest only if the balance
+   grew in between, which only a statement correction does, and that is the month's one real
+   charge, on the balance the statement gave. A marker column to treat the zero row as the carrier
+   was considered and rejected: it needs a migration and a three-state rule for old rows (slice-14
+   check-in rows carry interest 0 and must not book their month), to prevent a case that charges
+   at most one real month of interest anyway.
 
 **A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
 difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
@@ -839,8 +857,8 @@ which become dialogs on desktop with identical fields in identical order:
      like JSON produces that same message rather than a split with three blanks in it.
 
    `POST
-   /api/debts/{id}/payments/preview` with `{"amount": "445.00"}` (and optionally `"paidDate"`,
-   today when absent) returns the interest, the principal, the balance the split is taken against,
+   /api/debts/{id}/payments/preview` with `{"amount": "445.00", "paidDate": "2026-08-20"}` (the
+   date the sheet will record, which both clients send and re-ask on; today when absent) returns the interest, the principal, the balance the split is taken against,
    the balance it would leave, and **why the interest is what it is**: `monthInterest` (`CARRIED`,
    the month's first payment; `ALREADY_CARRIED`, an earlier payment in `interestMonth` carried it;
    `NONE`) and `interestMonth`. The sheet words the first two under the split, so a first payment
@@ -1205,21 +1223,6 @@ bounded and these unbounded:
   and `interest + principal = amount` holds. *Whether* it carries interest is decided for its own
   month (ADR-0043), so a payment back-dated into a month with no payment yet carries that month's
   interest, taken against today's balance.
-- **The plan's month 1 still assumes this month's planned payment is still to come** (ADR-0043).
-  The ladder pays every debt its allocation in the current month, whether or not a payment has
-  already been logged this month. Before ADR-0043, month 1 also charged the month's interest a
-  second time, and the two roughly cancelled, so a debt paid this month projected as if month 1
-  were next month. Now the booked month is not charged again, which is right, but the extra payment
-  is still assumed. On the demo Visa (paid Aug 20, read Aug 20) the plan shows it clearing in **Nov
-  2027 instead of Dec 2027**, with $910.35 of interest still to come instead of $1,069.36. The plan's
-  total goes from $2,847.88 to $2,677.02. For a surplus that is the month's first payment, with the
-  regular payment still to come, month 1 is exactly right. The fix is to net the month's recorded
-  plan payments (not `CHECK_IN` extras) out of the ladder's month-1 allocation. That changes the
-  shape of every projection, so it is the owner's call and is not made here.
-- **The sheets preview today's month.** `POST /api/debts/{id}/payments/preview` takes an optional
-  `paidDate`, but neither client sends the date field's value yet. A payment back-dated across a
-  month boundary is therefore previewed for the current month. The sheet names that month (*"August
-  2026's interest…"*), and the recorded banner reports the split that was actually stored.
 - **The projection is monthly and nominal.** It will differ from a lender's daily-accrual figure,
   typically by a few pounds a month and occasionally by a whole month of payoff date.
 
@@ -1293,6 +1296,45 @@ Decided on 2026-11-25, during implementation, and numbered after the eighth abov
    replaced scale-4 rounding before slice 10 ever merged to main**, so no stored row predates it
    and there is nothing to migrate. One consequence: avalanche never costing more than snowball now
    holds to within rounding rather than exactly (*Testing notes*, `PayoffLadderTest`).
+
+10. **A projection counts this month's payments as paid** (owner, 2026-11-27, with ADR-0043). A
+    projection made mid-month plans only what is still to come. Month 1 is the current month, and:
+    - its interest is not charged when a payment recorded this month already carried it;
+    - **the month's amount loses everything already paid** towards the debts this month, and each
+      debt's minimum loses what was paid towards that debt. Minimums are still met (they are owed
+      whatever was paid elsewhere), only the extra goes, nothing is ever planned negative, and an
+      overpayment is not carried into later months: the balance already reflects it;
+    - statement corrections are not payments and do not count; **neither does a check-in's
+      surplus**, which the household pays *on top of* the plan (`weekly-check-in.md`, decision 5).
+      Counting it would take it off the plan's own payment, so paying the surplus could never move
+      a payoff date, and the check-in's debt choice would always say *"Doesn't move the month"*;
+    - both strategies get the **same** month-1 cash, because the month's amount is netted rather
+      than each debt's allocation. Netting each debt's own share would hand an order more to spend
+      this month whenever the paid debt sat lower in it, and the comparison would stop being like
+      for like (`PayoffLadderTest.bothStrategiesPutTheSameCashIntoAPartlyPaidMonth`);
+    - the **standing allocation** the page shows (*"$185 minimum + $260 extra"*) is unchanged: it
+      is read off month 1 before anything paid is counted.
+
+    It applies wherever month 1 is projected: the ladder, the +$50 what-if (the same ladder), a
+    debt's own projection and the solver's payment and rate searches (`FirstMonth`, carried on
+    `LadderDebt` and `DebtTerms`), and the check-in's what-if (`DebtFacts.afterCheckInPayment`).
+    The demo Visa ($6,180.00 at 22.9%, its $445 for August logged on Aug 20, read on Aug 20):
+
+    | | Before ADR-0043 | ADR-0043, month 1 still planned | Counted as paid (now) |
+    |---|---|---|---|
+    | Months left | 17 | 16 | 18 (August included, with nothing left to pay) |
+    | Gone by | Dec 2027 | Nov 2027 | **Jan 2028** |
+    | Interest still to come | $1,069.36 | $910.35 | **$1,069.36** |
+    | Plan interest, avalanche / snowball | $2,847.88 / $2,896.49 | $2,677.02 / $2,727.28 | **$2,880.41 / $2,923.93** |
+    | First debt gone | Dec 2027 | Nov 2027 | **Jan 2028** |
+    | Debt-free | Apr 2029 | Apr 2029 | Apr 2029 |
+
+    The "now" column is the true one. August is paid; from September the Visa takes 17 more
+    payments and $1,069.36 of interest, exactly the old figures a month later. The old column was a
+    month early because it planned a second August payment and charged August's interest again,
+    and the middle column was two months early because it kept the payment and dropped only the
+    interest. The plan's total rises, because August's $260 of extra was already spent on the Visa
+    and nothing more reaches the other debts this month.
 
 ## Where the designs and the docs disagree
 
@@ -1446,7 +1488,8 @@ this is about it.
 - **Interest once per debt per month (ADR-0043).** `MonthInterestTest` is the rule as a unit:
   first, second, back-dated, another month, another debt, a month whose rows carry no interest,
   the payment being corrected, a zero rate, nothing owed, a payment smaller than the interest.
-  `MonthInterestIT` takes it through the API on a stopped clock: a second hand-logged payment, a
+  `DebtLockingIT` covers the locks on the other writers and the order a completion takes two
+  debts in. `MonthInterestIT` takes it through the API on a stopped clock: a second hand-logged payment, a
   back-dated one, the next month, another debt, the preview (both answers, `paidDate`, a future
   date refused), delete and re-book, a `PATCH` into a booked month, the check-in's bill prompt
   after a hand-logged payment, the surplus after and before the regular payment (with "never
@@ -1471,6 +1514,17 @@ this is about it.
   | The check-in's what-if not told the surplus books the month | `CheckInIT.the_canvas_week_reconciles…`, `MonthInterestIT.a_surplus_that_is…` |
   | The solver charges a booked month 1 | two `DebtTermsSolverTest` tests |
   | `DebtFacts` never sees a booked month · a debt's own projection ignores it | `DemoFixtureIT.the_committed_debt_fixtures…` (the generated figures move) |
+  | Month 1 plans the whole month's amount despite what was paid | three `PayoffLadderTest` tests (already paid, overpaid, both strategies the same cash) |
+  | The page's standing allocation read off the netted month 1 | `PayoffLadderTest.aMonthAlreadyPaidPlansOnlyWhatIsStillToCome` |
+  | Minimums rationed by what is left of the month | `PayoffLadderTest.overpayingTheMonth…` |
+  | The solver plans the whole payment in month 1 | two `DebtTermsSolverTest` tests |
+  | A check-in surplus, or a statement correction, counted as paid | `MonthInterestTest.a_statement_correction_and_a_check_in_surplus…` |
+  | A completion locks in item order, not the global order | `DebtLockingIT.a_completion_locks…`: the completion was the deadlock victim (`409 check-in-stale`) |
+  | `correct` without the lock | `DebtLockingIT.corrections_moving…`: six carriers, not one |
+  | `delete` without the lock | `DebtLockingIT.a_delete_and_a_payment…`: a debt settled at $30.00 owed |
+  | `confirmBalance` without the lock | `DebtLockingIT.a_statement_and_a_payment…`: payment 1000→980 and correction 1000→950 |
+  | The web form does not re-ask when the date changes | `debt-detail.page.spec.ts`: "asks again for the date chosen…" |
+  | The phone sheet does not re-ask when a date is picked | `debt_screens_test.dart`: "a back-dated payment is previewed for its own month" |
 
 - **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
   - **Round-trip identity, stated exactly:** a *solved* field is a **fixed point** of the round

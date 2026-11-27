@@ -878,7 +878,7 @@ export class DebtPlanPage {
    * The two cards are always avalanche and snowball, whichever strategy is selected — that is the
    * product requirement. Under `CUSTOM` neither of them is the plan, so without this the page
    * shows two totals the household is not paying and never names the one they are: rearranging
-   * the designs' own ladder moves the interest from $2,677.02 to $4,346.72 and both cards carry
+   * the designs' own ladder moves the interest from $2,880.41 to $4,568.81 and both cards carry
    * on reading as before.
    *
    * Omitted for `AVALANCHE` and `SNOWBALL`, where the matching card already says it.

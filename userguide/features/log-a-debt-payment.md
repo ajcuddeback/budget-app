@@ -136,6 +136,10 @@ said it:
 - **From your plan** — **What you are paying** is what the ladder on the
   [debt plan](choose-how-to-clear-your-debts.md) allocates to this debt.
 
+What you've already paid this month counts as paid. This card's August payment is recorded, so
+the figures plan nothing more for August and start again in September: **Months left** reads 18
+because it counts August, which has nothing left to pay.
+
 The card says it in its own words at the top: _"Give me any three of the rate, the payment and the
 horizon and I will work out the fourth."_ **The balance is never one of them** — it's the one number
 you can read off a statement, so it only changes when you say so.
@@ -145,11 +149,11 @@ you can read off a statement, so it only changes when you say so.
 **Balance now** leads with what you owe and, underneath, how far you've come. That second line only
 appears if you told Budget Owl what the debt started at.
 
-![The Balance over time card: a solid line for what you are paying and a dashed one for the minimum, with the sentence that paying $260.00 extra is buying you 36 months.](../images/log-a-debt-payment--over-time.png)
+![The Balance over time card: a solid line for what you are paying and a dashed one for the minimum, with the sentence that paying $260.00 extra is buying you 37 months.](../images/log-a-debt-payment--over-time.png)
 
 **Balance over time** draws what you're paying against what the minimum alone would do, and says
-what the difference buys: _"Paying $260.00 extra is buying you 36 months: gone by November 2027
-instead of November 2030."_ The dashed line is kinder than reality, and the card says so — a real
+what the difference buys: _"Paying $260.00 extra is buying you 37 months: gone by January 2028
+instead of February 2031."_ The dashed line is kinder than reality, and the card says so — a real
 card minimum falls as the balance falls, which stretches it out further still.
 
 ## Things that can go wrong
