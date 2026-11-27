@@ -1367,6 +1367,28 @@ in Settings is still trusted (Dart reads the system directory itself).
 _Added 2026-11-26 — slice 15; updated the same day in phase 2 (the channel), and again in round
 2 (pinned to one CA per server)._
 
+## A `FutureProvider` answers from its cache: invalidate it after changing what it reads
+
+**Symptom.** A test set `TestPhone.temporaryDirectoryFails` after start-up and expected the next
+wipe to meet the failure. It never did: `temporaryDirectoryProvider` had resolved at start-up and
+kept its value, so the test passed with the fix removed.
+
+**What to do.** After changing what a resolved provider reads, `container.invalidate(provider)`
+before acting, and prove the test fails with the fix removed.
+
+_Added 2026-11-27 — slice 15 phase 2, round 5._
+
+## Helper scripts in a shared scratchpad: run Python with `-I`
+
+**Symptom.** `python3 script.py` failed inside `import pprint` with a traceback from someone
+else's `inspect.py`: Python puts the script's directory first on `sys.path`, and the scratchpad
+is shared with other agents' scripts, so a file there shadowed the standard library.
+
+**What to do.** `python3 -I` (isolated: no script directory, no user site) for any helper run from
+a shared directory, and never name a helper after a standard module.
+
+_Added 2026-11-27 — slice 15 phase 2, round 5._
+
 ## `dart format lib` reformats the generated strings, and the generator check then fails
 
 **Symptom.** `generators_test` ("the ARB and the lookup are what tools/mobile-l10n.sh generates")

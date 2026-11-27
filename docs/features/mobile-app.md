@@ -127,10 +127,18 @@ The one new API route. Public, so the app can identify a server before anyone si
 - *Wipe local state* means: the token, the Drift database file and its key, the cached user and
   household, what the app or a plugin left in the temporary directory (an exported CSV in
   `budget-owl-export/`, share_plus's copies of our exports, file_selector_android's
-  `<uuid>/<name>` copy of a picked statement: `core/storage/temp_files.dart`), and any in-memory
-  state. The temporary-directory sweep also runs once at every start-up, for an app that was
-  killed mid-share. Only the server address survives a sign-out (so signing
-  back in is one screen), and it is removed when the user changes server.
+  `<uuid>/<name>` copy of a picked statement, file_selector_ios's `tmp/<bundle id>-Inbox/`:
+  `core/storage/temp_files.dart`), and any in-memory state. The temporary-directory sweep also
+  runs once at every start-up, for an app that was killed mid-share; it never fails a wipe (a
+  failure is logged in debug builds and swept again next start). Only the server address
+  survives a sign-out (so signing back in is one screen), and it is removed when the user
+  changes server.
+- **A wipe that reports a failure still ends the session** (round 5, U1). Every step is
+  attempted and the first failure is reported, but sign-out, a `401` and a change of server
+  change state in a `finally`: they always reach sign-in or the connect screen, with nothing of
+  the session in memory. `connect()` turns a failed wipe into its own failure, *"This phone could
+  not clear what it held for the previous server, so nothing was connected"*: no server is saved
+  or current, so a half-wiped phone is never connected to a new origin.
 
 ### The cache
 
@@ -523,6 +531,19 @@ The `insights_test` CSV tests waited a fixed `settle` after the tap; under the g
 export's real file work outlasted it once (a dismissed share's `forget` not yet recorded). They now
 wait until the button no longer says *"Preparing the file…"*.
 
+After the round-5 audit:
+
+| Item | What changed | Broken how | Failed |
+| ---- | ------------ | ---------- | ------ |
+| U1 a failed wipe still ends the session | The sweep is not fatal inside the wipe; `signOut` and `sessionEnded` change state in a `finally` and log a wipe failure; `connect()` turns one into `ConnectProblem.phoneNotCleared`, connected to nothing; a failed sign-in's clean-up cannot replace its error | The sweep fatal again; `connect()` letting the error escape; sign-out and `401` changing state only after the wipe returns (the round-4 code) | The sweep-failure and no-temporary-directory tests; the connect test and its screen test; sign-out, change of server and the screen test; the `401` test. The no-temporary-directory test first proved nothing: the `FutureProvider` had cached the directory at start-up; it now invalidates it |
+| U2 iOS picker copies | `sweepPickerInbox`: everything in `tmp/<bundle id>-Inbox/` (AppDelegate names it from the bundle id), which must be a real directory directly in `tmp/`, compared before links are resolved (`/var` is a link on iOS); `pickerCopyRootProvider` gives the picker the real `tmp/` on iOS | Not swept on iOS; any folder name; an Inbox anywhere; an Inbox that is a link followed; compared after resolving; the wipe not told where it is; the picker deleting against Caches again | Each its own test. "An Inbox anywhere" first proved nothing — the sweep only ever rebuilds `tmp/<name>` — until the test put a real Inbox beside the misnamed request |
+| U3 the clipboard is never read | `ClipboardPlatform` has no read: `setSensitive` returns a receipt, `clearIfUnchanged(receipt)` is decided natively (Android: description timestamp, a digest below 8, deferred to focus when not focused; iOS: `changeCount`, `localOnly`, ten-minute expiry) | Dart reading the clipboard; the receipt not sent; Android comparing the clip's text; Android checking while not focused; iOS not `localOnly`; no expiry; iOS reading the pasteboard | The four channel tests; the two receipt tests; `platform_config_test` (Android and iOS) for each native one |
+
+Restoring the Kotlin for U3 first removed `userCaCertificates()`, the user-CA reader the trust
+channel calls: a text replacement between two markers took it with the old clipboard code.
+`platform_config_test`'s AND1 caught it before any commit; it was restored from `HEAD`, and the
+diff against `HEAD` checked to remove only the old clipboard handler.
+
 ### What reading the screenshots changed
 
 Sheets opened inside the tab's navigator, under the tab bar: they now open on the root navigator.
@@ -689,12 +710,19 @@ was needed (the invite sheet is a full-screen dialog on the root navigator).
   `acceptPath`, refused unless it stays on that origin and is exactly `/join/<token>`
   (`buildInviteLink`). It is shown once, selectable, left to right in every layout, with the web's
   *"treat this link like a password"* warning, role and expiry; **Copy link** is the only thing
-  that puts it on the clipboard, **marked sensitive** on Android 13+
-  (`ClipDescription.EXTRA_IS_SENSITIVE`, through MainActivity's `app.budgetowl/clipboard`
-  channel; a plain copy below 13 and on iOS); **Revoke link** (`DELETE …/invitations/{id}`) takes
-  it off the screen too; closing the sheet drops it. On revoke and on close the sheet reads the
-  clipboard back and clears it **only if it still holds that link**, so whatever the person
-  copied since is left alone (`SensitiveClipboard`). The token never reaches the cache, secure storage, a
+  that puts it on the clipboard, through the native `app.budgetowl/clipboard` channel: on
+  Android 13+ **marked sensitive** (`ClipDescription.EXTRA_IS_SENSITIVE`; below 13 nothing can
+  mark it, so it is a plain clip); on iOS **`localOnly`** (never carried to the person's other
+  devices by Universal Clipboard) and **expiring after ten minutes**. **Revoke link**
+  (`DELETE …/invitations/{id}`) takes it off the screen too; closing the sheet drops it. On
+  revoke and on close the sheet hands back the copy's receipt, and the native side clears the
+  clipboard **only if it still holds that copy** — decided **without reading the clipboard**:
+  Android compares the clip's `ClipDescription` timestamp (below Android 8, where there is no
+  "pasted from" notice, a SHA-256 of the clip), iOS compares `UIPasteboard.changeCount`. So
+  Android 12+'s *"pasted from your clipboard"* notice and iOS 16+'s *"Allow Paste?"* prompt are
+  never shown, and whatever the person copied since is left alone. Android 10+ lets no app that
+  is not focused see the clipboard, so a take-back asked for then is checked when the window next
+  has focus (`SensitiveClipboard`, MainActivity, AppDelegate). The token never reaches the cache, secure storage, a
   provider or a log: the response goes through `ApiClient.write`, and `Invitation` keeps only
   `acceptPath` and prints only its id.
 - **Preferences** (`features/preferences/`): display currency and language for the member, saved
@@ -776,10 +804,19 @@ length counter (removed); three scenarios scrolled past what they were meant to 
 - **At text 2.0 the shared `Screen` header breaks "Administration" mid-word** (one word wider than
   the phone). A shared-widget fix (scale a title down to fit) for every area; not done here.
 - **The invite link wraps at a hyphen**, as the web's text box does; *Copy link* copies it exactly.
-- **The clipboard's sensitive flag and clearing need checking on a device.** Tests prove what the
-  Dart side asks MainActivity for, and `platform_config_test` pins the Kotlin, but nothing here
-  shows what Android 13+'s copy preview or a keyboard's clipboard suggestions then do. Below
-  Android 13 there is no flag, so a copied link is a plain clip until the sheet takes it back.
+- **Below Android 13 a copied link cannot be marked sensitive** (round 5, U4): the platform has
+  no such flag, and nothing more is possible. It is a plain clip — shown in a keyboard's
+  clipboard suggestions — until the sheet takes it back on revoke or close. If the app is killed
+  with the link on the clipboard, it stays there. On iOS the copy is `localOnly` and expires
+  after ten minutes by itself, killed app or not.
+- **The clipboard needs checking on a device.** Tests prove what the Dart side asks the native
+  side for, and `platform_config_test` pins the Kotlin and Swift, but no test here runs a real
+  clipboard, and the Swift is not compiled on this Linux machine. Check on Android 13+ that the
+  copy preview hides the link; on Android 12+ that taking it back shows no "pasted from" notice;
+  that copying something else after the link is never cleared; and that closing the sheet while
+  the app is in the background clears the link when it comes back. Check on iOS 16+ that no
+  "Allow Paste?" prompt appears, that the link does not reach a Mac through Universal Clipboard,
+  and that it is gone after ten minutes. **`AppDelegate.swift` needs an Xcode build.**
 - **An administrator with no household membership cannot reach the console on the phone**: core's
   `redirectFor` sends every signed-in route to *not in a household* first. The web allows it.
 - **The invite-link golden has no 2× variant**: the test driver does not land the create tap at 2×
@@ -971,8 +1008,12 @@ network calls of its own.
   `finally`, but only a file inside the temporary directory, together with its emptied folder. A
   copy whose path never came back (the pick failed, or the app died first) is swept at the next
   start-up and every wipe: a real directory directly under the temporary directory, named as a
-  UUID, holding exactly one regular file (Android only; links are never followed). The
-  app never writes the statement itself.
+  UUID, holding exactly one regular file (Android only; links are never followed). On iOS the
+  copy is in `tmp/<bundle id>-Inbox/` — the real `tmp/`, not Dart's temporary directory, which on
+  iOS is `Library/Caches` — so the picker deletes it against that root, and the start-up and wipe
+  sweep empties the Inbox (AppDelegate's `app.budgetowl/files` channel says where both are; round
+  5, U2). Before round 5 an iOS pick's copy was never deleted. The app never writes the
+  statement itself.
 - `share_plus` 13.3.1 (fluttercommunity.dev; `share_plus_platform_interface` 7.2.0, and
   `url_launcher_*` on desktop and web only). It adds a non-exported `FileProvider` (authority
   `${applicationId}.flutter.share_provider`, `cache/share_plus/`) and a non-exported receiver.
@@ -1023,7 +1064,8 @@ empty).
 - **The platform copies need checking on a device.** No test here runs the real picker or share
   sheet. Check on Android that `cache/<uuid>/` is empty after picking (and after a pick that
   failed, once the app restarts), and that `cache/share_plus/` is emptied on a dismissed share,
-  the next Insights visit, a sign-out and the next start. Check on iOS that `tmp/` holds no
+  the next Insights visit, a sign-out and the next start. Check on iOS that `tmp/` (its
+  `<bundle id>-Inbox/`) holds no
   statement copy.
 - **A shared export stays in `cache/share_plus/` until the next export, Insights visit, start-up
   or wipe** (Android): the receiving app may still be reading it.
