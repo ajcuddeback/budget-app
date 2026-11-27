@@ -1402,6 +1402,22 @@ before acting, and prove the test fails with the fix removed.
 
 _Added 2026-11-27 — slice 15 phase 2, round 5._
 
+## `Money.fromWire` and `CalendarDate.parse` throw `FormatException`, which no reader maps
+
+**Symptom.** A ledger body with `"amount":"1e9"` didn't produce the screen's error state. It
+escaped `CachedResource.refresh` as an uncaught async error, and the screen kept its spinner.
+`refresh` and `ApiClient.getJson` turn only `UnexpectedJson` into `AppError.unexpected()`, and the
+strict lexers throw `FormatException`.
+
+**What to do.** In a `fromJson`, read an amount with `wireMoney(wire, currency, field)` from
+`core/money/money.dart` (or `json.amount` from `shared/figures.dart`), and wrap `CalendarDate.parse`
+so that it throws `UnexpectedJson`. A repository that calls `fromJson` itself, outside
+`CachedResource` or `getJson`, must map `UnexpectedJson` to `AppError.unexpected()` there, because
+screens catch `AppError` only. Test it with a recorded body that has one field changed, and check
+that `tester.takeException()` is null.
+
+_Added 2026-11-27 — slice 15, ledger follow-up._
+
 ## Helper scripts in a shared scratchpad: run Python with `-I`
 
 **Symptom.** `python3 script.py` failed inside `import pprint` with a traceback from someone

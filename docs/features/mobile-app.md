@@ -718,7 +718,7 @@ control. Every amount is the server's string held as `Money`; **the phone adds n
 | Envelope meter | `Number(spent) / Number(amount)` | A `Decimal` ratio rounded to a whole percent | No `double` is made from an amount |
 | Envelope card | Five buttons | Log spend, the log toggle, and an actions sheet | Width |
 | Envelope month on create | `<input type="month">` | Previous / next arrows inside the field | Material has no month picker |
-| A malformed amount from the server | — | `UnexpectedJson`, the generic error | `Money.fromWire` throws `FormatException`, which `CachedResource` does not catch; these models convert it (`wireMoney`). Phase 1's ledger models still let it escape |
+| A malformed amount from the server | — | `UnexpectedJson`, the generic error | `Money.fromWire` throws `FormatException`, which `CachedResource` does not catch; these models convert it (`wireMoney`, now in `core/money`). Phase 1's ledger models do too since the follow-up below |
 
 #### Proving each control can fail
 
@@ -731,6 +731,32 @@ confirmed empty.
 | Offline refusal before sending | The `reachabilityProvider` check removed from all three writers, the server still answering | The three offline tests: accounts and envelopes wrote for real, categories sent a `DELETE` the fixture did not record. First run hung on the fake clock instead of failing, so direct writer calls in tests now run under `tester.runAsync` |
 | The refusal says why | `writeFailureText` / `writesOffNow` always say "offline" | The four version-unconfirmed tests (accounts, categories, envelopes, transactions) |
 | No household id in a path | The id added to the account create query and the envelope entry path | "adding sends the web's body" and "quick add" (fixture miss, and the household-id assertion) |
+| Malformed ledger figure is the error state | Ledger follow-up: a bare `Money.fromWire` for the row amount; then `pageTotal` and the date reader unwrapped; then `TransactionsWriter.transfer`'s `UnexpectedJson` mapping removed | `malformed_body_test.dart`: the three row-amount cases (an uncaught `FormatException`), then `pageTotal` and `date`, then the three transfer cases |
+
+#### Follow-up: the ledger's malformed figures (2026-11-27)
+
+Phase 1's `Transaction`, `Ledger` and `Transfer` models called `Money.fromWire` and
+`CalendarDate.parse` directly. Both throw `FormatException`, and `CachedResource.refresh` maps only
+`UnexpectedJson`, so one amount the server's `NUMERIC(19,4)` could never produce (`"1e9"`, five
+decimals, sixteen integer digits) or an impossible date escaped `refresh` as an **uncaught async
+error**. The screen kept its spinner, and nothing told the person the answer was unreadable.
+Separately, `TransactionsWriter.transfer` decoded the body **outside** `getJson`'s mapping, so even
+an `UnexpectedJson` from `Transfer.fromJson` escaped the screen's `on AppError` catch.
+
+- **The fix is at the boundary, not in `CachedResource`.** `wireMoney` moved from
+  `features/accounts/data/accounts.dart` to `core/money/money.dart`, so a feature no longer imports
+  another feature to read an amount. The ledger models use it, and a local `_date` reader for their
+  dates. `transfer()` maps `UnexpectedJson` to `AppError.unexpected()`.
+- **Why not widen `refresh`'s catch to `FormatException`:** it would not reach the transfer read,
+  which does not go through `CachedResource`. It would also loosen the `decode` contract ("throw
+  `UnexpectedJson`") that every other repository and `ApiClient.getJson` share. The only core change
+  is where `wireMoney` lives, and its behaviour is unchanged.
+- **A refused body is never cached:** `decode` runs before the cache write, and the test asserts the
+  cache holds no entry for the key.
+- Tests: `test/features/transactions/malformed_body_test.dart` (recorded demo answers with one field
+  changed: the ledger's generic error panel, no exception, nothing cached; the transfer read is
+  `AppError.unexpected`; the untampered bodies still read). `test/core/money_test.dart` checks that
+  `wireMoney` names the field and never the value.
 
 #### What reading the screenshots changed
 
@@ -995,6 +1021,12 @@ translations do not have this.
   but every recorded household is in USD, so no golden shows two ladders.
 - **Charts have no touch read-out.** They state their figures in the sentences beneath them and
   in a semantics description; there is no tap-for-value.
+- **A malformed date escapes the plans models the way the ledger's did.** `debt.dart`, `bill.dart`
+  and `goal.dart` call `CalendarDate.parse` directly in their `fromJson`s, and their repositories
+  map only `UnexpectedJson`. Their amounts are safe: `json.amount` lexes them at the boundary. The
+  fix is the ledger's (see "Follow-up: the ledger's malformed figures"), ideally as a `wireDate`
+  next to `CalendarDate` in core, replacing the private copies in `envelope.dart`, `check_in.dart`,
+  `import.dart` and `transaction.dart`.
 - **The month bar reads any month** the user steps to; only July, August and September 2026 are
   recorded, so tests do not step further.
 
