@@ -613,6 +613,16 @@ through (now opaque).
 
 ### Known gaps
 
+- **Settle before the first public mobile release: a newer phone against an older server.** The
+  API version (`InstanceMetaService`) is still 1, but request shapes have grown since: the payment
+  preview's `paidDate` (ADR-0043) and the check-in completion's `today`. The server refuses
+  unknown JSON fields, so a phone updated from a store would get a 400 on every check-in
+  completion and every payment preview against a server not yet upgraded. The version check at
+  connect would pass, because neither side moved. This is harmless today: every phone build so far
+  was built from the same commit as the server it talks to. Before a store release, either bump
+  the API version and the phone's minimum whenever a request shape grows, or send new fields only
+  to servers that report the version that knows them. Recorded from the round-4 audit of
+  ADR-0043's follow-ups.
 - **No per-server pin on iOS.** `dart:io` on iOS evaluates the server's certificate against the
   system trust store, which includes every profile the person has given full trust — an
   MDM-installed inspection CA too. Pinning (`PhoneTrustAdapter`) and the "Trusted through" and
