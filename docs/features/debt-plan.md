@@ -439,7 +439,17 @@ How the edge cases are decided, so nobody re-derives them:
    `ApiExceptionHandler` answers with a retryable **`409 record-busy`** in the normal problem shape
    (_"Someone else is changing this right now. Nothing has been saved — try again in a moment."_ on
    both clients). Without the bound, a transaction that hung holding a debt would hold every writer
-   to it, and the request thread with them. `@Version` could not do this, because a payment does not touch
+   to it, and the request thread with them. The two writers that take debt rows without
+   `DebtLocks.lock`, your own order and a debt's delete, set the same bound
+   (`DebtLocks.boundWaits`, `DebtLockingIT.your_own_order_and_a_delete_on_a_held_debt…`), and the
+   handler logs which lock failure it was at `DEBUG`, the exception's class only. **A debt deleted
+   while a writer waits for it is `404`, not `500`.** `DebtLocks` locks the row by id (`SELECT id …
+   FOR UPDATE`, household-scoped) and only then refreshes the entity. PostgreSQL re-checks a row it
+   waited on and returns nothing when it has gone, so the writer finds no debt: `404` for a payment,
+   and for a completion a skip, after which the write that names the debt answers `409
+   check-in-stale`, subject gone. Refreshing a row that no longer exists throws
+   `EntityNotFoundException` and marks the transaction for rollback, which surfaced as a `500`
+   (`DebtLockingIT.a_debt_deleted_while_a_payment_waits…`, `…_a_completion_waits…`). `@Version` could not do this, because a payment does not touch
    the debt row unless it settles it. Without the lock, six concurrent $100 payments produced three
    or four interest-carrying rows. With it, exactly one (`MonthInterestIT`). The preview reads
    without the lock: it writes nothing, and a stale preview is corrected by the recorded split.
@@ -488,11 +498,22 @@ How the edge cases are decided, so nobody re-derives them:
    months. The same dates may be **no earlier than 1900-01-01**: `-5000-01-01` parsed and reached
    PostgreSQL as a `500`, and is now `400 validation-failed` naming the field. The web and phone
    date pickers stop at the device's own today, so the slack is never offered, only accepted.
-   **The check-in's surplus keeps the server's date** (`balances.today()`, UTC), because the
-   completion request carries no date. Near a month boundary that can put the surplus in the
-   household's previous month. It is still charged by the one rule there, so no month is charged
-   twice. The month it lands in may be a day off the household's calendar, which is the same
-   accepted risk as reporting's months.
+   **The check-in's bill payments take the household's date too.** The completion carries the
+   device's own date (`today`, `weekly-check-in.md`, Completing a check-in), within today somewhere
+   on Earth. A bill marked paid, and its debt payment, are dated that day
+   (`MonthInterestIT.a_bill_marked_paid_on_the_first_east_of_utc…`: at 23:00 UTC on Aug 31 a store
+   card marked paid with `today` Sept 1 records `2026-09-01 · 3.08 / 21.92`, September's first;
+   dated by the server it was Aug 31, all principal, and September went uncharged). Taking the
+   occurrence's due date instead was rejected: it invents a payment date, and a late payment would
+   land in the month it was owed, not the month it was paid. A matched charge's payment keeps the
+   charge's own date, capped at the device's day, or, from a client too old to send one, at the
+   latest date on Earth, so a true date is never moved into the month before (`HouseholdDay`).
+   **The check-in's surplus keeps the server's date** (`balances.today()`, UTC): its preview, the
+   debt choice's _"carries this month's interest"_, is computed by the server before the
+   completion, and a payment dated differently from its preview would record a split the household
+   was not shown. Near a month boundary that can put the surplus in the household's previous month.
+   It is still charged by the one rule there, so no month is charged twice. The month it lands in
+   may be a day off the household's calendar, which is the same accepted risk as reporting's months.
 
 **A statement wins.** When the household confirms a balance that disagrees with the arithmetic, the
 difference is recorded as a `STATEMENT_CORRECTION` payment row — *"Statement corrected +$4.10"* —
@@ -1619,6 +1640,14 @@ this is about it.
   | The lock-failure handler removed | `DebtLockingIT.a_debt_held_too_long…`: `500`, not `409` |
   | _"+$50 more"_ on every rung, web · phone | `debt-detail.page.spec.ts`: "offers fifty more only on the plan's first rung…" · `debt_screens_test.dart`: "fifty more is offered on the plan's first rung only" |
   | The web date picker not capped at today | `debt-detail.page.spec.ts`: "…and no date after today" |
+  | A bill marked paid in a check-in dated by the server (occurrence, or its debt payment) | `MonthInterestIT.a_bill_marked_paid_on_the_first_east_of_utc…`: `2026-08-31 0.0000 25.0000` |
+  | A check-in's charge payment capped at the server's day | the same test (the cap applies to every bill prompt) |
+  | The completion's `today` not range-checked | `HouseholdDayTest`, `MonthInterestIT.a_completion_dated_where_nobody_is_living…` |
+  | Without `today`, the cap at the server's day | `HouseholdDayTest.without_a_date…` |
+  | The completion sends no `today`, web · phone | `check-in.service.spec.ts` · `requests_test.dart`, and `check_in_test.dart` (the fixture no longer matches) |
+  | Round 3's lock (find, then refresh `FOR UPDATE`) | `DebtLockingIT.a_debt_deleted_while_a_payment_waits…` and `…_a_completion_waits…`: both `500` |
+  | The lock without the refresh after it | `DebtLockingIT.a_completion_decides_against_the_debt…` |
+  | Your own order, or a debt's delete, with no lock timeout | `DebtLockingIT.your_own_order_and_a_delete_on_a_held_debt…`: still waiting after 15s |
 
 - **`DebtTermsSolverTest`** — the arithmetic as a unit, with no database:
   - **Round-trip identity, stated exactly:** a *solved* field is a **fixed point** of the round

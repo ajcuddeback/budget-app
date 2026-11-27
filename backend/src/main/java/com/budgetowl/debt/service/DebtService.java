@@ -389,7 +389,10 @@ public class DebtService {
     public void delete(UUID actorId, UUID debtId) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         UUID householdId = membership.household().id();
-        debts.delete(require(debtId, householdId));
+        Debt debt = require(debtId, householdId);
+        // The DELETE takes the row lock a payment writer may hold; the wait is bounded like theirs.
+        locks.boundWaits();
+        debts.delete(debt);
         log.info("debt deleted householdId={} debtId={} byUserId={}", householdId, debtId, actorId);
     }
 

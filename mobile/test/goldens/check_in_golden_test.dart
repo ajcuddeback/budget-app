@@ -73,6 +73,8 @@ final List<Scenario> scenarios = [
 
   Scenario('check-in-stale', bothThemes, (tester, v) async {
     final phone = await _checkIn(tester, v, state: 'allocated', step: 3);
+    // The completion sends the phone's own date: the canvas Friday, when the week is finished.
+    phone.now = DateTime.utc(2026, 8, 21, 12);
     await tapVisible(tester, find.text('Done for the week'));
     return phone;
   }),

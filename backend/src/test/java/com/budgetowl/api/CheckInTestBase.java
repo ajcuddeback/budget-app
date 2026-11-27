@@ -109,6 +109,16 @@ abstract class CheckInTestBase extends ApiTestBase {
                         .formatted(week.get("version").asLong(), week.get("basis").asString()));
     }
 
+    /** Completes week 34 from the week as last read, sending the device's own date. */
+    protected ApiResponse complete(ApiClient client, String today) {
+        JsonNode week = json(client.get(W34));
+        return client.post(
+                W34 + "/complete",
+                "{\"version\":%d,\"basis\":\"%s\",\"today\":\"%s\"}"
+                        .formatted(
+                                week.get("version").asLong(), week.get("basis").asString(), today));
+    }
+
     // ------------------------------------------------------------------------------- reading
 
     protected static JsonNode json(ApiResponse response) {

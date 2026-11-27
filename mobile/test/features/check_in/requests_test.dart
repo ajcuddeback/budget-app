@@ -102,7 +102,7 @@ void main() {
     expect(allocation(const Choice(choice: AnswerChoice.goal), '63.0000'), isNull);
   });
 
-  test('completion sends the version and the basis the person last saw', () {
+  test('completion sends the version and the basis the person last saw, and the phone date', () {
     final week = Week(
       week: '2026-W34',
       weekStart: CalendarDate.parse('2026-08-17'),
@@ -114,7 +114,11 @@ void main() {
       version: 9,
       basis: 'b' * 64,
     );
-    expect(completion(week), {'version': 9, 'basis': 'b' * 64});
+    expect(completion(week, CalendarDate.parse('2026-09-01')), {
+      'version': 9,
+      'basis': 'b' * 64,
+      'today': '2026-09-01',
+    });
   });
 
   test('only a week ever reaches a path, and the item key is encoded', () {

@@ -286,8 +286,9 @@ class MobileWeeklyFixtureIT extends ApiTestBase {
                 .formatted(categoryId, remember, version == null ? "" : ",\"version\":" + version);
     }
 
+    /** What the phone sends: its own date is the canvas Friday, the day the week is finished. */
     private static String completion(JsonNode week) {
-        return "{\"version\":%d,\"basis\":\"%s\"}"
+        return "{\"version\":%d,\"basis\":\"%s\",\"today\":\"2026-08-21\"}"
                 .formatted(week.get("version").asLong(), week.get("basis").asString());
     }
 

@@ -1504,11 +1504,18 @@ The `SELECT … FOR UPDATE` did run and did wait. But the persistence context al
 entities, so Hibernate returned the managed instances as they were first loaded and threw away the
 fresh row.
 
-**What to do.** Lock by refreshing: find the entity through its household-scoped finder, then
-`entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE)`, which re-reads the row under the
-lock. `DebtLocks` does exactly that and also sets `SET LOCAL lock_timeout` so the wait is bounded.
-`em.lock(entity, PESSIMISTIC_WRITE)` is not a substitute on a `@Version` entity: it compares the
-version and fails with a stale-state error instead of reading the new state.
-`DebtLockingIT.a_completion_decides_against_the_debt_as_it_is_once_locked…` is the proof.
+**What to do.** Lock the row by id, then refresh the entity. `DebtLocks` runs a household-scoped
+native `SELECT id … FOR UPDATE`; when it returns nothing the debt is not there (it may have been
+deleted by the very transaction this one waited for), and when it returns the id the row is held,
+so `entityManager.refresh(entity)` re-reads it as committed. `DebtLocks` also sets `SET LOCAL
+lock_timeout` so the wait is bounded.
 
-_Added 2026-11-27 — ADR-0043, round 3._
+Two tempting alternatives fail. `entityManager.refresh(entity, PESSIMISTIC_WRITE)` locks and
+re-reads in one step, but when the row was deleted while it waited it throws
+`EntityNotFoundException`, and Hibernate marks the whole transaction rollback-only on the way out:
+catching it does not save the request, which ends as a `500`. `em.lock(entity, PESSIMISTIC_WRITE)`
+compares the `@Version` and fails with a stale-state error instead of reading the new state.
+`DebtLockingIT.a_completion_decides_against_the_debt_as_it_is_once_locked…` and
+`DebtLockingIT.a_debt_deleted_while_a_payment_waits_for_it_is_a_404` are the proofs.
+
+_Added 2026-11-27 — ADR-0043, rounds 3 and 4._

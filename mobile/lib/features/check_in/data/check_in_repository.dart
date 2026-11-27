@@ -1,4 +1,6 @@
 import 'package:budget_owl/core/cache/cached_resource.dart';
+import 'package:budget_owl/core/config/environment.dart';
+import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/api_client.dart';
 import 'package:budget_owl/core/http/reachability.dart';
@@ -69,7 +71,8 @@ final class CheckInWriter {
   /// Everything, atomically, on the server. A retry after a lost response is
   /// `409 check-in-completed`, and the screen re-reads.
   Future<void> complete(Week week) async {
-    await _write('POST', '${weekPath(week.week)}/complete', completion(week));
+    final today = CalendarDate.of(_ref.read(clockProvider)());
+    await _write('POST', '${weekPath(week.week)}/complete', completion(week, today));
     _ref.read(dataRevisionProvider.notifier).bump();
   }
 }

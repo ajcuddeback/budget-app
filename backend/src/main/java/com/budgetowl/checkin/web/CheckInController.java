@@ -142,7 +142,8 @@ public class CheckInController {
             @PathVariable String week,
             @Valid @RequestBody CompleteRequest body) {
         return WeekResponse.of(
-                checkIns.complete(caller.userId(), week(week), body.version(), body.basis()));
+                checkIns.complete(
+                        caller.userId(), week(week), body.version(), body.basis(), body.today()));
     }
 
     private static IsoWeek week(String text) {

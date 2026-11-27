@@ -68,11 +68,18 @@ export class CheckInService {
   /**
    * Everything, atomically. `version` proves the person saw every answer, `basis` that the week has
    * not moved underneath them. A retry after a lost response is `409 check-in-completed`.
+   *
+   * `today` is the device's own date, in the viewer's calendar: the day a bill marked paid is
+   * recorded on. The server's clock is UTC, and on the morning of the 1st east of UTC it is still
+   * the month before, which would put a debt's bill payment in a month already charged its interest
+   * (ADR-0043).
    */
-  complete(week: string, version: number, basis: string): Observable<Week> {
+  complete(week: string, version: number, basis: string, now: Date = new Date()): Observable<Week> {
+    const today = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`;
     return this.http.post<Week>(`${BASE}/${encodeURIComponent(week)}/complete`, {
       version,
       basis,
+      today,
     });
   }
 

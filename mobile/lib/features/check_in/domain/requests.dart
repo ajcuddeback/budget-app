@@ -79,8 +79,14 @@ Body withVersion(Item item, Body body) {
 }
 
 /// Completion: the draft's version proves the person saw every answer, the basis that the week
-/// has not moved underneath them.
-Body completion(Week week) => {'version': week.version, 'basis': week.basis};
+/// has not moved underneath them. [today] is the phone's own date, the day a bill marked paid is
+/// recorded on: the server's clock is UTC, and on the morning of the 1st east of UTC it is still
+/// the month before (ADR-0043).
+Body completion(Week week, CalendarDate today) => {
+  'version': week.version,
+  'basis': week.basis,
+  'today': today.iso,
+};
 
 /// "Map it" or "Attach": the bill and date the server suggested, or null to open the picker.
 /// "Map it" creates the mapping; a rule that already exists needs no second one.

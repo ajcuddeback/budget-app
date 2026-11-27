@@ -83,6 +83,7 @@ public class PayoffPlanService {
     private final DebtRepository debts;
     private final DebtBalanceService balances;
     private final PayoffLadder ladder;
+    private final DebtLocks locks;
 
     public PayoffPlanService(
             MembershipService memberships,
@@ -90,13 +91,15 @@ public class PayoffPlanService {
             PayoffPlanSnapshotRepository snapshots,
             DebtRepository debts,
             DebtBalanceService balances,
-            PayoffLadder ladder) {
+            PayoffLadder ladder,
+            DebtLocks locks) {
         this.memberships = memberships;
         this.plans = plans;
         this.snapshots = snapshots;
         this.debts = debts;
         this.balances = balances;
         this.ladder = ladder;
+        this.locks = locks;
     }
 
     /** The plan as it stands. A {@code VIEWER} may read this, as it may read everything. */
@@ -650,6 +653,8 @@ public class PayoffPlanService {
         for (Debt debt : ours) {
             byId.put(debt.id(), debt);
         }
+        // And bounded, as every debt write is: a debt held by a hung transaction is a 409.
+        locks.boundWaits();
         boolean moved = false;
         for (UUID id : DebtLocks.lockOrder(byId.keySet())) {
             Debt debt = byId.get(id);

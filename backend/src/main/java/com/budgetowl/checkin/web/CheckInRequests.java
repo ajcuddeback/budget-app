@@ -50,8 +50,10 @@ public final class CheckInRequests {
     }
 
     /**
-     * Finish. Both fields are what the person last saw: the version proves they saw every answer,
-     * the basis that the week has not moved underneath them.
+     * Finish. {@code version} and {@code basis} are what the person last saw: the version proves
+     * they saw every answer, the basis that the week has not moved underneath them. {@code today}
+     * is the device's own date, the day a bill marked paid is recorded on; optional, so a client
+     * from before it still completes, dated by the server (weekly-check-in.md, Departures).
      */
     public record CompleteRequest(
             @NotNull @PositiveOrZero Long version,
@@ -59,7 +61,8 @@ public final class CheckInRequests {
                     @Pattern(
                             regexp = "^[0-9a-f]{64}$",
                             message = "must be a basis this server issued")
-                    String basis) {
+                    String basis,
+            LocalDate today) {
 
         @Override
         public String toString() {

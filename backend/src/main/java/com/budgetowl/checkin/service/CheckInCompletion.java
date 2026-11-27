@@ -95,13 +95,20 @@ public class CheckInCompletion {
     /**
      * @param checkIn the draft, already locked {@code FOR UPDATE} by the caller
      * @param sentBasis what the person last saw
+     * @param sentToday the client's own date, or null ({@link HouseholdDay})
      * @throws CheckInRefusal {@code check-in-stale} with every affected item, or {@code
      *     check-in-incomplete}
      */
     @Transactional
-    public void complete(UUID actorId, Household household, CheckIn checkIn, String sentBasis) {
+    public void complete(
+            UUID actorId,
+            Household household,
+            CheckIn checkIn,
+            String sentBasis,
+            LocalDate sentToday) {
+        HouseholdDay day = HouseholdDay.of(sentToday, Instant.now(clock), LocalDate.now(clock));
         try {
-            completeLocked(actorId, household, checkIn, sentBasis);
+            completeLocked(actorId, household, checkIn, sentBasis, day);
         } catch (PessimisticLockingFailureException deadlock) {
             // PostgreSQL detected a deadlock against a concurrent ledger edit and aborted us. A
             // re-read and a retry succeed; nothing was written.
@@ -110,7 +117,11 @@ public class CheckInCompletion {
     }
 
     private void completeLocked(
-            UUID actorId, Household household, CheckIn checkIn, String sentBasis) {
+            UUID actorId,
+            Household household,
+            CheckIn checkIn,
+            String sentBasis,
+            HouseholdDay day) {
         UUID householdId = household.id();
         LocalDate today = LocalDate.now(clock);
         List<CheckInAnswer> stored = answers.findForCheckIn(householdId, checkIn.id());
@@ -166,7 +177,7 @@ public class CheckInCompletion {
             throw CheckInRefusal.incomplete();
         }
 
-        new Application(actorId, checkIn, picture, byKey, today).run();
+        new Application(actorId, checkIn, picture, byKey, day).run();
     }
 
     /** Why an answer can no longer be applied as given, or null when it still can. */
@@ -296,7 +307,7 @@ public class CheckInCompletion {
         private final CheckIn checkIn;
         private final Picture picture;
         private final Map<String, CheckInAnswer> byKey;
-        private final LocalDate today;
+        private final HouseholdDay day;
         private final List<DebtPrompt> prompts = new ArrayList<>();
 
         Application(
@@ -304,12 +315,12 @@ public class CheckInCompletion {
                 CheckIn checkIn,
                 Picture picture,
                 Map<String, CheckInAnswer> byKey,
-                LocalDate today) {
+                HouseholdDay day) {
             this.actorId = actorId;
             this.checkIn = checkIn;
             this.picture = picture;
             this.byKey = byKey;
-            this.today = today;
+            this.day = day;
         }
 
         void run() {
@@ -434,7 +445,9 @@ public class CheckInCompletion {
             }
             writers.debtPayments.lockInOrder(actorId, debtsToWrite);
             for (DebtPrompt prompt : prompts) {
-                LocalDate paid = prompt.date().isAfter(today) ? today : prompt.date();
+                // The charge's own date, which the household gave it, never moved earlier: a
+                // payment dated the 1st by a household east of UTC stays in the new month.
+                LocalDate paid = day.noLaterThanToday(prompt.date());
                 guarded(
                         prompt.itemKey(),
                         () ->
@@ -505,7 +518,7 @@ public class CheckInCompletion {
                                     item.target(),
                                     OccurrenceStatus.PAID,
                                     null,
-                                    today,
+                                    day.markedPaidOn(),
                                     null,
                                     StatusSource.MANUAL);
                     if (answer.recordDebtPayment()) {
@@ -515,7 +528,7 @@ public class CheckInCompletion {
                                         picture.debtByBill().get(item.billId()),
                                         occurrence,
                                         item.expected(),
-                                        today));
+                                        day.markedPaidOn()));
                     }
                 }
                 case SKIP ->

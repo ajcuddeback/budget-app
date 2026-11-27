@@ -43,14 +43,16 @@ already added it.
   the row under `PESSIMISTIC_WRITE`, so the writer decides against the debt as it is once held, not
   as the transaction read it before the wait. A transaction that writes to several debts locks them
   first in one global order (the id's text), and setting your own order writes in that order, so
-  neither can deadlock with another. Deleting an account or a bill nulls the debts' links in
+  neither can deadlock with another. The row is locked by id before the entity is read, so a debt
+  deleted while a writer waited is `404` (a skip, for a completion), never a `500`. Deleting an account or a bill nulls the debts' links in
   PostgreSQL's own order and is not reordered: a bill links at most one debt, and a deadlock with an
   account delete aborts one side. Every wait is bounded (`lock_timeout` 3s), and a wait that runs
   out or a deadlock lost is a retryable `409 record-busy`, with nothing saved.
 - The month is the household's: a `paidDate` (and a statement's `balanceDate`) may be as late as
   today in UTC+14, so a household east of UTC can date a payment the 1st before the server's clock
-  reaches it, and no earlier than 1900-01-01. A check-in's surplus, which carries no date from the
-  client, is dated the server's UTC day.
+  reaches it, and no earlier than 1900-01-01. A check-in completion carries the device's own date,
+  and a bill marked paid there, with its debt payment, is dated that day. A check-in's surplus is
+  dated the server's UTC day, the day its preview was computed for.
 - A projection whose first month is the current month charges that month no interest when it is
   already booked: the ladder, a debt's own projection, and the solver's searches. The check-in's
   what-if passes the same fact for a surplus that would book the month.

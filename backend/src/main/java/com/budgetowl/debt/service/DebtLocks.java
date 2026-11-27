@@ -4,10 +4,10 @@ import com.budgetowl.common.NotFoundException;
 import com.budgetowl.debt.domain.Debt;
 import com.budgetowl.debt.persistence.DebtRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -23,10 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
  *       once would both read the month as unbooked.
  *   <li><b>Several debts:</b> {@link #lockInOrder}, in one global order, so two transactions taking
  *       the same debts can only wait for each other, never deadlock.
- *   <li><b>Fresh state.</b> The lock is taken by <em>refreshing</em> the row {@code FOR UPDATE},
- *       not by a query: a query returns an entity the transaction already loaded exactly as it was
- *       loaded, so a check-in completion that read its debts before locking them would decide
- *       against a paid-off flag or an anchor from before the wait.
+ *   <li><b>Fresh state.</b> The row is locked by id, {@code SELECT … FOR UPDATE}, and the entity is
+ *       then <em>refreshed</em>: an entity query returns what the transaction already loaded
+ *       exactly as it was loaded, so a check-in completion that read its debts before locking them
+ *       would decide against a paid-off flag or an anchor from before the wait.
+ *   <li><b>Gone while waiting.</b> A debt deleted by the transaction it waited for locks no row.
+ *       That is {@code 404} for one debt and a skip for several, never the {@code
+ *       EntityNotFoundException} a refresh of a vanished row throws, which also marks the whole
+ *       transaction for rollback and surfaces as a {@code 500}.
  *   <li><b>Bounded waits.</b> {@link #LOCK_TIMEOUT} at most, so a transaction that hangs holding a
  *       debt cannot block it forever. Running out is {@code CannotAcquireLockException}, which the
  *       API answers with a retryable {@code 409 record-busy}.
@@ -57,12 +61,9 @@ public class DebtLocks {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public Debt lock(UUID debtId, UUID householdId) {
-        Debt debt =
-                debts.findByIdAndHouseholdId(debtId, householdId)
-                        .orElseThrow(() -> new NotFoundException("no such debt"));
         boundTheWait();
-        entityManager.refresh(debt, LockModeType.PESSIMISTIC_WRITE);
-        return debt;
+        return lockedFresh(debtId, householdId)
+                .orElseThrow(() -> new NotFoundException("no such debt"));
     }
 
     /**
@@ -74,9 +75,41 @@ public class DebtLocks {
     public void lockInOrder(UUID householdId, Collection<UUID> debtIds) {
         boundTheWait();
         for (UUID debtId : lockOrder(debtIds)) {
-            debts.findByIdAndHouseholdId(debtId, householdId)
-                    .ifPresent(debt -> entityManager.refresh(debt, LockModeType.PESSIMISTIC_WRITE));
+            lockedFresh(debtId, householdId);
         }
+    }
+
+    /**
+     * Bounds this transaction's lock waits from here on: {@link #LOCK_TIMEOUT}. For the other
+     * writers that take debt rows without these methods — your own order's updates, a debt's delete
+     * — so no write to a debt can wait unbounded.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void boundWaits() {
+        boundTheWait();
+    }
+
+    /**
+     * Locks the household's row by id, then reads the entity fresh. Empty when there is no such
+     * row, including one deleted by the transaction this one waited for: PostgreSQL re-checks a row
+     * it waited on and returns nothing when it has gone.
+     */
+    private Optional<Debt> lockedFresh(UUID debtId, UUID householdId) {
+        List<?> locked =
+                entityManager
+                        .createNativeQuery(
+                                "SELECT id FROM debts WHERE id = :id AND household_id = :household"
+                                        + " FOR UPDATE")
+                        .setParameter("id", debtId)
+                        .setParameter("household", householdId)
+                        .getResultList();
+        if (locked.isEmpty()) {
+            return Optional.empty();
+        }
+        // Held now, so it cannot vanish before the refresh; refreshed, so it is as committed.
+        Optional<Debt> debt = debts.findByIdAndHouseholdId(debtId, householdId);
+        debt.ifPresent(entityManager::refresh);
+        return debt;
     }
 
     /**

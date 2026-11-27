@@ -156,6 +156,80 @@ class DebtLockingIT extends CheckInTestBase {
                 .isZero();
     }
 
+    // ------------------------------------------------------- a debt deleted while waited for
+
+    /**
+     * Deterministic: the other transaction deletes the debt and holds the delete open while the
+     * payment waits for the row; then it commits. The row the payment was waiting for is gone,
+     * which is the household's own 404, not a 500 from refreshing a row that no longer exists.
+     */
+    @Test
+    void a_debt_deleted_while_a_payment_waits_for_it_is_a_404() throws Exception {
+        Household household = seedHousehold();
+        ApiClient owner = household.owner();
+        String today = LocalDate.now(ZoneOffset.UTC).toString();
+        UUID debt = createDebtOn(owner, today, "1000.00", "10.000");
+
+        ApiResponse logged;
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (Connection other = jdbc.getDataSource().getConnection()) {
+            other.setAutoCommit(false);
+            delete(other, debt);
+            Future<ApiResponse> logging =
+                    pool.submit(
+                            () ->
+                                    owner.post(
+                                            "/api/debts/" + debt + "/payments",
+                                            "{\"paidDate\":\"%s\",\"amount\":\"10.00\"}"
+                                                    .formatted(today)));
+            awaitABackendBlockedBy(other);
+            other.commit();
+            logged = logging.get(60, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(logged.status()).as(logged.body()).isEqualTo(404);
+    }
+
+    /**
+     * The same for a check-in completion: the surplus's debt is deleted while the completion waits
+     * for it. The completion skips a debt that is gone when it locks, and the surplus's write then
+     * finds no debt: {@code 409 check-in-stale}, subject gone, with nothing written.
+     */
+    @Test
+    void a_debt_deleted_while_a_completion_waits_for_it_is_subject_gone() throws Exception {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        UUID visa = canvas.id("visaDebt");
+        answerTheCanvas(canvas, owner);
+        answer(
+                owner,
+                "alloc",
+                "{\"choice\":\"DEBT\",\"debtId\":\"%s\",\"amount\":\"63.00\"}".formatted(visa));
+
+        ApiResponse completed;
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (Connection other = jdbc.getDataSource().getConnection()) {
+            other.setAutoCommit(false);
+            delete(other, visa);
+            Future<ApiResponse> completing = pool.submit(() -> complete(owner));
+            awaitABackendBlockedBy(other);
+            other.commit();
+            completed = completing.get(60, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(completed.status()).as(completed.body()).isEqualTo(409);
+        assertThat(completed.body()).contains("check-in-stale").contains("subject-gone");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM debt_payments WHERE provenance = 'CHECK_IN'",
+                                Long.class))
+                .isZero();
+    }
+
     // ------------------------------------------------------------- the custom order
 
     /**
@@ -245,6 +319,49 @@ class DebtLockingIT extends CheckInTestBase {
         assertThat(retried.status())
                 .as("the same request, sent again, goes through")
                 .isEqualTo(201);
+    }
+
+    /** The writers that take debt rows without {@code DebtLocks.lock} are bounded the same way. */
+    @Test
+    void your_own_order_and_a_delete_on_a_held_debt_are_409_record_busy_too() throws Exception {
+        Household household = seedHousehold();
+        ApiClient owner = household.owner();
+        String today = LocalDate.now(ZoneOffset.UTC).toString();
+        UUID one = createDebtOn(owner, today, "1000.00", "10.000");
+        UUID two = createDebtOn(owner, today, "2000.00", "20.000");
+        long version = owner.get("/api/debt-plan").numberField("version");
+
+        List<ApiResponse> refused = new ArrayList<>();
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (Connection other = jdbc.getDataSource().getConnection()) {
+            other.setAutoCommit(false);
+            lock(other, one);
+            lock(other, two);
+            List<Callable<ApiResponse>> writes =
+                    List.of(
+                            () ->
+                                    owner.put(
+                                            "/api/debt-plan",
+                                            ("{\"strategy\":\"CUSTOM\",\"monthlyAmount\":\"100.00\","
+                                                            + "\"customOrder\":[\"%s\",\"%s\"],\"version\":%d}")
+                                                    .formatted(two, one, version)),
+                            () -> owner.delete("/api/debts/" + one));
+            for (Callable<ApiResponse> write : writes) {
+                try {
+                    refused.add(pool.submit(write).get(15, TimeUnit.SECONDS));
+                } catch (java.util.concurrent.TimeoutException hung) {
+                    throw new AssertionError("a write was still waiting for the debt after 15s");
+                }
+            }
+            other.rollback();
+        } finally {
+            pool.shutdownNow();
+        }
+
+        for (ApiResponse busy : refused) {
+            assertThat(busy.status()).as(busy.body()).isEqualTo(409);
+            assertThat(busy.stringField("code")).isEqualTo("record-busy");
+        }
     }
 
     // ------------------------------------------------------------------------ correct
@@ -445,6 +562,14 @@ class DebtLockingIT extends CheckInTestBase {
                 connection.prepareStatement("SELECT id FROM debts WHERE id = ? FOR UPDATE")) {
             select.setObject(1, debt);
             select.executeQuery().close();
+        }
+    }
+
+    private static void delete(Connection connection, UUID debt) throws SQLException {
+        try (PreparedStatement delete =
+                connection.prepareStatement("DELETE FROM debts WHERE id = ?")) {
+            delete.setObject(1, debt);
+            assertThat(delete.executeUpdate()).isEqualTo(1);
         }
     }
 

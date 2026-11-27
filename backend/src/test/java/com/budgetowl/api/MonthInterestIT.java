@@ -228,6 +228,64 @@ class MonthInterestIT extends CheckInTestBase {
                 .isEqualTo("0.0000 25.0000");
     }
 
+    /**
+     * Sydney, 09:00 on September 1st, is 23:00 UTC on August 31st. A card bill marked paid in the
+     * check-in then is September's payment. Dated by the server it would be August's second, all
+     * principal, and September would never be charged.
+     */
+    @Test
+    void a_bill_marked_paid_on_the_first_east_of_utc_is_the_new_months_payment() {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        UUID storeCard = bill(owner, "Store card", "25.00", 19, null);
+        UUID storeDebt =
+                debt(owner, "Store card", "CREDIT_CARD", "400.00", "9.90", "25.00", storeCard);
+        // August booked by hand: 400 × 9.9 ÷ 1200 = 3.30, leaving 373.30.
+        assertThat(split(log(owner, storeDebt, "2026-08-17", "30.00"))).startsWith("3.3000");
+        markTheStoreCardPaid(canvas, owner, storeCard);
+        at(Instant.parse("2026-08-31T23:00:00Z"));
+
+        ok(complete(owner, "2026-09-01"), 200);
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT paid_date || ' ' || interest || ' ' || principal"
+                                        + " FROM debt_payments"
+                                        + " WHERE debt_id = ? AND bill_occurrence_id IS NOT NULL",
+                                String.class,
+                                storeDebt))
+                .as("dated the household's own day: September's first, 373.30 × 9.9 ÷ 1200")
+                .isEqualTo("2026-09-01 3.0800 21.9200");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT paid_date FROM bill_occurrences"
+                                        + " WHERE bill_id = ? AND status = 'PAID'",
+                                String.class,
+                                storeCard))
+                .as("and the bill is marked paid on that same day")
+                .isEqualTo("2026-09-01");
+    }
+
+    @Test
+    void a_completion_dated_where_nobody_is_living_is_refused_and_writes_nothing() {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        UUID storeCard = bill(owner, "Store card", "25.00", 19, null);
+        debt(owner, "Store card", "CREDIT_CARD", "400.00", "9.90", "25.00", storeCard);
+        markTheStoreCardPaid(canvas, owner, storeCard);
+        at(Instant.parse("2026-08-31T23:00:00Z"));
+
+        // At 23:00 UTC on Aug 31 it is Aug 31 in UTC−12 and Sep 1 in UTC+14, and nowhere else.
+        for (String nowhere : List.of("2026-08-30", "2026-09-02", "1899-12-31")) {
+            ApiResponse refused = complete(owner, nowhere);
+            assertThat(refused.status()).as(nowhere + ": " + refused.body()).isEqualTo(400);
+            assertThat(refused.body()).contains("\"field\":\"today\"");
+        }
+        assertThat(count("SELECT count(*) FROM debt_payments WHERE bill_occurrence_id IS NOT NULL"))
+                .isZero();
+        ok(complete(owner, "2026-08-31"), 200);
+    }
+
     @Test
     void a_surplus_paid_after_the_months_payment_is_all_principal_and_never_later() {
         Canvas canvas = canvasWeek();
@@ -359,6 +417,35 @@ class MonthInterestIT extends CheckInTestBase {
                 .isEqualTo(1L);
     }
 
+    @Test
+    void a_balance_dated_before_1900_is_refused_as_invalid_on_create_and_confirm() {
+        ApiClient owner = augustHousehold().owner();
+        UUID visa = visa(owner);
+
+        for (String date : List.of("-5000-01-01", "1899-12-31")) {
+            ApiResponse created =
+                    owner.post(
+                            "/api/debts",
+                            """
+                            {"name":"Before 1900","kind":"CREDIT_CARD","balance":"100.00",
+                             "balanceDate":"%s","apr":"10.000","minimumPayment":"25.00"}
+                            """
+                                    .formatted(date));
+            ApiResponse confirmed =
+                    owner.post(
+                            "/api/debts/" + visa + "/balance",
+                            "{\"balance\":\"6000.00\",\"balanceDate\":\"%s\"}".formatted(date));
+
+            for (ApiResponse refused : List.of(created, confirmed)) {
+                assertThat(refused.status()).as(date + " " + refused.body()).isEqualTo(400);
+                assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+                assertThat(refused.body()).contains("balanceDate");
+            }
+        }
+        assertThat(count("SELECT count(*) FROM debts WHERE name = 'Before 1900'")).isZero();
+        assertThat(owner.get("/api/debts/" + visa).stringField("balance")).isEqualTo("6180.0000");
+    }
+
     // ----------------------------------------------- a debt paid off this month (decision 10)
 
     @Test
@@ -443,6 +530,21 @@ class MonthInterestIT extends CheckInTestBase {
     }
 
     // ------------------------------------------------------------------------- helpers
+
+    /** The canvas's answers, the store card's Aug 19 bill marked paid and recorded, rolled over. */
+    private void markTheStoreCardPaid(Canvas canvas, ApiClient owner, UUID storeCard) {
+        answerTheCanvas(canvas, owner);
+        JsonNode marked =
+                answer(
+                        owner,
+                        "bill." + storeCard + ".2026-08-19",
+                        "{\"choice\":\"MARK_PAID\",\"recordDebtPayment\":true}");
+        answer(
+                owner,
+                "alloc",
+                "{\"choice\":\"ROLL_OVER\",\"amount\":\"%s\"}"
+                        .formatted(amount(figures(marked).get("surplus"))));
+    }
 
     /** A household seeded at real time, then the clock stopped in August 2026. */
     private Household augustHousehold() {

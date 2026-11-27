@@ -229,6 +229,12 @@ public class ApiExceptionHandler {
             RuntimeException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.RECORD_BUSY, correlationId, null);
+        // Which of the three it was — a lock timeout or a deadlock — tells an operator what to
+        // look for. The class name only: the message can quote the SQL and its parameters.
+        log.debug(
+                "lock not granted correlationId={} exception={}",
+                correlationId,
+                exception.getClass().getName());
         return problem(
                 ApiProblem.of(
                         ErrorCode.RECORD_BUSY,

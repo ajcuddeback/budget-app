@@ -22,7 +22,7 @@ import java.util.Map;
  * PostgreSQL and come back a {@code 500}. Nobody is recording a payment to a lender from before
  * 1900.
  */
-final class DebtDates {
+public final class DebtDates {
 
     /** The earliest date a payment or statement may carry. */
     static final LocalDate EARLIEST = LocalDate.of(1900, 1, 1);
@@ -30,11 +30,19 @@ final class DebtDates {
     /** The zone whose date is the latest on Earth. */
     private static final ZoneOffset LATEST_ZONE = ZoneOffset.ofHours(14);
 
+    /** The zone whose date is the earliest on Earth. */
+    private static final ZoneOffset EARLIEST_ZONE = ZoneOffset.ofHours(-12);
+
     private DebtDates() {}
 
     /** Today somewhere on Earth: the latest date any household can be living in at {@code now}. */
-    static LocalDate latestToday(Instant now) {
+    public static LocalDate latestToday(Instant now) {
         return LocalDate.ofInstant(now, LATEST_ZONE);
+    }
+
+    /** The earliest date any household can be living in at {@code now}: today in UTC−12. */
+    public static LocalDate earliestToday(Instant now) {
+        return LocalDate.ofInstant(now, EARLIEST_ZONE);
     }
 
     /**

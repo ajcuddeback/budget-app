@@ -935,7 +935,8 @@ class DemoFixtureIT extends ApiTestBase {
         ApiResponse completed =
                 owner.post(
                         CanvasWeek.W34 + "/complete",
-                        "{\"version\":%d,\"basis\":\"%s\"}"
+                        // As the web sends it: the browser's own date, the canvas Friday.
+                        "{\"version\":%d,\"basis\":\"%s\",\"today\":\"2026-08-21\"}"
                                 .formatted(
                                         week.get("version").asLong(),
                                         week.get("basis").asString()));

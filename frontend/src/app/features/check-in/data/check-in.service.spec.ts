@@ -28,7 +28,8 @@ describe('CheckInService', () => {
     service.discard('2026-W34').subscribe();
     service.answer('2026-W34', 'cat.t1', { choice: 'LEAVE' }).subscribe();
     service.clearAnswer('2026-W34', 'cat.t1').subscribe();
-    service.complete('2026-W34', 6, 'a'.repeat(64)).subscribe();
+    // 08:00 on Sep 1 on the device: still Aug 31 in UTC east of it, and the device's date is sent.
+    service.complete('2026-W34', 6, 'a'.repeat(64), new Date(2026, 8, 1, 8, 0)).subscribe();
     service.payeeRules().subscribe();
     service.removePayeeRule('r1').subscribe();
     service.chargeRules().subscribe();
@@ -54,7 +55,11 @@ describe('CheckInService', () => {
       );
       expect(JSON.stringify(request.request.body ?? {})).not.toContain('household');
       if (url.endsWith('/complete')) {
-        expect(request.request.body).toEqual({ version: 6, basis: 'a'.repeat(64) });
+        expect(request.request.body).toEqual({
+          version: 6,
+          basis: 'a'.repeat(64),
+          today: '2026-09-01',
+        });
       }
       if (method === 'PUT' && url.endsWith('/answers/cat.t1')) {
         expect(request.request.body).toEqual({ choice: 'LEAVE' });

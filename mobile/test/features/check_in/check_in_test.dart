@@ -22,7 +22,12 @@ void main() {
     String who = 'owner',
   }) async {
     final server = FixtureServer.load('check-in', state: state);
-    await pumpApp(tester, TestPhone(server: server)..signedIn(who));
+    // The canvas week is read and finished on its Friday (CanvasWeek.WEEK_34_FRIDAY), and the
+    // completion sends the phone's own date, so the phone is on that Friday too.
+    final phone = TestPhone(server: server)
+      ..signedIn(who)
+      ..now = DateTime.utc(2026, 8, 21, 12);
+    await pumpApp(tester, phone);
     await tester.tap(find.text('Check-in'));
     await settle(tester);
     return server;

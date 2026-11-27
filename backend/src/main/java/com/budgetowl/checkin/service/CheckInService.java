@@ -337,12 +337,14 @@ public class CheckInService {
      * @param version the draft's version the person last saw; every answer write moves it, so the
      *     finisher has seen every answer
      * @param basis the digest the person last saw
+     * @param today the client's own date, or null: the day a bill marked paid is recorded on
      * @throws CheckInRefusal {@code check-in-completed} on a retry, {@code check-in-stale}, {@code
      *     check-in-incomplete}, {@code check-in-week-out-of-range}
      * @throws ConflictException {@code stale-version}
      */
     @Transactional
-    public WeekView complete(UUID actorId, IsoWeek week, long version, String basis) {
+    public WeekView complete(
+            UUID actorId, IsoWeek week, long version, String basis, LocalDate today) {
         HouseholdMember membership = memberships.requireWriteAccess(actorId);
         Household household = membership.household();
         CheckIn checkIn = lockDraft(household, week);
@@ -351,7 +353,7 @@ public class CheckInService {
                     ErrorCode.STALE_VERSION, "the check-in changed since it was read");
         }
         requireInRange(week);
-        completion.complete(actorId, household, checkIn, basis);
+        completion.complete(actorId, household, checkIn, basis, today);
         log.info(
                 "check-in completed householdId={} checkInId={} week={} byUserId={}",
                 household.id(),
