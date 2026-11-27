@@ -30,7 +30,7 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 12 | [File import](features/file-import.md) (CSV / OFX / QIF), plus the manual "these two rows are one transfer" ledger action | 5, 8 | **Done** |
 | 13 | **[Reporting & insights](features/reporting.md)** — income and spending, where it went, CSV | 5, 7 | **Done** |
 | 14 | **[Weekly check-in](features/weekly-check-in.md)** — the four-step pass | 6, 7, 10, 11 | **Done** |
-| 15 | **[Mobile app (Flutter)](features/mobile-app.md)** — every screen, Android and iOS | 2–14 | In progress |
+| 15 | **[Mobile app (Flutter)](features/mobile-app.md)** — every screen, Android and iOS | 2–14 | **Done** (device checks pending) |
 | 16 | Bank connections (pluggable providers) | 12 | Planned |
 | 17 | AI insights / Owl chat (opt-in, local-first) | 13 | Planned |
 

@@ -42,7 +42,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Goals | Done — slice 11 | [goals.md](goals.md) |
 | Reporting & insights | Done — slice 13 | [reporting.md](reporting.md) |
 | Weekly check-in | Done — slice 14 | [weekly-check-in.md](weekly-check-in.md) |
-| Mobile app (Flutter) | In progress — slice 15 | [mobile-app.md](mobile-app.md) |
+| Mobile app (Flutter) | Done — slice 15 (device checks pending) | [mobile-app.md](mobile-app.md) |
 | Owl chat (AI insights) | Planned | _not written_ |
 
 Keep this table current — it is the index an agent scans first.

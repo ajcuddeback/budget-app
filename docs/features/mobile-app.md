@@ -1,6 +1,6 @@
 # Feature: Mobile app (Flutter)
 
-- **Status:** In progress — slice 15 (phase 1 built; see the end of this doc)
+- **Status:** Done — slice 15. Every web screen is built on the phone; see the end of this doc. Still to check on a real device: the items under "Known gaps" marked as needing a device, and a first iOS build in Xcode (the Swift in `AppDelegate.swift` has not been compiled).
 - **Owner:** repository owner
 - **Last updated:** 2026-11-26
 - **Related:** ADR-0006 (money), ADR-0016 (self-hosted), ADR-0017 (households and roles),
