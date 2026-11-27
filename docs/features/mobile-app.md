@@ -731,7 +731,7 @@ confirmed empty.
 | Offline refusal before sending | The `reachabilityProvider` check removed from all three writers, the server still answering | The three offline tests: accounts and envelopes wrote for real, categories sent a `DELETE` the fixture did not record. First run hung on the fake clock instead of failing, so direct writer calls in tests now run under `tester.runAsync` |
 | The refusal says why | `writeFailureText` / `writesOffNow` always say "offline" | The four version-unconfirmed tests (accounts, categories, envelopes, transactions) |
 | No household id in a path | The id added to the account create query and the envelope entry path | "adding sends the web's body" and "quick add" (fixture miss, and the household-id assertion) |
-| Malformed ledger figure is the error state | Ledger follow-up: a bare `Money.fromWire` for the row amount; then `pageTotal` and the date reader unwrapped; then `TransactionsWriter.transfer`'s `UnexpectedJson` mapping removed | `malformed_body_test.dart`: the three row-amount cases (an uncaught `FormatException`), then `pageTotal` and `date`, then the three transfer cases |
+| Malformed ledger figure is the error state | Ledger follow-up: a bare `Money.fromWire` for the row amount; then `pageTotal` and the date reader unwrapped; then `TransactionsWriter.transfer`'s `UnexpectedJson` mapping removed; then its `getJson` read moved outside the `try` | `malformed_body_test.dart`: the three row-amount cases (an uncaught `FormatException`), then `pageTotal` and `date`, then the three transfer cases; then, with `getJson` moved back outside the `try`, "a transfer answered 200 with a page that is not JSON" alone |
 
 #### Follow-up: the ledger's malformed figures (2026-11-27)
 
