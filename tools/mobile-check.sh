@@ -9,6 +9,8 @@
 # (mobile/test/goldens/screens_golden_test.dart). A green run says the pixels are what they were;
 # it does not say they are right. READ the PNGs it lists (docs/features/mobile-app.md, Testing).
 set -euo pipefail
+# Never let the flutter or dart tool report usage from this repo's scripts (ADR-0016).
+export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
 cd "$(dirname "$0")/../mobile"
 
 if [ "${1:-}" = "--compare" ]; then

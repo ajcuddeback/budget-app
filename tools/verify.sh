@@ -257,6 +257,9 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "mobile" ]; then
     missing "mobile build" "flutter not on PATH"
   else
     # docs/features/mobile-app.md, Testing. Every step runs inside mobile/.
+    # The flutter and dart tools report usage to Google unless told not to. A gate run (here or
+    # in CI) must not phone home on anyone's behalf (ADR-0016), so every step suppresses it.
+    export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
     mob() { bash -c "cd mobile && $1"; }
     run "dependencies, from the lockfile only" mob "flutter pub get --enforce-lockfile"
     # Generated sources are left as their generators write them; everything else is formatted.

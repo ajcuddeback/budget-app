@@ -1436,3 +1436,16 @@ it as both `X-XSRF-TOKEN` and `Cookie: XSRF-TOKEN=…` (`csrfForPublicWrite` in
 `mobile/lib/core/session/session.dart`). `DemoFixtureIT` records exactly that exchange.
 
 _Added 2026-11-26 — slice 15._
+
+## The flutter and dart tools phone home unless told not to
+
+**Symptom.** A mobile test run logged around 200 refused proxy connections to `www.google.com`.
+Nothing in the app or its dependencies makes them: it is the `flutter` and `dart` command-line
+tools' own usage reporting, which is on by default on a fresh machine or CI runner.
+
+**What to do.** Every repo script that runs them exports `FLUTTER_SUPPRESS_ANALYTICS=true` and
+`DART_SUPPRESS_ANALYTICS=true` (`tools/verify.sh`'s mobile stage and `tools/mobile-*.sh`). On a
+machine you work on, also run `flutter config --no-analytics` and `dart --disable-analytics` once.
+ADR-0016: nothing we ship or run may report to a service on anyone's behalf.
+
+_Added 2026-11-27 — slice 15._
