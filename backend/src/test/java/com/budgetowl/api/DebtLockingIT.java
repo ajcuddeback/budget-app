@@ -59,18 +59,19 @@ class DebtLockingIT extends CheckInTestBase {
         UUID visa = canvas.id("visaDebt");
         UUID storeBill = bill(owner, "Store card", "25.00", 19, null);
         // The prompt's debt must sort AFTER the surplus's debt, so the global order and the
-        // completion's item order disagree — otherwise this test would prove nothing.
-        UUID storeDebt = null;
-        for (int attempt = 0; attempt < 40 && storeDebt == null; attempt++) {
-            UUID candidate =
-                    debt(owner, "Store card", "CREDIT_CARD", "400.00", "9.90", "25.00", storeBill);
-            if (candidate.toString().compareTo(visa.toString()) > 0) {
-                storeDebt = candidate;
-            } else {
-                ok(owner.delete("/api/debts/" + candidate), 204);
-            }
+        // completion's item order disagree — otherwise this test would prove nothing. Ids are
+        // random, and retrying until one happens to sort after the Visa's failed whenever the
+        // Visa's own id sorted high. So re-key the new debt to an id that sorts after it: nothing
+        // references the debt yet (no payments, no check-in rows), so only its own row changes.
+        UUID created =
+                debt(owner, "Store card", "CREDIT_CARD", "400.00", "9.90", "25.00", storeBill);
+        UUID storeDebt = UUID.fromString("ffffffff" + created.toString().substring(8));
+        if (!storeDebt.equals(created)) {
+            jdbc.update("UPDATE debts SET id = ? WHERE id = ?", storeDebt, created);
         }
-        assertThat(storeDebt).as("a debt id that sorts after the Visa's").isNotNull();
+        assertThat(storeDebt.toString())
+                .as("a debt id that sorts after the Visa's")
+                .isGreaterThan(visa.toString());
         answerTheCanvas(canvas, owner);
         answer(
                 owner,
