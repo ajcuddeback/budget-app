@@ -178,9 +178,12 @@
   /* The text darkens with the background. Without this the hover tint takes the contrast to
      4.48:1 — a hair under the 4.5:1 AA needs — which axe caught on a phone-width run where the
      tap left the button hovered. The same tint is used by every destructive button in the app,
-     so this was wrong everywhere and visible nowhere. */
-  color: var(--color-accent-800);
-  border-color: var(--color-accent-800);
+     so this was wrong everywhere and visible nowhere.
+     A role token, not a ramp step: accent-800 was the light theme's answer, and on the dark
+     theme's tint it measured 1.2:1. CI caught that one, on the same phone-width tap, because its
+     headless shell keeps the hover where the full Chromium used locally did not. */
+  color: var(--color-accent-text-hover);
+  border-color: var(--color-accent-text-hover);
 }
 
 .btn-small {

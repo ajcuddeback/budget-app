@@ -21,6 +21,10 @@
      ground and a light one on a dark ground. This is a role, not a colour: using --color-accent
      directly for text is what failed the contrast check in dark mode. */
   --color-accent-text: var(--color-accent-700);
+  /* Accent text under a hover tint. The tint pulls the ground towards the accent, so the text
+     steps away from it: deeper on a light ground, lighter on a dark one. A fixed ramp step was
+     right in one theme only: accent-800 on the dark theme's hover tint is 1.2:1. */
+  --color-accent-text-hover: var(--color-accent-800);
   --color-muted: var(--color-neutral-700);
 
   /* Solid-fill action colour and the text on it. The design system's own .btn-primary puts the
@@ -111,6 +115,7 @@
   --color-accent-2: var(--color-accent-2-400);
   --color-divider: color-mix(in srgb, #f2e8da 16%, transparent);
   --color-accent-text: var(--color-accent-300);
+  --color-accent-text-hover: var(--color-accent-200);
   --color-muted: var(--color-neutral-400);
   --color-primary: var(--color-accent-400);
   --color-primary-hover: var(--color-accent-300);
@@ -129,6 +134,7 @@
     --color-accent-2: var(--color-accent-2-400);
     --color-divider: color-mix(in srgb, #f2e8da 16%, transparent);
     --color-accent-text: var(--color-accent-300);
+    --color-accent-text-hover: var(--color-accent-200);
     --color-muted: var(--color-neutral-400);
     --color-primary: var(--color-accent-400);
     --color-primary-hover: var(--color-accent-300);

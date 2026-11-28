@@ -1519,3 +1519,24 @@ compares the `@Version` and fails with a stale-state error instead of reading th
 `DebtLockingIT.a_debt_deleted_while_a_payment_waits_for_it_is_a_404` are the proofs.
 
 _Added 2026-11-27 — ADR-0043, rounds 3 and 4._
+
+## CI's UI run uses Chromium's headless shell, and a click leaves the button under it hovered
+
+**Symptom.** `admin.spec.ts`, "turning the provider off is confirmed", failed in CI, run after run and
+retry after retry, with one axe finding, on the phone viewport in the dark theme only:
+`.btn-danger`, contrast 1.2:1 (`#643312` on `#413024`). Locally, `tools/ui-check.sh` passed.
+
+**Why.** Two things had to line up. The phone layout puts the dialog's "Turn it off" button where
+the Save button that opened it was, so the pointer Playwright left there hovers it. And CI runs
+Playwright's default headless browser, `chromium_headless_shell`, which applies that `:hover`; the
+container's pre-baked full Chromium (`helpers/browser.ts` picks it through
+`PLAYWRIGHT_BROWSERS_PATH`) did not. The hover rule then set the text to `--color-accent-800`, a
+light-theme ramp step that is near-black brown on the dark theme's tint.
+
+**What to do.** A colour that must change with the theme is a role token in `tokens.css`, set in
+all three theme blocks, never a ramp step in a component rule (`--color-accent-text-hover` now).
+To see what CI sees, run the suite against the shell:
+`UI_CHROMIUM_PATH=$PLAYWRIGHT_BROWSERS_PATH/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell CI=1 tools/ui-check.sh …`
+(expand the glob first). That reproduced this failure exactly.
+
+_Added 2026-11-28 — fixing CI on PR #7._
