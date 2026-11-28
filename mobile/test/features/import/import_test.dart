@@ -47,6 +47,36 @@ Uint8List recordedFile(String format) {
   throw StateError('no recorded $format preview');
 }
 
+/// Every file under [root], links not followed.
+///
+/// A directory below [root] that this process may not list is skipped: whatever is in it was not
+/// written by this process, which can list what it creates. The system temp folder is shared, and
+/// on a CI runner it holds `systemd-private-*` folders that only root may open; a recursive
+/// `listSync` threw on the first of them, so the test failed there and passed as root.
+/// [root] itself is never skipped: a root that cannot be listed fails the test.
+List<File> filesUnder(Directory root) {
+  final files = <File>[];
+  void walk(Directory directory, {required bool isRoot}) {
+    final List<FileSystemEntity> entries;
+    try {
+      entries = directory.listSync(followLinks: false);
+    } on FileSystemException {
+      if (isRoot) rethrow;
+      return; // Not listable by us, or removed by another test meanwhile: nothing of ours.
+    }
+    for (final entity in entries) {
+      if (entity is File) {
+        files.add(entity);
+      } else if (entity is Directory) {
+        walk(entity, isRoot: false);
+      }
+    }
+  }
+
+  walk(root, isRoot: true);
+  return files;
+}
+
 void main() {
   Future<FixtureServer> openImport(
     WidgetTester tester, {
@@ -288,8 +318,7 @@ void main() {
     final holding = await tester.runAsync(() async {
       final found = <String>[];
       for (final root in everywhere) {
-        for (final entity in root.listSync(recursive: true, followLinks: false)) {
-          if (entity is! File) continue;
+        for (final entity in filesUnder(root)) {
           try {
             if (entity.lastModifiedSync().isBefore(started)) continue;
             final text = latin1.decode(entity.readAsBytesSync());

@@ -1540,3 +1540,24 @@ To see what CI sees, run the suite against the shell:
 (expand the glob first). That reproduced this failure exactly.
 
 _Added 2026-11-28 — fixing CI on PR #7._
+
+## A test that walks the system temp folder must expect directories it cannot open
+
+**Symptom.** `import_test.dart`, "the statement is never written to the phone", passed locally
+and failed in CI's Mobile job with `PathAccessException: Directory listing failed, path =
+'/tmp/systemd-private-…-ModemManager.service-…' (Permission denied)`.
+
+**Why.** The test searches the phone's folders and `Directory.systemTemp` for any trace of the
+statement. A recursive `listSync` throws at the first subdirectory it may not list. The runner
+runs tests as an ordinary user, and its `/tmp` holds root-only `systemd-private-*` folders; this
+container runs as root, which may list everything, so it never saw the failure.
+
+**What to do.** Walk the tree yourself and skip a subdirectory that refuses listing (the test's
+own process can list whatever it creates), but never skip the roots (`filesUnder` in
+`import_test.dart`). To reproduce as root, drop the capabilities that bypass permissions and
+point `TMPDIR` at a folder holding a `chmod 700` subdirectory owned by `nobody`:
+`setpriv --inh-caps=-dac_override,-dac_read_search --bounding-set=-dac_override,-dac_read_search flutter test …`.
+In this container Flutter then needs a root-owned copy of the SDK (`PATH` pointed at it),
+because the stock one is owned by `ubuntu` and Flutter writes into its own cache on start.
+
+_Added 2026-11-28 — the first CI runs of the Mobile job._
