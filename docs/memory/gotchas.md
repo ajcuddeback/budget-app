@@ -1540,3 +1540,41 @@ To see what CI sees, run the suite against the shell:
 (expand the glob first). That reproduced this failure exactly.
 
 _Added 2026-11-28 — fixing CI on PR #7._
+
+## A dark-theme axe check on a dialog says nothing about the page behind it
+
+**Symptom.** The ledger coloured income with `--color-accent-700` and "Needs a category" with
+`--color-accent-2-700`, about 2.2:1 on the dark card, and no test failed. `transfers.spec.ts`
+already ran axe on `/transactions` in the dark theme.
+
+**Why.** That check runs with the Move money dialog open. A modal makes the rest of the page
+inert, and axe does not measure contrast on inert content. So the dark check covered the dialog
+and nothing under it.
+
+**What to do.** Every screen that colours text needs its own dark-theme `ui.a11y` with the coloured
+states on screen (`transactions.spec.ts`, "the ledger, in the dark theme"). Colour that changes
+with the theme is a role token; see the headless-shell entry above.
+
+**Also.** `REVIEW.md`'s _Where_ column shows the selector of the **first** failing node only.
+"2 element(s): .needs-category" was `.needs-category` *and* `.incoming`. When the count is above one,
+fix one and rerun before you assume you have them all.
+
+_Added 2026-11-28._
+
+## A user-guide recapture changes more images than your change does
+
+**Symptom.** After a one-rule CSS fix, `tools/userguide-capture.sh --serve` rewrote 56 images and
+a pixel diff against `HEAD` showed all 56 as changed. Only 16 showed the ledger.
+
+**Why.** Three things stack. Every capture restamps `manifest.json`. The capture is not
+pixel-deterministic from run to run: a hover or focus tint on a dialog's Cancel button, and parts
+of some bills, debt and envelope shots, differ between two runs of the same code. And `HEAD`'s
+images drift from the current UI for reasons unrelated to your change.
+
+**What to do.** Capture twice from the same tree, once with your change and once with it reverted,
+and diff those two sets of pixels. Commit only the images that differ, then update only their
+`manifest.json` entries (`capturedAt`, `commit`). Leave the rest at `HEAD`. If you diff with
+Pillow, `.convert("RGB")` first. `getbbox()` on an RGBA difference checks only the alpha channel,
+so every pair of opaque screenshots looks identical.
+
+_Added 2026-11-28._
