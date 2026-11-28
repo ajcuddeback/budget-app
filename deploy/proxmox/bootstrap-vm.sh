@@ -196,7 +196,7 @@ install -d -m 755 /etc/budgetowl
 key=/etc/budgetowl/backup-signing-key
 if [ ! -f "$key" ]; then
   ssh-keygen -q -t ed25519 -N '' -C "budgetowl-backup@$(hostname)" -f "$key" </dev/null >/dev/null
-  printf 'budgetowl-backup namespaces="budgetowl-backup" %s\n' "$(cut -d' ' -f1,2 "$key.pub")" \
+  printf 'budgetowl-backup namespaces="budgetowl-backup,budgetowl-backup-meta" %s\n' "$(cut -d' ' -f1,2 "$key.pub")" \
     > "$key.allowed_signers"
 fi
 chown "$BUDGETOWL_USER:$BUDGETOWL_USER" "$key"

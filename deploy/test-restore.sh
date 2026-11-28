@@ -10,6 +10,7 @@
 #   --signers FILE        the allowed_signers line(s) to check the backup against (default: this
 #                         server's own). Exactly as for restore.sh.
 #   --allow-unsigned      as for restore.sh: only for a file you know you made yourself.
+#   --accept-date-mismatch, --skip-version-check   as for restore.sh.
 #   --port N              [8481] the test copy answers on http://localhost:N.
 #   --clean               stop the test copy and delete its database. Your real one is untouched.
 #   -h, --help            this text.
@@ -37,7 +38,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --age-identity) restore_args+=(--age-identity "${2:?--age-identity needs a file}"); shift 2 ;;
     --signers) restore_args+=(--signers "${2:?--signers needs a file}"); shift 2 ;;
-    --allow-unsigned) restore_args+=(--allow-unsigned); shift ;;
+    --allow-unsigned|--accept-date-mismatch|--skip-version-check) restore_args+=("$1"); shift ;;
     --port) port="${2:?--port needs a number}"; shift 2 ;;
     --clean) clean=1; shift ;;
     -h|--help) print_help "$0"; exit 0 ;;
