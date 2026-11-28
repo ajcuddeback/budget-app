@@ -149,7 +149,9 @@ test.describe('the ledger, as an owner', () => {
 
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.getByRole('status').filter({ hasText: 'Transaction recorded' })).toBeVisible();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Transaction recorded' }),
+    ).toBeVisible();
 
     ui.noErrors();
   });
@@ -190,6 +192,35 @@ test.describe('the ledger, as an owner', () => {
     await ui.shot('transactions-ledger-phone');
     await ui.noOverflow();
     expect(await ui.a11y('ledger on a phone')).toBe(0);
+    ui.noErrors();
+  });
+});
+
+/**
+ * The ledger's coloured text, on the dark ground. The two classes it colours, `.incoming` and
+ * `.needs-category`, once used the light theme's fixed -700 ramp steps, about 2.2:1 on the dark
+ * card. Nothing caught it because no ledger test ran axe in the dark: the transfers spec checks a
+ * dialog in the dark, and the ledger behind a modal dialog is inert, so axe skips it.
+ *
+ * The desktop and mobile projects (playwright.config.ts) run it in both viewports; the phone
+ * layout restacks the row, and CI's headless shell has failed a phone-only dark contrast check
+ * before (docs/memory/gotchas.md).
+ */
+test.describe('the ledger, in the dark theme', () => {
+  test('keeps income and "Needs a category" readable in the dark', async ({ page, ui }) => {
+    await page.addInitScript(() => localStorage.setItem('budget-owl.theme', 'dark'));
+    await mockApi(page, { session: 'owner' });
+    await page.goto('/transactions');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    // The fixture's two coloured cases are rendered, so axe has something to measure: the salary
+    // row is income, and one row has no category. Without them a pass would prove nothing.
+    const rows = page.locator('.ledger');
+    await expect(rows.locator('.incoming', { hasText: '$3,200.00' })).toBeVisible();
+    await expect(rows.locator('.needs-category').first()).toHaveText('Needs a category');
+
+    await ui.shot('transactions-ledger-dark');
+    expect(await ui.a11y('ledger, dark')).toBe(0);
     ui.noErrors();
   });
 });

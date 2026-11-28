@@ -59,8 +59,10 @@
   color: var(--color-text);
 }
 
+/* Text roles, not ramp steps: a fixed -700 step is about 2.2:1 on the dark card. The role
+   resolves to -700 on the light theme and -300 on the dark one (tokens.css). */
 .incoming {
-  color: var(--color-accent-700);
+  color: var(--color-accent-text);
 }
 
 .row-secondary {
@@ -73,8 +75,9 @@
 }
 
 .needs-category {
-  /* Marked up as well as coloured, so it survives a greyscale print and a colour-blind reader. */
-  color: var(--color-accent-2-700);
+  /* Weight, not colour, carries it — and the words say it outright, so it survives a greyscale
+     print and a colour-blind reader. A text role rather than a ramp step: see .incoming. */
+  color: var(--color-text);
   font-weight: 600;
 }
 
