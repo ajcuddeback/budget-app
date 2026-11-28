@@ -29,14 +29,26 @@ software holding your household's finances, the few hundred MB a VM costs is wor
 
 ## Make the VM
 
-1. On the Proxmox host, get Budget Owl (for its scripts) and copy your SSH **public** key over:
+1. From your own computer, copy your SSH **public** key to the Proxmox host. Use your host's
+   address:
 
    ```bash
-   git clone https://github.com/ajcuddeback/budget-app.git /root/budget-owl
+   scp ~/.ssh/id_ed25519.pub root@proxmox.home:/root/id_ed25519.pub
+   ```
+
+2. On the Proxmox host, get Budget Owl (for its scripts):
+
+   ```bash
+   git clone --branch claude/budget-app-ai-harness-32d4cj https://github.com/ajcuddeback/budget-app.git /root/budget-owl
    cd /root/budget-owl
    ```
 
-2. See what it would do. Nothing is downloaded or created:
+   There is no release yet, and these scripts are not on `main` until they are merged there,
+   so clone that branch. The VM checks out **the same branch and the same commit** as this
+   folder: it refuses to build anything else, so what runs is what you have here to read.
+   Look through `deploy/proxmox/` before you go on; it runs as root on your host.
+
+3. See what it would do. Nothing is downloaded or created:
 
    ```bash
    deploy/proxmox/create-vm.sh --ssh-key /root/id_ed25519.pub --dry-run
@@ -44,21 +56,22 @@ software holding your household's finances, the few hundred MB a VM costs is wor
 
    It lists every command, starting with the Debian download and ending with `qm start 9310`.
 
-3. Change anything that does not suit your host. The options you are most likely to need:
+4. Change anything that does not suit your host. The options you are most likely to need:
 
-   | Option                     | Default       | Change it when                                         |
-   | -------------------------- | ------------- | ------------------------------------------------------ |
-   | `--vmid`                   | `9310`        | that number is taken (the script refuses it if so)     |
-   | `--storage`                | `local-lvm`   | your VM disks live elsewhere, e.g. a ZFS pool          |
-   | `--bridge`                 | `vmbr0`       | your network bridge has another name                   |
-   | `--ip` and `--gw`          | DHCP          | you want a fixed address: `--ip 192.168.1.50/24 --gw 192.168.1.1` |
-   | `--memory`, `--cores`, `--disk` | `4096`, `2`, `32` | you have more to spare                          |
-   | `--snippets-storage`       | `local`       | another storage holds your snippets                    |
-   | `--ref`                    | `main`        | you want a particular version of Budget Owl            |
+   | Option                           | Default               | Change it when                                                                                                                                              |
+   | -------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `--vmid`                         | `9310`                | that number is taken (the script refuses it if so)                                                                                                          |
+   | `--storage`                      | `local-lvm`           | your VM disks live elsewhere, e.g. a ZFS pool                                                                                                               |
+   | `--bridge`                       | `vmbr0`               | your network bridge has another name                                                                                                                        |
+   | `--ip` and `--gw`                | DHCP                  | you want a fixed address: `--ip 192.168.1.50/24 --gw 192.168.1.1`                                                                                           |
+   | `--memory`, `--cores`, `--disk`  | `4096`, `2`, `32`     | you have more to spare                                                                                                                                      |
+   | `--snippets-storage`             | `local`               | another storage holds your snippets                                                                                                                         |
+   | `--ref`                          | this folder's branch  | you want a particular version of Budget Owl (then also `--commit`, or `--no-commit-check`)                                                                  |
+   | `--image-base`, `--image-sha512` | Debian's latest build | you want to pin one Debian build you have checked: use a dated folder such as `https://cloud.debian.org/images/cloud/trixie/20261123-2671` with its SHA-512 |
 
    `--help` lists the rest.
 
-4. Make it:
+5. Make it:
 
    ```bash
    deploy/proxmox/create-vm.sh --ssh-key /root/id_ed25519.pub
@@ -67,7 +80,7 @@ software holding your household's finances, the few hundred MB a VM costs is wor
    It downloads Debian 13 and checks the download against Debian's published SHA-512 checksums.
    It stops if they differ. Then it creates and starts the VM, and prints what to do next.
 
-5. Wait for the first boot to finish. It installs Docker and builds Budget Owl, which takes **5 to
+6. Wait for the first boot to finish. It installs Docker and builds Budget Owl, which takes **5 to
    15 minutes**. Find the VM's address in the Proxmox web UI (the VM's **Summary** shows it once
    the guest agent is running), or with:
 
@@ -75,7 +88,7 @@ software holding your household's finances, the few hundred MB a VM costs is wor
    qm agent 9310 network-get-interfaces
    ```
 
-6. From your own computer, connect and watch it finish:
+7. From your own computer, connect and watch it finish:
 
    ```bash
    ssh owl@<the VM's address>
@@ -85,11 +98,20 @@ software holding your household's finances, the few hundred MB a VM costs is wor
    It is done when the last lines say:
 
    ```
-   == Done
-   /srv/budgetowl-backups is on this VM's own disk until you mount storage there that lives somewhere else.
+   This VM signs its backups. Keep this line in your password manager, next to your age key;
+   restoring onto a new server needs it (restore.sh --signers):
+     budgetowl-backup namespaces="budgetowl-backup" ssh-ed25519 AAAAC3Nz…
    ```
 
-7. Check Budget Owl is running:
+   **Copy that `budgetowl-backup namespaces=…` line into your password manager.** If this VM is
+   ever lost, the new one needs it to trust these backups
+   ([why backups are signed](installing.md#why-backups-are-signed)).
+
+   If it stops at `error: … is at …, but the Proxmox host's checkout was at …`, the branch moved
+   after you cloned it on the host. Update the host's folder (`git pull`), read what changed, and
+   make the VM again.
+
+8. Check Budget Owl is running:
 
    ```bash
    cd /opt/budget-owl
@@ -103,26 +125,41 @@ software holding your household's finances, the few hundred MB a VM costs is wor
 - **Debian 13**, with Docker and Docker Compose from Debian's own packages and security
   updates installed automatically.
 - **A firewall that lets in SSH and nothing else.** Budget Owl itself answers only inside the VM,
-  on `127.0.0.1:8080`.
+  on `127.0.0.1:8080`. The firewall also drops anything from the network addressed to
+  `127.0.0.1`. Without that, the version of Docker that Debian 13 ships would pass such a
+  packet, sent by another machine on your network, straight to Budget Owl.
 - **No password login.** You sign in with your SSH key as `owl`, who can use `sudo`.
-- **Budget Owl in `/opt/budget-owl`**, owned by `owl`. Its `.env` was made **on the VM**, with
-  passwords that never passed through your Proxmox host. Copy it into your password manager:
+- **Budget Owl in `/opt/budget-owl`**, owned by `owl`, at the commit you cloned on the host. Its
+  `.env` was made **on the VM**, with passwords that never passed through your Proxmox host. Copy
+  it into your password manager:
 
   ```bash
   cat /opt/budget-owl/.env
   ```
 
-- **A nightly backup at about 03:17**, into `/srv/budgetowl-backups`, keeping the newest 14.
+- **A backup-signing key** in `/etc/budgetowl/backup-signing-key`, readable by `owl` only.
+- **A nightly backup at about 03:17**, into `/srv/budgetowl-backups`. It keeps the newest 14,
+  one a week for 8 weeks and one a month for 12 months. The settings are in
+  `/etc/budgetowl/backup.env`.
 
 `owl` is in the `docker` group, which means it can do anything on the VM. Do not add anyone else.
 
 ## Then
 
 1. **Give it an HTTPS address**: [Give your server an HTTPS address](give-your-server-an-https-address.md).
-   Run those steps inside the VM. If you choose the reverse proxy on the VM itself, open its port
-   in the firewall: in `/etc/nftables.conf`, add `tcp dport 443 accept` under the
-   `tcp dport 22 accept` line, then `sudo systemctl restart nftables`. The Tailscale option needs
-   no change.
+   Run those steps inside the VM. The Tailscale option needs no firewall change. If you choose
+   the reverse proxy on the VM itself, open its port:
+   1. In `/etc/nftables.conf`, add `tcp dport 443 accept` under the `tcp dport 22 accept` line.
+   2. Load it:
+
+      ```bash
+      sudo systemctl reload nftables
+      ```
+
+   Use `reload`, **never `restart`**: stopping the firewall wipes Docker's own rules as well, and
+   Budget Owl stops being reachable. If that has happened, `sudo systemctl restart docker` puts
+   them back.
+
 2. **Create the first account**: open the HTTPS address, and continue with section 3 of
    [Installing Budget Owl](installing.md#3-create-the-first-account).
 
@@ -136,13 +173,28 @@ Keep using them, and keep Budget Owl's own backups as well.
 
 **The nightly backup is on the VM's own disk to begin with.** Lose the VM and you lose those
 too. Put real storage that lives elsewhere at `/srv/budgetowl-backups`, for example an NFS share
-from your NAS:
+from your NAS. On the NAS:
+
+- **export the share to this VM's address only**, not to your whole network. Anyone who can write
+  to it can delete your backups (restore refuses ones they forge, because they are signed);
+- **encrypt the backups** (below), because anyone who can read the share can read them.
+
+Then, on the VM:
 
 ```bash
 sudo apt install nfs-common
 echo 'nas.home:/export/budgetowl  /srv/budgetowl-backups  nfs  defaults,_netdev  0 0' | sudo tee -a /etc/fstab
 sudo mount /srv/budgetowl-backups
 sudo chown owl:owl /srv/budgetowl-backups && sudo chmod 700 /srv/budgetowl-backups
+```
+
+The backup warns you that NFS permissions are the NAS's to enforce; that is expected.
+
+**If this VM replaces one that died, restore first** (below). Only then mount the old backups at
+`/srv/budgetowl-backups`, or turn the nightly backup off until you have:
+
+```bash
+sudo systemctl disable --now budgetowl-backup.timer
 ```
 
 To **encrypt** the nightly backups, make an age key on your own computer (see
@@ -152,6 +204,8 @@ in `/etc/budgetowl/backup.env`:
 ```bash
 BACKUP_AGE_RECIPIENT=age1…
 ```
+
+Every backup on the VM then uses it: nightly, before an upgrade, and before a restore.
 
 Check the timer is running, and run one now:
 
@@ -163,11 +217,12 @@ ls -l /srv/budgetowl-backups
 
 Restoring and testing a restore work as in
 [Installing Budget Owl, section 5](installing.md#restore-from-a-backup), from `/opt/budget-owl`.
+On a **new** VM, give the old VM's line with `--signers`, as that section shows.
 
 ## Updates
 
-- **Budget Owl**: inside the VM,
-  `cd /opt/budget-owl && deploy/upgrade.sh --backup-dir /srv/budgetowl-backups`. See
+- **Budget Owl**: inside the VM, `cd /opt/budget-owl && deploy/upgrade.sh`. It takes the backup
+  folder, encryption and signing key from `/etc/budgetowl/backup.env`. See
   [Keep it up to date](installing.md#6-keep-it-up-to-date).
 - **Debian and Docker** update themselves with security fixes. To take everything else:
   `sudo apt update && sudo apt full-upgrade`.
@@ -181,10 +236,14 @@ Restoring and testing a restore work as in
 2. Install Debian with SSH and no desktop. Then, as root:
 
    ```bash
-   apt install docker.io docker-cli docker-compose docker-buildx git openssl age qemu-guest-agent unattended-upgrades
+   apt install docker.io docker-cli docker-compose docker-buildx git openssl age openssh-client nftables qemu-guest-agent unattended-upgrades
    ```
 
-3. Follow [Installing Budget Owl](installing.md) from section 2.
+3. Set up the firewall: copy the `/etc/nftables.conf` that `deploy/proxmox/bootstrap-vm.sh`
+   writes (between `cat > /etc/nftables.conf <<'NFT'` and `NFT`), then
+   `systemctl enable --now nftables`. Do not leave out its `prerouting` part: it is what stops
+   other machines on your network reaching Budget Owl through Docker.
+4. Follow [Installing Budget Owl](installing.md) from section 2.
 
 ## Things that can go wrong
 

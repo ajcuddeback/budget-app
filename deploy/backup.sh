@@ -137,11 +137,19 @@ read -r instance people < <(db_psql "" -At -F ' ' -c "SELECT
     CASE WHEN to_regclass('public.users') IS NULL THEN 'no'
          WHEN EXISTS (SELECT 1 FROM users) THEN 'yes' ELSE 'no' END" 2>/dev/null \
   || echo "none no")
-stamp=$(date -u +%Y%m%dT%H%M%SZ)
-name="budgetowl-${stamp}-${version}-schema${schema:-none}${label:+-$label}.dump"
-if [ ${#age_args[@]} -gt 0 ]; then name="$name.age"
-elif [ -n "$gpg_recipient" ]; then name="$name.gpg"
+ext=""
+if [ ${#age_args[@]} -gt 0 ]; then ext=".age"
+elif [ -n "$gpg_recipient" ]; then ext=".gpg"
 fi
+# Never overwrite a backup: two taken in the same second would otherwise share a name, and the
+# second would silently replace the first.
+for _ in 1 2 3 4 5; do
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+  name="budgetowl-${stamp}-${version}-schema${schema:-none}${label:+-$label}.dump$ext"
+  [ -e "$out/$name" ] || [ -e "$out/$name.partial" ] || break
+  sleep 1
+done
+[ ! -e "$out/$name" ] || die 1 "a backup called $name already exists; not overwriting it"
 final="$out/$name"
 partial="$final.partial"
 work=$(mktemp -d)

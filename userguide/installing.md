@@ -35,17 +35,27 @@ sections 1 and 2 for you. Come back here for section 3 onwards.
 - **Whether anyone will use it from outside this machine.** As installed it answers only on the
   machine itself. For anything else, including the phone app, you will give it an HTTPS
   address (section 4).
+- **A firewall, if other machines share this server's network and `docker --version` says less
+  than 28.** Those versions of Docker pass on a packet that another machine on the same network
+  addresses to `127.0.0.1`, so "answers only on the machine itself" is not quite true. The
+  firewall in `deploy/proxmox/bootstrap-vm.sh` (its `prerouting` part) stops that, and works on
+  any Debian or Ubuntu machine with `nftables`. [Run it on Proxmox](run-it-on-proxmox.md) sets it
+  up for you.
 
 ## 2. Get it running
 
 1. Get Budget Owl.
 
    ```bash
-   git clone https://github.com/ajcuddeback/budget-app.git budget-owl
+   git clone --branch claude/budget-app-ai-harness-32d4cj https://github.com/ajcuddeback/budget-app.git budget-owl
    cd budget-owl
    ```
 
    Every command from here on runs in this `budget-owl` folder.
+
+   **Why that branch:** there is no release of Budget Owl yet, and the backup and upgrade scripts
+   in this guide are not on `main` until they are merged there. Once a release exists, clone
+   that instead.
 
 2. Make your settings file, readable only by you.
 
@@ -205,20 +215,68 @@ a copy of `.env` in your password manager anyway (section 2).
    deploy/backup.sh --out /mnt/backups/budgetowl
    ```
 
-   You see:
+   The first time, it makes this server's **signing key** and prints its public half:
 
    ```
-   Backing up to /mnt/backups/budgetowl/budgetowl-20261127T200414Z-2e1391f-schema20.dump
-   Done: 168K, schema version 20, checksum in budgetowl-20261127T200414Z-2e1391f-schema20.dump.sha256
+   Made this server's backup-signing key: /home/you/.config/budgetowl/backup-signing-key
+   Keep this line in your password manager, next to your age key. A restore on a new
+   server needs it (restore.sh --signers):
+     budgetowl-backup namespaces="budgetowl-backup" ssh-ed25519 AAAAC3Nz…
+   ```
+
+   **Copy that whole `budgetowl-backup namespaces=…` line into your password manager now.**
+   Section "Restore from a backup" explains why.
+
+   Then, every time:
+
+   ```
+   Backing up to /mnt/backups/budgetowl/budgetowl-20261128T031702Z-2e1391f-schema20.dump
+   Done: 168K, schema version 20, signed, checksum in budgetowl-20261128T031702Z-2e1391f-schema20.dump.sha256
    Not encrypted. Anyone who can read this file can read every transaction in it.
    ```
 
    The name says when it was taken (in UTC), which version of Budget Owl took it, and which
-   version of the database it holds. The `.sha256` file beside it is how a restore knows the
-   backup has not been damaged or changed. Keep the two together.
+   version of the database it holds. Beside it are three small files; keep all four together:
 
-   Both files can be read by your user only. The script refuses a folder that other people on the
-   machine can write to, because they could swap a backup for one of their own.
+   | File      | What it is for                                                                                      |
+   | --------- | --------------------------------------------------------------------------------------------------- |
+   | `.sig`    | proves **this server** made the backup. A restore refuses a backup without one                      |
+   | `.sha256` | shows the backup has not been damaged                                                               |
+   | `.meta`   | says which install it came from, so old backups are only cleared away by the install that made them |
+
+   Every file can be read by your user only.
+
+### Why backups are signed
+
+Restoring a backup runs what is inside it with full control of the database. Someone who can
+write to your backup folder (another computer on your network that can reach the NAS share, say)
+could put a file of their own there. It could make them an account with a password they know.
+
+A checksum does not stop that: they can write the checksum too. Encryption does not stop it
+either: your age **public** key is public, and anyone can encrypt a file to it. The signature can
+only be made with the signing key, which never leaves this server. So restore refuses any backup
+this server did not sign:
+
+```
+error: BAD SIGNATURE: … was not signed by a server in …, or has been changed since. Nothing was
+       restored, and nothing was changed.
+```
+
+**Keep the signing key off the backup folder.** It lives in `~/.config/budgetowl/` (or, on the
+VM from [Run it on Proxmox](run-it-on-proxmox.md), in `/etc/budgetowl/`), readable by you only.
+`backup.sh` refuses to write into a folder that holds any private key.
+
+### Keep the backup folder to yourself
+
+The script refuses a folder that other people on the machine can write to, **or that sits inside
+one they can write to**. Otherwise they could move your backups aside and put their own in their
+place.
+
+On a **NAS share** (NFS or SMB), those permissions are the NAS's to enforce, and the script warns
+you:
+
+- limit the share to this server's address only;
+- and encrypt the backups (next section).
 
 ### Encrypt your backups
 
@@ -245,13 +303,31 @@ be lost, a cloud folder.
 
    The backup ends in `.dump.age`. The unencrypted copy is never written to disk.
 
-The script refuses to write into a folder that holds a private key, because then the encryption
-protects nothing. If you use gpg instead, `--gpg-recipient` takes a key from your keyring.
+Once a folder holds encrypted backups, `backup.sh` refuses to add an unencrypted one there. This
+usually means a setting was forgotten; `--allow-plaintext` overrides it if you really mean it.
+If you use gpg instead, `--gpg-recipient` takes a key from your keyring.
+
+**Make every backup use your settings.** Put them in `/etc/budgetowl/backup.env`, which the nightly
+backup, `deploy/restore.sh` and `deploy/upgrade.sh` all read. Then the safety backups taken
+before a restore or an upgrade are encrypted too:
+
+```bash
+sudo mkdir -p /etc/budgetowl
+sudo tee /etc/budgetowl/backup.env >/dev/null <<'EOF'
+BACKUP_DIR=/mnt/backups/budgetowl
+BACKUP_AGE_RECIPIENT=age1…
+BACKUP_KEEP=14
+BACKUP_KEEP_WEEKLY=8
+BACKUP_KEEP_MONTHLY=12
+EOF
+```
+
+Only public keys and folder names go in that file, never a private key or a password.
 
 ### Back up every night
 
-As your own user (who must be in the `docker` group), make these two files, changing `/home/you/budget-owl`,
-`you` and the backup folder to yours.
+As your own user (who must be in the `docker` group), make these two files, changing `/home/you/budget-owl`
+and `you` to yours.
 
 `/etc/systemd/system/budgetowl-backup.service`:
 
@@ -265,9 +341,7 @@ After=docker.service
 Type=oneshot
 User=you
 WorkingDirectory=/home/you/budget-owl
-Environment=BACKUP_DIR=/mnt/backups/budgetowl
-Environment=BACKUP_KEEP=14
-# Environment=BACKUP_AGE_RECIPIENT=age1…
+EnvironmentFile=/etc/budgetowl/backup.env
 ExecStart=/home/you/budget-owl/deploy/backup.sh
 UMask=0077
 NoNewPrivileges=yes
@@ -297,12 +371,28 @@ sudo systemctl enable --now budgetowl-backup.timer
 systemctl list-timers budgetowl-backup.timer      # shows when it runs next
 ```
 
-`BACKUP_KEEP=14` keeps the newest 14 nightly backups and deletes older ones. It never deletes
-the backups taken before an upgrade or a restore. If you prefer cron, this line in `crontab -e`
-does the same:
+The `BACKUP_KEEP` settings above keep:
+
+- the newest 14 nightly backups;
+- the newest backup from each of the last 8 weeks;
+- the newest backup from each of the last 12 months.
+
+Older nightly backups **of this install** are deleted. It never deletes the backups taken before
+an upgrade or a restore, or another install's.
+
+It also deletes nothing at all after a backup of a new install with nobody in it, or when the
+newest backup already in the folder came from a different install. That way, a freshly rebuilt
+server that finds your old backups does not clear them away. Even so, **restore first**, and only
+then point the nightly backup at the old folder (or turn the timer off until you have):
+
+```bash
+sudo systemctl disable --now budgetowl-backup.timer
+```
+
+If you prefer cron, this line in `crontab -e` does the same as the timer:
 
 ```
-17 3 * * * cd /home/you/budget-owl && deploy/backup.sh --out /mnt/backups/budgetowl --keep 14 >/dev/null
+17 3 * * * cd /home/you/budget-owl && deploy/backup.sh --out /mnt/backups/budgetowl --keep 14 --keep-weekly 8 --keep-monthly 12 >/dev/null
 ```
 
 ### Restore from a backup
@@ -317,28 +407,49 @@ does the same:
    docker compose up -d db
    ```
 
-3. Restore, with the `.sha256` file next to the backup:
+3. This new machine has a new signing key, so it does not yet trust the old one's backups. Put
+   the old server's line from your password manager into a file:
 
    ```bash
-   deploy/restore.sh /mnt/backups/budgetowl/budgetowl-20261127T200414Z-2e1391f-schema20.dump
+   nano ~/old-server.allowed_signers      # paste the budgetowl-backup namespaces=… line, save
    ```
 
-   For an encrypted backup, add `--age-identity budgetowl-backup-key.txt`.
+4. Restore, with the backup's `.sig` and `.sha256` files beside it:
+
+   ```bash
+   deploy/restore.sh /mnt/backups/budgetowl/budgetowl-20261128T031702Z-2e1391f-schema20.dump \
+     --signers ~/old-server.allowed_signers
+   ```
+
+   For an encrypted backup, add `--age-identity` and the key. It is read once, at the start, so
+   you can give it straight from a USB stick and put the stick away:
+
+   ```bash
+   --age-identity <(cat /media/usb/budgetowl-backup-key.txt)
+   ```
 
    You see:
 
    ```
+   Signature good: made by a server in /home/you/old-server.allowed_signers.
    Checksum matches.
    Restoring into a scratch database...
-   The backup holds schema 20: 1 people, 1 household, 1 accounts, 0 transactions.
+   The backup holds schema 20: 1 people, 1 household, 2 accounts, 0 transactions.
    ADR-0030: role 'budgetowl_app' is ready; it can read and write rows and cannot change the schema.
-   Restored: 1 people, 1 household, 1 accounts, 0 transactions.
+   Restored: 1 people, 1 household, 2 accounts, 0 transactions.
+   Everybody signs in again, on the web and on phones. Then check Devices for anything unexpected.
    Starting Budget Owl...
    Budget Owl is running on the restored data.
    ```
 
-4. Open Budget Owl and sign in with the email and password you had before. Everyone is signed
-   out of the browser after a restore; phones stay signed in.
+5. Open Budget Owl and sign in with the email and password you had before. **Everyone signs in
+   again, on the web and in the phone app.** Then open **Devices** and check that it lists only
+   devices you recognise.
+
+6. If you copied the age key onto this machine, delete it now. It should not live on the server.
+
+**On the same machine**, the signing key is still here, so you need neither the line nor
+`--signers`.
 
 **Over an install that has data in it**, restore refuses:
 
@@ -348,19 +459,29 @@ error: the database already has Budget Owl in it (32 tables). Restoring would re
 ```
 
 If replacing everything is what you want, add `--replace`. Restore then saves what is there now as
-a safety backup (its name ends `-pre-restore.dump`) before it replaces anything. This also applies
-to a new install that you started once by mistake: `--replace` is safe there.
+a safety backup (its name ends `-pre-restore.dump`, encrypted like the backup you are restoring)
+before it replaces anything. This also applies to a new install that you started once by
+mistake: `--replace` is safe there.
 
-**A restore never half-happens.** It checks the backup's checksum first:
+**A restore never half-happens.** It checks, in this order:
 
-```
-error: CHECKSUM MISMATCH: … is not the file its checksum was made from.
-```
+1. that the backup is signed by a server you trust;
+2. that it is not damaged:
 
-It then restores into a separate database, and it only swaps that in once the restore has
-finished and been checked. If anything fails before then, your current data is untouched and
-Budget Owl starts again on it. It also refuses a backup made by a **newer** version of Budget Owl
-than the one installed (see section 6).
+   ```
+   error: CHECKSUM MISMATCH: … is not the file its checksum was made from.
+   ```
+
+3. that it is not from a **newer** version of Budget Owl than the one installed (see section 6).
+
+It then restores into a separate database. It swaps that in only once the restore has finished
+and been checked. Your old data is kept until Budget Owl is running healthily on the restored
+data. If anything fails before then, your current data is untouched and Budget Owl starts again
+on it. If anything goes wrong after the swap, restore prints the exact commands to go back.
+
+**A backup from before backups were signed** has no `.sig` file. If you made it yourself and
+nobody else could have changed it, `--allow-unsigned` restores it, after a warning that says
+plainly what that means.
 
 ### Test your backups
 
@@ -373,7 +494,8 @@ backups:
    deploy/test-restore.sh /mnt/backups/budgetowl/<newest>.dump
    ```
 
-   Your real Budget Owl keeps running. The copy answers at `http://localhost:8481`.
+   Your real Budget Owl keeps running. The copy has passwords of its own and answers at
+   `http://localhost:8481`. It checks the signature exactly as a real restore does.
 
 2. Open `http://localhost:8481`. Sign in, and check that your accounts and last week's
    transactions are there.
@@ -385,7 +507,6 @@ backups:
    ```
 
    You see `The test copy and its database are gone. Your real instance was not touched.`
-
 ## 5b. Run the instance
 
 Budget Owl keeps one screen for the person who runs the server: **Admin**, at the end of the row
@@ -434,7 +555,9 @@ restoring that backup.**
    deploy/upgrade.sh --backup-dir /mnt/backups/budgetowl
    ```
 
-   Add `--age-recipient age1…` if you encrypt your backups.
+   If you made `/etc/budgetowl/backup.env` (section 5), `deploy/upgrade.sh` on its own is
+   enough: it takes the folder, the encryption and the signing key from there. Otherwise add
+   `--age-recipient age1…` if you encrypt your backups.
 
    It backs up (and stops if the backup fails), fetches the new code, builds it, starts it, and
    waits until it is healthy. When it finishes you see something like this (here there was no

@@ -43,7 +43,7 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 | Reporting & insights | Done — slice 13 | [reporting.md](reporting.md) |
 | Weekly check-in | Done — slice 14 | [weekly-check-in.md](weekly-check-in.md) |
 | Mobile app (Flutter) | Done — slice 15 (device checks pending) | [mobile-app.md](mobile-app.md) |
-| Deployment: install, back up, restore, upgrade | In progress — slice 15b (Proxmox VM script untested on Proxmox) | [deployment.md](deployment.md) |
+| Deployment: install, back up, restore, upgrade | In progress — slice 15b, audit round 2 (signed backups); Proxmox VM script untested on Proxmox | [deployment.md](deployment.md) |
 | Owl chat (AI insights) | Planned | _not written_ |
 
 Keep this table current — it is the index an agent scans first.

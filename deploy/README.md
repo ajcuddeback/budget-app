@@ -12,34 +12,49 @@ Mounted into the PostgreSQL container on first start. It creates the non-owning 
 application connects as, so the application cannot alter its own schema at runtime (ADR-0030).
 Migrations run as the owning role; the app does not.
 
-## `backup.sh`, `restore.sh`, `upgrade.sh`
+## `backup.sh`, `restore.sh`, `upgrade.sh`, `test-restore.sh`
 
 Backups, restores and upgrades. The operator's steps are in `userguide/installing.md` (sections
 5 and 6), and the rules and the threat model are in `docs/features/deployment.md`.
 
 ```bash
-deploy/backup.sh --out /mnt/backups/budgetowl [--age-recipient age1...] [--keep 14]
-deploy/restore.sh BACKUP [--replace] [--age-identity KEY]
-deploy/upgrade.sh --backup-dir /mnt/backups/budgetowl [--ref TAG]
-deploy/test-restore.sh BACKUP      # into a separate copy on :8481; --clean removes it
+deploy/backup.sh --out /mnt/backups/budgetowl [--age-recipient age1...] [--keep 14 --keep-weekly 8 --keep-monthly 12]
+deploy/backup.sh --print-signing-key           # this server's allowed_signers line
+deploy/restore.sh BACKUP [--replace] [--signers FILE] [--age-identity KEY]
+deploy/upgrade.sh [--backup-dir DIR] [--ref TAG]
+deploy/test-restore.sh BACKUP                  # into a separate copy on :8481; --clean removes it
 ```
 
-All three run the database tools **inside the `db` container** over its local socket
-(`lib.sh`), so no password is read, passed or printed. `restore.sh` behaves like this:
+- **No password anywhere.** All of them run the database tools **inside the `db` container** over
+  its local socket (`lib.sh`), so no password is read, passed or printed.
+- **Shared settings.** All of them read `/etc/budgetowl/backup.env`, so every backup is encrypted
+  and signed the same way.
+- **Signed backups.** Every backup is signed with a key only this server holds
+  (`ssh-keygen -Y`). A restore runs the backup's SQL as the database superuser, so `restore.sh`
+  checks that signature before it reads anything in the file. It refuses an unsigned backup, or
+  one signed by any key it was not told to trust.
+- **Then the other checks**, in order:
+  1. the checksum;
+  2. refuse a database with data in it, unless `--replace` is given;
+  3. restore into a scratch database and check the result;
+  4. take an encrypted safety backup;
+  5. swap the two databases in one transaction, keeping the old one until the app is healthy.
 
-- it checks the checksum first;
-- it refuses a database with data in it unless you give `--replace`;
-- it restores into a scratch database and checks the result before it touches the live one;
-- it takes a safety backup before swapping.
-
-`tools/deploy-check.sh` proves the whole cycle against the real stack. It is part of
-`tools/verify.sh packaging` and CI.
+`tools/deploy-check.sh` proves all of it, including the refusals, against the real stack. It is
+part of `tools/verify.sh packaging` and CI.
 
 ## `proxmox/`
 
 `create-vm.sh` runs on a Proxmox VE host. It makes a Debian 13 VM whose first boot runs
-`bootstrap-vm.sh`. That installs Docker from Debian's archive, sets a firewall that lets in SSH
-only, generates `.env` on the VM and starts the stack. See `userguide/run-it-on-proxmox.md`.
+`bootstrap-vm.sh`. That script:
+
+- checks the clone is at the commit of the host's checkout;
+- installs Docker from Debian's archive;
+- sets a firewall that lets in SSH only and drops network packets addressed to `127.0.0.1`;
+- generates `.env` and the backup-signing key on the VM;
+- starts the stack.
+
+See `userguide/run-it-on-proxmox.md`.
 
 ## Behind a reverse proxy: which address the rate limits see (known gap)
 

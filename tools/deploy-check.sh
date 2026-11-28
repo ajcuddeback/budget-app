@@ -178,11 +178,11 @@ code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$work/jar" -H "X-XSRF-TOKEN: 
   -d '{"email":"owner@example.com","displayName":"Deploy Check","password":"deploy-check-not-a-real-password","householdName":"Deploy Check","baseCurrency":"USD"}' \
   "$base/api/setup/first-user")
 check "first account created (got $code)" "$([ "$code" = 201 ] && echo ok)"
-tok=$(token)
+tok=$(token) || tok=""
 phone_token="$tok"
-add_account "$tok" "Everyday Checking" "2480.15"
-add_account "$tok" "Rainy Day" "-17.0001"
-before=$(account_names "$tok")
+add_account "$tok" "Everyday Checking" "2480.15" || bad "could not add an account"
+add_account "$tok" "Rainy Day" "-17.0001" || bad "could not add an account"
+before=$(account_names "$tok" || true)
 check "two accounts recorded ($before)" "$([ "$before" = 'Everyday Checking=2480.1500,Rainy Day=-17.0001' ] && echo ok)"
 role=$(pool_role)
 check "the api's pool connects as budgetowl_app, not the owner ($role)" \
@@ -236,6 +236,17 @@ cp "$BACKUP_SIGNING_KEY" "$work/backups/stray-signing-key"
 check "  ... or a copy of the signing key" \
   "$(expect 1 "$work/b4.log" deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" && grep -q 'PRIVATE key' "$work/b4.log" && echo ok)"
 rm -f "$work/backups/stray-signing-key"
+
+# Two backups in the same second would share a name. A `date` that never moves forces it.
+mkdir -m 700 "$work/fakebin" "$work/same-second"
+printf '#!/bin/sh\ncase "$*" in *%%Y%%m%%dT*) echo 20260101T000000Z ;; *) exec /bin/date "$@" ;; esac\n' \
+  > "$work/fakebin/date"; chmod 700 "$work/fakebin/date"
+PATH="$work/fakebin:$PATH" deploy/backup.sh --out "$work/same-second" >/dev/null 2>&1 || true
+firstsum=$(sha256sum "$work/same-second/"*.dump 2>/dev/null | awk '{print $1}')
+check "a second backup with the same name is refused, and the first is not overwritten" \
+  "$(expect 1 "$work/b7.log" env PATH="$work/fakebin:$PATH" deploy/backup.sh --out "$work/same-second" \
+     && grep -q 'not overwriting' "$work/b7.log" \
+     && [ -n "$firstsum" ] && [ "$(sha256sum "$work/same-second/"*.dump | awk '{print $1}')" = "$firstsum" ] && echo ok)"
 
 mkdir -m 777 "$work/open"; mkdir -m 700 "$work/open/backups"
 check "backup refuses a folder inside one that others can write to" \
@@ -327,7 +338,7 @@ check "the api still connects as budgetowl_app after a restore ($role)" \
   "$([ "$role" = budgetowl_app ] && echo ok)"
 
 step "Encrypted --replace over live data"
-add_account "$(token)" "Added After Backup" "1.00"
+add_account "$(token)" "Added After Backup" "1.00" || bad "could not add an account"
 if expect 0 "$work/r11.log" deploy/restore.sh "$encrypted" --replace --signers "$server1_signers" \
      --age-identity <(cat "$work/keys/identity.txt"); then
   ok "restore.sh --replace from the age backup, key given as <(cat …)"
@@ -358,8 +369,8 @@ future=$(deploy/backup.sh --out "$work/future" --label future 2>>"$work/backup.l
 check "the backup's name says schema 9999 ($(basename "${future:-none}"))" \
   "$(basename "${future:-none}" | grep -q -- '-schema9999-future\.dump$' && echo ok)"
 db_query >/dev/null <<<"DELETE FROM flyway_schema_history WHERE version = '9999';"
-add_account "$(token)" "Still Here" "3.00"
-expected=$(account_names "$(token)")
+add_account "$(token)" "Still Here" "3.00" || bad "could not add an account"
+expected=$(account_names "$(token)" || true)
 check "restore refuses a backup newer than this version (exit 5)" \
   "$(expect 5 "$work/r12.log" deploy/restore.sh "$future" --replace && grep -q 'NEWER Budget Owl' "$work/r12.log" && echo ok)"
 wait_api || true
@@ -372,8 +383,13 @@ if expect 0 "$work/t1.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore
 else bad "test-restore.sh brings the backup up on :$test_port"; fi
 check "  ... with the backup's accounts there" \
   "$([ "$(account_names "$(token "http://127.0.0.1:$test_port")" "http://127.0.0.1:$test_port" || true)" = "$before" ] && echo ok)"
-check "  ... and with passwords of its own, not this install's" \
-  "$(grep -q "^DB_PASSWORD=$(sed -n 's/^DB_PASSWORD=//p' "$COMPOSE_ENV_FILES")\$" "$work/state/budgetowl/restore-test.env" && echo no || echo ok)"
+# Compared inside this script only; neither password is printed.
+test_pw=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' budgetowl-restore-test-db-1 2>/dev/null \
+  | sed -n 's/^POSTGRES_PASSWORD=//p')
+real_pw=$(sed -n 's/^DB_PASSWORD=//p' "$COMPOSE_ENV_FILES")
+check "  ... and with a database password of its own, not this install's" \
+  "$([ -n "$test_pw" ] && [ "$test_pw" != "$real_pw" ] && echo ok)"
+unset test_pw real_pw
 check "  ... while the real one keeps its own data" \
   "$([ "$(account_names "$(token)")" = "$expected" ] && echo ok)"
 quiet deploy/test-restore.sh --clean || true
