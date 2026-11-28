@@ -253,6 +253,68 @@ jobs:
           path: tools/ui/artifacts/
           retention-days: 7
 
+  mobile:
+    name: Mobile
+    # Pinned for the same reason as UI validation: the toolchain includes the image. The Android
+    # debug build needs the Android SDK that this image ships at $ANDROID_HOME, and verify.sh
+    # treats a missing SDK as a failure in CI, not a skip.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      # The release mobile/ is developed and verified on. Pinned three ways: the version names it,
+      # the archive's SHA-256 proves the bytes (from the release index at
+      # storage.googleapis.com/flutter_infra_release/releases/releases_linux.json), and the
+      # framework revision is checked after install. Bump all three together.
+      FLUTTER_VERSION: '3.50.1'
+      FLUTTER_SHA256: '4ad17fc8462fbcef2ba19ff4a78c0a16b7147fde1add8578e267ea62cdb92678'
+      FLUTTER_REVISION: 'ae9b586f34a8443573f82ef57c3bf914a908cbf7'
+      # The flutter and dart tools report usage to Google by default. A CI run must not phone home
+      # on anyone's behalf (ADR-0016). Job-wide, so it covers the install check as well as verify.sh.
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      DART_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      # The Android Gradle build runs on a JDK; the same one the backend uses.
+      - uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Install Flutter
+        # Flutter's own release archive, checked against a pinned hash, rather than a third-party
+        # setup action: one less party's code running in CI.
+        run: |
+          archive="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/$archive"
+          echo "$FLUTTER_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict -
+          # --no-same-owner: run as root, tar would keep the archive's owner, and git (which
+          # flutter runs on its own checkout) then refuses the tree as "dubious ownership".
+          tar --no-same-owner -xJf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          rm "$RUNNER_TEMP/$archive"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Flutter is the pinned release
+        run: |
+          read -r version revision < <(flutter --version --machine \
+            | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(d["frameworkVersion"], d["frameworkRevision"])')
+          if [ "$version" != "$FLUTTER_VERSION" ] || [ "$revision" != "$FLUTTER_REVISION" ]; then
+            echo "::error::Expected Flutter $FLUTTER_VERSION at $FLUTTER_REVISION, got $version at $revision" >&2
+            exit 1
+          fi
+          echo "Flutter $version at $revision"
+
+      - name: Mobile gate
+        # The mobile stage of the local gate, unchanged, so CI and a laptop cannot disagree about
+        # what it checks: dependencies from the lockfile only, dart format, design tokens and
+        # strings current, flutter analyze, the architecture and platform guards, the tests with
+        # coverage, lib/core line coverage >= 80%, and the Android debug APK. The stage also runs
+        # the repository hygiene, user guide and docs checks that every verify.sh stage runs.
+        run: tools/verify.sh mobile
+
   mutation:
     name: Mutation testing
     runs-on: ubuntu-latest

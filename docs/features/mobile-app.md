@@ -423,7 +423,9 @@ drives the real API as the phone does and writes
   coverage, a **lib/core line floor of 80%** (`tools/mobile-coverage.sh`, which counts a
   never-loaded file as uncovered; 94.9% at the end of phase 1), and **`flutter build apk
   --debug`** in the same stage, not a separate target, when `ANDROID_HOME` points at an SDK
-  (without one it is `missing`, which fails in CI).
+  (without one it is `missing`, which fails in CI). CI runs this stage as the `Mobile` job, on
+  Flutter 3.50.1 installed from its release archive and checked against a pinned SHA-256 and
+  framework revision, with the runner image's Android SDK, so the APK build runs there too.
 - **Goldens**: `tools/mobile-check.sh` renders 80 PNGs (28 scenarios in light and dark, and the
   main ones in RTL and at text 2.0) at 390×844 with the bundled fonts, from the generated
   fixtures, and lists them. Each was read; what reading them changed is below.

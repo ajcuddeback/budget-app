@@ -88,6 +88,9 @@ same change. The required set is:
 `CodeQL (actions)`
 
 Adding a job means adding it to the ruleset too, or it runs and nobody is required to care.
+`Mobile` (the phone app's gate: `tools/verify.sh mobile` on a pinned Flutter release, Android
+debug APK included) was added to `ci.yml` on 2026-11-28 and is **not yet in the ruleset**; the
+repository owner adds it there, then moves it into the list above.
 
 Docker is required on the runner and a missing one fails the job rather than skipping the tests it
 would have run — `tools/verify.sh` distinguishes "not built yet" from "should have run and could
