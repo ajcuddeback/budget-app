@@ -74,6 +74,7 @@ chmod 600 "$COMPOSE_ENV_FILES"
 
 # shellcheck disable=SC2329  # invoked by the EXIT trap
 cleanup() {
+  [ -z "${netfs:-}" ] || rm -rf -- "$netfs"
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
   # test-restore.sh's copy, whatever state it was left in: compose only needs a DB_PASSWORD to
   # read the file, not the right one.
@@ -168,7 +169,7 @@ if expect 0 "$work/b0.log" deploy/backup.sh --out "$work/empty-rotation" --keep 
 check "  ... keeps the older real backup (--keep 1 did not remove it)" \
   "$([ -f "$work/empty-rotation/$old" ] && grep -q 'nobody in it' "$work/b0.log" && echo ok)"
 check "the signing key was made on first use, mode 0600, with its allowed_signers line" \
-  "$([ "$(stat -c %a "$BACKUP_SIGNING_KEY")" = 600 ] && grep -q '^budgetowl-backup namespaces="budgetowl-backup" ssh-ed25519 ' "$server1_signers" && echo ok)"
+  "$([ "$(stat -c %a "$BACKUP_SIGNING_KEY")" = 600 ] && grep -q '^budgetowl-backup namespaces="budgetowl-backup,budgetowl-backup-meta" ssh-ed25519 ' "$server1_signers" && echo ok)"
 printed=$(deploy/backup.sh --print-signing-key 2>/dev/null)
 check "backup.sh --print-signing-key prints that line" \
   "$([ "$printed" = "$(cat "$server1_signers")" ] && echo ok)"
@@ -219,9 +220,11 @@ check "  ... and the backup holds no session rows" "$(in_toc "$plain" spring_ses
 check "  ... and no phone-token rows" "$(in_toc "$plain" auth_tokens && echo no || echo ok)"
 check "  ... and no invitation rows (the live database holds $invitations)" \
   "$([ "$invitations" -ge 1 ] && ! in_toc "$plain" household_invitations && echo ok)"
-check "the .meta is signed too, and names its backup" "$(ssh-keygen -Y verify -f "$server1_signers" \
-  -I budgetowl-backup -n budgetowl-backup -s "$plain.meta.sig" < "$plain.meta" >/dev/null 2>&1 \
-  && grep -qx "backup=$(basename "$plain")" "$plain.meta" && echo ok)"
+check "the .meta is signed in its own namespace, names its backup and carries its SHA-256" \
+  "$(ssh-keygen -Y verify -f "$server1_signers" \
+  -I budgetowl-backup -n budgetowl-backup-meta -s "$plain.meta.sig" < "$plain.meta" >/dev/null 2>&1 \
+  && grep -qx "backup=$(basename "$plain")" "$plain.meta" \
+  && grep -qx "sha256=$(sha256sum < "$plain" | awk '{print $1}')" "$plain.meta" && echo ok)"
 check "  ... but does hold the accounts" "$(in_toc "$plain" accounts && echo ok)"
 
 mkdir -m 700 "$work/keys"
@@ -282,7 +285,9 @@ chmod 600 "$work/settings/backup.env"
 if [ "$(id -u)" = 0 ]; then
   mkdir -m 755 "$work/foreign"; chown 65534 "$work/foreign"; mkdir -m 700 "$work/foreign/backups"
   check "a backup folder inside one owned by another user is refused" \
-    "$(expect 1 "$work/b10.log" deploy/backup.sh --out "$work/foreign/backups" && grep -q 'belongs to another user' "$work/b10.log" && echo ok)"
+    "$(expect 1 "$work/b10.log" deploy/backup.sh --out "$work/foreign/backups" && grep -q "is not root's or yours" "$work/b10.log" && echo ok)"
+  check "  ... and, run as root, says to run it as the folder's owner instead" \
+    "$(grep -q 'Run this as the operator (nobody), not root' "$work/b10.log" && echo ok)"
 else
   printf '  -    not root: the folder-owned-by-another-user case needs chown, so it is not checked\n'
 fi
@@ -301,7 +306,8 @@ forge() { # forge <case> — a folder of its own, and the path a forgery of $pla
 }
 f=$(forge damaged)
 cp "$plain" "$f"; cp "$plain.sig" "$f.sig"
-sed 's/^./0/' "$plain.sha256" > "$f.sha256"
+# Change the checksum's first hex digit, to a value it is not (1 time in 16 it already was 0).
+awk '{ c = substr($1, 1, 1); print (c == "0" ? "1" : "0") substr($1, 2) "  " $2 }' "$plain.sha256" > "$f.sha256"
 check "a signed backup whose checksum does not match is refused (exit 3)" \
   "$(expect 3 "$work/r2.log" deploy/restore.sh "$f" --replace && grep -q 'CHECKSUM MISMATCH' "$work/r2.log" && echo ok)"
 
@@ -339,6 +345,30 @@ check "a signers file in the backup's own folder is refused (exit 6)" \
   "$(expect 6 "$work/r6c.log" deploy/restore.sh "$plain" --replace --signers "$work/backups/trusted.allowed_signers" \
      && grep -q 'is in the backup folder' "$work/r6c.log" && echo ok)"
 rm -f "$work/backups/trusted.allowed_signers"
+mkdir -m 700 "$work/open/signers"; cp "$server1_signers" "$work/open/signers/trusted.allowed_signers"
+check "a signers file in a folder others can rearrange is refused (exit 6)" \
+  "$(expect 6 "$work/r6e.log" deploy/restore.sh "$plain" --replace --signers "$work/open/signers/trusted.allowed_signers" \
+     && grep -q 'is writable by other users' "$work/r6e.log" && echo ok)"
+# A network filesystem: who owns a file there is whatever its writer said. /dev/shm (tmpfs) stands
+# in for one, through BUDGETOWL_EXTRA_NETWORK_FS, which can only ADD types to the list.
+netfs=$(mktemp -d -p /dev/shm budgetowl-deploycheck.XXXXXX)
+cp "$server1_signers" "$netfs/trusted.allowed_signers"
+check "a signers file on a network filesystem is refused (exit 6)" \
+  "$(expect 6 "$work/r6f.log" env BUDGETOWL_EXTRA_NETWORK_FS=tmpfs deploy/restore.sh "$plain" --replace \
+       --signers "$netfs/trusted.allowed_signers" && grep -q 'is on a network filesystem' "$work/r6f.log" && echo ok)"
+check "  ... while the same file from a local disk is accepted (the stand-in, not the file, is the cause)" \
+  "$(expect 4 "$work/r6g.log" deploy/restore.sh "$plain" --signers "$netfs/trusted.allowed_signers" && echo ok)"
+f=$(forge metaswap)
+cp "$plain.meta" "$f"; cp "$plain.meta.sig" "$f.sig"; sha256sum "$f" > "$f.sha256"
+check "a .meta and its signature, renamed to look like a backup, are refused (exit 6)" \
+  "$(expect 6 "$work/r6h.log" deploy/restore.sh "$f" --replace && grep -q 'BAD SIGNATURE' "$work/r6h.log" && echo ok)"
+# TMPDIR: never on a network filesystem, never in the backup folder; stale copies are cleared.
+check "a TMPDIR on a network filesystem is refused" \
+  "$(expect 1 "$work/r6i.log" env TMPDIR="$netfs" BUDGETOWL_EXTRA_NETWORK_FS=tmpfs deploy/restore.sh "$plain" --replace \
+     && grep -q 'TMPDIR .* is on a network filesystem' "$work/r6i.log" && echo ok)"
+check "a TMPDIR inside the backup folder is refused" \
+  "$(expect 1 "$work/r6j.log" env TMPDIR="$work/backups" deploy/restore.sh "$plain" --replace \
+     && grep -q 'TMPDIR .* is inside the backup folder' "$work/r6j.log" && echo ok)"
 
 # The name is not signed; the archive's own creation time is. An old backup renamed to a later
 # date must not pass for a newer one.
@@ -375,6 +405,9 @@ forgery=$(deploy/backup.sh --out "$work/forgery-src" 2>/dev/null | tail -1) || f
 mkdir -m 700 "$work/share"
 shared="$work/share/$pname"
 for x in "" .sig .sha256; do cp "$plain$x" "$shared$x"; done
+# A private copy left by a restore that was killed: a dead pid, and a plaintext dump inside.
+mkdir -m 700 "$TMPDIR/budgetowl-restore.STALE1"; cp "$plain" "$TMPDIR/budgetowl-restore.STALE1/"
+printf '999999999\n' > "$TMPDIR/budgetowl-restore.STALE1/pid"
 deploy/restore.sh "$shared" --replace --safety-out "$work/plain-safety" >"$work/r9a.log" 2>&1 &
 restore_pid=$!
 for _ in $(seq 1 600); do grep -q '^Signature good' "$work/r9a.log" && break; sleep 0.1; done
@@ -389,6 +422,8 @@ wait_api || true
 check "a restore whose file is swapped on the share after its signature was checked restores the real one (exit $code)" \
   "$([ "$code" = 0 ] && [ "$(account_names "$(token)" || true)" = "$before" ] && echo ok)"
 [ "$code" = 0 ] || tail -8 "$work/r9a.log" | sed 's/^/       | /' >&2
+check "  ... and a stale private copy from a killed restore was removed at the start" \
+  "$([ ! -e "$TMPDIR/budgetowl-restore.STALE1" ] && grep -q 'Removed a private copy left behind' "$work/r9a.log" && echo ok)"
 check "  ... and the restore's private copy is gone afterwards" \
   "$(find "$TMPDIR" -maxdepth 1 -name 'budgetowl-restore.*' | grep -q . && echo no || echo ok)"
 
@@ -473,7 +508,10 @@ check "  ... before replacing anything: the data is as it was" \
   "$([ "$(account_names "$(token)" || true)" = "$expected" ] && echo ok)"
 
 step "test-restore.sh: a separate copy, with its own passwords"
-if expect 0 "$work/t1.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$plain" --signers "$server1_signers" --port "$test_port"; then
+# The renamed copy of $plain, so --accept-date-mismatch has to reach restore.sh (and
+# --skip-version-check with it) for this to work at all.
+if expect 0 "$work/t1.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$renamed" \
+     --signers "$server1_signers" --port "$test_port" --accept-date-mismatch --skip-version-check; then
   ok "test-restore.sh brings the backup up on :$test_port"
 else bad "test-restore.sh brings the backup up on :$test_port"; fi
 check "  ... with the backup's accounts there" \
@@ -504,16 +542,25 @@ instance=$(meta_get "$first.meta" instance)
 fake() { # fake <yyyymmdd> <instance> [foreign] — a small stand-in for a nightly backup
   local n="budgetowl-${1}T030000Z-old-schema20.dump" d="${work}/${dir:-rot}"
   printf 'stand-in %s\n' "$1" > "$d/$n"; sha256sum "$d/$n" > "$d/$n.sha256"
-  printf 'backup=%s\ninstance=%s\npeople=yes\n' "$n" "$2" > "$d/$n.meta"
+  local sha meta_ns=budgetowl-backup-meta key="$BACKUP_SIGNING_KEY"
+  sha=$(sha256sum < "$d/$n" | awk '{print $1}')
+  # badsha: properly signed, but its .meta vouches for some other file's bytes.
+  [ "${3:-}" != badsha ] || sha=$(printf 'some other file' | sha256sum | awk '{print $1}')
+  printf 'backup=%s\nsha256=%s\ninstance=%s\npeople=yes\n' "$n" "$sha" "$2" > "$d/$n.meta"
+  # oldformat: round 3's .meta, signed in the backup namespace and with no sha256.
+  if [ "${3:-}" = oldformat ]; then
+    printf 'backup=%s\ninstance=%s\npeople=yes\n' "$n" "$2" > "$d/$n.meta"; meta_ns=budgetowl-backup
+  fi
   # "foreign": signed, but by a key that is not this server's, so a .sig is there to be fooled by.
-  local key="$BACKUP_SIGNING_KEY"
   [ "${3:-}" != foreign ] || key="$work/attacker-key/key"
   ssh-keygen -Y sign -q -f "$key" -n budgetowl-backup "$d/$n" </dev/null
-  ssh-keygen -Y sign -q -f "$key" -n budgetowl-backup "$d/$n.meta" </dev/null
+  ssh-keygen -Y sign -q -f "$key" -n "$meta_ns" "$d/$n.meta" </dev/null
 }
 for d in 20261120 20261119 20261110 20261015 20260915 20260815 20260701 20260702; do fake "$d" "$instance"; done
 fake 20260501 0000000000000000            # another install's, signed by this server
 fake 20260601 "$instance" foreign        # claims to be ours, signed by another key
+fake 20260602 "$instance" badsha         # signed by us, but its .meta is for different bytes
+fake 20260603 "$instance" oldformat      # a round-3 backup: never pruned
 fake 20261399 "$instance"                 # no such date
 if expect 0 "$work/rot.log" deploy/backup.sh --out "$work/rot" --keep 2 --keep-weekly 3 --keep-monthly 4; then
   rot_ok=ok; else rot_ok=no; fi
@@ -534,7 +581,7 @@ for n in mine:
     if w not in weeks and len(weeks) < 3: weeks.append(w); keep.add(n)
     if m not in months and len(months) < 4: months.append(m); keep.add(n)
 # Never touched: another install's, one this server did not sign, one with no real date.
-for d in ("20260501", "20260601", "20261399"):
+for d in ("20260501", "20260601", "20260602", "20260603", "20261399"):
     keep.add("budgetowl-%sT030000Z-old-schema20.dump" % d)
 print(" ".join(sorted(keep)) + " ")
 PY

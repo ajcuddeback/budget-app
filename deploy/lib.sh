@@ -84,18 +84,71 @@ owned_by_us_or_root() {
   [ "$owner" = 0 ] || [ "$owner" = "$(id -u)" ]
 }
 
+# whose <path> — who owns it, said so that the fix is obvious. Run as root (or under sudo), the
+# usual mistake is the user, not the file: the operator's own files are "another user's" to root.
+whose() {
+  local name uid
+  name=$(stat -L -c %U -- "$1" 2>/dev/null || echo '?')
+  uid=$(stat -L -c %u -- "$1" 2>/dev/null || echo '?')
+  if [ "$(id -u)" = 0 ] || [ -n "${SUDO_USER:-}" ]; then
+    printf 'It belongs to %s. Run this as the operator (%s), not root: sudo -u %s %s' \
+      "$name" "$name" "$name" "${0##*/}"
+  else
+    printf 'It belongs to another user, %s (uid %s), not to you.' "$name" "$uid"
+  fi
+}
+
+# Filesystems whose owners and modes are whatever the far end says they are. BUDGETOWL_EXTRA_NETWORK_FS
+# can ADD types (space separated, as `stat -f -c %T` prints them); nothing can remove one.
+on_network_fs() { # on_network_fs <path> — prints the type and succeeds if it is one of them
+  local t extra
+  t=$(stat -f -c %T -- "$1" 2>/dev/null || echo unknown)
+  case "$t" in nfs*|cifs|smb*|fuse*|9p|ceph|glusterfs|afs|lustre) printf '%s' "$t"; return 0 ;; esac
+  for extra in ${BUDGETOWL_EXTRA_NETWORK_FS:-}; do
+    [ "$t" = "$extra" ] && { printf '%s' "$t"; return 0; }
+  done
+  return 1
+}
+
+# check_parents <path> <what> <exit-code> — as sshd's StrictModes does: every folder above must be
+# root's or yours, and writable by nobody else unless it is root's and sticky (/tmp). Whoever can
+# rename entries in a parent can put their own file or folder in the place of yours.
+check_parents() {
+  local path="$1" what="$2" code="${3:-1}" up
+  up=$(dirname "$path")
+  while :; do
+    owned_by_us_or_root "$up" || die "$code" "$up, which holds $what ($path), is not root's or yours.
+       $(whose "$up") Its owner could move $what aside and put their own in its place."
+    if writable_by_others "$up" && ! root_sticky "$up"; then
+      die "$code" "$up, which holds $what ($path), is writable by other users (mode $(stat -c %a -- "$up")).
+       They could move it aside and put their own in its place. Fix it: chmod go-w $up"
+    fi
+    [ "$up" = / ] && break
+    up=$(dirname "$up")
+  done
+}
+
 # check_trust_file <file> <what> <exit-code> — a file that decides what is trusted (backup.env,
-# an allowed_signers file) must be root's or yours, and writable by nobody else. Otherwise
-# whoever can write it chooses which signatures a restore accepts.
+# an allowed_signers file) must be root's or yours, writable by nobody else, in folders nobody
+# else can rearrange, and on a local disk: on NFS and the like a file's owner is whatever its
+# writer claimed, so an owner check there proves nothing. Otherwise whoever can write it chooses
+# which signatures a restore accepts.
 check_trust_file() {
-  local f="$1" what="$2" code="${3:-1}"
+  local f="$1" what="$2" code="${3:-1}" t real
   [ -r "$f" ] || die "$code" "cannot read $what ($f)"
-  owned_by_us_or_root "$f" || die "$code" "$what ($f) belongs to another user (uid $(stat -L -c %u -- "$f")).
+  real="$(cd "$(dirname "$f")" && pwd -P)/$(basename "$f")"
+  if t=$(on_network_fs "$real"); then
+    die "$code" "$what ($f) is on a network filesystem ($t), where who owns a file is whatever the
+       machine that wrote it said. It decides what is trusted, so keep it on this machine's own
+       disk (your home folder, or /etc/budgetowl)."
+  fi
+  owned_by_us_or_root "$real" || die "$code" "$what ($f) is not root's or yours. $(whose "$real")
        It decides what is trusted, so it must be root's or yours."
-  if [ -n "$(find -L "$f" -maxdepth 0 -perm /022 2>/dev/null)" ]; then
-    die "$code" "$what ($f) can be changed by other users (mode $(stat -L -c %a -- "$f")).
+  if [ -n "$(find -L "$real" -maxdepth 0 -perm /022 2>/dev/null)" ]; then
+    die "$code" "$what ($f) can be changed by other users (mode $(stat -L -c %a -- "$real")).
        It decides what is trusted. Fix it: chmod go-w $f"
   fi
+  check_parents "$real" "$what" "$code"
 }
 
 # name_epoch <backup name> — the UTC time in a backup's name, as seconds; nothing if the name
@@ -122,29 +175,13 @@ check_backup_folder() {
   if writable_by_others "$dir"; then
     die 1 "$dir is writable by other users (mode $(stat -c %a -- "$dir")). Fix it: chmod 700 $dir"
   fi
-  owned_by_us_or_root "$dir" || die 1 "$dir belongs to another user (uid $(stat -c %u -- "$dir")).
+  owned_by_us_or_root "$dir" || die 1 "$dir is not root's or yours. $(whose "$dir")
        Whoever owns it can change its permissions back at any time."
-  up=$(dirname "$dir")
-  while :; do
-    # As sshd's StrictModes does: every folder above must be root's or yours, because its owner
-    # can rename what is inside it whatever the mode says.
-    owned_by_us_or_root "$up" || die 1 "$up, which holds $dir, belongs to another user
-       (uid $(stat -c %u -- "$up")). They could move the backup folder aside and put their own
-       in its place."
-    if writable_by_others "$up" && ! root_sticky "$up"; then
-      die 1 "$up, which holds $dir, is writable by other users (mode $(stat -c %a -- "$up")).
-       They could move the backup folder aside and put their own in its place.
-       Fix it: chmod go-w $up"
-    fi
-    [ "$up" = / ] && break
-    up=$(dirname "$up")
-  done
-  fstype=$(stat -f -c %T -- "$dir" 2>/dev/null || echo unknown)
-  case "$fstype" in
-    nfs*|cifs|smb*|fuse*|9p)
-      log "warning: $dir is on a network filesystem ($fstype). Its permissions are enforced by the"
-      log "         server, if at all: limit the share to this machine's address, and encrypt." ;;
-  esac
+  check_parents "$dir" "the backup folder" 1
+  if fstype=$(on_network_fs "$dir"); then
+    log "warning: $dir is on a network filesystem ($fstype). Its permissions are enforced by the"
+    log "         server, if at all: limit the share to this machine's address, and encrypt."
+  fi
 }
 
 # refuse_private_keys <dir> — the key that undoes encryption, or the key that signs, must never
@@ -170,6 +207,9 @@ $(printf '         %s\n' "$leaked")
 # their password manager, next to the age key.
 SIGNING_NAMESPACE=budgetowl-backup
 SIGNING_PRINCIPAL=budgetowl-backup
+# A .meta is signed in a namespace of its own, so a .meta and its .sig can never pass for a dump
+# and its .sig: renamed, they fail verification as a backup.
+META_NAMESPACE=budgetowl-backup-meta
 
 signing_key_path() {
   if [ -n "${BACKUP_SIGNING_KEY:-}" ]; then printf '%s\n' "$BACKUP_SIGNING_KEY"
@@ -186,14 +226,15 @@ require_ssh_keygen() {
 # check_private_file <file> — ours, and readable by nobody else.
 check_private_file() {
   local f="$1" mode
-  [ "$(stat -L -c %u -- "$f")" = "$(id -u)" ] || die 1 "$f belongs to another user; it must be yours"
+  [ "$(stat -L -c %u -- "$f")" = "$(id -u)" ] || die 1 "$f must be yours. $(whose "$f")"
   mode=$(stat -L -c %a -- "$f")
   case "$mode" in 600|400) ;; *) die 1 "$f is mode $mode; it must be readable by you only: chmod 600 $f" ;; esac
 }
 
 # allowed_signers_line <public key file>
 allowed_signers_line() {
-  printf '%s namespaces="%s" %s\n' "$SIGNING_PRINCIPAL" "$SIGNING_NAMESPACE" "$(cut -d' ' -f1,2 -- "$1")"
+  printf '%s namespaces="%s,%s" %s\n' "$SIGNING_PRINCIPAL" "$SIGNING_NAMESPACE" "$META_NAMESPACE" \
+    "$(cut -d' ' -f1,2 -- "$1")"
 }
 
 # ensure_signing_key — the key's path; made on first use (mode 0600, no passphrase, so the nightly
@@ -217,9 +258,10 @@ ensure_signing_key() {
   printf '%s\n' "$key"
 }
 
-# verify_signature <file> <allowed-signers file> — 0 only for a good signature by a listed key.
+# verify_signature <file> <allowed-signers file> [namespace] — 0 only for a good signature by a
+# listed key, in that namespace (a backup's, unless told otherwise).
 verify_signature() {
-  ssh-keygen -Y verify -f "$2" -I "$SIGNING_PRINCIPAL" -n "$SIGNING_NAMESPACE" -s "$1.sig" \
+  ssh-keygen -Y verify -f "$2" -I "$SIGNING_PRINCIPAL" -n "${3:-$SIGNING_NAMESPACE}" -s "$1.sig" \
     < "$1" >/dev/null 2>&1
 }
 

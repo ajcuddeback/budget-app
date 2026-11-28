@@ -203,9 +203,13 @@ chmod 600 -- "$partial"
 ssh-keygen -Y sign -q -f "$signing_key" -n "$SIGNING_NAMESPACE" "$partial" </dev/null \
   || die 1 "signing the backup failed; nothing was kept"
 ( cd "$out" && sha256sum -- "$(basename "$partial")" | sed "s/\.partial\$//" > "$name.sha256.partial" )
-printf 'backup=%s\ninstance=%s\npeople=%s\n' "$name" "$instance" "$people" > "$final.meta.partial"
-# The .meta decides what rotation may delete, so it is signed too, and names its backup.
-ssh-keygen -Y sign -q -f "$signing_key" -n "$SIGNING_NAMESPACE" "$final.meta.partial" </dev/null \
+dump_sha=$(sha256sum < "$partial" | awk '{print $1}')
+printf 'backup=%s\nsha256=%s\ninstance=%s\npeople=%s\n' "$name" "$dump_sha" "$instance" "$people" \
+  > "$final.meta.partial"
+# The .meta decides what rotation may delete, so it is signed too. It names its backup and
+# carries the backup's SHA-256, so it vouches for exactly one file. It is signed in a namespace
+# of its own, so a .meta and its .sig, renamed, can never pass for a backup and its .sig.
+ssh-keygen -Y sign -q -f "$signing_key" -n "$META_NAMESPACE" "$final.meta.partial" </dev/null \
   || die 1 "signing the backup's .meta failed; nothing was kept"
 chmod 600 -- "$partial.sig" "$final.sha256.partial" "$final.meta.partial" "$final.meta.partial.sig"
 mv -- "$partial.sig" "$final.sig"
@@ -223,17 +227,20 @@ fi
 # ------------------------------------------------------------------------------ rotation
 meta_get() { sed -n "s/^$2=//p" "$1" 2>/dev/null | tail -1; }
 
-# ours <name> — a nightly backup this server signed, whose signed .meta names it and names THIS
-# install, with a real date in its name that is not in the future. Anything else in the folder
-# is not rotation's business: it is never counted and never deleted. Never fails.
+# ours <name> — a nightly backup this server signed, whose .meta (signed in the .meta namespace)
+# names it, carries its exact SHA-256, and names THIS install, with a real date in its name that
+# is not in the future. Anything else in the folder is not rotation's business: it is never
+# counted and never deleted. Round-3 backups (.meta signed as a backup, no sha256) are not ours
+# by this test, so rotation leaves them alone. Never fails.
 ours() {
   local n="$1" when
   when=$(name_epoch "$n")
   [ -n "$when" ] && [ "$when" -le "$((now + 300))" ] || return 1
   [ -f "$out/$n.sig" ] && [ -f "$out/$n.meta" ] && [ -f "$out/$n.meta.sig" ] || return 1
   verify_signature "$out/$n" "$own_signers" || return 1
-  verify_signature "$out/$n.meta" "$own_signers" || return 1
+  verify_signature "$out/$n.meta" "$own_signers" "$META_NAMESPACE" || return 1
   [ "$(meta_get "$out/$n.meta" backup)" = "$n" ] || return 1
+  [ "$(meta_get "$out/$n.meta" sha256)" = "$(sha256sum < "$out/$n" | awk '{print $1}')" ] || return 1
   [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ]
 }
 
@@ -286,8 +293,10 @@ prune() {
   done
 }
 now=$(date -u +%s)
-own_signers="$signing_key.allowed_signers"
-[ -f "$own_signers" ] || allowed_signers_line "$signing_key.pub" > "$own_signers"
+# This server's own line, made fresh from its public key (an older allowed_signers file beside
+# the key may not list the .meta namespace).
+own_signers="$work/own.allowed_signers"
+allowed_signers_line "$signing_key.pub" > "$own_signers"
 prune
 
 printf '%s\n' "$final"

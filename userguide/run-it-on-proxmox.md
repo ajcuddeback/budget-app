@@ -201,7 +201,9 @@ sudo chown owl:owl /srv/budgetowl-backups && sudo chmod 700 /srv/budgetowl-backu
 
 The backup warns you that NFS permissions are the NAS's to enforce; that is expected. Check that
 `ls -ld /srv/budgetowl-backups` shows `owl` as the owner. If the NAS squashes everyone to one user,
-set the export's `anonuid` and `anongid` to `owl`'s numbers (`id owl`). The backup refuses a folder
+set the export's `anonuid` and `anongid` to `owl`'s numbers (`id owl`). On Synology, the NFS
+permission rule's **Squash** setting decides which NAS user owns the files; map them to a user with
+`owl`'s numbers (menu names differ between versions; see your NAS's help). The backup refuses a folder
 that belongs to anybody else.
 
 **If this VM replaces one that died, restore first** (below). Only then mount the old backups at
@@ -221,11 +223,14 @@ BACKUP_AGE_RECIPIENT=age1…
 
 Every backup on the VM then uses it: nightly, before an upgrade, and before a restore.
 
-Check the timer is running, and run one now:
+Check the timer is running, run one now, and see how it went (`journalctl` is where a failed
+night says why):
 
 ```bash
 systemctl list-timers budgetowl-backup.timer
 sudo systemctl start budgetowl-backup.service
+systemctl status budgetowl-backup          # status=0/SUCCESS
+journalctl -u budgetowl-backup -n 50
 ls -l /srv/budgetowl-backups
 ```
 

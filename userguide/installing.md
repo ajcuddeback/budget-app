@@ -282,7 +282,11 @@ you:
 - limit the share to this server's address only;
 - make the share's files appear as yours (`ls -ld` on the mounted folder shows your name). On an
   NFS export that squashes everyone to one user, set `anonuid` and `anongid` to your numbers
-  (`id -u`, `id -g`);
+  (`id -u`, `id -g`). Some NAS systems, Synology among them, show one of the NAS's own users as
+  the owner, whatever you set on the server. On Synology, the share's NFS permission rule has a
+  **Squash** setting that decides this; set it so your server's files map to a NAS user with your
+  numbers, then remount. Menu names differ between versions, so check your NAS's own help. Then
+  check with `ls -ldn` that the numbers match `id -u`;
 - and encrypt the backups (next section).
 
 ### Encrypt your backups
@@ -382,6 +386,17 @@ sudo systemctl enable --now budgetowl-backup.timer
 systemctl list-timers budgetowl-backup.timer      # shows when it runs next
 ```
 
+**Check that it worked**, the morning after, and whenever you change anything:
+
+```bash
+systemctl status budgetowl-backup          # "status=0/SUCCESS" was the last run; anything else failed
+journalctl -u budgetowl-backup -n 50       # what the last runs printed, including why one failed
+```
+
+A failed run says why on its last `error:` line. A run that refused to write somewhere unsafe
+fails on purpose; read the message rather than loosening it. A backup that fails quietly every
+night is the worst kind, so look now and then even when nothing seems wrong.
+
 The `BACKUP_KEEP` settings above keep:
 
 - the newest 14 nightly backups;
@@ -446,9 +461,14 @@ If you prefer cron, this line in `crontab -e` does the same as the timer:
    --age-identity <(cat /media/usb/budgetowl-backup-key.txt)
    ```
 
-   Keep that file in your home folder, not in the backup folder. Restore refuses a signers file
-   that sits beside the backups, or that anyone else can change: it decides whose backups are
-   trusted.
+   Keep that file in your home folder, on this machine's own disk, not in the backup folder or
+   on a network share. It decides whose backups are trusted, so restore refuses a signers file
+   in any of these cases:
+   - it sits beside the backups;
+   - it is on NFS or SMB, where anyone can claim to own a file;
+   - anyone else can change it, or the folders it is in.
+
+   If you run restore as `root` by mistake, it says so and tells you to run it as yourself.
 
    You see:
 

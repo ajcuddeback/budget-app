@@ -112,8 +112,30 @@ share_dir="$(dirname "$backup")"
 #    show a forgery to the restore, minutes later, after the database has been started and the
 #    app stopped.
 umask 077
-private=$(mktemp -d "${TMPDIR:-/tmp}/budgetowl-restore.XXXXXXXX")
+# Where the copy goes must be this machine's own disk, and not the share it is copied from.
+tmp_root="${TMPDIR:-/tmp}"
+tmp_real=$(cd "$tmp_root" 2>/dev/null && pwd -P) || die 1 "cannot use TMPDIR ($tmp_root)"
+if fs=$(on_network_fs "$tmp_real"); then
+  die 1 "TMPDIR ($tmp_root) is on a network filesystem ($fs). The private copy of the backup must
+       be on this machine's own disk, or the share could still change it. Unset TMPDIR, or point
+       it at a local folder."
+fi
+case "$tmp_real/" in
+  "$share_dir"/*) die 1 "TMPDIR ($tmp_root) is inside the backup folder. The private copy must be
+       somewhere the share cannot reach. Unset TMPDIR, or point it at a local folder." ;;
+esac
+# Copies left by restores that were killed before they could clean up: ours, and no longer in use.
+# A plaintext backup's copy is the household's data, so it does not get to linger.
+for old in "$tmp_real"/budgetowl-restore.*; do
+  [ -d "$old" ] && [ ! -L "$old" ] && [ "$(stat -c %u -- "$old")" = "$(id -u)" ] || continue
+  old_pid=$(cat -- "$old/pid" 2>/dev/null || true)
+  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then continue; fi
+  rm -rf -- "$old"
+  log "Removed a private copy left behind by an earlier restore that did not finish: $old"
+done
+private=$(mktemp -d "$tmp_real/budgetowl-restore.XXXXXXXX")
 chmod 700 -- "$private"
+printf '%s\n' "$$" > "$private/pid"
 private_cleanup() { rm -rf -- "$private"; }
 trap private_cleanup EXIT
 copy="$private/$(basename "$share_backup")"
