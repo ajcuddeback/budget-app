@@ -47,15 +47,11 @@ sections 1 and 2 for you. Come back here for section 3 onwards.
 1. Get Budget Owl.
 
    ```bash
-   git clone --branch claude/budget-app-ai-harness-32d4cj https://github.com/ajcuddeback/budget-app.git budget-owl
+   git clone https://github.com/ajcuddeback/budget-app.git budget-owl
    cd budget-owl
    ```
 
    Every command from here on runs in this `budget-owl` folder.
-
-   **Why that branch:** there is no release of Budget Owl yet, and the backup and upgrade scripts
-   in this guide are not on `main` until they are merged there. Once a release exists, clone
-   that instead.
 
 2. Make your settings file, readable only by you.
 
