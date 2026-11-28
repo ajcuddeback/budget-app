@@ -1,8 +1,10 @@
 # Feature: Deployment: install, back up, restore, upgrade
 
-- **Status:** In progress. Slice 15b. Round 2 answers the security audit ("Don't ship as is"):
+- **Status:** In progress. Slice 15b. Round 2 answered the security audit ("Don't ship as is"):
   backups are signed and a restore refuses anything this server (or one the operator names) did
-  not sign. The Proxmox VM script is still untested on a real Proxmox host (see Testing notes).
+  not sign. Round 3 answers the re-audit: a restore reads the share once, into a private copy,
+  and checks and restores only that. The Proxmox VM script is still untested on a real Proxmox
+  host (see Testing notes).
 - **Owner:** Repository owner
 - **Last updated:** 2026-11-28
 - **Related:** ADR-0016 (self-hosted; upgrades and backups are features), ADR-0007 (Flyway),
@@ -49,8 +51,10 @@ backups features, not afterthoughts. This is that feature.
    and `pg_dump` does not include them, so a restore works on a new install with a new `.env`.
    The operator keeps a copy of `.env` in a password manager because it is the only copy of the
    running instance's passwords.
-3. **Sign-ins are left out**: `--exclude-table-data` for `spring_session`,
-   `spring_session_attributes` and `auth_tokens`. A web session id is a live credential; a phone
+3. **Sign-ins and invitations are left out**: `--exclude-table-data` for `spring_session`,
+   `spring_session_attributes`, `auth_tokens` and `household_invitations`. A restored invitation
+   would bring back a link revoked after the backup; membership itself (`household_members`) is
+   kept. Pending invitations are sent again after a restore. A web session id is a live credential; a phone
    token row is only a hash, but restoring it would bring back a phone that was signed out (a lost
    one, say). After a restore everybody signs in again, on the web and on phones, and the guide
    says to review **Devices** afterwards.
@@ -63,7 +67,10 @@ backups features, not afterthoughts. This is that feature.
 5. `/etc/budgetowl/backup.env` (the nightly timer's `EnvironmentFile`) is also read by
    `backup.sh`, `restore.sh` and `upgrade.sh`, so a manual, safety or pre-upgrade backup is
    encrypted and signed exactly like the nightly one. It is **parsed, never sourced**: only the
-   `BACKUP_*` keys, as `KEY=value`. The environment and command-line options win.
+   `BACKUP_*` keys, as `KEY=value`. The environment and command-line options win, **even an
+   empty variable** (`BACKUP_AGE_RECIPIENT= backup.sh …` really means no recipient). It is a
+   trust anchor, so it must be owned by root or the operator and writable by nobody else;
+   otherwise every script refuses to run.
 
 ### `deploy/backup.sh`
 
@@ -76,7 +83,9 @@ backups features, not afterthoughts. This is that feature.
    `pwd -P`, so a symlinked `--out` is checked where it really is. The script refuses:
    - a folder that group or others can write;
    - any parent folder that group or others can write, unless it is root's and sticky (`/tmp`).
-     Otherwise someone could move the backup folder aside and put their own in its place.
+     Otherwise someone could move the backup folder aside and put their own in its place;
+   - a folder, or any parent, owned by anyone but root or the operator, as sshd's `StrictModes`
+     does: an owner can change the mode back whenever they like.
 
    It **warns** on NFS, SMB, 9p and FUSE, where mode bits are the server's to enforce, if at all.
    Files are `0600`.
@@ -92,7 +101,8 @@ backups features, not afterthoughts. This is that feature.
     `.age` or `.gpg` when encrypted. Beside it:
     - `.sha256`, which detects damage;
     - `.sig`, which says who made it (rule 12);
-    - `.meta`, which says which install it came from (rule 14).
+    - `.meta` and `.meta.sig`: which backup it describes and which install it came from,
+      signed, because it decides what rotation may delete (rule 14).
 
     All are `0600`, written as `.partial` and renamed only once the dump succeeded and
     `pg_restore --list` read it back from the same stream. **An existing backup is never
@@ -111,15 +121,26 @@ backups features, not afterthoughts. This is that feature.
     - **Its public half:** made beside it as `<key>.allowed_signers`, one line:
       `budgetowl-backup namespaces="budgetowl-backup" ssh-ed25519 …`.
     - `--print-signing-key` prints that line.
-13. **Rotation.** `--keep N`, `--keep-weekly N` and `--keep-monthly N` are tiers.
+13. **Rotation.** `--keep N`, `--keep-weekly N` and `--keep-monthly N` are tiers. Leaving
+    `--keep` out means no rotation. **`--keep 0` is refused** (it would delete every nightly
+    backup but tonight's), and the weekly and monthly tiers need `--keep`. 0 is allowed for a
+    weekly or monthly tier, meaning none.
     - **What is kept:** the newest N nightly backups, plus the newest of each of the last N ISO
       weeks, plus the newest of each of the last N months.
-    - **What is pruned:** only unlabelled backups whose `.meta` names **this** install. Labelled
-      ones (`pre-upgrade`, `pre-restore`) and other installs' are never deleted. A pruned backup
-      goes with its `.sha256`, `.sig` and `.meta`.
+    - **What is pruned:** only unlabelled backups that are provably this server's and this
+      install's:
+      - a real date in the name, not in the future;
+      - a `.sig` and a `.meta.sig` that verify against this server's key;
+      - a `.meta` naming that file and this install.
+
+      Anything else in the folder is never counted and never deleted: labelled backups, other
+      installs', unsigned ones, ones signed by another key, names with impossible dates
+      (`20261399`) and names in the future. A name `date -d` cannot read no longer stops the
+      nightly job. A pruned backup goes with its `.sha256`, `.sig`, `.meta` and `.meta.sig`.
 14. **Rotation never loses the real history.** Nothing is pruned:
     - when the new backup has nobody in it (a new, unset-up install);
-    - or when the newest earlier backup is from a different install, or does not say which.
+    - or when the newest earlier backup (with a real, past date) is not one rotation could
+      prune: another install's, another server's, or unsigned.
       The install is `left(md5('budgetowl:' || instance_settings.created_at), 16)`, which a new
       install never shares with an old one.
 
@@ -128,10 +149,23 @@ backups features, not afterthoughts. This is that feature.
 
 ### `deploy/restore.sh`
 
-15. **Signature first, before anything else reads the file, including before decryption.**
+15. **One read of the share, then signature first.** Before anything else, the backup and its
+    `.sig` and `.sha256` are copied **once** into a private `mktemp -d` folder (0700, removed on
+    exit). From then on only the copy is read: the signature check, the checksum, `pg_restore
+    --list` and the restore itself (audit N1). A NAS that showed the real file to the check could
+    otherwise show a forgery to the restore, which comes later: after the database is started,
+    the app stopped and the scratch database made, up to minutes. **The copy of a plaintext backup
+    is plaintext**, on the server's own disk, which already holds the database it is about to
+    become; an `.age` copy stays encrypted. `TMPDIR` chooses where it goes.
+
+    The signature is checked on the copy, before anything else reads it, including before
+    decryption.
     - **How:** `ssh-keygen -Y verify -I budgetowl-backup -n budgetowl-backup` against an
       allowed-signers file. `--signers FILE` names the trusted servers; the default is this
       server's own `<key>.allowed_signers`.
+    - **The signers file is a trust anchor** (audit N3). It must be owned by root or the operator
+      and writable by nobody else, and it must not be inside the backup's folder. Otherwise it
+      is refused with exit 6.
     - **Refused, exit 6:** no `.sig`, or a signature by a key not listed. The same goes for a
       changed file.
     - **A new server after a disaster** has a new key, so the operator gives the old server's line
@@ -145,11 +179,17 @@ backups features, not afterthoughts. This is that feature.
     works and the key file can be put away as soon as the restore starts.
 18. **Leftovers** from an interrupted restore are found before anything happens (exit 7):
     - the live database is missing but `budgetowl_restore_previous` or `…_scratch` exists;
-    - or `…_previous` still exists beside the live one.
+    - or `…_previous` still exists beside the live one;
+    - or `budgetowl_restore_failed` exists: the restored database an operator set aside when
+      going back (`go_back`'s own instructions create it).
 
     The message gives the exact SQL to put things back or to drop it.
-19. `pg_restore --list` must read it; **a database with any table in `public` is refused** without
-    `--replace` (exit 4), before anything is stopped.
+19. `pg_restore --list` must read it. **The date it was really made** (the archive's own
+    "Archive created at", inside the signed bytes) is printed. It is compared with the date in the
+    file's name, which is not signed (audit N2). More than a day apart, or either unreadable, is
+    refused with exit 8, unless `--accept-date-mismatch`. That stops an old signed backup renamed
+    to tonight's name from rolling the data back unnoticed. **A database with any table in
+    `public` is refused** without `--replace` (exit 4), before anything is stopped.
 20. It restores into `budgetowl_restore_scratch` (a fixed name) with `--single-transaction
     --exit-on-error --no-owner --no-privileges`, while the api and web are stopped. A failure drops
     the scratch database and starts what was running. If that start fails, it says Budget Owl is
@@ -179,9 +219,12 @@ backups features, not afterthoughts. This is that feature.
 **Test restore (`deploy/test-restore.sh BACKUP`)** restores into a second Compose project,
 `budgetowl-restore-test`, on `127.0.0.1:8481`, with **its own throwaway passwords**. They live in
 `~/.local/state/budgetowl/restore-test.env`, 0600; only the image tag is read from `.env`. The
-backup is checked exactly like a real restore (signature first; `--signers`, `--allow-unsigned`
-pass through). `--clean` removes the copy and its env file. The project name is fixed in the
-script, so neither command can reach the real instance.
+backup is checked exactly like a real restore (one read into a private copy, signature first;
+`--signers`, `--allow-unsigned`, `--accept-date-mismatch` are restore.sh's). `--clean` removes the
+copy and its env file. If that file has gone, it makes a throwaway one so `down -v` can still
+run. It then **checks** that no container or volume of the project is left, and says so only if
+that is true; otherwise it lists what is left and exits 1 (audit N5). The project name is fixed in
+the script, so neither command can reach the real instance.
 
 ### Upgrades: `deploy/upgrade.sh`
 
@@ -209,8 +252,8 @@ script, so neither command can reach the real instance.
 
 31. The real stack from nothing, as its own Compose project (`budgetowl-deploycheck`; any name
     without `check` in it is refused). It has its own env file of random passwords, its own
-    signing keys (a "server 1" and, after the disaster, a "server 2"), and `BACKUP_ENV_FILE=/dev/null`.
-    It never reads `.env` or `/etc/budgetowl`. 68 checks, in these steps (the output names each
+    signing keys (a "server 1" and, after the disaster, a "server 2"), and a `BACKUP_ENV_FILE` that does not exist.
+    It never reads `.env` or `/etc/budgetowl`. 88 checks, in these steps (the output names each
     check):
     - **Empty install**: rotation does not run; the signing key is made on first use.
     - **Household**: set up through the API; the pool connects as `budgetowl_app`.
@@ -245,9 +288,23 @@ script, so neither command can reach the real instance.
       - `--clean` removes it;
       - a forged backup is refused (exit 6).
     - **Rotation**:
-      - exactly the survivors an independent statement of the policy predicts;
+      - exactly the survivors an independent statement of the policy predicts. The fakes carry
+        real signatures: by this server, or, for the ones rotation must leave alone, by another
+        key. There is also an impossible date and a future date;
       - companions removed with each pruned backup;
-      - nothing pruned after another install's backup.
+      - nothing pruned after another install's backup, or one another key signed.
+    - **Round 3 additions**:
+      - **N1:** the file on the share is swapped for a validly made forgery as soon as "Signature
+        good" is logged, while the restore is still running. The real data must come back, and
+        the private copy must be gone afterwards;
+      - **N2:** a renamed backup is refused (exit 8), and restores with `--accept-date-mismatch`;
+      - **N3:** a signers file writable by others, or in the backup folder, is refused (exit 6),
+        and so is a writable `backup.env`; an empty variable overrides `backup.env`;
+      - **N6:** a folder whose parent another user owns is refused (only when run as root);
+      - **N7:** `--keep 0` is refused;
+      - **N5:** `--clean` with its settings file deleted still removes the copy, and checks;
+      - **info items:** invitation rows are absent; the `.meta` is signed and names its backup;
+        a leftover `budgetowl_restore_failed` gets exit 7.
 32. `tools/verify.sh packaging` runs it, and so does CI's Packaging job (with `age`; GitHub's runner
     has `ssh-keygen`).
 
@@ -267,7 +324,9 @@ script, so neither command can reach the real instance.
       `cdimage.debian.org`.
     - **Paths:** `--image-dir` must be an absolute path of `[A-Za-z0-9._/-]` with no `..`.
 35. **The VM runs the commit the operator reviewed.** The default `--ref` is the branch the host's
-    checkout is on, and `BUDGETOWL_COMMIT` is that checkout's `HEAD`. The bootstrap refuses to
+    checkout is on, and `BUDGETOWL_COMMIT` is that checkout's `HEAD`. The bootstrap embedded in the
+    snippet is taken from that commit (`git show <commit>:deploy/proxmox/bootstrap-vm.sh`), not
+    from the working tree, and a `deploy/` folder with uncommitted changes is refused. The bootstrap refuses to
     build if `git rev-parse HEAD` differs after cloning. `--commit SHA` pins another commit;
     `--no-commit-check` skips the check, for a ref chosen deliberately.
 36. Refuses an existing VMID (a VM or a container) **before** anything is downloaded or written,
@@ -350,7 +409,10 @@ None. Documented for the operator in `userguide/installing.md` (sections 1, 2, 5
 | T4 | **A live credential in a months-old backup**, or a signed-out phone coming back (audit L2) | Session **and** token rows are excluded; everyone signs in again; the guide says to review Devices | rule 3; deploy-check (401 for an old token) |
 | T5 | **A restore silently overwrites a live database** | Refuses one with data without `--replace` (exit 4); a safety backup before the swap; the old database is kept as `…_previous` until the app is healthy | rules 19, 22, 23 |
 | T6 | **A damaged backup is restored** | Mandatory checksum (exit 3); `pg_restore --list`; one transaction into a scratch database | rules 16, 19, 20 |
-| T7 | **A forged backup is restored** (audit H1). Someone who can write to the share writes a dump and its checksum. age does **not** help: anyone can encrypt to the operator's public key, and age does not authenticate the sender. Round 1 claimed it did, and that was wrong | Every backup is signed by a key only the server holds (`ssh-keygen -Y`, namespace `budgetowl-backup`). Restore and test-restore check the signature **over the exact file, before anything reads it, decryption included**, against the operator's allowed signers. Unsigned or badly signed is exit 6; `--allow-unsigned` warns about superuser | rules 12, 15; deploy-check (forged checksum, forged `.age`, borrowed `.sig`, other key) |
+| T7 | **A forged backup is restored** (audit H1). Someone who can write to the share writes a dump and its checksum. age does **not** help: anyone can encrypt to the operator's public key, and age does not authenticate the sender. Round 1 claimed it did, and that was wrong | Every backup is signed by a key only the server holds (`ssh-keygen -Y`, namespace `budgetowl-backup`). Restore and test-restore copy the file **once** into a private folder (T7d), and check the signature **over that exact copy, before anything reads it, decryption included**, against the operator's allowed signers. Unsigned or badly signed is exit 6; `--allow-unsigned` warns about superuser | rules 12, 15; deploy-check (forged checksum, forged `.age`, borrowed `.sig`, other key) |
+| T7d | **The share shows one file to the check and another to the restore** (re-audit N1, HIGH). A compromised NAS, or a co-tenant during the long gap before the restore reads the file | The share is read once, into a private 0700 copy; the signature, checksum, `--list` and restore read only the copy. **Cost:** a plaintext backup's copy is plaintext on the server's own disk, beside the database; it is deleted on exit | rule 15; deploy-check swaps the file on the share once "Signature good" is logged, while the restore runs, and requires the real data back |
+| T7e | **An old signed backup renamed to tonight's name** (N2): a silent rollback | The archive's own creation time, inside the signed bytes, is printed and must be within a day of the name's date (exit 8, `--accept-date-mismatch`) | rule 19; deploy-check |
+| T7f | **The trust anchors themselves are writable** (N3): whoever can edit the signers file or `backup.env` chooses what is trusted | Both must be owned by root or the operator and writable by nobody else. The signers file must not be in the backup folder | rules 5, 15; deploy-check |
 | T7b | **The signing key leaks** | It is ed25519, 0600, owned by the operator account, and refused if looser. It is outside the backup folder, and the key scan refuses it if it ever lands there. Only the public line leaves the server. Whoever holds the operator account or root holds the key: ADR-0026 territory | rules 9, 12 |
 | T7c | **A rebuilt server cannot vouch for old backups** | The operator keeps each server's allowed_signers line in the password manager and passes it with `--signers`; a file can hold several | rule 15; deploy-check (new key refuses old backup; `--signers` accepts it) |
 | T8 | **An upgrade migration fails halfway** | Each Flyway migration is one transaction; earlier ones stay applied; the api stays unhealthy; `upgrade.sh` backed up first and prints the rollback | rules 25–29 |
@@ -363,7 +425,12 @@ None. Documented for the operator in `userguide/installing.md` (sections 1, 2, 5
 | T15 | **The VM reachable on more than SSH.** **Correction:** round 1 claimed "input policy drop, SSH only" covered it; published ports bypass the input chain (T11) | Input drop with SSH only, **plus** the prerouting drop; password SSH off; no root login; `reload`, never `restart`, so Docker's rules are not flushed (audit M3) | rule 39 |
 | T16 | **The docker group is root** | Only the operator is in it, and the guide says what that means | rule 39 |
 | T17 | **The VM builds code nobody reviewed**: the branch moved between review and first boot (audit L4) | The commit is pinned from the host's checkout and checked after cloning; `upgrade.sh --ref` is validated and passed after `--end-of-options` | rules 26, 35 |
-| T18 | **Rotation deletes the real history** (audit M4) | No pruning after an empty install's backup, or across installs; only this install's unlabelled backups are pruned; weekly and monthly tiers; the guide says to restore before mounting an old share at the timer's path, or to stop the timer | rules 13, 14 |
+| T18 | **Rotation deletes the real history** (audit M4; re-audit N4, N7) | No pruning after an empty install's backup, or when the newest earlier backup is not provably ours. Only backups whose `.sig` and signed `.meta` verify against this server's key are counted or pruned. Names with impossible or future dates are skipped, never fatal. `--keep 0` is refused. Weekly and monthly tiers. The guide says to restore before mounting an old share at the timer's path, or to stop the timer | rules 13, 14; deploy-check |
+| T20 | **The backup folder's parents belong to someone else** (N6) | Every parent must be owned by root or the operator, as `StrictModes` requires. On NFS with `all_squash`, the guide says to map the anonymous user to the operator | rule 8; deploy-check (as root) |
+| T21 | **`test-restore.sh --clean` says "gone" while the copy keeps running** (N5) | It takes the copy down even without its settings file, then checks that no container or volume is left before saying so | test-restore; deploy-check |
+| T22 | **A revoked invitation comes back with a restore** | Invitation rows are not in the backup | rule 3; deploy-check |
+| T23 | **The VM's snippet embeds a bootstrap nobody committed** | Embedded from the pinned commit; a dirty `deploy/` is refused | rule 35 |
+| T24 | **A Proxmox vzdump of the VM** holds the signing key, `.env` and the database together, so it is worth more than any one backup | The guide says to keep vzdump archives away from the backup share and to encrypt them (Proxmox Backup Server client-side encryption) | run-it-on-proxmox.md |
 | T19 | **An interrupted restore leaves no live database** (audit L5) | Renames in one transaction; the old one kept until healthy; leftovers detected (exit 7) with the fix printed; "STOPPED" said plainly | rules 18, 23 |
 
 ### Audit round 2: what each finding became, and the sabotage that proves it
@@ -391,6 +458,27 @@ was restored. "Caught by" is the check that went red.
 | L5 previous kept until healthy | never dropped | "... and the database from before was dropped once the app was healthy" |
 | test-restore's own passwords | caller's env used (round 1's behaviour) | "... and with a database password of its own, not this install's" |
 | Same-second backups (found in round 2) | overwrite guard removed | "a second backup with the same name is refused, and the first is not overwritten" |
+
+**Round 3** (the re-audit of `ca9b758..6175fa6`):
+
+| Finding | Sabotage | Caught by |
+| ------- | -------- | --------- |
+| N1 share read more than once | restore reads the share again instead of the private copy | "a restore whose file is swapped on the share after its signature was checked restores the real one". Sabotaged, it exited 0 **with the forged row restored** |
+| N2 renamed old backup | date comparison skipped | "a signed backup renamed to a date three days later is refused (exit 8)" |
+| N3 signers file trust | owner and mode not checked | "a signers file others can change is refused (exit 6)" |
+| N3 signers in backup folder | location check made to miss | "a signers file in the backup's own folder is refused (exit 6)" |
+| N3 backup.env trust | owner and mode not checked | "a backup.env that others can change is refused" |
+| N4 rotation trusts files | signature checks removed | "... or when it is one this server did not sign", plus the exact-survivors check (the fakes carry real signatures by *another* key) |
+| N4 impossible date | date guards removed | "a nightly run with an impossible date in the folder still succeeds, rotation included" (`date -d` killed it) |
+| N4 future date | future-date skips removed | "... and a name dated in the future is neither counted nor removed" |
+| N4 unsigned `.meta` | `.meta` left unsigned | "the .meta is signed too, and names its backup" (and rotation then keeps everything) |
+| N5 `--clean` without its env | old behaviour put back | "test-restore.sh --clean takes the copy down even when its settings file has gone", "... and its volume, and only then says so" |
+| N6 parent owners | owner check removed | "a backup folder inside one owned by another user is refused" (root only; skipped and said so otherwise) |
+| N7 `--keep 0` | refusal removed | "--keep 0 is refused, not taken as 'delete them all'" |
+| N7 empty override | `${!key:-}` put back | "... and an EMPTY BACKUP_AGE_RECIPIENT in the environment really does override it" |
+| Info: leftover `_failed` | detection removed | "restore refuses while a set-aside budgetowl_restore_failed is still there (exit 7)" |
+| Info: invitations | exclusion removed | "... and no invitation rows" |
+| Info: dirty `deploy/` | refusal removed | by hand: with uncommitted changes in `deploy/`, `create-vm.sh --dry-run` exits 1 as written and runs once sabotaged |
 
 ### Things this does not protect against
 
@@ -438,11 +526,17 @@ was restored. "Caught by" is the check that went red.
    `create-vm.sh` defaults to whatever branch the host's checkout is on.
 4. **Signing key rotation.** There is no command for it; a new key means keeping both lines in
    the signers file. Cheap to add when someone needs it.
+5. **Round-2 backups and rotation.** Backups made before round 3 have no `.meta.sig`. Rotation
+   therefore never deletes them, and while one is the newest earlier backup, rotation does not
+   run at all. No install exists from that window. If one does, move those backups aside once.
+6. **Restoring large plaintext backups** needs room in `TMPDIR` for one copy (N1's cost). An
+   `.age` backup's copy is still encrypted.
 
 ## Testing notes
 
-**Proven in the dev container on 2026-11-28**: `tools/deploy-check.sh` passed 68 of 68, against
-images built from the merged branch. The sabotage table above lists each check made to fail.
+**Proven in the dev container on 2026-11-28 (round 3)**: `tools/deploy-check.sh` passed 88 of 88,
+against images built from the merged branch (68 in round 2). The sabotage tables above list each
+check made to fail.
 
 **Measured** (unchanged from round 1):
 - **Memory at rest:** api about 490 MiB, db about 77 MiB, web about 5 MiB.

@@ -153,8 +153,16 @@ grep -q 'PRIVATE KEY' "$ssh_key" && die "$ssh_key is a PRIVATE key. Give the .pu
 key_line=$(grep -m1 -E '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/=]+( [^"\\]*)?$' "$ssh_key" || true)
 [ -n "$key_line" ] || die "$ssh_key does not look like an SSH public key"
 
-bootstrap="$HERE/bootstrap-vm.sh"
-[ -r "$bootstrap" ] || die "cannot find $bootstrap (run this from a Budget Owl checkout)"
+# The first-boot script goes into the snippet from the COMMIT the VM will check out, not from
+# whatever this working tree holds: what the VM runs as root is then exactly what the commit
+# check vouches for. A deploy/ folder with uncommitted changes is refused rather than guessed at.
+embed_rev="${commit:-HEAD}"
+git -C "$checkout" cat-file -e "$embed_rev:deploy/proxmox/bootstrap-vm.sh" 2>/dev/null \
+  || die "cannot find deploy/proxmox/bootstrap-vm.sh at $embed_rev (run this from a Budget Owl checkout)"
+if [ -n "$(git -C "$checkout" status --porcelain -- deploy/ 2>/dev/null)" ]; then
+  die "deploy/ in $checkout has uncommitted changes. The VM runs the committed version, so what
+       you are reading here is not what would run. Commit or undo them first (git status deploy/)."
+fi
 
 user_data() {
   cat <<YAML
@@ -192,7 +200,7 @@ write_files:
     permissions: "0755"
     content: |
 YAML
-  sed 's/^/      /; s/^ *$//' "$bootstrap"
+  git -C "$checkout" show "$embed_rev:deploy/proxmox/bootstrap-vm.sh" | sed 's/^/      /; s/^ *$//'
   cat <<'YAML'
 runcmd:
   - [systemctl, enable, --now, qemu-guest-agent]

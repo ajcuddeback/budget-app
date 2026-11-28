@@ -22,13 +22,20 @@
 #   --no-start                leave the app stopped afterwards.
 #   --skip-version-check      restore even if this version's app image cannot be read to check
 #                             that the backup is not newer than it. Avoid.
+#   --accept-date-mismatch    restore even though the date inside the backup and the date in its
+#                             name are more than a day apart (a renamed old backup, usually).
 #   -h, --help                this text.
 #
 # What it does, in order. Nothing that is there now is changed until step 8.
-#   1. checks BACKUP's signature against the signers you trust — before reading anything in it;
+#   0. copies BACKUP and its .sig and .sha256, ONCE, into a private folder on this machine; from
+#      then on only that copy is read, so the share cannot show one file to the check and
+#      another to the restore. (For a plaintext backup the copy is plaintext, on the same disk
+#      as the database it is about to become; it is deleted when this ends.)
+#   1. checks the copy's signature against the signers you trust — before reading anything in it;
 #   2. checks BACKUP against BACKUP.sha256;
 #   3. checks for a database left behind by an interrupted restore;
-#   4. checks pg_restore can read it;
+#   4. checks pg_restore can read it, and that the date it was made (inside the signed bytes)
+#      matches the date in its name;
 #   5. refuses if the database already holds Budget Owl, unless you gave --replace;
 #   6. stops the app, and restores into a separate scratch database;
 #   7. checks what came back: a Budget Owl schema, not newer than this version understands;
@@ -38,7 +45,8 @@
 #      previous database only once the app is healthy on the restored one.
 #
 # Exit codes: 2 usage, 3 checksum, 4 has data (no --replace), 5 newer than this version,
-# 6 signature, 7 left over from an interrupted restore, 1 anything else.
+# 6 signature or an untrustworthy signers file, 7 left over from an interrupted restore,
+# 8 the backup's own date and its name disagree, 1 anything else.
 
 # Database commands are single-quoted on purpose: the CONTAINER's shell expands them (lib.sh).
 # shellcheck disable=SC2016
@@ -51,6 +59,7 @@ load_backup_env
 
 SCRATCH=budgetowl_restore_scratch
 PREVIOUS=budgetowl_restore_previous
+FAILED=budgetowl_restore_failed
 
 go_back() {
   log "The database from before the restore is kept as $PREVIOUS. To go back to it:"
@@ -70,6 +79,7 @@ safety_out=""
 safety_args=()
 start=1
 skip_version_check=0
+accept_date_mismatch=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -82,6 +92,7 @@ while [ $# -gt 0 ]; do
     --safety-gpg-recipient) safety_args=(--gpg-recipient "${2:?needs a key}"); shift 2 ;;
     --no-start) start=0; shift ;;
     --skip-version-check) skip_version_check=1; shift ;;
+    --accept-date-mismatch) accept_date_mismatch=1; shift ;;
     -h|--help) print_help "$0"; exit 0 ;;
     -*) die 2 "unknown option: $1 (see --help)" ;;
     *) [ -z "$backup" ] || die 2 "one backup at a time"; backup="$1"; shift ;;
@@ -93,6 +104,24 @@ done
 backup="$(cd "$(dirname "$backup")" && pwd -P)/$(basename "$backup")"
 case "$backup" in *.partial|*.sha256|*.sig|*.meta) die 2 "that is not a backup: $backup" ;; esac
 [ -n "$safety_out" ] || safety_out="$(dirname "$backup")"
+share_backup="$backup"
+share_dir="$(dirname "$backup")"
+
+# 0. One read of the share, and only one. Everything below reads the private copy: a NAS (or a
+#    co-tenant of the share) that shows the real file to the signature check could otherwise
+#    show a forgery to the restore, minutes later, after the database has been started and the
+#    app stopped.
+umask 077
+private=$(mktemp -d "${TMPDIR:-/tmp}/budgetowl-restore.XXXXXXXX")
+chmod 700 -- "$private"
+private_cleanup() { rm -rf -- "$private"; }
+trap private_cleanup EXIT
+copy="$private/$(basename "$share_backup")"
+cp -- "$share_backup" "$copy" || die 1 "could not copy $share_backup"
+for side in .sig .sha256; do
+  if [ -f "$share_backup$side" ]; then cp -- "$share_backup$side" "$copy$side"; fi
+done
+backup="$copy"
 
 # 1. The signature, over the exact bytes of the file, before anything reads what is inside it.
 #    A restore runs the backup's SQL as the database superuser; a file anyone could have written
@@ -110,11 +139,18 @@ else
        Give the allowed_signers line of the server that made it: --signers FILE
        (backup.sh --print-signing-key prints it; keep it in your password manager)."
   fi
-  [ -r "$signers" ] || die 2 "cannot read $signers"
-  [ -f "$backup.sig" ] || die 6 "the backup has no signature ($backup.sig), so there is no telling
-       who made it. Nothing was restored, and nothing was changed.
+  # The signers file decides whose backups run as superuser: it must be beyond the reach of
+  # whoever can write to the backups.
+  check_trust_file "$signers" "the signers file" 6
+  signers_real="$(cd "$(dirname "$signers")" && pwd -P)/"
+  case "$signers_real" in
+    "$share_dir"/*) die 6 "the signers file ($signers) is in the backup folder. Anyone who can
+       write a backup there could write the list of who to trust too. Keep it somewhere else." ;;
+  esac
+  [ -f "$backup.sig" ] || die 6 "the backup has no signature ($share_backup.sig), so there is no
+       telling who made it. Nothing was restored, and nothing was changed.
        (If you made it yourself before backups were signed: --allow-unsigned.)"
-  verify_signature "$backup" "$signers" || die 6 "BAD SIGNATURE: $backup was not signed by a
+  verify_signature "$backup" "$signers" || die 6 "BAD SIGNATURE: $share_backup was not signed by a
        server in $signers, or has been changed since. Nothing was restored, and nothing
        was changed. A backup from another server needs that server's line: --signers FILE"
   log "Signature good: made by a server in $signers."
@@ -123,12 +159,12 @@ fi
 # 2. The checksum. Read from the .sha256 file but compared by hash alone, so a renamed backup
 #    still verifies and a swapped one does not.
 sumfile="$backup.sha256"
-[ -f "$sumfile" ] || die 3 "no checksum beside the backup ($sumfile). Without one there is no way
+[ -f "$sumfile" ] || die 3 "no checksum beside the backup ($share_backup.sha256). Without one there is no way
        to tell a damaged file from a good one, so this will not restore it."
 expected=$(awk 'NR==1 {print $1}' "$sumfile")
 actual=$(sha256sum < "$backup" | awk '{print $1}')
 if [ "$expected" != "$actual" ]; then
-  die 3 "CHECKSUM MISMATCH: $backup is not the file its checksum was made from.
+  die 3 "CHECKSUM MISMATCH: $share_backup is not the file its checksum was made from.
        It is damaged or has been changed. Nothing was restored, and nothing was changed."
 fi
 log "Checksum matches."
@@ -162,10 +198,11 @@ require_docker
 ensure_db_up
 
 # 3. Anything an interrupted restore left behind is somebody's data. Say where, and stop.
-read -r has_target has_scratch has_previous < <(db_admin_sql <<SQL | tr '|' ' '
+read -r has_target has_scratch has_previous has_failed < <(db_admin_sql <<SQL | tr '|' ' '
 SELECT (SELECT count(*) FROM pg_database WHERE datname = :'target'),
        (SELECT count(*) FROM pg_database WHERE datname = '$SCRATCH'),
-       (SELECT count(*) FROM pg_database WHERE datname = '$PREVIOUS');
+       (SELECT count(*) FROM pg_database WHERE datname = '$PREVIOUS'),
+       (SELECT count(*) FROM pg_database WHERE datname = '$FAILED');
 SQL
 )
 if [ "$has_target" -eq 0 ]; then
@@ -180,6 +217,12 @@ if [ "$has_target" -eq 0 ]; then
   fi
   die 1 "Budget Owl's database does not exist in the '$DB_SERVICE' container."
 fi
+if [ "$has_failed" -gt 0 ]; then
+  die 7 "$FAILED is still here: the restored database you set aside when you went back to the
+       previous one. Look at it if you want to, then drop it:
+         docker compose exec db psql -U <DB_USER> -d postgres -c 'DROP DATABASE $FAILED'
+       Nothing was changed."
+fi
 if [ "$has_previous" -gt 0 ]; then
   die 7 "$PREVIOUS is still here: the database from before an earlier restore, kept because the
        app was not confirmed healthy afterwards. If the restored data is right, drop it:
@@ -187,9 +230,26 @@ if [ "$has_previous" -gt 0 ]; then
        Nothing was changed."
 fi
 
-# 4. Can pg_restore read it at all?
-stream | db_sh 'pg_restore --list >/dev/null; s=$?; cat >/dev/null; exit $s' \
+# 4. Can pg_restore read it at all? And when was it really made? The signature covers the bytes,
+#    not the name: an old signed backup renamed to tonight's name still verifies. The archive's
+#    own "created at", inside the signed bytes, is what to believe.
+toc=$(stream | db_sh 'pg_restore --list; s=$?; cat >/dev/null; exit $s' 2>/dev/null) \
   || die 1 "pg_restore cannot read this backup (wrong key, or not a Budget Owl backup). Nothing was changed."
+created=$(sed -n 's/^;[[:space:]]*Archive created at //p' <<<"$toc" | head -1)
+created_epoch=$(date -u -d "$created" +%s 2>/dev/null || true)
+named_epoch=$(name_epoch "$share_backup")
+log "Made at ${created:-an unknown time} (from inside the backup)."
+if [ -z "$created_epoch" ] || [ -z "$named_epoch" ]; then
+  [ "$accept_date_mismatch" -eq 1 ] || die 8 "cannot compare the date inside the backup
+       (${created:-unreadable}) with the date in its name. If you renamed it yourself and know
+       what it is: --accept-date-mismatch. Nothing was changed."
+elif [ $(( created_epoch > named_epoch ? created_epoch - named_epoch : named_epoch - created_epoch )) -gt 86400 ]; then
+  [ "$accept_date_mismatch" -eq 1 ] || die 8 "the backup was made at $created, but its name says
+       $(date -u -d "@$named_epoch" '+%Y-%m-%d %H:%M:%S UTC'). An old backup under a new name is
+       how someone would roll your data back without you noticing. If you renamed it yourself:
+       --accept-date-mismatch. Nothing was changed."
+  log "warning: --accept-date-mismatch: the name's date and the backup's own date disagree."
+fi
 
 # 5. Is there something here to lose?
 tables=$(db_psql "" -At -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
@@ -225,7 +285,7 @@ cleanup() {
     go_back
   fi
 }
-trap cleanup EXIT
+trap 'cleanup; private_cleanup' EXIT
 
 if [ ${#was_running[@]} -gt 0 ]; then
   log "Stopping ${was_running[*]} while the restore runs..."
@@ -293,7 +353,7 @@ fi
 # no database under Budget Owl's name. The old one is kept, renamed, until the app is healthy.
 swapped=1
 db_admin_sql >/dev/null <<SQL || { swapped=0; die 1 "swapping the restored database in failed; nothing was changed."; }
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN (:'target', '$SCRATCH');
+SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity WHERE datname IN (:'target', '$SCRATCH');
 BEGIN;
 SELECT format('ALTER DATABASE %I RENAME TO $PREVIOUS', :'target') \gexec
 SELECT format('ALTER DATABASE $SCRATCH RENAME TO %I', :'target') \gexec

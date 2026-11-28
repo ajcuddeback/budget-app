@@ -54,7 +54,9 @@ unset DB_NAME DB_USER DB_PASSWORD DB_APP_USER DB_APP_PASSWORD BIND_ADDRESS WEB_P
       BACKUP_AGE_RECIPIENT BACKUP_GPG_RECIPIENT BACKUP_SIGNING_KEY
 work=$(mktemp -d)
 chmod 700 "$work"
-export BACKUP_ENV_FILE=/dev/null
+export BACKUP_ENV_FILE="$work/no-backup.env"   # does not exist: no settings file
+# Everything the scripts make with mktemp (restore.sh's private copy) lands here, where it can be seen.
+mkdir -m 700 "$work/tmp"; export TMPDIR="$work/tmp"
 export XDG_STATE_HOME="$work/state"
 # "Server 1" made the backups. Its key is made on first use, as on any non-VM install.
 export BACKUP_SIGNING_KEY="$work/server1/backup-signing-key"
@@ -73,10 +75,11 @@ chmod 600 "$COMPOSE_ENV_FILES"
 # shellcheck disable=SC2329  # invoked by the EXIT trap
 cleanup() {
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  if [ -f "$work/state/budgetowl/restore-test.env" ]; then
-    COMPOSE_PROJECT_NAME=budgetowl-restore-test COMPOSE_ENV_FILES="$work/state/budgetowl/restore-test.env" \
-      docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  fi
+  # test-restore.sh's copy, whatever state it was left in: compose only needs a DB_PASSWORD to
+  # read the file, not the right one.
+  printf 'DB_PASSWORD=teardown-only\n' > "$work/teardown.env"
+  COMPOSE_PROJECT_NAME=budgetowl-restore-test COMPOSE_ENV_FILES="$work/teardown.env" \
+    docker compose down -v --remove-orphans >/dev/null 2>&1 || true
   if [ "$remove_images" -eq 1 ]; then
     docker rmi "ghcr.io/ajcuddeback/budget-owl-api:$version" \
                "ghcr.io/ajcuddeback/budget-owl-web:$version" >/dev/null 2>&1 || true
@@ -194,6 +197,10 @@ code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$work/jar" -c "$work/jar" -H 
 check "browser sign-in (got $code)" "$([ "$code" = 200 ] || [ "$code" = 204 ] && echo ok)"
 sessions=$(db_query <<<'SELECT count(*) FROM spring_session;')
 tokens=$(db_query <<<'SELECT count(*) FROM auth_tokens;')
+# A pending invitation, so there is one for the backup to leave out.
+curl -fsS -o /dev/null -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' \
+  -d '{"email":"invited@example.com","role":"MEMBER"}' "$base/api/households/current/invitations" || true
+invitations=$(db_query <<<'SELECT count(*) FROM household_invitations;')
 
 step "Back up"
 mkdir -m 700 "$work/backups"
@@ -210,6 +217,11 @@ check "the live database holds a web session ($sessions) and phone tokens ($toke
   "$([ "$sessions" -ge 1 ] && [ "$tokens" -ge 1 ] && echo ok)"
 check "  ... and the backup holds no session rows" "$(in_toc "$plain" spring_session && echo no || echo ok)"
 check "  ... and no phone-token rows" "$(in_toc "$plain" auth_tokens && echo no || echo ok)"
+check "  ... and no invitation rows (the live database holds $invitations)" \
+  "$([ "$invitations" -ge 1 ] && ! in_toc "$plain" household_invitations && echo ok)"
+check "the .meta is signed too, and names its backup" "$(ssh-keygen -Y verify -f "$server1_signers" \
+  -I budgetowl-backup -n budgetowl-backup -s "$plain.meta.sig" < "$plain.meta" >/dev/null 2>&1 \
+  && grep -qx "backup=$(basename "$plain")" "$plain.meta" && echo ok)"
 check "  ... but does hold the accounts" "$(in_toc "$plain" accounts && echo ok)"
 
 mkdir -m 700 "$work/keys"
@@ -253,6 +265,27 @@ check "backup refuses a folder inside one that others can write to" \
   "$(expect 1 "$work/b5.log" deploy/backup.sh --out "$work/open/backups" && grep -q 'writable by other users' "$work/b5.log" && echo ok)"
 mkdir -m 700 "$work/real"; ln -s "$work/real" "$work/link"
 check "a symlinked --out works" "$(expect 0 "$work/b6.log" deploy/backup.sh --out "$work/link" && echo ok)"
+check "--keep 0 is refused, not taken as 'delete them all'" \
+  "$(expect 2 "$work/b8.log" deploy/backup.sh --out "$work/real" --keep 0 && echo ok)"
+# backup.env: read by every script, a trust anchor, and an empty variable really does override it.
+mkdir -m 700 "$work/settings" "$work/from-env" "$work/override"
+printf 'BACKUP_AGE_RECIPIENT=%s\n' "$recipient" > "$work/settings/backup.env"; chmod 600 "$work/settings/backup.env"
+check "backup.env's recipient is used when nothing overrides it" \
+  "$(BACKUP_ENV_FILE="$work/settings/backup.env" deploy/backup.sh --out "$work/from-env" 2>/dev/null | tail -1 | grep -q '\.dump\.age$' && echo ok)"
+check "  ... and an EMPTY BACKUP_AGE_RECIPIENT in the environment really does override it" \
+  "$(BACKUP_ENV_FILE="$work/settings/backup.env" BACKUP_AGE_RECIPIENT='' deploy/backup.sh --out "$work/override" 2>/dev/null | tail -1 | grep -q '\.dump$' && echo ok)"
+chmod 666 "$work/settings/backup.env"
+check "a backup.env that others can change is refused" \
+  "$(expect 1 "$work/b9.log" env BACKUP_ENV_FILE="$work/settings/backup.env" deploy/backup.sh --out "$work/override" \
+     && grep -q 'can be changed by other users' "$work/b9.log" && echo ok)"
+chmod 600 "$work/settings/backup.env"
+if [ "$(id -u)" = 0 ]; then
+  mkdir -m 755 "$work/foreign"; chown 65534 "$work/foreign"; mkdir -m 700 "$work/foreign/backups"
+  check "a backup folder inside one owned by another user is refused" \
+    "$(expect 1 "$work/b10.log" deploy/backup.sh --out "$work/foreign/backups" && grep -q 'belongs to another user' "$work/b10.log" && echo ok)"
+else
+  printf '  -    not root: the folder-owned-by-another-user case needs chown, so it is not checked\n'
+fi
 
 step "Refusals: nothing is changed"
 check "restore over a database with data in it, without --replace, refuses (exit 4)" \
@@ -260,20 +293,26 @@ check "restore over a database with data in it, without --replace, refuses (exit
 check "  ... and the app is still up with the same data" \
   "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
 
-mkdir -m 700 "$work/forged"
-cp "$plain" "$work/forged/damaged.dump"; cp "$plain.sig" "$work/forged/damaged.dump.sig"
-sed 's/^./0/' "$plain.sha256" > "$work/forged/damaged.dump.sha256"
+pname=$(basename "$plain")
+forge() { # forge <case> — a folder of its own, and the path a forgery of $plain gets in it
+  [ -d "$work/forged" ] || mkdir -m 700 "$work/forged"
+  [ -d "$work/forged/$1" ] || mkdir -m 700 "$work/forged/$1"
+  printf '%s\n' "$work/forged/$1/${2:-$pname}"
+}
+f=$(forge damaged)
+cp "$plain" "$f"; cp "$plain.sig" "$f.sig"
+sed 's/^./0/' "$plain.sha256" > "$f.sha256"
 check "a signed backup whose checksum does not match is refused (exit 3)" \
-  "$(expect 3 "$work/r2.log" deploy/restore.sh "$work/forged/damaged.dump" --replace && grep -q 'CHECKSUM MISMATCH' "$work/r2.log" && echo ok)"
+  "$(expect 3 "$work/r2.log" deploy/restore.sh "$f" --replace && grep -q 'CHECKSUM MISMATCH' "$work/r2.log" && echo ok)"
 
-f="$work/forged/changed.dump"
+f=$(forge changed)
 cp "$plain" "$f"; cp "$plain.sig" "$f.sig"
 printf 'X' | dd of="$f" bs=1 seek=4096 conv=notrunc status=none
 sha256sum "$f" > "$f.sha256"
 check "a changed backup with a recomputed checksum is refused on its signature (exit 6)" \
   "$(expect 6 "$work/r3.log" deploy/restore.sh "$f" --replace && grep -q 'BAD SIGNATURE' "$work/r3.log" && echo ok)"
 
-f="$work/forged/forged.dump.age"
+f=$(forge age "$(basename "$encrypted")")
 age -r "$recipient" -o "$f" "$plain"; sha256sum "$f" > "$f.sha256"
 check "an age file anyone could encrypt to the operator's key, with no signature, is refused (exit 6)" \
   "$(expect 6 "$work/r4.log" deploy/restore.sh "$f" --replace --age-identity "$work/keys/identity.txt" && echo ok)"
@@ -281,17 +320,39 @@ cp "$encrypted.sig" "$f.sig"
 check "  ... and with a real backup's signature beside it (exit 6)" \
   "$(expect 6 "$work/r5.log" deploy/restore.sh "$f" --replace --age-identity "$work/keys/identity.txt" && echo ok)"
 
-ssh-keygen -q -t ed25519 -N '' -C attacker -f "$work/forged/attacker" </dev/null
-f="$work/forged/attacker.dump"
+mkdir -m 700 "$work/attacker-key"
+ssh-keygen -q -t ed25519 -N '' -C attacker -f "$work/attacker-key/key" </dev/null
+f=$(forge attacker)
+attacker_dump="$f"
 cp "$plain" "$f"; sha256sum "$f" > "$f.sha256"
-ssh-keygen -Y sign -q -f "$work/forged/attacker" -n budgetowl-backup "$f" </dev/null
+ssh-keygen -Y sign -q -f "$work/attacker-key/key" -n budgetowl-backup "$f" </dev/null
 check "a backup signed by another key is refused (exit 6)" \
   "$(expect 6 "$work/r6.log" deploy/restore.sh "$f" --replace && grep -q 'BAD SIGNATURE' "$work/r6.log" && echo ok)"
+
+# The trust anchor itself: whoever can change the signers file chooses what is trusted.
+cp "$server1_signers" "$work/attacker-key/open.allowed_signers"; chmod 666 "$work/attacker-key/open.allowed_signers"
+check "a signers file others can change is refused (exit 6)" \
+  "$(expect 6 "$work/r6b.log" deploy/restore.sh "$plain" --replace --signers "$work/attacker-key/open.allowed_signers" \
+     && grep -q 'can be changed by other users' "$work/r6b.log" && echo ok)"
+cp "$server1_signers" "$work/backups/trusted.allowed_signers"
+check "a signers file in the backup's own folder is refused (exit 6)" \
+  "$(expect 6 "$work/r6c.log" deploy/restore.sh "$plain" --replace --signers "$work/backups/trusted.allowed_signers" \
+     && grep -q 'is in the backup folder' "$work/r6c.log" && echo ok)"
+rm -f "$work/backups/trusted.allowed_signers"
+
+# The name is not signed; the archive's own creation time is. An old backup renamed to a later
+# date must not pass for a newer one.
+later=$(date -u -d '+3 days' +%Y%m%dT%H%M%SZ)
+f=$(forge renamed "${pname/#budgetowl-????????T??????Z/budgetowl-$later}")
+for x in "" .sig .sha256; do cp "$plain$x" "$f$x"; done
+check "a signed backup renamed to a date three days later is refused (exit 8)" \
+  "$(expect 8 "$work/r6d.log" deploy/restore.sh "$f" --replace && grep -q 'but its name says' "$work/r6d.log" && echo ok)"
+check "  ... and says when it was really made" "$(grep -q '^Made at 20' "$work/r6d.log" && echo ok)"
 check "  ... and no safety backup was needed for any of these, because nothing was touched" \
   "$(find "$work/backups" "$work/forged" -name '*pre-restore*' | grep -q . && echo no || echo ok)"
 check "  ... and the data is as it was" "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
 
-f="$work/forged/unsigned.dump"
+f=$(forge unsigned)
 cp "$plain" "$f"; sha256sum "$f" > "$f.sha256"
 check "a restore whose safety backup would be plaintext among encrypted ones replaces nothing" \
   "$(expect 1 "$work/r7a.log" deploy/restore.sh "$f" --replace --allow-unsigned --safety-out "$work/backups" \
@@ -305,6 +366,36 @@ check "  ... and says plainly that it runs as the database superuser" \
 check "  ... and the database from before was dropped once the app was healthy" \
   "$([ "$(admin_query <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'budgetowl_restore_%';")" = 0 ] && echo ok)"
 
+step "The share cannot show one file to the check and another to the restore"
+# A forgery with a row the real backup does not have, then a restore of the real backup during
+# which, as soon as the signature has been checked, the file on the share is swapped for it.
+add_account "$(token)" "Forged Row" "999.00" || bad "could not add an account"
+mkdir -m 700 "$work/forgery-src"
+forgery=$(deploy/backup.sh --out "$work/forgery-src" 2>/dev/null | tail -1) || forgery=""
+mkdir -m 700 "$work/share"
+shared="$work/share/$pname"
+for x in "" .sig .sha256; do cp "$plain$x" "$shared$x"; done
+deploy/restore.sh "$shared" --replace --safety-out "$work/plain-safety" >"$work/r9a.log" 2>&1 &
+restore_pid=$!
+for _ in $(seq 1 600); do grep -q '^Signature good' "$work/r9a.log" && break; sleep 0.1; done
+kill -0 "$restore_pid" 2>/dev/null && swapped_live=yes || swapped_live=no
+mv "$shared" "$work/share-original.dump"; cp "$forgery" "$shared"
+set +e; wait "$restore_pid"; code=$?; set -e
+check "  (the forgery holds the extra row, and the swap happened while the restore was running)" \
+  "$([ -s "$forgery" ] && [ "$swapped_live" = yes ] && grep -q '^Signature good' "$work/r9a.log" \
+     && docker compose exec -T db sh -c 'pg_restore --data-only -t accounts -f - 2>/dev/null' < "$forgery" \
+        | grep 'Forged Row' >/dev/null && echo ok)"
+wait_api || true
+check "a restore whose file is swapped on the share after its signature was checked restores the real one (exit $code)" \
+  "$([ "$code" = 0 ] && [ "$(account_names "$(token)" || true)" = "$before" ] && echo ok)"
+[ "$code" = 0 ] || tail -8 "$work/r9a.log" | sed 's/^/       | /' >&2
+check "  ... and the restore's private copy is gone afterwards" \
+  "$(find "$TMPDIR" -maxdepth 1 -name 'budgetowl-restore.*' | grep -q . && echo no || echo ok)"
+
+renamed=$(find "$work/forged/renamed" -name 'budgetowl-*.dump' | head -1)
+check "the renamed backup restores with --accept-date-mismatch" \
+  "$(expect 0 "$work/r9b.log" deploy/restore.sh "$renamed" --replace --accept-date-mismatch --safety-out "$work/plain-safety" && echo ok)"
+
 step "An interrupted restore's leftovers are found, not overwritten"
 docker compose stop api web >/dev/null 2>&1
 admin_query >/dev/null <<'SQL'
@@ -317,6 +408,10 @@ SELECT format('ALTER DATABASE budgetowl_restore_previous RENAME TO %I', :'target
 SQL
 docker compose start api web >/dev/null 2>&1; wait_api || true
 check "  ... and after putting it back, the data is there" "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
+admin_query >/dev/null <<<'CREATE DATABASE budgetowl_restore_failed;'
+check "restore refuses while a set-aside budgetowl_restore_failed is still there (exit 7)" \
+  "$(expect 7 "$work/r8b.log" deploy/restore.sh "$plain" --replace && grep -q 'budgetowl_restore_failed is still here' "$work/r8b.log" && echo ok)"
+admin_query >/dev/null <<<'DROP DATABASE budgetowl_restore_failed;'
 
 step "Disaster: the database volume is destroyed, and the new server has a new signing key"
 if quiet docker compose down -v; then ok "down -v (volume deleted)"; else bad "down -v (volume deleted)"; fi
@@ -392,27 +487,41 @@ check "  ... and with a database password of its own, not this install's" \
 unset test_pw real_pw
 check "  ... while the real one keeps its own data" \
   "$([ "$(account_names "$(token)")" = "$expected" ] && echo ok)"
-quiet deploy/test-restore.sh --clean || true
-check "test-restore.sh --clean removes the copy and its volume" \
-  "$(docker volume ls -q | grep -q '^budgetowl-restore-test_' && echo no || echo ok)"
+rm -f "$work/state/budgetowl/restore-test.env"
+expect 0 "$work/t3.log" deploy/test-restore.sh --clean || true
+check "test-restore.sh --clean takes the copy down even when its settings file has gone" \
+  "$(docker ps -a -q --filter label=com.docker.compose.project=budgetowl-restore-test | grep -q . && echo no || echo ok)"
+check "  ... and its volume, and only then says so" \
+  "$(docker volume ls -q | grep -q '^budgetowl-restore-test_' && echo no || grep -q 'are gone' "$work/t3.log" && echo ok)"
 check "test-restore.sh refuses a forged backup too (exit 6)" \
-  "$(expect 6 "$work/t2.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$work/forged/attacker.dump" --port "$test_port" && echo ok)"
+  "$(expect 6 "$work/t2.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$attacker_dump" --port "$test_port" && echo ok)"
 quiet deploy/test-restore.sh --clean || true
 
 step "Rotation: daily, weekly and monthly, this install's backups only"
 mkdir -m 700 "$work/rot"
 first=$(deploy/backup.sh --out "$work/rot" 2>/dev/null | tail -1)
 instance=$(meta_get "$first.meta" instance)
-fake() { # fake <yyyymmdd> <instance>
-  local n="budgetowl-${1}T030000Z-old-schema20.dump"
-  touch "$work/rot/$n" "$work/rot/$n.sha256" "$work/rot/$n.sig"
-  printf 'instance=%s\npeople=yes\n' "$2" > "$work/rot/$n.meta"
+fake() { # fake <yyyymmdd> <instance> [foreign] — a small stand-in for a nightly backup
+  local n="budgetowl-${1}T030000Z-old-schema20.dump" d="${work}/${dir:-rot}"
+  printf 'stand-in %s\n' "$1" > "$d/$n"; sha256sum "$d/$n" > "$d/$n.sha256"
+  printf 'backup=%s\ninstance=%s\npeople=yes\n' "$n" "$2" > "$d/$n.meta"
+  # "foreign": signed, but by a key that is not this server's, so a .sig is there to be fooled by.
+  local key="$BACKUP_SIGNING_KEY"
+  [ "${3:-}" != foreign ] || key="$work/attacker-key/key"
+  ssh-keygen -Y sign -q -f "$key" -n budgetowl-backup "$d/$n" </dev/null
+  ssh-keygen -Y sign -q -f "$key" -n budgetowl-backup "$d/$n.meta" </dev/null
 }
 for d in 20261120 20261119 20261110 20261015 20260915 20260815 20260701 20260702; do fake "$d" "$instance"; done
-fake 20260501 0000000000000000
-expect 0 "$work/rot.log" deploy/backup.sh --out "$work/rot" --keep 2 --keep-weekly 3 --keep-monthly 4 || true
+fake 20260501 0000000000000000            # another install's, signed by this server
+fake 20260601 "$instance" foreign        # claims to be ours, signed by another key
+fake 20261399 "$instance"                 # no such date
+if expect 0 "$work/rot.log" deploy/backup.sh --out "$work/rot" --keep 2 --keep-weekly 3 --keep-monthly 4; then
+  rot_ok=ok; else rot_ok=no; fi
+# Exit 0 AND the backup's path as the last line: "Done" alone is printed before rotation starts.
+check "a nightly run with an impossible date in the folder still succeeds, rotation included" \
+  "$([ "$rot_ok" = ok ] && tail -1 "$work/rot.log" | grep -q '/rot/budgetowl-.*\.dump$' && echo ok)"
 survivors=$(find "$work/rot" -name 'budgetowl-*.dump' -printf '%f\n' | sort | tr '\n' ' ')
-# The policy, computed from the names the check made (all of which existed before the prune).
+# The policy, computed independently from the names the check made (all existed before the prune).
 expected_survivors=$(python3 - "$instance" "$first" "$(sed -n 's/^Backing up to //p' "$work/rot.log")" <<'PY'
 import datetime, os, sys
 inst, first, second = sys.argv[1], os.path.basename(sys.argv[2]), os.path.basename(sys.argv[3])
@@ -424,24 +533,40 @@ for n in mine:
     w, m = day.isocalendar()[:2], n[10:16]
     if w not in weeks and len(weeks) < 3: weeks.append(w); keep.add(n)
     if m not in months and len(months) < 4: months.append(m); keep.add(n)
-keep.add("budgetowl-20260501T030000Z-old-schema20.dump")  # another install's: never touched
+# Never touched: another install's, one this server did not sign, one with no real date.
+for d in ("20260501", "20260601", "20261399"):
+    keep.add("budgetowl-%sT030000Z-old-schema20.dump" % d)
 print(" ".join(sorted(keep)) + " ")
 PY
 )
-check "keeps exactly the newest 2, one a week for 3 weeks, one a month for 4 months" \
+check "keeps exactly the newest 2, one a week for 3 weeks, one a month for 4 months, and nothing it cannot vouch for" \
   "$([ "$survivors" = "$expected_survivors" ] && echo ok)"
 [ "$survivors" = "$expected_survivors" ] || printf '       got:    %s\n       wanted: %s\n' "$survivors" "$expected_survivors"
-check "  ... and removed each pruned backup's .sha256, .sig and .meta with it" \
+check "  ... and removed each pruned backup's .sha256, .sig, .meta and .meta.sig with it" \
   "$([ ! -e "$work/rot/budgetowl-20260701T030000Z-old-schema20.dump.meta" ] \
+     && [ ! -e "$work/rot/budgetowl-20260701T030000Z-old-schema20.dump.meta.sig" ] \
      && [ ! -e "$work/rot/budgetowl-20260701T030000Z-old-schema20.dump.sig" ] && echo ok)"
+
 mkdir -m 700 "$work/rot2"
-n="budgetowl-20261101T030000Z-old-schema20.dump"; touch "$work/rot2/$n"
-printf 'instance=ffffffffffffffff\npeople=yes\n' > "$work/rot2/$n.meta"
-n="budgetowl-20261001T030000Z-old-schema20.dump"; touch "$work/rot2/$n"
-printf 'instance=%s\npeople=yes\n' "$instance" > "$work/rot2/$n.meta"
+dir=rot2 fake 20261101 ffffffffffffffff
+dir=rot2 fake 20261001 "$instance"
 expect 0 "$work/rot2.log" deploy/backup.sh --out "$work/rot2" --keep 1 || true
 check "nothing is rotated away when the newest earlier backup is from a different install" \
-  "$([ -f "$work/rot2/$n" ] && grep -q 'different' "$work/rot2.log" && echo ok)"
+  "$([ -f "$work/rot2/budgetowl-20261001T030000Z-old-schema20.dump" ] && grep -q 'different' "$work/rot2.log" && echo ok)"
+
+mkdir -m 700 "$work/rot3"
+dir=rot3 fake 20261101 "$instance" foreign
+dir=rot3 fake 20261001 "$instance"
+expect 0 "$work/rot3.log" deploy/backup.sh --out "$work/rot3" --keep 1 || true
+check "  ... or when it is one this server did not sign" \
+  "$([ -f "$work/rot3/budgetowl-20261001T030000Z-old-schema20.dump" ] && grep -q 'not signed by this one' "$work/rot3.log" && echo ok)"
+
+mkdir -m 700 "$work/rot4"
+dir=rot4 fake 20991231 ffffffffffffffff
+dir=rot4 fake 20261001 "$instance"
+expect 0 "$work/rot4.log" deploy/backup.sh --out "$work/rot4" --keep 1 || true
+check "  ... and a name dated in the future is neither counted nor removed" \
+  "$([ -f "$work/rot4/budgetowl-20991231T030000Z-old-schema20.dump" ] && [ ! -f "$work/rot4/budgetowl-20261001T030000Z-old-schema20.dump" ] && echo ok)"
 
 step "Resources"
 mapfile -t ids < <(docker compose ps -q)

@@ -53,14 +53,33 @@ require_docker
 envfile="$state/restore-test.env"
 export COMPOSE_ENV_FILES="$envfile"
 
+leftover() { # what is still there of the test copy: containers, then its volume
+  docker ps -a -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME"
+  docker volume ls -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME"
+}
 if [ "$clean" -eq 1 ]; then
-  if [ -f "$envfile" ]; then dc down -v --remove-orphans >&2; rm -f -- "$envfile"; fi
+  # Compose needs DB_PASSWORD and friends just to read the file, even to take things down. If
+  # the test copy's own settings are gone (deleted, or a different user), make throwaway ones:
+  # nothing is started with them, they only let `down -v` run.
+  if [ ! -f "$envfile" ]; then
+    tmp_env=$(mktemp)
+    printf 'DB_PASSWORD=%s\nWEB_PORT=%s\n' "$(openssl rand -hex 24)" "$port" > "$tmp_env"
+    export COMPOSE_ENV_FILES="$tmp_env"
+  fi
+  dc down -v --remove-orphans >&2 || true
+  rm -f -- "$envfile" "${tmp_env:-}"
+  # Say what is true, not what was hoped.
+  if [ -n "$(leftover)" ]; then
+    die 1 "the test copy is NOT fully gone; these are still there:
+$(leftover | sed 's/^/         /')
+       Remove them with: docker rm -f <container> and docker volume rm <volume>"
+  fi
   log "The test copy and its database are gone. Your real instance was not touched."
   exit 0
 fi
 [ ${#restore_args[@]} -gt 0 ] || die 2 "say which backup to test (see --help)"
 
-if [ -f "$envfile" ] || docker volume inspect "${COMPOSE_PROJECT_NAME}_db-data" >/dev/null 2>&1; then
+if [ -f "$envfile" ] || [ -n "$(leftover)" ]; then
   die 1 "a test copy already exists. Remove it first: deploy/test-restore.sh --clean"
 fi
 ( umask 077 && mkdir -p -- "$state" )

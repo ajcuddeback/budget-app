@@ -171,6 +171,17 @@ recovers from a crash. But "most of the time" is not what you want for the only 
 finances, and you can only restore the whole VM, not your Budget Owl data into a new install.
 Keep using them, and keep Budget Owl's own backups as well.
 
+**A vzdump of this VM is worth more to a thief than any one backup.** It holds three things
+together:
+
+- the database;
+- the `.env` with its passwords;
+- the **signing key**, with which anyone could make a backup your restore would trust.
+
+Keep vzdump archives somewhere other than the Budget Owl backup share. Encrypt them: Proxmox
+Backup Server can encrypt on the Proxmox host before anything is sent, with a key you keep
+offline.
+
 **The nightly backup is on the VM's own disk to begin with.** Lose the VM and you lose those
 too. Put real storage that lives elsewhere at `/srv/budgetowl-backups`, for example an NFS share
 from your NAS. On the NAS:
@@ -188,7 +199,10 @@ sudo mount /srv/budgetowl-backups
 sudo chown owl:owl /srv/budgetowl-backups && sudo chmod 700 /srv/budgetowl-backups
 ```
 
-The backup warns you that NFS permissions are the NAS's to enforce; that is expected.
+The backup warns you that NFS permissions are the NAS's to enforce; that is expected. Check that
+`ls -ld /srv/budgetowl-backups` shows `owl` as the owner. If the NAS squashes everyone to one user,
+set the export's `anonuid` and `anongid` to `owl`'s numbers (`id owl`). The backup refuses a folder
+that belongs to anybody else.
 
 **If this VM replaces one that died, restore first** (below). Only then mount the old backups at
 `/srv/budgetowl-backups`, or turn the nightly backup off until you have:

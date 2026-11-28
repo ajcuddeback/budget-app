@@ -33,12 +33,17 @@ deploy/test-restore.sh BACKUP                  # into a separate copy on :8481; 
   (`ssh-keygen -Y`). A restore runs the backup's SQL as the database superuser, so `restore.sh`
   checks that signature before it reads anything in the file. It refuses an unsigned backup, or
   one signed by any key it was not told to trust.
+- **One read of the share.** `restore.sh` copies the backup and its `.sig` and `.sha256` once
+  into a private `mktemp -d` folder, then checks and restores only that copy, so a NAS cannot
+  show one file to the check and another to the restore. A plaintext backup's copy is plaintext
+  on this disk until the restore ends.
 - **Then the other checks**, in order:
   1. the checksum;
-  2. refuse a database with data in it, unless `--replace` is given;
-  3. restore into a scratch database and check the result;
-  4. take an encrypted safety backup;
-  5. swap the two databases in one transaction, keeping the old one until the app is healthy.
+  2. the date inside the backup against the date in its name;
+  3. refuse a database with data in it, unless `--replace` is given;
+  4. restore into a scratch database and check the result;
+  5. take an encrypted safety backup;
+  6. swap the two databases in one transaction, keeping the old one until the app is healthy.
 
 `tools/deploy-check.sh` proves all of it, including the refusals, against the real stack. It is
 part of `tools/verify.sh packaging` and CI.

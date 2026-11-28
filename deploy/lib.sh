@@ -57,18 +57,54 @@ db_admin_sql() {
 # /etc/budgetowl/backup.env is what budgetowl-backup.service reads. backup.sh, restore.sh and
 # upgrade.sh read it too, so a backup taken by hand or before an upgrade is encrypted and signed
 # exactly like the nightly one. It is PARSED, never sourced: only these keys, only KEY=value.
-# Anything already in the environment wins.
+# Anything already in the environment wins, EVEN WHEN EMPTY: `BACKUP_AGE_RECIPIENT= backup.sh`
+# really does mean "no recipient", rather than quietly taking the file's.
+#
+# It decides where backups go, which key encrypts them and which signs them, so it is a trust
+# anchor: it must belong to root or to you, and nobody else may be able to change it.
 BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/budgetowl/backup.env}"
 load_backup_env() {
   local key value
-  [ -r "$BACKUP_ENV_FILE" ] || return 0
+  [ -e "$BACKUP_ENV_FILE" ] || return 0
+  check_trust_file "$BACKUP_ENV_FILE" "the backup settings file" 1
   for key in BACKUP_DIR BACKUP_KEEP BACKUP_KEEP_WEEKLY BACKUP_KEEP_MONTHLY \
              BACKUP_AGE_RECIPIENT BACKUP_GPG_RECIPIENT BACKUP_SIGNING_KEY; do
-    [ -z "${!key:-}" ] || continue
+    [ -z "${!key+set}" ] || continue
     value=$(sed -n "s/^${key}=//p" "$BACKUP_ENV_FILE" | tail -1)
     value="${value%\"}"; value="${value#\"}"
     [ -z "$value" ] || printf -v "$key" '%s' "$value"
   done
+}
+
+# ---------------------------------------------------------------- who may own what
+# owned_by_us_or_root <path> — root, or the account running this.
+owned_by_us_or_root() {
+  local owner
+  owner=$(stat -L -c %u -- "$1")
+  [ "$owner" = 0 ] || [ "$owner" = "$(id -u)" ]
+}
+
+# check_trust_file <file> <what> <exit-code> — a file that decides what is trusted (backup.env,
+# an allowed_signers file) must be root's or yours, and writable by nobody else. Otherwise
+# whoever can write it chooses which signatures a restore accepts.
+check_trust_file() {
+  local f="$1" what="$2" code="${3:-1}"
+  [ -r "$f" ] || die "$code" "cannot read $what ($f)"
+  owned_by_us_or_root "$f" || die "$code" "$what ($f) belongs to another user (uid $(stat -L -c %u -- "$f")).
+       It decides what is trusted, so it must be root's or yours."
+  if [ -n "$(find -L "$f" -maxdepth 0 -perm /022 2>/dev/null)" ]; then
+    die "$code" "$what ($f) can be changed by other users (mode $(stat -L -c %a -- "$f")).
+       It decides what is trusted. Fix it: chmod go-w $f"
+  fi
+}
+
+# name_epoch <backup name> — the UTC time in a backup's name, as seconds; nothing if the name
+# does not hold a real one. Never fails: a hostile name must not stop a nightly job.
+name_epoch() {
+  local n="${1##*/}" t
+  [[ "$n" =~ ^budgetowl-([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z- ]] || return 0
+  t="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}Z"
+  date -u -d "$t" +%s 2>/dev/null || true
 }
 
 # ---------------------------------------------------------------- folders and private keys
@@ -86,8 +122,15 @@ check_backup_folder() {
   if writable_by_others "$dir"; then
     die 1 "$dir is writable by other users (mode $(stat -c %a -- "$dir")). Fix it: chmod 700 $dir"
   fi
+  owned_by_us_or_root "$dir" || die 1 "$dir belongs to another user (uid $(stat -c %u -- "$dir")).
+       Whoever owns it can change its permissions back at any time."
   up=$(dirname "$dir")
   while :; do
+    # As sshd's StrictModes does: every folder above must be root's or yours, because its owner
+    # can rename what is inside it whatever the mode says.
+    owned_by_us_or_root "$up" || die 1 "$up, which holds $dir, belongs to another user
+       (uid $(stat -c %u -- "$up")). They could move the backup folder aside and put their own
+       in its place."
     if writable_by_others "$up" && ! root_sticky "$up"; then
       die 1 "$up, which holds $dir, is writable by other users (mode $(stat -c %a -- "$up")).
        They could move the backup folder aside and put their own in its place.

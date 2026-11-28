@@ -272,10 +272,17 @@ The script refuses a folder that other people on the machine can write to, **or 
 one they can write to**. Otherwise they could move your backups aside and put their own in their
 place.
 
+The same goes for who **owns** them. The backup folder, and every folder above it, must belong to
+`root` or to you, as SSH insists for your `.ssh` folder. Whoever owns a folder can change its
+permissions back at any time.
+
 On a **NAS share** (NFS or SMB), those permissions are the NAS's to enforce, and the script warns
 you:
 
 - limit the share to this server's address only;
+- make the share's files appear as yours (`ls -ld` on the mounted folder shows your name). On an
+  NFS export that squashes everyone to one user, set `anonuid` and `anongid` to your numbers
+  (`id -u`, `id -g`);
 - and encrypt the backups (next section).
 
 ### Encrypt your backups
@@ -322,7 +329,11 @@ BACKUP_KEEP_MONTHLY=12
 EOF
 ```
 
-Only public keys and folder names go in that file, never a private key or a password.
+Only public keys and folder names go in that file, never a private key or a password. Because it
+decides how every backup is made, it must belong to `root` (as above) or to you, and nobody else
+may be able to change it; otherwise the scripts refuse to run. To switch a setting off for one
+run, set it empty: `BACKUP_AGE_RECIPIENT= deploy/backup.sh …` really does mean "no
+encryption" this time.
 
 ### Back up every night
 
@@ -377,8 +388,15 @@ The `BACKUP_KEEP` settings above keep:
 - the newest backup from each of the last 8 weeks;
 - the newest backup from each of the last 12 months.
 
-Older nightly backups **of this install** are deleted. It never deletes the backups taken before
-an upgrade or a restore, or another install's.
+Older nightly backups **of this install** are deleted. Only backups this server signed are
+counted or deleted. Anything else in the folder is left exactly where it is:
+
+- the backups taken before an upgrade or a restore;
+- another install's backups;
+- files it cannot vouch for, or whose names carry an impossible or future date.
+
+To turn rotation off, leave `BACKUP_KEEP` out. `--keep 0` is refused, because it would mean
+"delete every nightly backup but tonight's".
 
 It also deletes nothing at all after a backup of a new install with nobody in it, or when the
 newest backup already in the folder came from a different install. That way, a freshly rebuilt
@@ -428,11 +446,16 @@ If you prefer cron, this line in `crontab -e` does the same as the timer:
    --age-identity <(cat /media/usb/budgetowl-backup-key.txt)
    ```
 
+   Keep that file in your home folder, not in the backup folder. Restore refuses a signers file
+   that sits beside the backups, or that anyone else can change: it decides whose backups are
+   trusted.
+
    You see:
 
    ```
    Signature good: made by a server in /home/you/old-server.allowed_signers.
    Checksum matches.
+   Made at 2026-11-28 03:17:02 UTC (from inside the backup).
    Restoring into a scratch database...
    The backup holds schema 20: 1 people, 1 household, 2 accounts, 0 transactions.
    ADR-0030: role 'budgetowl_app' is ready; it can read and write rows and cannot change the schema.
@@ -444,7 +467,8 @@ If you prefer cron, this line in `crontab -e` does the same as the timer:
 
 5. Open Budget Owl and sign in with the email and password you had before. **Everyone signs in
    again, on the web and in the phone app.** Then open **Devices** and check that it lists only
-   devices you recognise.
+   devices you recognise. Invitations that had not been accepted yet are not restored: send them
+   again.
 
 6. If you copied the age key onto this machine, delete it now. It should not live on the server.
 
@@ -463,7 +487,11 @@ a safety backup (its name ends `-pre-restore.dump`, encrypted like the backup yo
 before it replaces anything. This also applies to a new install that you started once by
 mistake: `--replace` is safe there.
 
-**A restore never half-happens.** It checks, in this order:
+**A restore never half-happens.** It first copies the backup, once, into a private folder on
+this machine, and from then on reads only that copy. A NAS cannot show it one file while it is
+checking and another while it is restoring. For an unencrypted backup that copy is unencrypted,
+on this machine's own disk, beside the database it is about to become. It is deleted when the
+restore ends. It then checks, in this order:
 
 1. that the backup is signed by a server you trust;
 2. that it is not damaged:
@@ -472,7 +500,15 @@ mistake: `--replace` is safe there.
    error: CHECKSUM MISMATCH: … is not the file its checksum was made from.
    ```
 
-3. that it is not from a **newer** version of Budget Owl than the one installed (see section 6).
+3. that the date it was made, which is inside the signed backup, matches the date in its file
+   name. The name is not signed, so an old backup renamed to look like last night's is refused:
+
+   ```
+   error: the backup was made at 2026-11-20 03:17:02 UTC, but its name says 2026-11-28 …
+   ```
+
+   If you renamed it yourself, `--accept-date-mismatch` restores it anyway;
+4. that it is not from a **newer** version of Budget Owl than the one installed (see section 6).
 
 It then restores into a separate database. It swaps that in only once the restore has finished
 and been checked. Your old data is kept until Budget Owl is running healthily on the restored

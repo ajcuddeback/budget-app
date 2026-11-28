@@ -12,11 +12,14 @@
 #   --age-recipient KEY         encrypt to an age PUBLIC key (age1...). Repeatable.
 #   --age-recipients-file FILE  encrypt to every age public key in FILE.
 #   --gpg-recipient KEY         encrypt to a gpg PUBLIC key already in your keyring.
-#   --keep N                    after a good backup, keep the newest N nightly backups...
-#   --keep-weekly N             ...plus the newest from each of the last N weeks...
-#   --keep-monthly N            ...plus the newest from each of the last N months, and delete
-#                               the other nightly backups OF THIS INSTALL. Labelled backups
-#                               (pre-upgrade, pre-restore) and other installs' are never deleted.
+#   --keep N                    after a good backup, keep the newest N nightly backups (N >= 1;
+#                               leave it out for no rotation at all)...
+#   --keep-weekly N             ...plus the newest from each of the last N weeks (0 = none)...
+#   --keep-monthly N            ...plus the newest from each of the last N months (0 = none),
+#                               and delete the other nightly backups OF THIS INSTALL that THIS
+#                               SERVER signed. Labelled backups (pre-upgrade, pre-restore),
+#                               other installs', unsigned ones and oddly named ones are never
+#                               deleted, or counted.
 #   --label NAME                add NAME to the file name (letters, digits, dashes).
 #   --allow-plaintext           write an unencrypted backup into a folder that holds encrypted
 #                               ones. Refused otherwise: it is usually a forgotten setting.
@@ -82,6 +85,14 @@ done
 for n in "$keep" "$keep_weekly" "$keep_monthly"; do
   [ -z "$n" ] || [[ "$n" =~ ^[0-9]+$ ]] || die 2 "--keep, --keep-weekly and --keep-monthly take whole numbers"
 done
+# --keep 0 would mean "delete every nightly backup but tonight's". Nobody means that; leaving
+# --keep out is how to say "no rotation".
+if [[ "$keep" =~ ^0+$ ]]; then
+  die 2 "--keep 0 would delete every nightly backup except this one. Leave --keep out for no rotation."
+fi
+if [ -z "$keep" ] && [ -n "$keep_weekly$keep_monthly" ]; then
+  die 2 "--keep-weekly and --keep-monthly need --keep (how many nightly backups to keep)"
+fi
 [ -z "$label" ] || [[ "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
   || die 2 "--label takes lower-case letters, digits and dashes"
 if [ ${#age_args[@]} -gt 0 ] && [ -n "$gpg_recipient" ]; then
@@ -153,7 +164,7 @@ done
 final="$out/$name"
 partial="$final.partial"
 work=$(mktemp -d)
-trap 'rm -f -- "$partial" "$partial.sig" "$final.sha256.partial" "$final.meta.partial"; rm -rf -- "$work"' EXIT
+trap 'rm -f -- "$partial" "$partial.sig" "$final.sha256.partial" "$final.meta.partial" "$final.meta.partial.sig"; rm -rf -- "$work"' EXIT
 
 encrypt() {
   if [ ${#age_args[@]} -gt 0 ]; then age "${age_args[@]}"
@@ -168,13 +179,15 @@ log "Backing up to $final"
 # Sign-ins are left out (their rows, not their tables). A web session id is a live credential;
 # a phone token row is only a hash, but restoring it would bring back a phone someone signed
 # out — a lost one, say. After a restore everybody signs in again, which is the right outcome.
+# Invitations are left out for the same reason: restoring one would bring back a link that was
+# revoked after the backup. Membership itself lives in household_members and is kept.
 #
 # The stream is also read by pg_restore --list as it goes past, so a dump that pg_restore cannot
 # read fails here, today, rather than on the day you need it. That check drains the rest of the
 # stream after reading the table of contents, so it never cuts the pipe short.
 db_sh 'exec pg_dump --format=custom --no-password -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
          --exclude-table-data=spring_session --exclude-table-data=spring_session_attributes \
-         --exclude-table-data=auth_tokens' \
+         --exclude-table-data=auth_tokens --exclude-table-data=household_invitations' \
   | tee >(db_sh 'pg_restore --list >/dev/null; s=$?; cat >/dev/null; exit $s' \
             >/dev/null 2>&1; echo $? > "$work/listed") \
   | encrypt > "$partial"
@@ -190,10 +203,14 @@ chmod 600 -- "$partial"
 ssh-keygen -Y sign -q -f "$signing_key" -n "$SIGNING_NAMESPACE" "$partial" </dev/null \
   || die 1 "signing the backup failed; nothing was kept"
 ( cd "$out" && sha256sum -- "$(basename "$partial")" | sed "s/\.partial\$//" > "$name.sha256.partial" )
-printf 'instance=%s\npeople=%s\n' "$instance" "$people" > "$final.meta.partial"
-chmod 600 -- "$partial.sig" "$final.sha256.partial" "$final.meta.partial"
+printf 'backup=%s\ninstance=%s\npeople=%s\n' "$name" "$instance" "$people" > "$final.meta.partial"
+# The .meta decides what rotation may delete, so it is signed too, and names its backup.
+ssh-keygen -Y sign -q -f "$signing_key" -n "$SIGNING_NAMESPACE" "$final.meta.partial" </dev/null \
+  || die 1 "signing the backup's .meta failed; nothing was kept"
+chmod 600 -- "$partial.sig" "$final.sha256.partial" "$final.meta.partial" "$final.meta.partial.sig"
 mv -- "$partial.sig" "$final.sig"
 mv -- "$final.sha256.partial" "$final.sha256"
+mv -- "$final.meta.partial.sig" "$final.meta.sig"
 mv -- "$final.meta.partial" "$final.meta"
 mv -- "$partial" "$final"
 
@@ -205,11 +222,26 @@ fi
 
 # ------------------------------------------------------------------------------ rotation
 meta_get() { sed -n "s/^$2=//p" "$1" 2>/dev/null | tail -1; }
+
+# ours <name> — a nightly backup this server signed, whose signed .meta names it and names THIS
+# install, with a real date in its name that is not in the future. Anything else in the folder
+# is not rotation's business: it is never counted and never deleted. Never fails.
+ours() {
+  local n="$1" when
+  when=$(name_epoch "$n")
+  [ -n "$when" ] && [ "$when" -le "$((now + 300))" ] || return 1
+  [ -f "$out/$n.sig" ] && [ -f "$out/$n.meta" ] && [ -f "$out/$n.meta.sig" ] || return 1
+  verify_signature "$out/$n" "$own_signers" || return 1
+  verify_signature "$out/$n.meta" "$own_signers" || return 1
+  [ "$(meta_get "$out/$n.meta" backup)" = "$n" ] || return 1
+  [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ]
+}
+
 prune() {
-  local names=() n prev kept_daily=0 week month i
+  local names=() candidates=() n prev="" kept_daily=0 week month i when
   local -A keep_names=() weeks=() months=()
-  [ -n "$keep$keep_weekly$keep_monthly" ] || return 0
-  # Rotation must never be the thing that loses the real history. Two ways it could:
+  [ -n "$keep" ] || return 0
+  # Rotation must never be the thing that loses the real history.
   if [ "$people" != yes ]; then
     log "Not removing any old backups: this one has nobody in it (a new, unset-up install?)."
     return 0
@@ -217,21 +249,28 @@ prune() {
   # Nightly (unlabelled) backups, newest first; the timestamp makes names sort by time.
   mapfile -t names < <(find "$out" -maxdepth 1 -type f -printf '%f\n' \
     | grep -E '^budgetowl-[0-9]{8}T[0-9]{6}Z-.+-schema([0-9]+|none)\.dump(\.age|\.gpg)?$' \
-    | sort -r)
+    | sort -r || true)
+  # The newest earlier backup with a real, past date: if it is not ours, stop. (One we cannot
+  # vouch for is from another install, or another server, or was put there by someone else.)
   for n in "${names[@]}"; do
     [ "$n" = "$name" ] && continue
+    when=$(name_epoch "$n")
+    [ -n "$when" ] && [ "$when" -le "$((now + 300))" ] || continue
     prev="$n"; break
   done
-  if [ -n "${prev:-}" ] && [ "$(meta_get "$out/$prev.meta" instance)" != "$instance" ]; then
+  if [ -n "$prev" ] && ! ours "$prev"; then
     log "Not removing any old backups: the newest one before this ($prev) is from a different"
-    log "install, or does not say which. Restore it, or move the old backups elsewhere, first."
+    log "install or server, or is not signed by this one. Restore it, or move the old backups"
+    log "elsewhere, first."
     return 0
   fi
   for n in "${names[@]}"; do
-    [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ] || continue
-    week=$(date -u -d "${n:10:8}" +%G-W%V)
+    ours "$n" && candidates+=("$n")
+  done
+  for n in "${candidates[@]}"; do
+    week=$(date -u -d "${n:10:8}" +%G-W%V 2>/dev/null) || continue
     month=${n:10:6}
-    if [ "$kept_daily" -lt "${keep:-0}" ]; then keep_names[$n]=1; kept_daily=$((kept_daily + 1)); fi
+    if [ "$kept_daily" -lt "$keep" ]; then keep_names[$n]=1; kept_daily=$((kept_daily + 1)); fi
     if [ -z "${weeks[$week]:-}" ] && [ "${#weeks[@]}" -lt "${keep_weekly:-0}" ]; then
       weeks[$week]=1; keep_names[$n]=1
     fi
@@ -240,13 +279,15 @@ prune() {
     fi
   done
   keep_names[$name]=1
-  for n in "${names[@]}"; do
-    [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ] || continue
+  for n in "${candidates[@]}"; do
     [ -n "${keep_names[$n]:-}" ] && continue
     log "Removing old backup $n"
-    for i in "" .sha256 .sig .meta; do rm -f -- "$out/$n$i"; done
+    for i in "" .sha256 .sig .meta .meta.sig; do rm -f -- "$out/$n$i"; done
   done
 }
+now=$(date -u +%s)
+own_signers="$signing_key.allowed_signers"
+[ -f "$own_signers" ] || allowed_signers_line "$signing_key.pub" > "$own_signers"
 prune
 
 printf '%s\n' "$final"
