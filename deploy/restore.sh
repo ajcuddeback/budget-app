@@ -120,22 +120,47 @@ if fs=$(on_network_fs "$tmp_real"); then
        be on this machine's own disk, or the share could still change it. Unset TMPDIR, or point
        it at a local folder."
 fi
+# And nobody else may rearrange it: anyone who can rename entries in TMPDIR can move the private
+# copy's folder aside right after the signature check, and put a forgery in its place (or read a
+# plaintext copy). Root's and sticky, like /tmp, is fine; so is a folder of your own.
+owned_by_us_or_root "$tmp_real" || die 1 "TMPDIR ($tmp_root) is not root's or yours. $(whose "$tmp_real")
+       Point TMPDIR at a folder of your own, or unset it."
+if writable_by_others "$tmp_real" && ! root_sticky "$tmp_real"; then
+  die 1 "TMPDIR ($tmp_root) is writable by other users (mode $(stat -c %a -- "$tmp_real")) and not
+       sticky. Anyone with an account here could swap the private copy of the backup for their
+       own after it has been checked. Point TMPDIR at a folder of your own, or unset it."
+fi
+check_parents "$tmp_real" "TMPDIR" 1
 case "$tmp_real/" in
   "$share_dir"/*) die 1 "TMPDIR ($tmp_root) is inside the backup folder. The private copy must be
        somewhere the share cannot reach. Unset TMPDIR, or point it at a local folder." ;;
 esac
 # Copies left by restores that were killed before they could clean up: ours, and no longer in use.
 # A plaintext backup's copy is the household's data, so it does not get to linger.
+# A process is its pid AND its start time: a pid alone can be reused by something else.
+proc_start() { # proc_start <pid> — field 22 of /proc/<pid>/stat, or nothing
+  local stat
+  stat=$(cat -- "/proc/$1/stat" 2>/dev/null) || return 0
+  stat="${stat##*) }"   # the command name, in parentheses, may itself hold spaces
+  awk '{print $20}' <<<"$stat"
+}
 for old in "$tmp_real"/budgetowl-restore.*; do
   [ -d "$old" ] && [ ! -L "$old" ] && [ "$(stat -c %u -- "$old")" = "$(id -u)" ] || continue
-  old_pid=$(cat -- "$old/pid" 2>/dev/null || true)
-  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then continue; fi
+  read -r old_pid old_start < "$old/pid" 2>/dev/null || { old_pid=""; old_start=""; }
+  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null \
+     && { [ -z "$old_start" ] || [ "$(proc_start "$old_pid")" = "$old_start" ]; }; then
+    continue   # a restore that is still running
+  fi
   rm -rf -- "$old"
   log "Removed a private copy left behind by an earlier restore that did not finish: $old"
 done
 private=$(mktemp -d "$tmp_real/budgetowl-restore.XXXXXXXX")
 chmod 700 -- "$private"
-printf '%s\n' "$$" > "$private/pid"
+# The pid file is the first thing in the folder, and arrives whole: written beside it, then
+# renamed in, so a cleanup running at the same moment never sees a folder it cannot attribute.
+pidtmp=$(mktemp "$tmp_real/.budgetowl-restore-pid.XXXXXXXX")
+printf '%s %s\n' "$$" "$(proc_start "$$")" > "$pidtmp"
+mv -- "$pidtmp" "$private/pid"
 private_cleanup() { rm -rf -- "$private"; }
 trap private_cleanup EXIT
 copy="$private/$(basename "$share_backup")"
