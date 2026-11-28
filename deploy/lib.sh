@@ -86,13 +86,32 @@ owned_by_us_or_root() {
 
 # whose <path> — who owns it, said so that the fix is obvious. Run as root (or under sudo), the
 # usual mistake is the user, not the file: the operator's own files are "another user's" to root.
+# operator_name — the account this install is run as: BUDGETOWL_OPERATOR, else the VM's
+# BUDGETOWL_USER (/etc/budgetowl/bootstrap.conf, parsed), else whoever owns the signing key.
+operator_name() {
+  local n="${BUDGETOWL_OPERATOR:-}" key
+  if [ -z "$n" ] && [ -r /etc/budgetowl/bootstrap.conf ]; then
+    n=$(sed -n 's/^BUDGETOWL_USER=//p' /etc/budgetowl/bootstrap.conf | tail -1)
+  fi
+  if [ -z "$n" ]; then
+    key=$(signing_key_path)
+    [ ! -e "$key" ] || n=$(stat -L -c %U -- "$key" 2>/dev/null || true)
+  fi
+  printf '%s' "$n"
+}
+
 whose() {
-  local name uid
+  local name uid op
   name=$(stat -L -c %U -- "$1" 2>/dev/null || echo '?')
   uid=$(stat -L -c %u -- "$1" 2>/dev/null || echo '?')
-  if [ "$(id -u)" = 0 ] || [ -n "${SUDO_USER:-}" ]; then
+  op=$(operator_name)
+  if { [ "$(id -u)" = 0 ] || [ -n "${SUDO_USER:-}" ]; } && [ -n "$op" ] && [ "$name" = "$op" ]; then
+    # Only then is "you are the wrong user" the likely mistake, and the fix safe to suggest.
     printf 'It belongs to %s. Run this as the operator (%s), not root: sudo -u %s %s' \
       "$name" "$name" "$name" "${0##*/}"
+  elif [ -n "$op" ] && [ "$name" != "$op" ]; then
+    printf 'It belongs to %s (uid %s), which is neither root nor this install'"'"'s operator (%s).' \
+      "$name" "$uid" "$op"
   else
     printf 'It belongs to another user, %s (uid %s), not to you.' "$name" "$uid"
   fi
@@ -100,10 +119,17 @@ whose() {
 
 # Filesystems whose owners and modes are whatever the far end says they are. BUDGETOWL_EXTRA_NETWORK_FS
 # can ADD types (space separated, as `stat -f -c %T` prints them); nothing can remove one.
-on_network_fs() { # on_network_fs <path> — prints the type and succeeds if it is one of them
+# on_network_fs <path> [strict] — prints the type and succeeds if it is one of them. With
+# "strict" (trust files), a type stat cannot name ("UNKNOWN (0x…)") counts as one too: a trust
+# anchor has to be somewhere we know owners mean something.
+on_network_fs() {
   local t extra
   t=$(stat -f -c %T -- "$1" 2>/dev/null || echo unknown)
-  case "$t" in nfs*|cifs|smb*|fuse*|9p|ceph|glusterfs|afs|lustre) printf '%s' "$t"; return 0 ;; esac
+  case "$t" in nfs*|cifs|smb*|fuse*|9p|ceph|glusterfs|afs|lustre|ocfs2|gfs2|gfs2meta)
+    printf '%s' "$t"; return 0 ;; esac
+  if [ "${2:-}" = strict ]; then
+    case "$t" in UNKNOWN*|unknown) printf '%s' "$t"; return 0 ;; esac
+  fi
   for extra in ${BUDGETOWL_EXTRA_NETWORK_FS:-}; do
     [ "$t" = "$extra" ] && { printf '%s' "$t"; return 0; }
   done
@@ -136,8 +162,10 @@ check_parents() {
 check_trust_file() {
   local f="$1" what="$2" code="${3:-1}" t real
   [ -r "$f" ] || die "$code" "cannot read $what ($f)"
-  real="$(cd "$(dirname "$f")" && pwd -P)/$(basename "$f")"
-  if t=$(on_network_fs "$real"); then
+  # The whole path resolved, symlinks included, so a symlinked file is judged by where it
+  # really is, and so are the folders above it.
+  real=$(readlink -f -- "$f") || die "$code" "cannot resolve $what ($f)"
+  if t=$(on_network_fs "$real" strict); then
     die "$code" "$what ($f) is on a network filesystem ($t), where who owns a file is whatever the
        machine that wrote it said. It decides what is trusted, so keep it on this machine's own
        disk (your home folder, or /etc/budgetowl)."

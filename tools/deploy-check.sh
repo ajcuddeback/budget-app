@@ -286,8 +286,12 @@ if [ "$(id -u)" = 0 ]; then
   mkdir -m 755 "$work/foreign"; chown 65534 "$work/foreign"; mkdir -m 700 "$work/foreign/backups"
   check "a backup folder inside one owned by another user is refused" \
     "$(expect 1 "$work/b10.log" deploy/backup.sh --out "$work/foreign/backups" && grep -q "is not root's or yours" "$work/b10.log" && echo ok)"
-  check "  ... and, run as root, says to run it as the folder's owner instead" \
-    "$(grep -q 'Run this as the operator (nobody), not root' "$work/b10.log" && echo ok)"
+  check "  ... and, as its owner is not this install's operator, does not tell root to become them" \
+    "$(grep -q "neither root nor this install's operator" "$work/b10.log" \
+       && ! grep -q 'sudo -u nobody' "$work/b10.log" && echo ok)"
+  check "  ... but when the owner IS the operator, says to run it as them instead of root" \
+    "$(expect 1 "$work/b10b.log" env BUDGETOWL_OPERATOR=nobody deploy/backup.sh --out "$work/foreign/backups" \
+       && grep -q 'Run this as the operator (nobody), not root: sudo -u nobody' "$work/b10b.log" && echo ok)"
 else
   printf '  -    not root: the folder-owned-by-another-user case needs chown, so it is not checked\n'
 fi
@@ -369,6 +373,14 @@ check "a TMPDIR on a network filesystem is refused" \
 check "a TMPDIR inside the backup folder is refused" \
   "$(expect 1 "$work/r6j.log" env TMPDIR="$work/backups" deploy/restore.sh "$plain" --replace \
      && grep -q 'TMPDIR .* is inside the backup folder' "$work/r6j.log" && echo ok)"
+check "a TMPDIR others can write to (and not sticky) is refused" \
+  "$(expect 1 "$work/r6k.log" env TMPDIR="$work/open" deploy/restore.sh "$plain" --replace \
+     && grep -q 'TMPDIR .* is writable by other users' "$work/r6k.log" && echo ok)"
+mkdir -m 700 "$work/links"
+ln -s "$work/open/signers/trusted.allowed_signers" "$work/links/trusted.allowed_signers"
+check "a signers file reached through a symlink is judged by where it really is (exit 6)" \
+  "$(expect 6 "$work/r6l.log" deploy/restore.sh "$plain" --replace --signers "$work/links/trusted.allowed_signers" \
+     && grep -q 'is writable by other users' "$work/r6l.log" && echo ok)"
 
 # The name is not signed; the archive's own creation time is. An old backup renamed to a later
 # date must not pass for a newer one.
@@ -408,6 +420,11 @@ for x in "" .sig .sha256; do cp "$plain$x" "$shared$x"; done
 # A private copy left by a restore that was killed: a dead pid, and a plaintext dump inside.
 mkdir -m 700 "$TMPDIR/budgetowl-restore.STALE1"; cp "$plain" "$TMPDIR/budgetowl-restore.STALE1/"
 printf '999999999\n' > "$TMPDIR/budgetowl-restore.STALE1/pid"
+# One whose pid has been reused: alive (this script), but started at a different time.
+mkdir -m 700 "$TMPDIR/budgetowl-restore.REUSED"; printf '%s 1\n' "$$" > "$TMPDIR/budgetowl-restore.REUSED/pid"
+# And one that really is in use: this script's pid and its real start time.
+my_start=$(stat_line=$(cat /proc/$$/stat); stat_line="${stat_line##*) }"; awk '{print $20}' <<<"$stat_line")
+mkdir -m 700 "$TMPDIR/budgetowl-restore.LIVE"; printf '%s %s\n' "$$" "$my_start" > "$TMPDIR/budgetowl-restore.LIVE/pid"
 deploy/restore.sh "$shared" --replace --safety-out "$work/plain-safety" >"$work/r9a.log" 2>&1 &
 restore_pid=$!
 for _ in $(seq 1 600); do grep -q '^Signature good' "$work/r9a.log" && break; sleep 0.1; done
@@ -424,6 +441,11 @@ check "a restore whose file is swapped on the share after its signature was chec
 [ "$code" = 0 ] || tail -8 "$work/r9a.log" | sed 's/^/       | /' >&2
 check "  ... and a stale private copy from a killed restore was removed at the start" \
   "$([ ! -e "$TMPDIR/budgetowl-restore.STALE1" ] && grep -q 'Removed a private copy left behind' "$work/r9a.log" && echo ok)"
+check "  ... and so was one whose pid now belongs to another process (a different start time)" \
+  "$([ ! -e "$TMPDIR/budgetowl-restore.REUSED" ] && echo ok)"
+check "  ... but one belonging to a running process was left alone" \
+  "$([ -f "$TMPDIR/budgetowl-restore.LIVE/pid" ] && echo ok)"
+rm -rf "$TMPDIR/budgetowl-restore.LIVE"
 check "  ... and the restore's private copy is gone afterwards" \
   "$(find "$TMPDIR" -maxdepth 1 -name 'budgetowl-restore.*' | grep -q . && echo no || echo ok)"
 
@@ -614,6 +636,19 @@ dir=rot4 fake 20261001 "$instance"
 expect 0 "$work/rot4.log" deploy/backup.sh --out "$work/rot4" --keep 1 || true
 check "  ... and a name dated in the future is neither counted nor removed" \
   "$([ -f "$work/rot4/budgetowl-20991231T030000Z-old-schema20.dump" ] && [ ! -f "$work/rot4/budgetowl-20261001T030000Z-old-schema20.dump" ] && echo ok)"
+
+mkdir -m 700 "$work/rot5"
+# Someone who can write to the key's folder swaps the .pub for their own and signs two backups.
+cp "$BACKUP_SIGNING_KEY.pub" "$work/real-key.pub"; cp "$work/attacker-key/key.pub" "$BACKUP_SIGNING_KEY.pub"
+dir=rot5 fake 20261101 "$instance" foreign
+dir=rot5 fake 20261002 "$instance" foreign
+# ssh-keygen -Y sign itself refuses a .pub that does not match the key, so the backup stops before
+# rotation is reached; rotation also derives the public half from the private key (belt and braces).
+expect 1 "$work/rot5.log" deploy/backup.sh --out "$work/rot5" --keep 1 || true
+cp "$work/real-key.pub" "$BACKUP_SIGNING_KEY.pub"
+check "  ... and a .pub swapped beside the signing key stops the backup, and rotates nothing away" \
+  "$(grep -q "doesn't match" "$work/rot5.log" && [ -f "$work/rot5/budgetowl-20261002T030000Z-old-schema20.dump" ] \
+     && [ -f "$work/rot5/budgetowl-20261101T030000Z-old-schema20.dump" ] && echo ok)"
 
 step "Resources"
 mapfile -t ids < <(docker compose ps -q)

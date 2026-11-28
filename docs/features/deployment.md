@@ -167,10 +167,23 @@ backups features, not afterthoughts. This is that feature.
     otherwise show a forgery to the restore, which comes later: after the database is started,
     the app stopped and the scratch database made, up to minutes. **The copy of a plaintext backup
     is plaintext**, on the server's own disk, which already holds the database it is about to
-    become; an `.age` copy stays encrypted. `TMPDIR` chooses where it goes, and is refused if it
-    is on a network filesystem or inside the backup's folder (audit I1). At the start, private
-    copies left by restores that were killed are removed: the operator's own `budgetowl-restore.*`
-    folders whose recorded pid is no longer running.
+    become; an `.age` copy stays encrypted. `TMPDIR` chooses where it goes. It is refused if any
+    of these holds:
+    - it is on a network filesystem (audit I1);
+    - it is inside the backup's folder (audit I1);
+    - it is not owned by root or the operator (round 5);
+    - others can write to it and it is not root's and sticky (round 5);
+    - any folder above it fails the same checks (round 5).
+
+    Anyone able to rename entries in TMPDIR could otherwise move the private copy's folder aside
+    right after "Signature good" and put a forgery in its place, which is N1 again, or read a
+    plaintext copy.
+
+    **Stale copies.** At the start, private copies left by restores that were killed are removed:
+    the operator's own `budgetowl-restore.*` folders whose recorded process is no longer running.
+    "Running" means the pid **and its start time** (field 22 of `/proc/<pid>/stat`) still match,
+    so a reused pid does not keep a stale copy alive. The pid file is the first thing in a new
+    copy's folder: it is written beside the folder and renamed in whole.
 
     The signature is checked on the copy, before anything else reads it, including before
     decryption.
@@ -186,12 +199,18 @@ backups features, not afterthoughts. This is that feature.
         it claimed, so an owner check there proves nothing;
       - not inside the backup's folder.
 
-      `backup.env` is checked the same way. The network-filesystem list is `nfs*`, `cifs`,
-      `smb*`, `fuse*`, `9p`, `ceph`, `glusterfs`, `afs` and `lustre`.
+      `backup.env` is checked the same way.
+      - **Symlinks:** the path is resolved whole with `readlink -f`, so a symlinked file is judged,
+        parents and all, by where it really is.
+      - **Network filesystems:** the list is `nfs*`, `cifs`, `smb*`, `fuse*`, `9p`, `ceph`,
+        `glusterfs`, `afs`, `lustre`, `ocfs2`, `gfs2` and `gfs2meta`. For trust files, a type
+        `stat` cannot name (`UNKNOWN (0x…)`) counts as network too.
       `BUDGETOWL_EXTRA_NETWORK_FS` can **add** types, never remove one; the deploy check uses it to
       make `/dev/shm` stand in for a network filesystem.
-    - **Run as root by mistake** (audit I2): every "not yours" refusal names the owner and, when it
-      is run as root or under `sudo`, says "Run this as the operator (owl), not root".
+    - **Run as root by mistake** (audit I2): every "not yours" refusal names the owner. When it
+      is run as root or under `sudo`, it advises `sudo -u <owner>` **only when the owner is the
+      configured operator**. The operator is `BUDGETOWL_OPERATOR`, else the VM's `BUDGETOWL_USER`,
+      else the signing key's owner. Otherwise it says the owner is neither root nor the operator.
     - **Refused, exit 6:** no `.sig`, or a signature by a key not listed. The same goes for a
       changed file.
     - **A new server after a disaster** has a new key, so the operator gives the old server's line
@@ -279,7 +298,7 @@ the script, so neither command can reach the real instance.
 31. The real stack from nothing, as its own Compose project (`budgetowl-deploycheck`; any name
     without `check` in it is refused). It has its own env file of random passwords, its own
     signing keys (a "server 1" and, after the disaster, a "server 2"), and a `BACKUP_ENV_FILE` that does not exist.
-    It never reads `.env` or `/etc/budgetowl`. 96 checks, in these steps (the output names each
+    It never reads `.env` or `/etc/budgetowl`. 102 checks, in these steps (the output names each
     check):
     - **Empty install**: rotation does not run; the signing key is made on first use.
     - **Household**: set up through the API; the pool connects as `budgetowl_app`.
@@ -347,6 +366,13 @@ the script, so neither command can reach the real instance.
       - **I2:** run as root, the refusal says to run it as the folder's owner;
       - **I4:** test-restore.sh restores the *renamed* backup with `--accept-date-mismatch
         --skip-version-check`, so both have to reach restore.sh.
+    - **Round 5 additions**:
+      - a TMPDIR others can write to (not sticky) is refused;
+      - a signers file reached through a symlink is judged by its target's folders;
+      - a stale copy whose pid is alive but whose start time differs is removed, and one
+        belonging to a running process is left alone;
+      - root's advice names `sudo -u` only for the operator;
+      - a `.pub` swapped beside the signing key stops the backup and rotates nothing.
 32. `tools/verify.sh packaging` runs it, and so does CI's Packaging job (with `age`; GitHub's runner
     has `ssh-keygen`).
 
@@ -456,7 +482,8 @@ None. Documented for the operator in `userguide/installing.md` (sections 1, 2, 5
 | T7e | **An old signed backup renamed to tonight's name** (N2): a silent rollback | The archive's own creation time, inside the signed bytes, is printed and must be within a day of the name's date (exit 8, `--accept-date-mismatch`) | rule 19; deploy-check |
 | T7f | **The trust anchors themselves are writable** (N3, R1): whoever can edit the signers file or `backup.env` chooses what is trusted | Both must be owned by root or the operator and writable by nobody else, in folders nobody else can rearrange, and **on a local disk**, where an owner means something. The signers file must not be in the backup folder | rules 5, 15; deploy-check |
 | T7g | **A `.meta` passes for a dump** (R2): a renamed `.meta` + `.meta.sig` verified as a backup in round 3, because both were signed in one namespace | `.meta` is signed in `budgetowl-backup-meta`, and carries the dump's SHA-256, so it vouches for exactly one dump and can never verify as one | rules 10, 13; deploy-check |
-| T7h | **The private copy leaks or is reachable** (I1): a killed restore leaves a plaintext copy; a TMPDIR on the share defeats the point of copying | Stale copies the operator owns whose pid is dead are removed at the next restore; a TMPDIR on a network filesystem or in the backup folder is refused | rule 15; deploy-check |
+| T7h | **The private copy leaks or is reachable** (I1, round 5): a killed restore leaves a plaintext copy; a TMPDIR on the share, or one other local users can rearrange, defeats the point of copying | Stale copies the operator owns are removed at the next restore unless their pid and start time match a running process. A TMPDIR is refused if it is on a network filesystem, in the backup folder, or not owned by root or the operator. It is also refused if others can write to it and it is not root's and sticky, or if a folder above it fails the same checks | rule 15; deploy-check |
+| T7i | **The public key beside the signing key is swapped** | Rotation derives the public half from the private key (`ssh-keygen -y`). `ssh-keygen -Y sign` itself already refuses a `.pub` that does not match, so the backup stops first | rule 13; deploy-check |
 | T7b | **The signing key leaks** | It is ed25519, 0600, owned by the operator account, and refused if looser. It is outside the backup folder, and the key scan refuses it if it ever lands there. Only the public line leaves the server. Whoever holds the operator account or root holds the key: ADR-0026 territory | rules 9, 12 |
 | T7c | **A rebuilt server cannot vouch for old backups** | The operator keeps each server's allowed_signers line in the password manager and passes it with `--signers`; a file can hold several | rule 15; deploy-check (new key refuses old backup; `--signers` accepts it) |
 | T8 | **An upgrade migration fails halfway** | Each Flyway migration is one transaction; earlier ones stay applied; the api stays unhealthy; `upgrade.sh` backed up first and prints the rollback | rules 25–29 |
@@ -538,6 +565,17 @@ was restored. "Caught by" is the check that went red.
 | I2 run as root | the root branch removed | "... and, run as root, says to run it as the folder's owner instead" |
 | I4 flags through test-restore | the two flags dropped | "test-restore.sh brings the backup up on :8481" (the renamed backup is refused, exit 8) |
 
+**Round 5** (the last small round):
+
+| Finding | Sabotage | Caught by |
+| ------- | -------- | --------- |
+| TMPDIR others can write to | ownership and mode check removed | "a TMPDIR others can write to (and not sticky) is refused" (and the restore then went ahead: "... and the data is as it was" failed too) |
+| Symlinked trust file | round 4's resolution put back | "a signers file reached through a symlink is judged by where it really is (exit 6)" |
+| `sudo -u` advice | advice given whoever the owner is | "... and, as its owner is not this install's operator, does not tell root to become them" |
+| Reused pid | start time ignored | "... and so was one whose pid now belongs to another process (a different start time)" |
+| `.pub` swapped beside the key | **not catchable**: `ssh-keygen -Y sign` refuses a mismatched `.pub` before rotation is reached | "... and a .pub swapped beside the signing key stops the backup, and rotates nothing away" proves the outcome; the `ssh-keygen -y` derivation is a second line |
+| `UNKNOWN*`, `ocfs2`, `gfs2` | not tested | no such filesystem in the sandbox; the list is code-reviewed only |
+
 ### Things this does not protect against
 
 - **Anyone with root, the operator account, or the Proxmox host.** They can read the volume, the
@@ -593,8 +631,8 @@ was restored. "Caught by" is the check that went red.
 
 ## Testing notes
 
-**Proven in the dev container on 2026-11-28 (round 4)**: `tools/deploy-check.sh` passed 96 of 96,
-against images built from the merged branch (68 in round 2, 88 in round 3). The sabotage tables
+**Proven in the dev container on 2026-11-28 (round 5)**: `tools/deploy-check.sh` passed 102 of 102,
+against images built from the merged branch (68 in round 2, 88 in round 3, 96 in round 4). The sabotage tables
 above list each check made to fail.
 
 **A flaky test, found in round 4 and fixed.** The "damaged checksum" case replaced the
