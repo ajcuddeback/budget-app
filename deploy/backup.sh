@@ -295,8 +295,12 @@ prune() {
 now=$(date -u +%s)
 # This server's own line, made fresh from its public key (an older allowed_signers file beside
 # the key may not list the .meta namespace).
+# The public half is derived from the private key itself, not read from the .pub beside it,
+# which anyone able to write that folder could have replaced.
 own_signers="$work/own.allowed_signers"
-allowed_signers_line "$signing_key.pub" > "$own_signers"
+ssh-keygen -y -f "$signing_key" > "$work/own.pub" 2>/dev/null \
+  || die 1 "could not read the public half of the signing key ($signing_key)"
+allowed_signers_line "$work/own.pub" > "$own_signers"
 prune
 
 printf '%s\n' "$final"
