@@ -1,0 +1,141 @@
+<dialog appModal class="dialog" aria-labelledby="log-payment-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="log-payment-title">
+      {{ 'debt.payment.title' | t: { name: debt().name } }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    <p class="card-note">{{ 'debt.payment.lede' | t }}</p>
+
+    <div class="field">
+      <label for="payment-amount">{{ 'debt.payment.amount' | t }}</label>
+      <!-- type="text" with inputmode="decimal", never type="number" (ADR-0006). -->
+      <input
+        id="payment-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="amount"
+        aria-describedby="payment-amount-hint payment-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="payment-amount-hint">{{ 'debt.payment.amountHint' | t }}</p>
+      <app-field-error [control]="form.controls.amount" errorId="payment-amount-error" />
+
+      <!-- The two one-tap alternatives the designs offer. Each fills the field; neither submits,
+           because the figure that reaches the server is one the household asserted. -->
+      <div class="cluster quick">
+        <button type="button" class="btn btn-secondary btn-small" (click)="use(scheduled())">
+          {{ 'debt.payment.useScheduled' | t: { amount: scheduled() | money: debt().currency } }}
+        </button>
+        @if (withExtra(); as more) {
+          <button type="button" class="btn btn-secondary btn-small" (click)="use(more)">
+            {{ 'debt.payment.useMore' | t: { amount: more | money: debt().currency } }}
+          </button>
+        }
+      </div>
+
+      <!-- What this amount would record, from the server — built by the same code as logging, so
+           it cannot disagree with what gets stored. Directly under the amount and its one-tap
+           buttons, so the figure that changes is beside the thing that changed it: at the foot of
+           the sheet it was off-screen when the sheet opened, on a phone and at 1280×720 alike.
+           `role="status"` so the figures are announced when they change. -->
+      <p class="preview" role="status">
+        @if (preview(); as split) {
+          {{
+            'debt.payment.preview'
+              | t
+                : {
+                    interest: split.interest | money: split.currency,
+                    principal: split.principal | money: split.currency,
+                    balance: split.balanceAfter | money: split.currency,
+                  }
+          }}
+        }
+      </p>
+      <!-- Why the interest is what it is, in the server's words: a first payment in a month can
+           leave the balance higher than it found it, and that must not read as a mistake. -->
+      @if (preview(); as split) {
+        @if (split.monthInterest === 'CARRIED' && split.interestMonth) {
+          <p class="card-note">
+            {{
+              'debt.payment.carriesMonthInterest'
+                | t
+                  : {
+                      month: split.interestMonth | period,
+                      interest: split.interest | money: split.currency,
+                    }
+            }}
+          </p>
+        } @else if (split.monthInterest === 'ALREADY_CARRIED' && split.interestMonth) {
+          <p class="card-note">
+            {{
+              'debt.payment.monthInterestAlreadyCharged'
+                | t: { month: split.interestMonth | period }
+            }}
+          </p>
+        }
+      }
+      @if (previewUnavailable()) {
+        <!-- A convenience that failed. It must never stop somebody recording a payment. -->
+        <p class="card-note">{{ 'debt.payment.previewUnavailable' | t }}</p>
+      } @else if (!preview()) {
+        <p class="card-note">{{ 'debt.payment.splitNote' | t }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="payment-date">{{ 'debt.payment.paidDate' | t }}</label>
+      <input
+        id="payment-date"
+        class="input"
+        type="date"
+        formControlName="paidDate"
+        [attr.max]="today()"
+        aria-describedby="payment-date-error"
+        [attr.aria-invalid]="
+          form.controls.paidDate.invalid && form.controls.paidDate.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.paidDate" errorId="payment-date-error" />
+    </div>
+
+    <div class="field">
+      <label for="payment-account">{{ 'debt.payment.paidFrom' | t }}</label>
+      <select id="payment-account" class="input" formControlName="paidFromAccountId">
+        <option value="">{{ 'debt.payment.noAccount' | t }}</option>
+        @for (account of openAccounts(); track account.id) {
+          <option [value]="account.id">{{ account.name }}</option>
+        }
+      </select>
+      <!-- Not a transaction, and not where the debt is held: it is where the money left, which is
+           where a matching charge will be looked for later. Nothing is written to it. -->
+      <p class="field-hint">{{ 'debt.payment.paidFromHint' | t }}</p>
+    </div>
+
+    <div class="field">
+      <label for="payment-note">{{ 'debt.payment.note' | t }}</label>
+      <input
+        id="payment-note"
+        class="input"
+        type="text"
+        maxlength="500"
+        autocomplete="off"
+        formControlName="note"
+      />
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'debt.payment.record') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

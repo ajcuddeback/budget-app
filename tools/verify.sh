@@ -35,7 +35,16 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 run() { # run <label> <command...>
   local label="$1"; shift
   if "$@" >/tmp/verify-out.txt 2>&1; then pass "$label"
-  else fail "$label"; sed 's/^/      /' /tmp/verify-out.txt | tail -40; fi
+  else
+    fail "$label"
+    # The last 40 lines of a long suite are whatever finished last, not what failed: CI's first
+    # Mobile run printed "1136 tests passed, 1 failed" under 40 lines of passing goldens. Under
+    # GitHub Actions, `flutter test` and `dart test` use the github reporter, which wraps each
+    # failure in a `::group::❌ <test name> (failed)` block. Print those blocks first.
+    awk '/^::group::❌/ { p = 1 } p { print } /^::endgroup::/ { p = 0 }' /tmp/verify-out.txt \
+      | head -200 | sed 's/^/      /'
+    sed 's/^/      /' /tmp/verify-out.txt | tail -40
+  fi
 }
 
 section "Repository hygiene"
@@ -105,7 +114,12 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "backend" ]; then
     if [ -n "${NVD_API_KEY:-}" ]; then
       run "dependency vulnerabilities (OWASP)" mvn -q -f backend dependency-check:check
     else
-      missing "dependency vulnerabilities (OWASP)" "NVD_API_KEY is not set"
+      # Deliberately not a hard local failure. The key is a repository SECRET (CI reads
+      # secrets.NVD_API_KEY), so it is absent by design on a cloud session and on any machine
+      # whose owner has not set one — making every such run red would train people to ignore a
+      # red gate, which costs more than it buys. CI fails without it; here it is loud.
+      missing "dependency vulnerabilities (OWASP)" \
+        "NVD_API_KEY is not set — export it to run this locally (free key: https://nvd.nist.gov/developers/request-an-api-key). CI reads it from the repository secret"
     fi
   fi
 fi
@@ -127,6 +141,10 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
 
     [ -d frontend/node_modules ] || run "install deps" npm --prefix frontend ci --no-audit --no-fund
     run "lint"                            npm --prefix frontend run lint
+    # The backend has had spotless:check in this gate since slice 1; the frontend had no
+    # equivalent, so 43 files had drifted from the house style and the format hook rewrote them
+    # piecemeal inside whatever commit happened to touch them next.
+    run "format (prettier)"               npm --prefix frontend run format:check
     run "typecheck"                       npm --prefix frontend run typecheck
     run "unit tests + coverage threshold" npm --prefix frontend run test:coverage
     run "build"                           npm --prefix frontend run build
@@ -150,6 +168,25 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "packaging" ]; then
       fail "compose refuses to start without DB_PASSWORD"
     else
       pass "compose refuses to start without DB_PASSWORD"
+    fi
+
+    # The import size cap in nginx is tested, not just configured (file-import.md rule 3): a body
+    # just under and just over it, through the real frontend/nginx.conf in the shipped image.
+    if docker info >/dev/null 2>&1; then
+      run "nginx passes a statement under the import cap and refuses one over it" tools/nginx-check.sh
+    else
+      missing "nginx import cap" "Docker is not running"
+    fi
+
+    # A restore nobody has tested is a hope (docs/features/deployment.md). The real stack, from
+    # nothing: set up a household, back up, delete the volume, restore, and check the data — plus
+    # the refusals (data present without --replace, a changed file, a newer version's backup).
+    # Its own Compose project and throwaway credentials; never your .env or your stack. About 90s
+    # once the images exist; it builds them first if they do not.
+    if docker info >/dev/null 2>&1; then
+      run "backup, destroy the volume, restore (tools/deploy-check.sh)" tools/deploy-check.sh
+    else
+      missing "backup and restore round trip" "Docker is not running"
     fi
 
     # Only the web port reaches the host, and only on loopback by default.
@@ -194,14 +231,40 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "frontend" ]; then
   section "UI validation harness"
   if [ ! -d tools/ui/node_modules ]; then
     skip "UI harness" "dependencies not installed (cd tools/ui && npm ci)"
+  else
+    # The harness has had a tsconfig since it was written and nothing that ran it, so a type
+    # error sat in mock-api.ts across several slices — found by an agent reading the file, not by
+    # the gate. The harness is what checks the app; it is worth checking too. Its own failure is
+    # recorded but does not stop the checks below: a type error in one mock route should not
+    # hide a real regression in the page.
+    run "harness typecheck" bash -c "cd tools/ui && npx tsc -p tsconfig.json --noEmit"
+  fi
+
+  if [ ! -d tools/ui/node_modules ]; then
+    : # already reported above
   elif [ ! -f frontend/package.json ]; then
     # No app yet: at least prove the harness itself still works.
     run "harness self-check (no app yet)" tools/ui-check.sh --selfcheck
   elif curl -fsS --max-time 2 "${UI_BASE_URL:-http://localhost:4200}" >/dev/null 2>&1; then
+    # Something is already serving — a developer with `ng serve` open, or UI_BASE_URL pointing
+    # somewhere deliberate. Use it, and say so, because whose build it is matters.
+    printf '      against the app already serving at %s\n' "${UI_BASE_URL:-http://localhost:4200}"
     run "live UI checks" tools/ui-check.sh
     printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
   else
-    skip "live UI checks" "app not serving — run tools/ui-check.sh --serve to include them"
+    # Nothing serving: START one rather than skipping.
+    #
+    # This used to skip, and that was the hole. Non-negotiable #7 says this script must pass
+    # before the work is done; non-negotiable #8 says frontend changes are checked in a real
+    # browser. With a skip here, #7 passed while #8's check never ran — and on a clean machine,
+    # a fresh clone or CI, skipping was the DEFAULT. The one thing the project calls
+    # non-negotiable was the one most likely to be absent, and the output said PASSED.
+    #
+    # It costs a dev-server start-up on a run that would otherwise have skipped. That is the
+    # price of the check being real, and it is small beside shipping a page nobody looked at.
+    printf '      no app serving — starting one (adds a dev-server start to this run)\n'
+    run "live UI checks (own server)" tools/ui-check.sh --serve
+    printf '      screenshots for review: tools/ui/artifacts/REVIEW.md\n'
   fi
 fi
 
@@ -213,8 +276,32 @@ if [ "$TARGET" = "all" ] || [ "$TARGET" = "mobile" ]; then
   elif ! command -v flutter >/dev/null 2>&1; then
     missing "mobile build" "flutter not on PATH"
   else
-    run "analyze"                 flutter analyze --no-pub
-    run "tests + coverage"        flutter test --coverage
+    # docs/features/mobile-app.md, Testing. Every step runs inside mobile/.
+    # The flutter and dart tools report usage to Google unless told not to. A gate run (here or
+    # in CI) must not phone home on anyone's behalf (ADR-0016), so every step suppresses it.
+    export FLUTTER_SUPPRESS_ANALYTICS=true DART_SUPPRESS_ANALYTICS=true
+    mob() { bash -c "cd mobile && $1"; }
+    run "dependencies, from the lockfile only" mob "flutter pub get --enforce-lockfile"
+    # Generated sources are left as their generators write them; everything else is formatted.
+    run "format (dart format)" mob "find lib test tool -name '*.dart' -not -path 'lib/l10n/*' \
+      -not -path 'lib/core/theme/tokens.dart' -print0 \
+      | xargs -0 dart format --output=none --set-exit-if-changed"
+    run "design tokens are current (tools/mobile-tokens.sh)" tools/mobile-tokens.sh --check
+    run "strings are current (tools/mobile-l10n.sh)"        tools/mobile-l10n.sh --check
+    run "analyze"                 mob "flutter analyze --no-pub"
+    # The guards: no double for money, the token only in TokenStore, no redirects, no cleartext,
+    # no trust-anyway, nothing printed, no address shipped, tokens-only styling, the platform
+    # configs. They also run in the suite below; named here so a failure says which rule broke.
+    run "architecture and platform guards" mob "flutter test --no-pub test/architecture"
+    run "tests + coverage"        mob "flutter test --no-pub --coverage"
+    run "lib/core line coverage >= 80%" tools/mobile-coverage.sh 80
+    # The real Android build: manifest, network security config and backup rules must compile into
+    # an APK, and the native SQLCipher build hook must succeed. Needs the Android SDK.
+    if [ -n "${ANDROID_HOME:-}" ] && [ -d "${ANDROID_HOME}" ]; then
+      run "Android debug build (flutter build apk --debug)" mob "flutter build apk --debug --no-pub"
+    else
+      missing "Android debug build" "ANDROID_HOME is not set to an Android SDK"
+    fi
   fi
 fi
 

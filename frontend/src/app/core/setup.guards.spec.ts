@@ -1,5 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+  provideRouter,
+} from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { freshInstanceGuard, setupOpenGuard } from './setup.guards';
 import { SetupStatus } from './setup.models';
@@ -39,10 +45,20 @@ describe('setup guards', () => {
   });
 
   it('says nothing about the instance when it cannot be asked', async () => {
-    expect(await run(freshInstanceGuard, throwError(() => new Error('down')))).toBe(true);
+    expect(
+      await run(
+        freshInstanceGuard,
+        throwError(() => new Error('down')),
+      ),
+    ).toBe(true);
   });
 
   it('shows the setup screen when it cannot be asked, rather than a login that cannot work', async () => {
-    expect(await run(setupOpenGuard, throwError(() => new Error('down')))).toBe(true);
+    expect(
+      await run(
+        setupOpenGuard,
+        throwError(() => new Error('down')),
+      ),
+    ).toBe(true);
   });
 });

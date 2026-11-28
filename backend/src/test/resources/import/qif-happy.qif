@@ -1,0 +1,26 @@
+!Type:Bank
+D8/ 3'26
+T-3.50
+PBLUE BOTTLE
+MFlat white
+CX
+^
+D8/ 5'26
+T2,400.00
+U2,400.00
+PACME PAYROLL
+A1 Example Street
+AExampletown
+^
+D8/10'26
+T-54.20
+PCORNER SHOP
+LGroceries
+SGroceries
+$-40.00
+SHousehold
+$-14.20
+^
+D8/12'26
+T-7.00
+PMISSING CARET

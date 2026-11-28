@@ -1,0 +1,136 @@
+/* Every value here is a design token (design/README.md). */
+
+.ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ledger-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+}
+
+.ledger-row + .ledger-row {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.is-busy {
+  opacity: 0.6;
+}
+
+.row-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.row-primary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.row-payee {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.unnamed {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.row-amount {
+  /* Tabular figures so a column of amounts lines up on the decimal point. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* Colour is a reinforcement, never the only signal: the sign is in the formatted figure.
+   A transfer gets neither class — money moved between your own accounts is not income, and
+   colouring one leg as though it were is the sort of thing that makes a total look wrong. */
+.outgoing {
+  color: var(--color-text);
+}
+
+.incoming {
+  color: var(--color-accent-700);
+}
+
+.row-secondary {
+  margin-block: var(--space-1) 0;
+  color: var(--color-muted);
+}
+
+.row-sep {
+  margin-inline: var(--space-1);
+}
+
+.needs-category {
+  /* Marked up as well as coloured, so it survives a greyscale print and a colour-blind reader. */
+  color: var(--color-accent-2-700);
+  font-weight: 600;
+}
+
+.badge {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-1);
+}
+
+.row-note {
+  margin-block: var(--space-1) 0;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.row-actions {
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  /* A FIXED width, not `0 0 auto`. The actions differ per row — an uncategorised one carries an
+     extra button — and with an auto width that pushed the main area about, so the amounts landed
+     at a different x on every row and stopped forming a column you could scan down. */
+  flex: 0 0 auto;
+  /* Wide enough for the longest set — Add a category, Edit, Delete — so that rows with fewer
+     buttons reserve the same space and every amount lands at the same x. Generous on purpose:
+     a translation with longer words should still line up rather than nudge the column. */
+  min-width: 20rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 40rem) {
+  .ledger-row {
+    flex-direction: column;
+  }
+
+  .row-main {
+    width: 100%;
+  }
+
+  /* The reserved width is for lining amounts up in a wide row; stacked, it would only squeeze
+     the buttons. */
+  .row-actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}
+
+/* The note that stands where a transfer row's buttons would be. It sits inside the reserved
+   actions column, so it wraps there rather than pushing the amounts out of line. */
+.row-hint {
+  margin: 0;
+  color: var(--color-muted);
+  text-align: end;
+}
+
+@media (max-width: 40rem) {
+  .row-hint {
+    text-align: start;
+  }
+}

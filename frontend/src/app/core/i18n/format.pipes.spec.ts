@@ -7,7 +7,9 @@ import { I18nService } from './i18n.service';
 
 describe('formatting pipes', () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
   });
 
   it('delegate to the locale-aware service', async () => {

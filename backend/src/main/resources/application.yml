@@ -40,6 +40,15 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      # OFF, and not only for import. With it on, DispatcherServlet parses any multipart request
+      # before a controller can refuse it, and Tomcat spools every part to java.io.tmpdir (the
+      # default file-size-threshold is 0 B) — so a statement POSTed as form-data to ANY route would
+      # land in the container's /tmp, where nothing reads it and nobody notices (ADR-0038). No
+      # endpoint takes multipart; a file travels as base64 in JSON. ImportLimitsIT proves a
+      # multipart upload is refused with 415 and leaves nothing on disk.
+      enabled: false
   jackson:
     deserialization:
       # A typo'd field is an error, not a silently ignored value (docs/guides/api-style.md), and
@@ -106,6 +115,22 @@ budgetowl:
   invitations:
     # Default 7 days. The link is a credential, so its lifetime is a security setting.
     time-to-live: 7d
+  # File import (docs/features/file-import.md rule 3, decision 1). Fixed limits, not per request.
+  # Bytes are counted before anything decodes them and lines before anything parses them; a file
+  # over any of these is refused whole, never truncated. Raising maximum-file-size also means
+  # raising client_max_body_size on `location /api/imports` in frontend/nginx.conf.
+  import:
+    maximum-file-size: 5MB
+    csv-maximum-lines: 12000
+    qif-maximum-lines: 200000
+    maximum-line-length: 4096
+    maximum-rows: 10000
+    csv-maximum-columns: 64
+    ofx-maximum-depth: 32
+    ofx-maximum-elements: 200000
+    ofx-maximum-name-length: 64
+    ofx-maximum-leaf-length: 1024
+    parse-deadline: 15s
 
 logging:
   level:

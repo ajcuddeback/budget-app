@@ -62,6 +62,28 @@ describe('App', () => {
     expect(document.documentElement.getAttribute('data-theme')).not.toBe(before);
   });
 
+  it('offers the operator screen to nobody but the instance administrator', async () => {
+    const auth = TestBed.inject(AuthService);
+    // Signed in, an OWNER of the household, and not the administrator: the two are different
+    // axes (ADR-0029), and this is the one the operator menu follows.
+    (auth as unknown as { current: { set(user: CurrentUser): void } }).current.set({
+      ...OWNER,
+      instanceAdmin: false,
+    });
+
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const links = Array.from<HTMLAnchorElement>(
+      fixture.nativeElement.querySelectorAll('nav a'),
+    ).map((link) => link.textContent?.trim());
+    expect(links).not.toContain('Admin');
+    expect(fixture.nativeElement.querySelector('a[href="/admin"]')).toBeNull();
+    // Hidden, not shown-and-refused: a menu that always refuses teaches people to ignore
+    // refusals (admin-console.md). The API refuses it regardless.
+    expect(links).toContain('Household');
+  });
+
   it('offers no household navigation to someone who is signed out', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
@@ -82,7 +104,21 @@ describe('App', () => {
     const links = Array.from<HTMLAnchorElement>(
       fixture.nativeElement.querySelectorAll('nav a'),
     ).map((link) => link.textContent?.trim());
-    expect(links).toEqual(['Accounts', 'Household', 'Devices', 'Preferences']);
+    expect(links).toEqual([
+      'Transactions',
+      'Check-in',
+      'Accounts',
+      'Bills',
+      'Debt plan',
+      'Goals',
+      'Envelopes',
+      'Categories',
+      'Insights',
+      'Household',
+      'Devices',
+      'Preferences',
+      'Admin',
+    ]);
 
     const signOut = Array.from<HTMLButtonElement>(
       fixture.nativeElement.querySelectorAll('button'),

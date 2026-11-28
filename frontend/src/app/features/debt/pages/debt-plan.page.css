@@ -1,0 +1,317 @@
+/* Every colour, space and radius here is a design token (design/README.md).
+ *
+ * Font sizes and weights are literals with a reason, not oversights: the token sheet carries
+ * families and a heading weight and nothing else. `var(--weight-bold)` does not exist, and a CSS
+ * variable that does not exist fails *silently* to the inherited value — it lints clean and
+ * renders wrong. `features/admin/components/signing-in-form.component.css` sets the precedent.
+ */
+
+/* ---- the header strip -------------------------------------------------------------------- */
+
+.header-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.header-figure {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  /* 600, not a var: there is no weight token. See the note at the top. */
+  font-weight: 600;
+}
+
+/* The amount sits where it is reported, so the figure and the control that changes it are one
+   thing rather than two places to look. */
+.amount-form {
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.amount-form .field {
+  margin: 0;
+  min-inline-size: 10rem;
+}
+
+/* ---- the strategy ------------------------------------------------------------------------ */
+
+.strategy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+
+.strategy-static {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+}
+
+/* ---- the chart's headline ---------------------------------------------------------------- */
+
+.headline {
+  margin: var(--space-4) 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the two comparison cards ------------------------------------------------------------ */
+
+/*
+ * Side by side at every width — the canvas resolves that much explicitly ("Strategy comparison
+ * follows the side-by-side structure"), so this wraps to a stack only when two columns would be
+ * narrower than the figures in them.
+ */
+.compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.compare-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+/* The selection is marked by the tag in its heading as well as by the border: a 2px edge on its
+   own is colour-and-shape with nothing a screen reader can hear. */
+.compare-card.is-selected {
+  border-color: var(--color-accent-text);
+  border-width: 2px;
+  padding: calc(var(--space-4) - 1px);
+}
+
+.compare-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.compare-rationale,
+.compare-note {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.compare-figure {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison {
+  margin: 0 0 var(--space-3);
+  max-inline-size: 60ch;
+}
+
+/* ---- the two structures ------------------------------------------------------------------ */
+
+/*
+ * The same debts, twice: a table on desktop and the ladder on a phone (decision 5). Hidden with
+ * `display: none` rather than `visibility` or an off-screen class, deliberately — a screen reader
+ * skips `display: none` entirely, so only one of the two is ever in the accessibility tree and
+ * nobody hears the ladder read out after the table.
+ *
+ * 48rem is the width at which eight columns of figures stop fitting without a scroll, which is
+ * the question the breakpoint is actually about.
+ */
+.only-narrow {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .only-wide {
+    display: none;
+  }
+
+  .only-narrow {
+    display: block;
+  }
+}
+
+.table-scroll {
+  /* Insurance for a very long servicer name at a narrow desktop width. The ladder is what a
+     phone gets, so this is not the mobile answer. */
+  overflow-x: auto;
+}
+
+.debt-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  /* 0.9375rem, not a token: there is no type scale (see the note at the top). Eight columns of
+     figures at body size do not fit a 1440px card, and a table that scrolls sideways is a table
+     nobody reads the right-hand end of. */
+  font-size: 0.9375rem;
+}
+
+.debt-table th,
+.debt-table td {
+  padding: var(--space-3) var(--space-2) var(--space-3) 0;
+  border-block-end: 1px solid var(--color-divider);
+  text-align: start;
+  vertical-align: top;
+}
+
+.debt-table thead th {
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.debt-table tbody tr:last-child th,
+.debt-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+/*
+ * Money and rates line up so they can be scanned down the column, which is the whole reason the
+ * desktop view is a table rather than the ladder. Only the figure itself refuses to wrap: the
+ * note under it ("Confirmed 1 Sept 2026") is a sentence, and holding that on one line made the
+ * balance column four times the width of the name beside it.
+ */
+.debt-table .numeric {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.debt-table .numeric .figure-main {
+  white-space: nowrap;
+}
+
+/*
+ * The name column needs room, and needs ordinary word breaks.
+ *
+ * `.row-title` and `.row-sub` are shared classes that break anywhere, which is right in a list
+ * row that owns its full width and wrong in a table cell competing with seven others: without
+ * this, "Visa" rendered as four stacked letters.
+ */
+.debt-table .debt-name {
+  min-inline-size: 9rem;
+  font-weight: 400;
+}
+
+.debt-table .debt-name .row-title,
+.debt-table .debt-name .row-sub,
+.debt-table .numeric .row-sub {
+  display: block;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.debt-table .figure-main {
+  display: block;
+  font-weight: 600;
+}
+
+/* The tag sits under the rate rather than beside it: in the cell it widened the column by its
+   own width on every row, including the rows that do not carry one. */
+.debt-table .numeric .tag {
+  margin-block-start: var(--space-1);
+}
+
+.debt-table .row-actions {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* The ghost button has no fill, so its inline padding only knocked "Edit terms" out of line with
+   the "Open" link above it. Its hit area is the row's own height either way.
+   `nowrap` because the column is the narrowest on the table and both labels were wrapping — "Edit
+   terms" split mid-phrase, which reads as two controls rather than one. */
+.debt-table .row-actions .btn,
+.debt-table .row-actions .link {
+  padding-inline: 0;
+  white-space: nowrap;
+}
+
+.is-estimated {
+  color: var(--color-accent-text);
+}
+
+.ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rung-card {
+  padding: var(--space-4) 0;
+  border-block-end: 1px solid var(--color-divider);
+}
+
+.rung-card:last-child {
+  border-block-end: 0;
+}
+
+.rung-number {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rung-name {
+  margin: 0 0 var(--space-1);
+  font-size: 1.125rem;
+}
+
+.rung-card p {
+  margin: 0 0 var(--space-1);
+}
+
+.rung-balance .figure-main {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rung-balance .row-sub {
+  display: block;
+}
+
+/* The allocation rule said in words, which is the point of the ladder: a table conveys it only
+   through two numbers in a cell. */
+.rung-paying {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rung-card .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+}
+
+/* ---- the footer line --------------------------------------------------------------------- */
+
+.footer-line {
+  margin: 0;
+  color: var(--color-muted);
+  max-inline-size: 70ch;
+}
+
+.footer-line,
+.card-note {
+  font-variant-numeric: tabular-nums;
+}

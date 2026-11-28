@@ -40,7 +40,17 @@ class SchemaMigrationIT extends PersistenceTestBase {
                         "V7__spring_session.sql",
                         "V8__harden_auth_constraints.sql",
                         "V9__accounts.sql",
-                        "V10__application_role_grants.sql");
+                        "V10__application_role_grants.sql",
+                        "V11__categories.sql",
+                        "V12__payees_and_transactions.sql",
+                        "V13__envelopes.sql",
+                        "V14__bills_and_income.sql",
+                        "V15__transfer_constraints.sql",
+                        "V16__instance_settings_version.sql",
+                        "V17__debts_and_payments.sql",
+                        "V18__goals.sql",
+                        "V19__file_import.sql",
+                        "V20__weekly_check_in.sql");
 
         Integer failures =
                 jdbc.queryForObject(
@@ -161,7 +171,10 @@ class SchemaMigrationIT extends PersistenceTestBase {
                            AND tc.table_schema = 'public'
                            AND c.table_name IN ('users', 'households', 'household_members',
                                                 'household_invitations', 'auth_tokens',
-                                                'accounts')
+                                                'accounts', 'categories', 'payees',
+                                                'transactions', 'envelopes',
+                                                'envelope_entries', 'debts', 'debt_payments',
+                                                'payoff_plans', 'payoff_plan_snapshots')
                            AND c.udt_name <> 'uuid'
                         """,
                         String.class);

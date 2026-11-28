@@ -21,3 +21,20 @@ export const guestGuard: CanActivateFn = async () => {
   await auth.ensureLoaded();
   return auth.isAuthenticated() ? router.createUrlTree(['/']) : true;
 };
+
+/**
+ * The operator's screen. A courtesy like the others: the masthead hides the link, this refuses the
+ * route, and `AdminService` refuses the request — which is the only one of the three that matters.
+ *
+ * A signed-in non-administrator goes home rather than to sign-in: they are authenticated, there is
+ * nothing to sign in as, and bouncing them to a login form would say otherwise.
+ */
+export const instanceAdminGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  await auth.ensureLoaded();
+  if (!auth.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+  return auth.isInstanceAdmin() ? true : router.createUrlTree(['/']);
+};

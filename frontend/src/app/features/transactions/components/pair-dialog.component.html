@@ -1,0 +1,124 @@
+<dialog appModal class="dialog" aria-labelledby="pair-dialog-title" (dismissed)="closed.emit()">
+  <div class="stack">
+    <h2 class="card-title" id="pair-dialog-title">{{ 'pairing.title' | t }}</h2>
+    <p class="card-note">{{ 'pairing.intro' | t }}</p>
+
+    <div class="field">
+      <p class="field-label">{{ 'pairing.thisRow' | t }}</p>
+      <p data-testid="pair-this-row">
+        {{ row().date | dateOnly }} · {{ row().accountName }} ·
+        <bdi dir="auto">{{ row().payeeName ?? ('transactions.noPayee' | t) }}</bdi> ·
+        <span class="nowrap">{{ row().amount | money: row().currency }}</span>
+      </p>
+    </div>
+
+    <div class="cluster pair-filters">
+      <div class="field">
+        <label for="pair-account">{{ 'pairing.account' | t }}</label>
+        <select
+          id="pair-account"
+          class="input"
+          [value]="filter().accountId"
+          (change)="change({ accountId: $any($event.target).value })"
+        >
+          <option value="">{{ 'pairing.allAccounts' | t }}</option>
+          @for (account of otherAccounts(); track account.id) {
+            <option [value]="account.id" [selected]="account.id === filter().accountId">
+              {{ account.name }}
+            </option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="pair-from">{{ 'transactions.from' | t }}</label>
+        <input
+          id="pair-from"
+          class="input"
+          type="date"
+          [value]="filter().from"
+          (change)="change({ from: $any($event.target).value })"
+        />
+      </div>
+      <div class="field">
+        <label for="pair-to">{{ 'transactions.to' | t }}</label>
+        <input
+          id="pair-to"
+          class="input"
+          type="date"
+          [value]="filter().to"
+          (change)="change({ to: $any($event.target).value })"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p role="status">{{ 'pairing.loading' | t }}</p>
+    } @else if (choices().length === 0) {
+      <p class="card-note">{{ 'pairing.none' | t }}</p>
+    } @else {
+      <fieldset class="pair-choices">
+        <legend class="field-label">{{ 'pairing.candidatesLabel' | t }}</legend>
+        @for (candidate of choices(); track candidate.id) {
+          <label class="checkbox pair-choice">
+            <input
+              type="radio"
+              name="pair-candidate"
+              [value]="candidate.id"
+              [checked]="chosenId() === candidate.id"
+              (change)="chosenId.set(candidate.id)"
+            />
+            <span>
+              {{ candidate.date | dateOnly }} · {{ candidate.accountName }} ·
+              <bdi dir="auto">{{ candidate.payeeName ?? ('transactions.noPayee' | t) }}</bdi> ·
+              <span class="nowrap">{{ candidate.amount | money: candidate.currency }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+    }
+
+    @if (hasPrevious() || hasNext()) {
+      <div class="cluster">
+        <button
+          type="button"
+          class="btn btn-secondary btn-small"
+          [disabled]="!hasPrevious() || loading()"
+          (click)="page(-1)"
+        >
+          {{ 'common.previous' | t }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-small"
+          [disabled]="!hasNext() || loading()"
+          (click)="page(1)"
+        >
+          {{ 'common.next' | t }}
+        </button>
+      </div>
+    }
+
+    <!-- Said before the button, every time: what pairing costs the two rows. -->
+    <p class="alert" role="note" data-testid="pair-loss">{{ 'pairing.loss' | t }}</p>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="cluster dialog-actions">
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-testid="pair-confirm"
+        [disabled]="chosen() === null || busy()"
+        (click)="confirm()"
+      >
+        {{ (busy() ? 'common.saving' : 'pairing.confirm') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+    @if (chosen() === null && choices().length > 0) {
+      <p class="field-hint">{{ 'pairing.chooseFirst' | t }}</p>
+    }
+  </div>
+</dialog>

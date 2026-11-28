@@ -9,7 +9,9 @@ describe('HouseholdService', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(HouseholdService);
     http = TestBed.inject(HttpTestingController);
   });
@@ -21,7 +23,10 @@ describe('HouseholdService', () => {
     service.update({ name: 'N', baseCurrency: 'USD' }).subscribe();
 
     expect(http.expectOne((r) => r.method === 'GET').request.url).toBe('/api/households/current');
-    expect(http.expectOne((r) => r.method === 'PUT').request.body).toEqual({ name: 'N', baseCurrency: 'USD' });
+    expect(http.expectOne((r) => r.method === 'PUT').request.body).toEqual({
+      name: 'N',
+      baseCurrency: 'USD',
+    });
   });
 
   it('unwraps the page of members', () => {
@@ -59,9 +64,13 @@ describe('HouseholdService', () => {
 });
 
 describe('buildInviteLink', () => {
-  it('builds the absolute link from the browser\'s own origin', () => {
-    expect(buildInviteLink('/join/abc', 'https://budget.home.test')).toBe('https://budget.home.test/join/abc');
-    expect(buildInviteLink('/join/abc', 'http://192.168.1.20:4200')).toBe('http://192.168.1.20:4200/join/abc');
+  it("builds the absolute link from the browser's own origin", () => {
+    expect(buildInviteLink('/join/abc', 'https://budget.home.test')).toBe(
+      'https://budget.home.test/join/abc',
+    );
+    expect(buildInviteLink('/join/abc', 'http://192.168.1.20:4200')).toBe(
+      'http://192.168.1.20:4200/join/abc',
+    );
   });
 
   it.each(['//evil.test/join/abc', 'https://evil.test/join/abc', 'join/abc', '', '/\\evil.test/x'])(

@@ -1,0 +1,91 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'admin.title' | t }}</h1>
+    <p class="page-lede">{{ 'admin.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    @if (instance(); as server) {
+      <section class="card" aria-labelledby="admin-instance-heading">
+        <h2 class="card-title" id="admin-instance-heading">{{ 'admin.instanceHeading' | t }}</h2>
+        <app-instance-facts [instance]="server" />
+      </section>
+    }
+
+    @if (settings(); as current) {
+      <section class="card" aria-labelledby="admin-signing-in-heading">
+        <h2 class="card-title" id="admin-signing-in-heading">
+          {{ 'admin.signingInHeading' | t }}
+        </h2>
+        <div class="stack">
+          @if (savedKey(); as notice) {
+            <div class="alert alert-success" role="status">
+              <p>{{ notice | t }}</p>
+            </div>
+          }
+
+          @if (conflict(); as changed) {
+            <div class="alert" role="alert">
+              <strong class="alert-title">{{ 'admin.conflictTitle' | t }}</strong>
+              <p>{{ 'admin.conflictMessage' | t }}</p>
+              @if (changed.length > 0) {
+                <p>{{ 'admin.conflictChanged' | t }}</p>
+                <ul class="conflict-fields">
+                  @for (label of changed; track label) {
+                    <li>{{ label | t }}</li>
+                  }
+                </ul>
+              } @else {
+                <p>{{ 'admin.conflictNothingVisible' | t }}</p>
+              }
+              <div class="cluster conflict-actions">
+                <button type="button" class="btn btn-secondary btn-small" (click)="useLatest()">
+                  {{ 'admin.useLatest' | t }}
+                </button>
+                <button type="button" class="btn btn-secondary btn-small" (click)="keepMine()">
+                  {{ 'admin.keepMine' | t }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <app-signing-in-form
+            [settings]="current"
+            [resetKey]="formRevision()"
+            [restoreOidcKey]="oidcRestore()"
+            [busy]="saving()"
+            [error]="saveError()"
+            [blocked]="inConflict()"
+            (submitted)="submit($event)"
+          />
+        </div>
+      </section>
+    }
+
+    <section class="card" aria-labelledby="admin-accounts-heading">
+      <h2 class="card-title" id="admin-accounts-heading">{{ 'admin.accountsHeading' | t }}</h2>
+      <p class="card-note">{{ 'admin.accountsLede' | t }}</p>
+      <app-admin-account-list [accounts]="accounts()" [myUserId]="myUserId()" />
+    </section>
+  }
+</div>
+
+@if (pendingOidcOff()) {
+  <app-confirm-dialog
+    [heading]="oidcOffText().heading"
+    [message]="oidcOffText().message"
+    [confirmLabel]="oidcOffText().action"
+    [busy]="saving()"
+    (confirmed)="confirmOidcOff()"
+    (cancelled)="cancelOidcOff()"
+  />
+}

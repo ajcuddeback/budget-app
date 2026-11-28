@@ -1,0 +1,189 @@
+<form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <app-error-alert [error]="error()" />
+
+  <fieldset class="group">
+    <legend class="group-title">{{ 'admin.registrationLegend' | t }}</legend>
+
+    <label class="checkbox" for="admin-registration">
+      <input
+        id="admin-registration"
+        type="checkbox"
+        formControlName="registrationOpen"
+        aria-describedby="admin-registration-note"
+      />
+      <span>{{ 'admin.registrationSwitch' | t }}</span>
+    </label>
+
+    <!-- In the flow and at full size, never a tooltip: this is the one setting here that can let
+         a stranger in, and the words are the control. -->
+    <div class="alert" id="admin-registration-note">
+      <p>{{ 'admin.registrationConsequence' | t }}</p>
+      @if (openingRegistration()) {
+        <p role="status">{{ 'admin.registrationOpening' | t }}</p>
+      }
+    </div>
+  </fieldset>
+
+  <fieldset class="group">
+    <legend class="group-title">{{ 'admin.passwordLegend' | t }}</legend>
+
+    @if (offerPasswordSwitch()) {
+      <label class="checkbox" for="admin-password-login">
+        <input
+          id="admin-password-login"
+          type="checkbox"
+          formControlName="passwordLoginEnabled"
+          aria-describedby="admin-password-hint"
+        />
+        <span>{{ 'admin.passwordSwitch' | t }}</span>
+      </label>
+      <p class="field-hint" id="admin-password-hint">{{ 'admin.passwordHint' | t }}</p>
+      @if (turningPasswordOff()) {
+        <!-- Said before it happens, and it names the command: a recovery path nobody can find at
+             11pm is not a recovery path (admin-console.md). -->
+        <div class="alert" role="status">
+          <p>{{ 'admin.passwordOffRecovery' | t }}</p>
+          <!-- The path gets a line of its own because it has hyphens in it. Inside the sentence
+               it wrapped as "deploy/restore-" / "password-login.sh" at phone width, and a reader
+               cannot tell a hyphen in the filename from one the line break added. This is the
+               command somebody types at 11pm when they cannot sign in; it is the one string on
+               the screen that has to be unambiguous. -->
+          <p class="command">{{ 'admin.passwordOffRecoveryCommand' | t }}</p>
+          <p>{{ 'admin.passwordOffRecoveryAfter' | t }}</p>
+        </div>
+      }
+    } @else {
+      <p class="state">{{ 'admin.passwordOn' | t }}</p>
+      <div class="alert">
+        <strong class="alert-title">{{ 'admin.passwordLockedTitle' | t }}</strong>
+        <p>{{ 'admin.passwordLockedRule' | t }}</p>
+      </div>
+    }
+  </fieldset>
+
+  <fieldset class="group">
+    <legend class="group-title">{{ 'admin.oidcLegend' | t }}</legend>
+    <p class="field-hint">{{ 'admin.oidcLede' | t }}</p>
+
+    <label class="checkbox" for="admin-oidc">
+      <input id="admin-oidc" type="checkbox" formControlName="oidcEnabled" />
+      <span>{{ 'admin.oidcSwitch' | t }}</span>
+    </label>
+
+    @if (turningOidcOff()) {
+      <div class="alert" role="status">
+        <p>{{ 'admin.oidcOffWarning' | t }}</p>
+      </div>
+    }
+
+    @if (settings().oidcEnabled && !turningOidcOff()) {
+      <p class="field-hint">
+        @if (settings().oidcOwnerLoginAt; as proven) {
+          {{ 'admin.oidcProven' | t: { date: (proven | dateTime) } }}
+        } @else {
+          {{ 'admin.oidcNotProven' | t }}
+        }
+      </p>
+    }
+
+    @if (oidcOn()) {
+      <div class="field">
+        <label for="admin-oidc-issuer">{{ 'admin.oidcIssuer' | t }}</label>
+        <input
+          id="admin-oidc-issuer"
+          class="input"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="500"
+          formControlName="oidcIssuerUri"
+          aria-describedby="admin-oidc-issuer-hint admin-oidc-issuer-error"
+          [attr.aria-invalid]="
+            form.controls.oidcIssuerUri.invalid && form.controls.oidcIssuerUri.touched
+              ? 'true'
+              : null
+          "
+        />
+        <p class="field-hint" id="admin-oidc-issuer-hint">{{ 'admin.oidcIssuerHint' | t }}</p>
+        <app-field-error
+          [control]="form.controls.oidcIssuerUri"
+          errorId="admin-oidc-issuer-error"
+        />
+      </div>
+
+      <div class="field">
+        <label for="admin-oidc-client-id">{{ 'admin.oidcClientId' | t }}</label>
+        <input
+          id="admin-oidc-client-id"
+          class="input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="200"
+          formControlName="oidcClientId"
+          aria-describedby="admin-oidc-client-id-hint admin-oidc-client-id-error"
+          [attr.aria-invalid]="
+            form.controls.oidcClientId.invalid && form.controls.oidcClientId.touched ? 'true' : null
+          "
+        />
+        <p class="field-hint" id="admin-oidc-client-id-hint">{{ 'admin.oidcClientIdHint' | t }}</p>
+        <app-field-error
+          [control]="form.controls.oidcClientId"
+          errorId="admin-oidc-client-id-error"
+        />
+      </div>
+
+      <div class="field">
+        <label for="admin-oidc-secret">{{ 'admin.oidcSecret' | t }}</label>
+        <!-- Empty on load and bound to nothing but the control: there is no stored value to show,
+             and `autocomplete="new-password"` keeps a browser from filling one in. -->
+        <input
+          id="admin-oidc-secret"
+          class="input"
+          type="password"
+          autocomplete="new-password"
+          spellcheck="false"
+          maxlength="500"
+          formControlName="oidcClientSecret"
+          aria-describedby="admin-oidc-secret-state admin-oidc-secret-hint admin-oidc-secret-error"
+          [attr.aria-invalid]="
+            form.controls.oidcClientSecret.invalid && form.controls.oidcClientSecret.touched
+              ? 'true'
+              : null
+          "
+        />
+        <!-- Said in words, never as dots standing in for a value this screen does not have. -->
+        <p class="state" id="admin-oidc-secret-state">
+          {{ (secretSet() ? 'admin.secretSet' : 'admin.secretNotSet') | t }}
+        </p>
+        <p class="field-hint" id="admin-oidc-secret-hint">{{ 'admin.oidcSecretHint' | t }}</p>
+        <app-field-error
+          [control]="form.controls.oidcClientSecret"
+          errorId="admin-oidc-secret-error"
+        />
+      </div>
+
+      <div class="field">
+        <label class="checkbox" for="admin-oidc-provisioning">
+          <input
+            id="admin-oidc-provisioning"
+            type="checkbox"
+            formControlName="oidcProvisioningEnabled"
+            aria-describedby="admin-oidc-provisioning-hint"
+          />
+          <span>{{ 'admin.oidcProvisioning' | t }}</span>
+        </label>
+        <p class="field-hint" id="admin-oidc-provisioning-hint">
+          {{ 'admin.oidcProvisioningHint' | t }}
+        </p>
+      </div>
+    }
+  </fieldset>
+
+  <div>
+    <button type="submit" class="btn btn-primary" [disabled]="busy() || blocked()">
+      {{ (busy() ? 'common.saving' : 'common.save') | t }}
+    </button>
+  </div>
+</form>

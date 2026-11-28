@@ -21,6 +21,12 @@ concurrency:
 permissions:
   contents: read
 
+# Every action is pinned to a full commit SHA, GitHub's own included: a tag such as `@v5` can be
+# moved to any commit, which would run code nobody reviewed with this workflow's token. The
+# comment names the release the SHA was resolved from (`git ls-remote --tags`, 2026-11-28).
+# .github/dependabot.yml proposes the updates. No job pushes, so every checkout sets
+# `persist-credentials: false` and the token is not left in .git/config for later steps.
+
 env:
   JAVA_VERSION: '21'
   # Angular 22 requires >= 22.22.3. Pinning the minor avoids a runner picking up 22.22.2 and
@@ -34,10 +40,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
       - name: Set up JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -71,7 +79,7 @@ jobs:
 
       - name: Upload test and coverage reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: backend-reports
           path: |
@@ -87,8 +95,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -103,7 +113,7 @@ jobs:
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -116,7 +126,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
       - name: Compose file is valid, and refuses to start without a password
         run: |
@@ -130,6 +142,15 @@ jobs:
         run: |
           docker build -t budget-owl-api:ci ./backend
           docker build -t budget-owl-web:ci ./frontend
+
+      - name: Backup, destroy the volume, restore
+        # tools/deploy-check.sh builds the Compose images itself (the layers above are cached) and
+        # runs as its own project with throwaway credentials. `age` makes it check the encrypted
+        # round trip too, rather than skipping it.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age >/dev/null
+          tools/deploy-check.sh --remove-images
 
       - name: Scan images for known vulnerabilities
         # Pinned to a commit, not a moving tag: a tag can be repointed at any commit, which means
@@ -157,15 +178,17 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
       - name: Cache the NVD database
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: nvd-${{ github.run_id }}
@@ -203,8 +226,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -238,11 +263,75 @@ jobs:
 
       - name: Upload screenshots and report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ui-artifacts
           path: tools/ui/artifacts/
           retention-days: 7
+
+  mobile:
+    name: Mobile
+    # Pinned for the same reason as UI validation: the toolchain includes the image. The Android
+    # debug build needs the Android SDK that this image ships at $ANDROID_HOME, and verify.sh
+    # treats a missing SDK as a failure in CI, not a skip.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      # The release mobile/ is developed and verified on. Pinned three ways: the version names it,
+      # the archive's SHA-256 proves the bytes (from the release index at
+      # storage.googleapis.com/flutter_infra_release/releases/releases_linux.json), and the
+      # framework revision is checked after install. Bump all three together.
+      FLUTTER_VERSION: '3.50.1'
+      FLUTTER_SHA256: '4ad17fc8462fbcef2ba19ff4a78c0a16b7147fde1add8578e267ea62cdb92678'
+      FLUTTER_REVISION: 'ae9b586f34a8443573f82ef57c3bf914a908cbf7'
+      # The flutter and dart tools report usage to Google by default. A CI run must not phone home
+      # on anyone's behalf (ADR-0016). Job-wide, so it covers the install check as well as verify.sh.
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      DART_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      # The Android Gradle build runs on a JDK; the same one the backend uses.
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Install Flutter
+        # Flutter's own release archive, checked against a pinned hash, rather than a third-party
+        # setup action: one less party's code running in CI.
+        run: |
+          archive="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/$archive"
+          echo "$FLUTTER_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict -
+          # --no-same-owner: run as root, tar would keep the archive's owner, and git (which
+          # flutter runs on its own checkout) then refuses the tree as "dubious ownership".
+          tar --no-same-owner -xJf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          rm "$RUNNER_TEMP/$archive"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Flutter is the pinned release
+        run: |
+          read -r version revision < <(flutter --version --machine \
+            | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(d["frameworkVersion"], d["frameworkRevision"])')
+          if [ "$version" != "$FLUTTER_VERSION" ] || [ "$revision" != "$FLUTTER_REVISION" ]; then
+            echo "::error::Expected Flutter $FLUTTER_VERSION at $FLUTTER_REVISION, got $version at $revision" >&2
+            exit 1
+          fi
+          echo "Flutter $version at $revision"
+
+      - name: Mobile gate
+        # The mobile stage of the local gate, unchanged, so CI and a laptop cannot disagree about
+        # what it checks: dependencies from the lockfile only, dart format, design tokens and
+        # strings current, flutter analyze, the architecture and platform guards, the tests with
+        # coverage, lib/core line coverage >= 80%, and the Android debug APK. The stage also runs
+        # the repository hygiene, user guide and docs checks that every verify.sh stage runs.
+        run: tools/verify.sh mobile
 
   mutation:
     name: Mutation testing
@@ -251,10 +340,11 @@ jobs:
       contents: read
     steps:
       # fetch-depth: 0 so PIT's SCM goal can diff against the base branch.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
@@ -275,7 +365,7 @@ jobs:
 
       - name: Upload mutation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-reports
           path: backend/target/pit-reports/
@@ -288,8 +378,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: gitleaks
         # Pinned to a commit, not the moving `v2` tag: a tag can be repointed at any commit,
@@ -313,17 +404,19 @@ jobs:
         # `actions` analyses the workflow files themselves. java-kotlin arrived with backend/.
         language: [javascript-typescript, java-kotlin, actions]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         if: matrix.language == 'java-kotlin'
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3.39.5
         with:
           # NOT `language:` — that input does not exist, and CodeQL only emits a warning for
           # an unknown input, so the misspelling silently disabled the matrix.
           languages: ${{ matrix.language }}
           queries: security-extended
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/autobuild@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3.39.5
+      - uses: github/codeql-action/analyze@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3.39.5

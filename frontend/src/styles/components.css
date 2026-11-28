@@ -30,6 +30,18 @@
   gap: var(--space-3);
 }
 
+/* A card's heading with its primary action pushed to the far end. Shared rather than repeated:
+   four screens use it, and when it lived in each page's own stylesheet the fifth one to need it
+   simply looked different. */
+.section-head {
+  justify-content: space-between;
+  margin-block-end: var(--space-3);
+}
+
+.section-head .card-title {
+  margin-block-end: 0;
+}
+
 .page-narrow {
   max-inline-size: 32rem;
 }
@@ -163,6 +175,15 @@
 
 .btn-danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  /* The text darkens with the background. Without this the hover tint takes the contrast to
+     4.48:1 — a hair under the 4.5:1 AA needs — which axe caught on a phone-width run where the
+     tap left the button hovered. The same tint is used by every destructive button in the app,
+     so this was wrong everywhere and visible nowhere.
+     A role token, not a ramp step: accent-800 was the light theme's answer, and on the dark
+     theme's tint it measured 1.2:1. CI caught that one, on the same phone-width tap, because its
+     headless shell keeps the hover where the full Chromium used locally did not. */
+  color: var(--color-accent-text-hover);
+  border-color: var(--color-accent-text-hover);
 }
 
 .btn-small {
@@ -241,6 +262,23 @@ a.link {
 
 select.input {
   padding-inline-end: var(--space-6);
+}
+
+/* A checkbox and its words are one target: the whole label is clickable, and the box keeps a
+   24px hit area so a thumb can find it (WCAG 2.5.8). */
+.checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.checkbox input[type='checkbox'] {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-primary);
 }
 
 /* ---- alerts ------------------------------------------------------------------------------ */
@@ -388,6 +426,27 @@ dialog.dialog::backdrop {
 .dialog-title {
   font-size: 1.5rem;
   margin-block-end: var(--space-3);
+}
+
+/*
+ * The dialog's heading stays put while its body scrolls.
+ *
+ * The dialog is its own scroll container with padding on all sides, so a heading that scrolls
+ * with the body slides up UNDER the dialog's own top edge and renders half-cut — which is what
+ * two user guides photographed. Sticky, full-bleed and opaque, exactly as .dialog-actions is at
+ * the other end: the same problem, and it already had this answer at the bottom.
+ */
+.dialog > form > .card-title,
+.dialog > .card-title,
+.dialog > form > .dialog-title,
+.dialog > .dialog-title {
+  position: sticky;
+  inset-block-start: calc(var(--space-6) * -1);
+  z-index: 1;
+  margin-inline: calc(var(--space-6) * -1);
+  margin-block-start: calc(var(--space-6) * -1);
+  padding: var(--space-6) var(--space-6) var(--space-3);
+  background: var(--color-surface);
 }
 
 /*

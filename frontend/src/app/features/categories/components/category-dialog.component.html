@@ -1,0 +1,75 @@
+<dialog appModal class="dialog" aria-labelledby="category-dialog-title" (closed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="category-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="category-name">{{ 'categories.name' | t }}</label>
+      <input
+        id="category-name"
+        class="input"
+        type="text"
+        formControlName="name"
+        maxlength="60"
+        autocomplete="off"
+        aria-describedby="category-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.name" errorId="category-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="category-parent">{{ 'categories.parent' | t }}</label>
+      <select
+        id="category-parent"
+        class="input"
+        formControlName="parentId"
+        aria-describedby="category-parent-hint"
+      >
+        <option value="">{{ 'categories.noParent' | t }}</option>
+        @for (parent of parents(); track parent.id) {
+          <option [value]="parent.id">{{ parent.name }}</option>
+        }
+      </select>
+      @if (hasChildren()) {
+        <!-- Said rather than hidden: the server refuses this with category-depth-exceeded, and
+             somebody who cannot move it should learn why. -->
+        <p class="field-hint" id="category-parent-hint">{{ 'categories.hasChildrenHint' | t }}</p>
+      } @else {
+        <p class="field-hint" id="category-parent-hint">{{ 'categories.parentHint' | t }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="category-kind">{{ 'categories.kind' | t }}</label>
+      <select
+        id="category-kind"
+        class="input"
+        formControlName="kind"
+        aria-describedby="category-kind-error"
+      >
+        @for (kind of kinds; track kind) {
+          <option [value]="kind">{{ kindKey(kind) | t }}</option>
+        }
+      </select>
+      @if (editing()) {
+        <p class="field-hint">{{ 'categories.kindFixedHint' | t }}</p>
+      } @else if (kindLocked()) {
+        <p class="field-hint">{{ 'categories.kindFromParentHint' | t }}</p>
+      }
+      <app-field-error [control]="form.controls.kind" errorId="category-kind-error" />
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

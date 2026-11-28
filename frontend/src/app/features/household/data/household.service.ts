@@ -31,9 +31,9 @@ export class HouseholdService {
   }
 
   members(): Observable<Member[]> {
-    return this.http.get<Page<Member>>(`${BASE}/members`, { params: { size: 200 } }).pipe(
-      map((page) => page.content),
-    );
+    return this.http
+      .get<Page<Member>>(`${BASE}/members`, { params: { size: 200 } })
+      .pipe(map((page) => page.content));
   }
 
   changeRole(membershipId: string, role: HouseholdRole): Observable<Member> {

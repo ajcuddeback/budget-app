@@ -38,11 +38,16 @@ import org.springframework.context.annotation.Primary;
  *   <li>deleting an account with history is {@code 409 account-not-empty}, and the row survives.
  * </ul>
  *
- * <p><b>This is not mocking something we own and could use for real.</b> There is no transactions
- * table until slice 5 — docs/guides/testing-style.md's rule is about substituting things that
- * exist. What is substituted here is the slice that does not exist yet, through the seam built for
- * it, and the production bean {@code NoTransactionsRecorded} is the truthful implementation for the
- * schema as it actually stands.
+ * <p><b>Why a substitute now that transactions are real.</b> This class drives the balance
+ * arithmetic and the two {@code 409}s through cases a real table makes laborious to set up — a
+ * zero-sum account that still has history, an account asked about but absent from the totals map,
+ * the batching assertion that the list endpoint asks once rather than once per row. {@code
+ * TransactionIT} covers the same rules end to end against real rows — {@code
+ * recording_a_transaction_changes_the_accounts_balance}, {@code
+ * an_account_with_transactions_can_no_longer_be_deleted_or_re_denominated} and {@code
+ * an_account_whose_transactions_net_to_zero_still_has_history} — which is what proves {@code
+ * PostedTransactions} agrees with what is pretended here. Without those, this file would be
+ * asserting a contract nothing implements.
  */
 class AccountBalanceIT extends ApiTestBase {
 
@@ -271,7 +276,7 @@ class AccountBalanceIT extends ApiTestBase {
     }
 
     /**
-     * What slice 5 will do, with the sums supplied by the test instead of by a table.
+     * What {@code PostedTransactions} does, with the sums supplied by the test instead of a table.
      *
      * <p>Recording a total also records that the account has history, because that is the only
      * combination a real transactions table can produce: a row exists, and it contributes.

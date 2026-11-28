@@ -1,0 +1,155 @@
+<ul class="ledger">
+  @for (transaction of transactions(); track transaction.id) {
+    <li class="ledger-row" [class.is-busy]="busyId() === transaction.id">
+      <div class="row-main">
+        <p class="row-primary">
+          <span class="row-payee">
+            @if (transaction.transfer) {
+              <!-- Not "No payee": a transfer has none by nature, and a blank where a name goes
+                   reads as data somebody forgot to enter. -->
+              {{ transferDirectionKey(transaction) | t }}
+            } @else if (transaction.payeeName) {
+              <!-- Isolated: an imported payee can carry right-to-left overrides, and they must not
+                   reorder the amount beside it. -->
+              <bdi dir="auto">{{ transaction.payeeName }}</bdi>
+            } @else {
+              <span class="unnamed">{{ 'transactions.noPayee' | t }}</span>
+            }
+          </span>
+          <span
+            class="row-amount"
+            [class.outgoing]="outgoing(transaction)"
+            [class.incoming]="!outgoing(transaction) && !transaction.transfer"
+          >
+            {{ transaction.amount | money: transaction.currency }}
+          </span>
+        </p>
+
+        <p class="row-secondary">
+          <span class="row-date">{{ transaction.date | dateOnly }}</span>
+
+          @if (showAccount()) {
+            <span class="row-sep" aria-hidden="true">·</span>
+            <span class="row-account">{{ transaction.accountName }}</span>
+          }
+
+          <span class="row-sep" aria-hidden="true">·</span>
+          @if (transaction.transfer) {
+            <!-- A transfer is neither income nor spending, so no category could be right for it.
+                 Saying "needs a category" here would put an unanswerable task in front of
+                 somebody; the badge below says what it actually is. -->
+            <span class="row-category">{{ 'transactions.betweenAccounts' | t }}</span>
+          } @else if (transaction.categoryName) {
+            <span class="row-category">
+              @if (transaction.categoryParentName) {
+                <!-- Composed through a template so a right-to-left locale can reorder it. -->
+                {{
+                  'transactions.categoryPath'
+                    | t
+                      : {
+                          parent: transaction.categoryParentName,
+                          name: transaction.categoryName,
+                        }
+                }}
+              } @else {
+                {{ transaction.categoryName }}
+              }
+            </span>
+          } @else {
+            <!-- A state to act on, not a blank to skim past. -->
+            <span class="needs-category">{{ 'transactions.needsCategory' | t }}</span>
+          }
+
+          @if (transaction.status !== 'CLEARED') {
+            <span class="row-sep" aria-hidden="true">·</span>
+            <span class="badge">{{ statusKey(transaction.status) | t }}</span>
+          }
+
+          @if (transaction.transfer) {
+            <span class="row-sep" aria-hidden="true">·</span>
+            <span class="badge">{{ 'transactions.transfer' | t }}</span>
+          }
+        </p>
+
+        @if (transaction.note) {
+          <p class="row-note">{{ transaction.note }}</p>
+        }
+      </div>
+
+      @if (canWrite()) {
+        <div class="cluster row-actions">
+          @if (transaction.transfer) {
+            @if (groupId(transaction); as transferGroupId) {
+              <!-- Both act on the pair. A leg on its own is refused by the server. -->
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="transferEditRequested.emit(transaction)"
+              >
+                {{ 'common.edit' | t }}
+              </button>
+              <!-- Undoes a pair, however it was made: nothing records whether it came from
+                   Move money or from two statement rows (file-import.md rule 12). -->
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="splitRequested.emit(transaction)"
+              >
+                {{ 'transactions.split' | t }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="transferDeleteRequested.emit(transaction)"
+              >
+                {{ 'common.delete' | t }}
+              </button>
+            } @else {
+              <!-- The ledger has not said which transfer this is half of, so there is nothing
+                   honest to offer: a leg cannot be edited or deleted alone. -->
+              <p class="row-hint">{{ 'transactions.transferPairOnly' | t }}</p>
+            }
+          } @else {
+            @if (!transaction.categoryId && !transaction.transfer) {
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [disabled]="busyId() === transaction.id"
+                (click)="categoriseRequested.emit(transaction)"
+              >
+                {{ 'transactions.categorise' | t }}
+              </button>
+            }
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              [disabled]="busyId() === transaction.id"
+              (click)="editRequested.emit(transaction)"
+            >
+              {{ 'common.edit' | t }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              [disabled]="busyId() === transaction.id"
+              (click)="pairRequested.emit(transaction)"
+            >
+              {{ 'transactions.pair' | t }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger btn-small"
+              [disabled]="busyId() === transaction.id"
+              (click)="deleteRequested.emit(transaction)"
+            >
+              {{ 'common.delete' | t }}
+            </button>
+          }
+        </div>
+      }
+    </li>
+  }
+</ul>

@@ -22,7 +22,9 @@ import { FieldErrorComponent } from './field-error.component';
         class="input"
         [id]="fieldId()"
         [formControl]="control()"
-        [attr.aria-describedby]="hint() ? fieldId() + '-hint ' + fieldId() + '-error' : fieldId() + '-error'"
+        [attr.aria-describedby]="
+          hint() ? fieldId() + '-hint ' + fieldId() + '-error' : fieldId() + '-error'
+        "
         [attr.aria-invalid]="control().invalid && control().touched ? 'true' : null"
       >
         @if (emptyLabel(); as empty) {

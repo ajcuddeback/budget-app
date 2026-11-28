@@ -39,9 +39,10 @@ test('@doc create your account on a new instance', async ({ page, doc }) => {
 
     await page.getByLabel('Password').fill('a long fixture passphrase');
     await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL(/\/household$/);
-    await expect(page.getByRole('heading', { name: 'Household', level: 1 })).toBeVisible();
-    await doc.capture('setup-done', 'The Household screen you land on after creating your account.', { fullPage: true });
+    // Signing in lands on the ledger now: it is the screen somebody opens Budget Owl to use.
+    await expect(page).toHaveURL(/\/transactions$/);
+    await expect(page.getByRole('heading', { name: 'Transactions', level: 1 })).toBeVisible();
+    await doc.capture('setup-done', 'The Transactions screen you land on after creating your account, with nothing recorded yet.', { fullPage: true });
 });
 
 test('@doc sign in', async ({ page, doc }) => {

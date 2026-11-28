@@ -33,7 +33,9 @@ describe('AuthService', () => {
   it('knows nobody is signed in when the server says 401, and asks only once', async () => {
     const first = auth.ensureLoaded();
     const second = auth.ensureLoaded();
-    http.expectOne('/api/auth/me').flush({ code: 'not-authenticated' }, { status: 401, statusText: 'x' });
+    http
+      .expectOne('/api/auth/me')
+      .flush({ code: 'not-authenticated' }, { status: 401, statusText: 'x' });
     await Promise.all([first, second]);
 
     expect(auth.isAuthenticated()).toBe(false);
@@ -91,7 +93,7 @@ describe('AuthService', () => {
     expect(auth.isAuthenticated()).toBe(false);
   });
 
-  it('logs in with credentials, takes the profile, and applies the member\'s language', async () => {
+  it("logs in with credentials, takes the profile, and applies the member's language", async () => {
     const use = vi.spyOn(TestBed.inject(I18nService), 'use').mockResolvedValue();
     const login = auth.login({ email: 'alex@example.test', password: PASSPHRASE });
     const request = http.expectOne('/api/auth/login');
@@ -106,10 +108,9 @@ describe('AuthService', () => {
 
   it('rejects a login with a typed error and stays signed out', async () => {
     const login = auth.login({ email: 'a@example.test', password: 'nope' });
-    http.expectOne('/api/auth/login').flush(
-      { code: 'authentication-failed' },
-      { status: 401, statusText: 'x' },
-    );
+    http
+      .expectOne('/api/auth/login')
+      .flush({ code: 'authentication-failed' }, { status: 401, statusText: 'x' });
 
     await expect(login).rejects.toMatchObject({ status: 401, code: 'authentication-failed' });
     expect(auth.isAuthenticated()).toBe(false);
@@ -161,6 +162,8 @@ describe('AuthService', () => {
     await auth.sessionEnded();
 
     expect(auth.isAuthenticated()).toBe(false);
-    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { reason: 'expired' } });
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { reason: 'expired' },
+    });
   });
 });

@@ -1,0 +1,580 @@
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { amountFraction, compareAmounts, isAmount } from '../../core/money';
+
+/**
+ * One point on a line: what was owed at the start of that month.
+ *
+ * `label` arrives **already formatted** for the viewer's locale ("Apr 2027") because a
+ * presentational component has no business holding a locale, and `month` is the raw `YYYY-MM` the
+ * server sent, which is what a marker is matched against.
+ */
+export interface ChartPoint {
+  readonly month: string;
+  readonly label: string;
+  /** A decimal string, as the API sent it. Never parsed into a figure — see the class notes. */
+  readonly amount: string;
+}
+
+/** One line. */
+export interface ChartSeries {
+  readonly id: string;
+  /** Already translated by the page that owns the chart. */
+  readonly name: string;
+  /**
+   * What this line's two ends say, in the household's own words — *"Avalanche: $26,480 in December
+   * 2026 down to $0 in June 2029"*. **This is the chart's text alternative**, so it is required
+   * rather than optional: a line a screen reader cannot read is a picture of somebody's money.
+   *
+   * Composed by the page from the same response fields the points came from, because the sentence
+   * needs a translation catalogue and a currency formatter and this component has neither.
+   */
+  readonly said: string;
+  readonly points: readonly ChartPoint[];
+  /** Two roles, drawn differently in weight **and** in dash, never in colour alone. */
+  readonly role: 'selected' | 'compared';
+  /**
+   * The stroke's colour, for two lines that are **peers** rather than a choice and its
+   * alternative — income and spending (docs/features/reporting.md). It changes the colour and
+   * nothing else: `role` still decides weight and dash, so the pair stays distinguishable in
+   * greyscale (WCAG 1.4.1). Absent, the debt plan's colours apply.
+   *
+   * The colour itself is the page's: `--chart-tone-accent` and `--chart-tone-accent-2`, falling
+   * back to the accent roles, so a page can step a tone for contrast or for dark mode without this
+   * component knowing why.
+   */
+  readonly tone?: 'accent' | 'accent-2';
+}
+
+/** An optional vertical mark — a payoff month, a statement date. */
+export interface ChartMarker {
+  /** `YYYY-MM`, matched against {@link ChartPoint.month}. */
+  readonly month: string;
+  /** Already translated, and shown. */
+  readonly label: string;
+}
+
+interface PlottedLine {
+  readonly id: string;
+  readonly name: string;
+  readonly points: string;
+  readonly compared: boolean;
+  readonly tone: 'accent' | 'accent-2' | null;
+}
+
+/** The month range the chart is drawn against, shared by every line and the marker. */
+interface Axis {
+  readonly from: number;
+  readonly months: number;
+  readonly firstLabel: string;
+  readonly lastLabel: string;
+}
+
+interface Plot {
+  readonly lines: readonly PlottedLine[];
+  readonly firstLabel: string;
+  readonly lastLabel: string;
+  readonly markerX: number | null;
+  /** Two lines that turn out to be one. See {@link COINCIDENT_TOLERANCE}. */
+  readonly coincident: boolean;
+}
+
+/**
+ * How close two lines have to be before drawing both of them is a lie.
+ *
+ * **0.5% of the chart's largest value.** The plot is 11rem — about 176px — tall, so half a percent
+ * of it is under one CSS pixel: two lines nearer than that cannot be told apart at any width this
+ * component is given, and a legend offering two keys over one visible stroke reads as a line that
+ * failed to render rather than as two answers that agree.
+ *
+ * It is a **display** threshold and nothing else. The figures are unchanged, both lines' sentences
+ * stay in the text alternative, and the page's own comparison still reports each strategy's total
+ * separately — what is suppressed is a second stroke nobody could see, not a difference.
+ *
+ * **All of them or none.** Collapsing a subset would key two lines together and leave a third
+ * keyed separately over the same pixels, which is the original confusion rearranged. The case is
+ * not hypothetical: choosing *Your own order* from the avalanche order makes all three of the
+ * plan's lines identical, and that is the first thing a household sees after choosing it.
+ */
+const COINCIDENT_TOLERANCE = 0.005;
+
+/**
+ * Two labelled lines over months, as inline SVG.
+ *
+ * **No charting library and no CDN.** A self-hoster's instance works standing alone
+ * (non-negotiable #9), and a chart is a polyline — importing a dependency to draw one would buy
+ * features nothing here needs at the cost of the one property the product cannot trade.
+ *
+ * Three things about it are rules rather than taste:
+ *
+ * - **It plots what it is given and never resamples.** The server already thins a long line to a
+ *   bounded number of points and reports `seriesMonthStride` with it; a component that re-sampled
+ *   would draw a different shape from the one the server computed, and the axis labels would stop
+ *   describing the data.
+ * - **No amount is ever parsed into a number.** An SVG needs coordinates, so each point becomes a
+ *   *dimensionless ratio* of the largest value on the chart, computed in exact `bigint` minor
+ *   units by `core/money.ts`. The figures the chart *states* are the server's own strings.
+ * - **It is readable without seeing it.** The `<svg>` carries `role="img"`, its accessible name,
+ *   and a description built from each line's own sentence — the same dates and the same totals the
+ *   picture shows. A chart that is only a picture fails `tools/ui-check.sh`'s axe pass, and more
+ *   to the point fails the person reading it.
+ */
+@Component({
+  selector: 'app-line-chart',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <figure class="chart">
+      @if (plot(); as drawn) {
+        <!-- viewBox units are percentages of the plot area, stretched to whatever width the card
+             gives it. preserveAspectRatio="none" is what allows that, and non-scaling-stroke is
+             what stops the stretch turning the line into a wedge. -->
+        <svg
+          class="chart-plot"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          role="img"
+          [attr.aria-label]="label()"
+          [attr.aria-describedby]="chartId() + '-description'"
+        >
+          <line
+            class="chart-baseline"
+            x1="0"
+            y1="100"
+            x2="100"
+            y2="100"
+            vector-effect="non-scaling-stroke"
+          />
+          @if (drawn.markerX !== null) {
+            <line
+              class="chart-mark"
+              [attr.x1]="drawn.markerX"
+              y1="0"
+              [attr.x2]="drawn.markerX"
+              y2="100"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @for (line of drawn.lines; track line.id) {
+            <polyline
+              class="chart-line"
+              [class.is-compared]="line.compared"
+              [class.tone-accent]="line.tone === 'accent'"
+              [class.tone-accent-2]="line.tone === 'accent-2'"
+              [attr.points]="line.points"
+              fill="none"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+        </svg>
+
+        <!-- Two labels, not an axis of sixty: the ends are what a person reads off a line. -->
+        <p class="chart-axis" aria-hidden="true">
+          <span>{{ drawn.firstLabel }}</span>
+          <span>{{ drawn.lastLabel }}</span>
+        </p>
+      } @else if (unavailable(); as why) {
+        <p class="chart-unavailable">{{ why }}</p>
+      }
+
+      <!-- The text alternative. Hidden visually because the lines, the legend and the page's own
+           headline already say it on screen; present always, because the picture does not. -->
+      <p class="visually-hidden" [id]="chartId() + '-description'">
+        @for (line of series(); track line.id) {
+          <span>{{ line.said }} </span>
+        }
+        @if (coincident() && coincidentLabel()) {
+          <span>{{ coincidentLabel() }} </span>
+        }
+        @if (marker(); as mark) {
+          <span>{{ mark.label }}</span>
+        }
+      </p>
+
+      <!-- The legend belongs to the lines. With nothing drawn there is nothing to key. -->
+      @if (plot()) {
+        <ul class="chart-legend">
+          @if (coincident() && coincidentLabel()) {
+            <!-- One key for one stroke, naming every series it stands for. Keys over a single
+               visible line is the bug this avoids; dropping a name would be the same bug
+               inverted. -->
+            <li>
+              <span class="chart-swatch" aria-hidden="true"></span>
+              <span>{{ everyName() }}</span>
+            </li>
+          } @else {
+            @for (line of series(); track line.id) {
+              <li>
+                <span
+                  class="chart-swatch"
+                  [class.is-compared]="line.role === 'compared'"
+                  [class.tone-accent]="line.tone === 'accent'"
+                  [class.tone-accent-2]="line.tone === 'accent-2'"
+                  aria-hidden="true"
+                ></span>
+                <span>{{ line.name }}</span>
+              </li>
+            }
+          }
+        </ul>
+      }
+
+      @if (plot() && coincident() && coincidentLabel()) {
+        <!-- Prose, not a legend key: a sentence beside a 1.25rem swatch read as a caption that
+             had lost its label. -->
+        <p class="chart-mark-label" aria-hidden="true">{{ coincidentLabel() }}</p>
+      }
+      @if (plot() && marker(); as mark) {
+        <p class="chart-mark-label" aria-hidden="true">{{ mark.label }}</p>
+      }
+      @if (plot() && assumption()) {
+        <figcaption class="chart-assumption">{{ assumption() }}</figcaption>
+      }
+    </figure>
+  `,
+  styles: `
+    .chart {
+      margin: 0;
+    }
+
+    .chart-plot {
+      inline-size: 100%;
+      /* 11rem, not a token: there is no size scale in the token sheet (design/README.md records
+         the gap), and a CSS variable that does not exist fails silently to the inherited value —
+         it lints clean and renders wrong. Tall enough that a 60-point line is legible, short
+         enough to sit above the fold with the headline on a 390px screen. */
+      block-size: 11rem;
+      display: block;
+      overflow: visible;
+    }
+
+    .chart-baseline {
+      stroke: var(--color-divider);
+      stroke-width: 1;
+    }
+
+    .chart-line {
+      stroke: var(--color-accent-text);
+      /* 2 and 2.5 are stroke widths in device pixels, which no token carries. */
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+
+    /* Weight AND dash, never colour alone: the two lines must be distinguishable in greyscale and
+       by somebody who cannot tell the two accents apart (WCAG 1.4.1). */
+    .chart-line.is-compared {
+      stroke: var(--color-muted);
+      stroke-width: 2;
+      stroke-dasharray: 5 4;
+    }
+
+    /* A peer's colour. After .is-compared, at the same specificity, so it replaces the colour and
+       keeps the dash and the weight. */
+    .chart-line.tone-accent {
+      stroke: var(--chart-tone-accent, var(--color-accent));
+    }
+
+    .chart-line.tone-accent-2 {
+      stroke: var(--chart-tone-accent-2, var(--color-accent-2));
+    }
+
+    .chart-mark {
+      stroke: var(--color-accent-2);
+      stroke-width: 2;
+      stroke-dasharray: 2 3;
+    }
+
+    .chart-axis {
+      display: flex;
+      justify-content: space-between;
+      margin: var(--space-1) 0 0;
+      font-size: 0.8125rem;
+      color: var(--color-muted);
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      list-style: none;
+      margin: var(--space-2) 0 0;
+      padding: 0;
+      font-size: 0.875rem;
+    }
+
+    .chart-legend li {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .chart-swatch {
+      /* A legend key: 1.25rem by 3px of line, matching the stroke it stands for. */
+      inline-size: 1.25rem;
+      block-size: 0;
+      border-block-start: 3px solid var(--color-accent-text);
+    }
+
+    .chart-swatch.is-compared {
+      border-block-start-style: dashed;
+      border-color: var(--color-muted);
+    }
+
+    .chart-swatch.tone-accent {
+      border-color: var(--chart-tone-accent, var(--color-accent));
+    }
+
+    .chart-swatch.tone-accent-2 {
+      border-color: var(--chart-tone-accent-2, var(--color-accent-2));
+    }
+
+    /* Prose where the picture would have been, not an empty box with an axis around it. */
+    .chart-unavailable {
+      margin: 0;
+      color: var(--color-muted);
+      max-inline-size: 60ch;
+    }
+
+    .chart-mark-label,
+    .chart-assumption {
+      margin: var(--space-2) 0 0;
+      font-size: 0.875rem;
+      color: var(--color-muted);
+    }
+  `,
+})
+export class LineChartComponent {
+  /** One or two lines. Anything with fewer than two plottable points is left undrawn. */
+  readonly series = input.required<readonly ChartSeries[]>();
+
+  /** The `<svg>`'s accessible name, already translated — *"Balance to zero"*. */
+  readonly label = input.required<string>();
+
+  /** Unique on the page: the description's id is built from it. */
+  readonly chartId = input.required<string>();
+
+  readonly marker = input<ChartMarker | null>(null);
+
+  /** The assumption the lines were drawn under — *"Both lines assume $560/mo"*. */
+  readonly assumption = input<string>('');
+
+  /**
+   * What to say when there is nothing to draw at all, already translated.
+   *
+   * A chart with no line is a real state — a debt whose payment never covers its interest has no
+   * projection and therefore no series. Rendering the axis, the legend and the assumption around
+   * an empty box reads as a chart that failed to load; this says why instead, and the legend goes
+   * with the lines it was describing.
+   */
+  readonly unavailable = input<string>('');
+
+  /**
+   * What to say when the two lines turn out to coincide, already translated.
+   *
+   * Supplied unconditionally and used only if they do. The component cannot compose the sentence
+   * — it holds no catalogue and no locale — but it is the only thing that knows the geometry, so
+   * the decision is here and the words are the page's.
+   */
+  readonly coincidentLabel = input<string>('');
+
+  /** True when the lines were drawn as one. Drives the legend, which must not claim more. */
+  protected readonly coincident = computed(() => this.plot()?.coincident ?? false);
+
+  /** One key naming every line it stands for: dropping a name would be the same bug inverted. */
+  protected readonly everyName = computed(() =>
+    this.series()
+      .map((line) => line.name)
+      .join(' · '),
+  );
+
+  /**
+   * The geometry, and the only place a figure becomes a number.
+   *
+   * `null` when nothing can be drawn: no line with two plottable points, or every balance zero. A
+   * chart of nothing is not rendered at all — the page says why instead, because an empty axis
+   * reads as a crash.
+   */
+  protected readonly plot = computed<Plot | null>(() => {
+    const lines = this.series();
+    const largest = this.largestAmount(lines);
+    if (largest === null) {
+      return null;
+    }
+
+    // Two series within a hair of each other are drawn once and said once. Overlapping strokes
+    // are indistinguishable from one line that is missing, which is the worse of the two readings.
+    const coincident =
+      lines.length > 1 && lines.every((line) => this.coincide(lines[0], line, largest));
+
+    // One axis for every line, in MONTHS rather than in point indices.
+    //
+    // This is not a nicety. Two series of different lengths — a debt's own pace over 18 months
+    // against the same debt at its minimum over 55 — drawn as "index out of count" each occupy
+    // the full width, so the shorter one appears to reach zero at the far right. The chart then
+    // says the debt clears in 2031 while the page beside it says 2027. Position is time.
+    const span = this.axis(lines);
+    if (span === null) {
+      return null;
+    }
+
+    const plotted: PlottedLine[] = [];
+    for (const line of coincident ? [lines[0]] : lines) {
+      const points = this.polyline(line.points, largest, span);
+      if (points !== null) {
+        plotted.push({
+          id: line.id,
+          name: line.name,
+          points,
+          compared: line.role === 'compared',
+          tone: line.tone ?? null,
+        });
+      }
+    }
+    if (plotted.length === 0) {
+      return null;
+    }
+
+    return {
+      lines: plotted,
+      firstLabel: span.firstLabel,
+      lastLabel: span.lastLabel,
+      markerX: this.markerPosition(span),
+      coincident,
+    };
+  });
+
+  /**
+   * The month range every line is drawn against, and the labels for its two ends.
+   *
+   * `null` when no point carries a month this can place, which is the same answer as "nothing to
+   * draw" — a line without a time axis has no shape.
+   */
+  private axis(lines: readonly ChartSeries[]): Axis | null {
+    let first: { ordinal: number; label: string } | null = null;
+    let last: { ordinal: number; label: string } | null = null;
+    for (const line of lines) {
+      for (const point of line.points) {
+        const ordinal = monthOrdinal(point.month);
+        if (ordinal === null) {
+          continue;
+        }
+        if (first === null || ordinal < first.ordinal) {
+          first = { ordinal, label: point.label };
+        }
+        if (last === null || ordinal > last.ordinal) {
+          last = { ordinal, label: point.label };
+        }
+      }
+    }
+    if (first === null || last === null || first.ordinal === last.ordinal) {
+      return null;
+    }
+    return {
+      from: first.ordinal,
+      months: last.ordinal - first.ordinal,
+      firstLabel: first.label,
+      lastLabel: last.label,
+    };
+  }
+
+  /**
+   * Whether two lines are the same line at this chart's scale.
+   *
+   * Compared as **fractions of the largest value**, not as amounts: the question is whether the
+   * two strokes land on the same pixels, and a $48 gap means one thing on a $300 chart and another
+   * on a $26,000 one. A line of a different length is never collapsed — a plan that runs longer is
+   * a visible difference whatever its balances do.
+   */
+  private coincide(left: ChartSeries, right: ChartSeries, largest: string): boolean {
+    if (left === right) {
+      return true;
+    }
+    if (left.points.length !== right.points.length || left.points.length < 2) {
+      return false;
+    }
+    for (let index = 0; index < left.points.length; index += 1) {
+      // Same month as well as same height: two lines that agree on balances at different dates
+      // are not one line, they are two lines that happen to share a shape.
+      if (left.points[index].month !== right.points[index].month) {
+        return false;
+      }
+      const here = amountFraction(left.points[index].amount, largest);
+      const there = amountFraction(right.points[index].amount, largest);
+      if (here === null || there === null || Math.abs(here - there) > COINCIDENT_TOLERANCE) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** The largest amount anywhere on the chart, as a string. `null` when there is nothing to scale by. */
+  private largestAmount(lines: readonly ChartSeries[]): string | null {
+    let largest: string | null = null;
+    for (const line of lines) {
+      for (const point of line.points) {
+        if (!isAmount(point.amount)) {
+          continue;
+        }
+        if (largest === null || (compareAmounts(point.amount, largest) ?? 0) > 0) {
+          largest = point.amount;
+        }
+      }
+    }
+    // A chart whose largest value is zero has no shape: every point would sit on the baseline.
+    return largest !== null && (compareAmounts(largest, '0') ?? 0) > 0 ? largest : null;
+  }
+
+  /** `"0,12 3.4,18 …"` — the `points` attribute, or `null` for a line that cannot be drawn. */
+  private polyline(points: readonly ChartPoint[], largest: string, span: Axis): string | null {
+    if (points.length < 2) {
+      return null;
+    }
+    const drawn: string[] = [];
+    points.forEach((point) => {
+      const fraction = amountFraction(point.amount, largest);
+      const ordinal = monthOrdinal(point.month);
+      if (fraction === null || ordinal === null) {
+        return;
+      }
+      const x = ((ordinal - span.from) / span.months) * 100;
+      // Clamped at the baseline: an overpaid debt goes below zero, and the chart shows it reaching
+      // zero rather than drawing outside its own box. The figure itself is reported in words.
+      const y = 100 - Math.max(0, Math.min(1, fraction)) * 100;
+      drawn.push(`${round(x)},${round(y)}`);
+    });
+    return drawn.length < 2 ? null : drawn.join(' ');
+  }
+
+  /**
+   * Where the marker's month falls along the axis, or `null` when it is off the chart.
+   *
+   * The same month scale the lines use, so a payoff marker lands on the month it names rather
+   * than on whichever point happened to sit at that index.
+   */
+  private markerPosition(span: Axis): number | null {
+    const mark = this.marker();
+    const ordinal = mark === null ? null : monthOrdinal(mark.month);
+    if (ordinal === null || ordinal < span.from || ordinal > span.from + span.months) {
+      return null;
+    }
+    return round(((ordinal - span.from) / span.months) * 100);
+  }
+}
+
+/**
+ * `"2027-04"` as a count of months, for placing a point along the axis.
+ *
+ * Date arithmetic, not money arithmetic: it decides where a line is drawn, never what it says.
+ * `null` for anything that is not a month, which leaves that point out rather than guessing one.
+ */
+function monthOrdinal(month: string): number | null {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return null;
+  }
+  const [year, inYear] = month.split('-');
+  return Number(year) * 12 + Number(inYear) - 1;
+}
+
+/** Two decimal places is a hundredth of the plot's width — well under a pixel. */
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}

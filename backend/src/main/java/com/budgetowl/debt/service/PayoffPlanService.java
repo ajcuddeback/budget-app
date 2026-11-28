@@ -1,0 +1,786 @@
+package com.budgetowl.debt.service;
+
+import com.budgetowl.common.AmountText;
+import com.budgetowl.common.ConflictException;
+import com.budgetowl.common.ErrorCode;
+import com.budgetowl.common.InvalidRequestException;
+import com.budgetowl.common.Money;
+import com.budgetowl.common.NotFoundException;
+import com.budgetowl.debt.domain.Debt;
+import com.budgetowl.debt.domain.PayoffPlan;
+import com.budgetowl.debt.domain.PayoffPlanSnapshot;
+import com.budgetowl.debt.persistence.DebtRepository;
+import com.budgetowl.debt.persistence.PayoffPlanRepository;
+import com.budgetowl.debt.persistence.PayoffPlanSnapshotRepository;
+import com.budgetowl.household.domain.Household;
+import com.budgetowl.household.domain.HouseholdMember;
+import com.budgetowl.household.service.MembershipService;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Currency;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The payoff plan: an order, an allocation, and when the household is free.
+ *
+ * <p>Scoping and roles work as everywhere else — membership resolved first, every repository call
+ * given that household's id, a {@code VIEWER} never writes. There is exactly one plan per household
+ * (ADR-0026), which is why the route is singular and why the household is the key.
+ *
+ * <p>Four rules are specific to this service:
+ *
+ * <ul>
+ *   <li><b>Both named strategies are computed on every read</b>, whichever is selected. The
+ *       comparison card is a product requirement rather than a view of the selection, and the
+ *       designs refuse to pick: <em>"Avalanche costs $780 less. Snowball clears the Visa three
+ *       months sooner. Either is a good answer."</em>
+ *   <li><b>Nothing derived is stored.</b> The order, the allocation, the payoff months and the
+ *       totals are projected from the plan's two figures and the debts, every time.
+ *   <li><b>A snapshot is written when the plan changes</b>, and never otherwise. It cannot be
+ *       backfilled, so without it <em>"4 months earlier than last month's plan"</em> has nothing to
+ *       compare against.
+ *   <li><b>The chart series is bounded independently of the solver's iteration cap</b>
+ *       (docs/features/debt-plan.md, Security considerations). The projection may iterate 600
+ *       months internally; the response carries at most {@link #MAXIMUM_SERIES_POINTS} points per
+ *       strategy per currency.
+ * </ul>
+ *
+ * <p><b>Nothing here logs an amount.</b> The plan is a statement of disposable income.
+ */
+@Service
+public class PayoffPlanService {
+
+    /**
+     * Points in one chart line, however many months the plan runs.
+     *
+     * <p>A threat-model control, not a display preference: two strategies × every debt × up to 600
+     * months is a response a single cheap {@code GET} can ask for. Beyond this the line is thinned
+     * — every {@code n}th month, with the first and last always kept — so a fifty-year plan is a
+     * readable line rather than six hundred points nobody plots.
+     */
+    public static final int MAXIMUM_SERIES_POINTS = 60;
+
+    private static final Logger log = LoggerFactory.getLogger(PayoffPlanService.class);
+
+    private final MembershipService memberships;
+    private final PayoffPlanRepository plans;
+    private final PayoffPlanSnapshotRepository snapshots;
+    private final DebtRepository debts;
+    private final DebtBalanceService balances;
+    private final PayoffLadder ladder;
+    private final DebtLocks locks;
+
+    public PayoffPlanService(
+            MembershipService memberships,
+            PayoffPlanRepository plans,
+            PayoffPlanSnapshotRepository snapshots,
+            DebtRepository debts,
+            DebtBalanceService balances,
+            PayoffLadder ladder,
+            DebtLocks locks) {
+        this.memberships = memberships;
+        this.plans = plans;
+        this.snapshots = snapshots;
+        this.debts = debts;
+        this.balances = balances;
+        this.ladder = ladder;
+        this.locks = locks;
+    }
+
+    /** The plan as it stands. A {@code VIEWER} may read this, as it may read everything. */
+    @Transactional(readOnly = true)
+    public PlanView plan(UUID actorId) {
+        HouseholdMember membership = memberships.requireMembership(actorId);
+        Household household = membership.household();
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        return view(
+                household,
+                strategyOf(plan),
+                monthlyAmountOf(plan, household.baseCurrency()),
+                plan == null ? 0L : plan.version(),
+                balances.factsFor(household.id(), false));
+    }
+
+    /**
+     * The what-if: <em>"what would £50 more a month buy me?"</em>
+     *
+     * <p><b>Computed, never stored.</b> It is a {@code GET} with query parameters and it writes
+     * nothing — not the amount it was asked about, not a snapshot, not an audit row.
+     *
+     * @param strategy null to keep the selected one
+     * @param monthlyAmount a decimal string, or null to keep the plan's
+     */
+    @Transactional(readOnly = true)
+    public PlanView projection(UUID actorId, String strategy, String monthlyAmount) {
+        HouseholdMember membership = memberships.requireMembership(actorId);
+        Household household = membership.household();
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        Currency currency = household.baseCurrency();
+        return view(
+                household,
+                strategy == null ? strategyOf(plan) : strategyNamed(strategy),
+                monthlyAmount == null
+                        ? monthlyAmountOf(plan, currency)
+                        : AmountText.parse(
+                                monthlyAmount,
+                                currency,
+                                AmountText.Sign.NOT_NEGATIVE,
+                                "monthlyAmount"),
+                plan == null ? 0L : plan.version(),
+                balances.factsFor(household.id(), false));
+    }
+
+    /**
+     * Sets the strategy, the monthly amount and the custom order.
+     *
+     * @throws com.budgetowl.common.ForbiddenException for a {@code VIEWER}. <b>Setting a strategy
+     *     is a write</b>, even though it stores two values
+     * @throws ConflictException {@code stale-version}
+     * @throws NotFoundException if the custom order names a debt that is not this household's
+     */
+    @Transactional
+    public PlanView update(UUID actorId, PlanChanges changes) {
+        HouseholdMember membership = memberships.requireWriteAccess(actorId);
+        Household household = membership.household();
+        Currency currency = household.baseCurrency();
+
+        PayoffPlan plan =
+                plans.findByHouseholdId(household.id())
+                        .orElseGet(
+                                () ->
+                                        PayoffPlan.of(
+                                                household,
+                                                PayoffStrategy.AVALANCHE.name(),
+                                                Money.zero(currency)));
+        requireCurrentVersion(plan.version(), changes.version());
+
+        PayoffStrategy before = strategyNamed(plan.strategy());
+        Money amountBefore = plan.monthlyAmount(currency);
+        if (changes.strategy() != null) {
+            plan.attackIn(strategyNamed(changes.strategy()).name());
+        }
+        if (changes.monthlyAmount() != null) {
+            plan.commit(
+                    AmountText.parse(
+                            changes.monthlyAmount(),
+                            currency,
+                            AmountText.Sign.NOT_NEGATIVE,
+                            "monthlyAmount"));
+        }
+        boolean orderChanged = applyCustomOrder(household.id(), changes.customOrder());
+        boolean changed =
+                orderChanged
+                        || before != strategyNamed(plan.strategy())
+                        || !amountBefore.equals(plan.monthlyAmount(currency));
+
+        // saveAndFlush, not save: @Version is bumped at flush, and flush would otherwise happen at
+        // commit — AFTER the view is built. The response would carry the version the caller already
+        // had, and its next PUT would be refused as stale (AdminService documents the same trap).
+        PayoffPlan saved = plans.saveAndFlush(plan);
+        PlanView view =
+                view(
+                        household,
+                        strategyNamed(saved.strategy()),
+                        saved.monthlyAmount(currency),
+                        saved.version(),
+                        balances.factsFor(household.id(), false));
+
+        if (changed) {
+            // Only on a real change. A snapshot per no-op PUT would fill the table with rows that
+            // compare a plan to itself — and ux_payoff_plan_snapshots_household_taken_at_currency
+            // exists to stop a retry writing two answers to "what did the plan say last time".
+            takeSnapshot(household, saved, view);
+        }
+        log.info(
+                "debt plan updated householdId={} byUserId={} strategy={} changed={}",
+                household.id(),
+                actorId,
+                saved.strategy(),
+                changed);
+        return view;
+    }
+
+    /**
+     * What the plan allocates to each debt, under the selected strategy.
+     *
+     * <p>The source of the third label in the terms panel — <em>from your plan</em> — and of the
+     * rung and the "paying" column in the debt list. {@code DebtService} calls this with the
+     * household it has already resolved from the caller's membership and the facts it has already
+     * derived, so one request does not resolve the household twice or derive the same balances
+     * twice.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, PlanAllocation> allocationsFor(Household household, List<DebtFacts> facts) {
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        PayoffStrategy strategy = strategyOf(plan);
+        Currency base = household.baseCurrency();
+        Map<UUID, PlanAllocation> allocations = new HashMap<>();
+        for (Map.Entry<Currency, List<DebtFacts>> group : groupByCurrency(facts).entrySet()) {
+            Money amount = groupAmount(plan, base, group.getKey(), group.getValue());
+            PayoffProjection projection =
+                    ladder.project(
+                            strategy,
+                            amount,
+                            ladderDebts(group.getValue()),
+                            firstMonth(),
+                            paidOutsideTheLadder(facts, group.getKey()));
+            if (projection instanceof PayoffProjection.Ranked ranked) {
+                for (PayoffProjection.Rung rung : ranked.rungs()) {
+                    allocations.put(
+                            rung.debt().id(),
+                            new PlanAllocation(
+                                    rung.rung(),
+                                    rung.minimum(),
+                                    rung.extra(),
+                                    rung.payoffMonth(),
+                                    rung.totalInterest()));
+                }
+            }
+        }
+        return Map.copyOf(allocations);
+    }
+
+    /**
+     * What the plan puts towards debt beyond the minimums, in the base currency: {@code
+     * monthlyAmount − Σ minimums}, with the minimums of exactly the debts the plan ranks.
+     *
+     * <p>For the Bills &amp; Income summary, which <b>reports it beside {@code left} and never
+     * subtracts it</b> (docs/features/goals.md, decision 3): goals and the plan are not coupled by
+     * arithmetic, and the only interaction is a sentence when the extra exceeds what is left. No
+     * projection is computed, for the reason {@link #selectedStrategyFor} gives.
+     *
+     * @return empty with no plan row, or with a plan below its minimums — there is no extra then,
+     *     and a negative one would read as money coming back
+     */
+    @Transactional(readOnly = true)
+    public Optional<Money> extraFor(Household household, List<DebtFacts> facts) {
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        if (plan == null) {
+            return Optional.empty();
+        }
+        Currency base = household.baseCurrency();
+        Money minimums = Money.zero(base);
+        for (DebtFacts debt : facts) {
+            if (debt.isInThePlan() && debt.debt().currency().equals(base)) {
+                minimums = minimums.plus(debt.debt().minimumPayment());
+            }
+        }
+        Money extra = plan.monthlyAmount(base).minus(minimums);
+        return extra.isNegative() ? Optional.empty() : Optional.of(extra);
+    }
+
+    /**
+     * The selected strategy's name, with no projection computed.
+     *
+     * <p>The debt list needs the label — <em>"Avalanche order"</em> — and nothing else from the
+     * plan, and computing both strategies to read one string would make the cheapest read on the
+     * page the most expensive query behind it.
+     */
+    @Transactional(readOnly = true)
+    public String selectedStrategyFor(UUID householdId) {
+        return strategyOf(plans.findByHouseholdId(householdId).orElse(null)).name();
+    }
+
+    /** Whether the household has set a plan at all. A {@code VIEWER} may read this. */
+    @Transactional(readOnly = true)
+    public boolean hasPlan(UUID actorId) {
+        Household household = memberships.requireMembership(actorId).household();
+        return plans.findByHouseholdId(household.id()).isPresent();
+    }
+
+    /**
+     * What a one-off payment against one base-currency debt would do to its payoff month and to the
+     * debt-free month, under the selected strategy — <b>computed, never stored</b>.
+     *
+     * <p>For the weekly check-in's debt choice (<em>"Moves Visa •8823 from Apr 2027 to Mar
+     * 2027"</em>). The caller passes the balance the payment would leave, which it takes from
+     * {@link DebtPaymentService#preview} — the real write path's split, discarded — so this cannot
+     * disagree with what recording the payment then reports. The ladder is the one every other
+     * projection uses.
+     *
+     * @param balanceAfter what the debt would owe after the payment, in its currency
+     * @param booksTheMonth the payment would carry this month's interest — it is the first in the
+     *     month (ADR-0043) — so the projection after it must not charge this month's interest
+     *     again. Without this, a surplus that is the month's first payment is charged a month of
+     *     interest by the split and a second by the plan, and paying more moves the payoff later
+     * @return the months, each null where a ladder does not clear or the debt is not in it
+     */
+    @Transactional(readOnly = true)
+    public OneOffPayoff oneOffPayment(
+            UUID actorId, UUID debtId, Money balanceAfter, boolean booksTheMonth) {
+        Household household = memberships.requireMembership(actorId).household();
+        Currency base = household.baseCurrency();
+        PayoffPlan plan = plans.findByHouseholdId(household.id()).orElse(null);
+        PayoffStrategy strategy = strategyOf(plan);
+        List<DebtFacts> all = balances.factsFor(household.id(), false);
+        List<DebtFacts> now = new ArrayList<>();
+        for (DebtFacts facts : all) {
+            if (facts.isInThePlan() && facts.debt().currency().equals(base)) {
+                now.add(facts);
+            }
+        }
+        if (now.isEmpty()) {
+            return new OneOffPayoff(null, null, null, null);
+        }
+        Money outside = paidOutsideTheLadder(all, base);
+        Money outsideWith = outside;
+        List<DebtFacts> with = new ArrayList<>(now.size());
+        for (DebtFacts facts : now) {
+            if (!facts.id().equals(debtId)) {
+                with.add(facts);
+            } else if (balanceAfter.isPositive()) {
+                with.add(facts.afterCheckInPayment(balanceAfter, booksTheMonth));
+            } else {
+                // Cleared by the payment, so it leaves the ladder — but what was already paid
+                // towards it this month was still spent this month.
+                outsideWith = outsideWith.plus(facts.firstMonthAt(firstMonth()).alreadyPaid());
+            }
+        }
+        Money amount = groupAmount(plan, base, base, now);
+        PayoffProjection before =
+                ladder.project(strategy, amount, ladderDebts(now), firstMonth(), outside);
+        PayoffProjection after =
+                with.isEmpty()
+                        ? null
+                        : ladder.project(
+                                strategy, amount, ladderDebts(with), firstMonth(), outsideWith);
+        boolean clearedByIt = with.size() < now.size();
+        return new OneOffPayoff(
+                payoffMonthOf(before, debtId),
+                clearedByIt ? firstMonth() : payoffMonthOf(after, debtId),
+                debtFreeMonthOf(before),
+                after == null ? firstMonth() : debtFreeMonthOf(after));
+    }
+
+    /** The months a one-off payment moves. Months, never days: payoff dates are months. */
+    public record OneOffPayoff(
+            YearMonth payoffMonthNow,
+            YearMonth payoffMonthWith,
+            YearMonth debtFreeMonthNow,
+            YearMonth debtFreeMonthWith) {}
+
+    private static YearMonth payoffMonthOf(PayoffProjection projection, UUID debtId) {
+        if (projection instanceof PayoffProjection.Ranked ranked) {
+            for (PayoffProjection.Rung rung : ranked.rungs()) {
+                if (rung.debt().id().equals(debtId)) {
+                    return rung.payoffMonth();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static YearMonth debtFreeMonthOf(PayoffProjection projection) {
+        return projection instanceof PayoffProjection.Ranked ranked ? ranked.debtFreeMonth() : null;
+    }
+
+    // ------------------------------------------------------------------------------- internals
+
+    private PlanView view(
+            Household household,
+            PayoffStrategy strategy,
+            Money monthlyAmount,
+            long version,
+            List<DebtFacts> facts) {
+        Currency base = household.baseCurrency();
+        Map<Currency, List<DebtFacts>> grouped = groupByCurrency(facts);
+
+        List<PlanView.CurrencyGroup> groups = new ArrayList<>(grouped.size());
+        Money minimumsInBase = Money.zero(base);
+        int ranked = 0;
+        for (Map.Entry<Currency, List<DebtFacts>> entry : grouped.entrySet()) {
+            Currency currency = entry.getKey();
+            List<DebtFacts> inCurrency = entry.getValue();
+            ranked += inCurrency.size();
+            Money minimums = totalMinimums(inCurrency);
+            if (currency.equals(base)) {
+                minimumsInBase = minimums;
+            }
+            boolean planCurrency = currency.equals(base);
+            Money amount = planCurrency ? monthlyAmount : minimums;
+            groups.add(
+                    group(
+                            strategy,
+                            currency,
+                            planCurrency,
+                            amount,
+                            minimums,
+                            inCurrency,
+                            paidOutsideTheLadder(facts, currency)));
+        }
+        return new PlanView(
+                strategy.name(),
+                monthlyAmount,
+                minimumsInBase,
+                ranked,
+                List.copyOf(groups),
+                version);
+    }
+
+    private PlanView.CurrencyGroup group(
+            PayoffStrategy strategy,
+            Currency currency,
+            boolean planCurrency,
+            Money amount,
+            Money minimums,
+            List<DebtFacts> inCurrency,
+            Money paidOutside) {
+        List<LadderDebt> ladderDebts = ladderDebts(inCurrency);
+        Map<UUID, DebtFacts> byId = new HashMap<>();
+        for (DebtFacts facts : inCurrency) {
+            byId.put(facts.id(), facts);
+        }
+
+        Map<PayoffStrategy, PayoffProjection> runs = new EnumMap<>(PayoffStrategy.class);
+        for (PayoffStrategy candidate :
+                List.of(PayoffStrategy.AVALANCHE, PayoffStrategy.SNOWBALL, strategy)) {
+            runs.computeIfAbsent(
+                    candidate,
+                    named -> ladder.project(named, amount, ladderDebts, firstMonth(), paidOutside));
+        }
+
+        Money owed = Money.zero(currency);
+        for (DebtFacts facts : inCurrency) {
+            owed = owed.plus(facts.balance());
+        }
+        Money surplus = amount.minus(minimums);
+        boolean belowMinimums = amount.compareTo(minimums) < 0;
+
+        return new PlanView.CurrencyGroup(
+                currency.getCurrencyCode(),
+                planCurrency,
+                amount,
+                minimums,
+                belowMinimums ? Money.zero(currency) : surplus,
+                owed,
+                belowMinimums,
+                projection(strategy, runs.get(strategy), byId, currency, true),
+                projection(
+                        PayoffStrategy.AVALANCHE,
+                        runs.get(PayoffStrategy.AVALANCHE),
+                        byId,
+                        currency,
+                        false),
+                projection(
+                        PayoffStrategy.SNOWBALL,
+                        runs.get(PayoffStrategy.SNOWBALL),
+                        byId,
+                        currency,
+                        false));
+    }
+
+    /**
+     * One strategy's answer, with the rungs only where a screen draws them.
+     *
+     * @param withRungs true for the selected strategy. The two comparison projections carry their
+     *     five figures and their line, and no rungs: the table is drawn once
+     */
+    private PlanView.StrategyProjection projection(
+            PayoffStrategy strategy,
+            PayoffProjection projected,
+            Map<UUID, DebtFacts> byId,
+            Currency currency,
+            boolean withRungs) {
+        if (projected instanceof PayoffProjection.None none) {
+            return new PlanView.StrategyProjection(
+                    strategy.name(),
+                    null,
+                    null,
+                    null,
+                    none.reason().code(),
+                    List.of(),
+                    List.of(),
+                    1);
+        }
+        PayoffProjection.Ranked ranked = (PayoffProjection.Ranked) projected;
+        List<PlanView.Rung> rungs = new ArrayList<>(ranked.rungs().size());
+        if (withRungs) {
+            for (PayoffProjection.Rung rung : ranked.rungs()) {
+                DebtFacts facts = byId.get(rung.debt().id());
+                Debt debt = facts.debt();
+                rungs.add(
+                        new PlanView.Rung(
+                                rung.rung(),
+                                debt.id(),
+                                debt.name(),
+                                debt.kind().name(),
+                                debt.servicer().orElse(null),
+                                facts.balance(),
+                                facts.aprDerivable() ? facts.apr() : null,
+                                facts.aprDerivable(),
+                                rung.minimum(),
+                                rung.extra(),
+                                rung.monthlyAmount(),
+                                rung.payoffMonth(),
+                                rung.totalInterest()));
+            }
+        }
+        BalanceSeries.Series series = series(ranked, currency);
+        return new PlanView.StrategyProjection(
+                strategy.name(),
+                ranked.debtFreeMonth(),
+                ranked.firstWinMonth(),
+                ranked.totalInterest(),
+                ranked.clearsEveryDebt() ? null : Projection.Reason.NEVER_CLEARS.code(),
+                List.copyOf(rungs),
+                series.points(),
+                series.stride());
+    }
+
+    /**
+     * The balance-to-zero line: what the household still owes at the start of each month, across
+     * every debt in the currency.
+     *
+     * <p>Summed over the rungs, because the chart's headline is the plan's own total — <em>"$26,480
+     * → $0 · 31 months on the current plan"</em> — and a rung that has already cleared contributes
+     * nothing to a month rather than dropping out of the line. Bounded by {@link BalanceSeries},
+     * independently of the solver's iteration cap.
+     */
+    private BalanceSeries.Series series(PayoffProjection.Ranked ranked, Currency currency) {
+        int months = 0;
+        for (PayoffProjection.Rung rung : ranked.rungs()) {
+            months = Math.max(months, rung.months().size());
+        }
+        if (months == 0) {
+            return BalanceSeries.Series.empty();
+        }
+        List<Money> opening = new ArrayList<>(months + 1);
+        for (int month = 1; month <= months; month++) {
+            Money owed = Money.zero(currency);
+            for (PayoffProjection.Rung rung : ranked.rungs()) {
+                List<ProjectionMonth> rows = rung.months();
+                if (month <= rows.size()) {
+                    owed = owed.plus(rows.get(month - 1).balance());
+                }
+            }
+            opening.add(owed);
+        }
+        // Where the line lands: what is left after the last month any rung pays in, clamped. A
+        // plan whose final payment overshoots has not left the household owing a negative amount.
+        Money last = Money.zero(currency);
+        for (PayoffProjection.Rung rung : ranked.rungs()) {
+            List<ProjectionMonth> rows = rung.months();
+            Money after = rows.get(rows.size() - 1).balanceAfter();
+            if (after.isPositive()) {
+                last = last.plus(after);
+            }
+        }
+        opening.add(last);
+
+        YearMonth firstMonth = ranked.rungs().get(0).months().get(0).month();
+        return BalanceSeries.of(firstMonth, opening, MAXIMUM_SERIES_POINTS);
+    }
+
+    /**
+     * Writes each currency's projection as it stands now.
+     *
+     * <p>One instant for every row, which is what {@code
+     * ux_payoff_plan_snapshots_household_taken_at_currency} reads as "one plan change": two
+     * currencies correctly get two rows, and a double-call cannot get two rows for the same
+     * currency at the same instant.
+     */
+    private void takeSnapshot(Household household, PayoffPlan plan, PlanView view) {
+        Instant takenAt = balances.now();
+        for (PlanView.CurrencyGroup group : view.groups()) {
+            PlanView.StrategyProjection selected = group.selected();
+            snapshots.save(
+                    PayoffPlanSnapshot.of(
+                            household,
+                            takenAt,
+                            plan.strategy(),
+                            group.monthlyAmount(),
+                            selected.debtFreeMonth(),
+                            selected.debtFreeMonth() == null ? null : selected.totalInterest()));
+        }
+    }
+
+    /**
+     * Applies the household's own order: rung 1 first, and <b>every debt it leaves out is
+     * cleared</b>.
+     *
+     * @return whether anything actually moved, which is what decides if a snapshot is taken
+     */
+    private boolean applyCustomOrder(UUID householdId, List<UUID> order) {
+        if (order == null) {
+            return false;
+        }
+        Map<UUID, Integer> positions = new HashMap<>();
+        for (int index = 0; index < order.size(); index++) {
+            UUID debtId = order.get(index);
+            if (positions.putIfAbsent(debtId, index) != null) {
+                throw new InvalidRequestException(
+                        ErrorCode.VALIDATION_FAILED,
+                        "a debt appears twice in the custom order",
+                        Map.of("field", "customOrder"));
+            }
+        }
+        // Every id is checked against this household's debts BEFORE the first write. It used to
+        // 404 after the loop, which was correct only because NotFoundException rolls the
+        // transaction back — the comment claimed an ordering the code did not have, and a
+        // refactor that caught the exception, or a writer outside a transaction, would have left
+        // a half-applied order. The whole order is one instruction; now it is one by
+        // construction.
+        List<Debt> ours = debts.findAllForHousehold(householdId, true);
+        Set<UUID> known = new HashSet<>();
+        for (Debt debt : ours) {
+            known.add(debt.id());
+        }
+        if (!known.containsAll(positions.keySet())) {
+            // An id that is not this household's. A 404, as everywhere — never a 403, which would
+            // confirm the row exists somewhere.
+            throw new NotFoundException("no such debt");
+        }
+
+        // Written in the global lock order (DebtLocks.lockOrder), not name order: each UPDATE
+        // takes the debt's row lock, and a writer taking several debts in another order could
+        // deadlock with a check-in completion taking the same ones (ADR-0043).
+        Map<UUID, Debt> byId = new HashMap<>();
+        for (Debt debt : ours) {
+            byId.put(debt.id(), debt);
+        }
+        // And bounded, as every debt write is: a debt held by a hung transaction is a 409.
+        locks.boundWaits();
+        boolean moved = false;
+        for (UUID id : DebtLocks.lockOrder(byId.keySet())) {
+            Debt debt = byId.get(id);
+            Integer position = positions.get(debt.id());
+            if (!java.util.Objects.equals(debt.customOrder().orElse(null), position)) {
+                debt.placeAt(position);
+                debts.saveAndFlush(debt);
+                moved = true;
+            }
+        }
+        return moved;
+    }
+
+    /**
+     * The debts the ladder ranks: active, positive, grouped by currency.
+     *
+     * <p>A rate is never null here — a solved one is solved before the plan runs — and a rate that
+     * could be neither entered nor derived arrives as zero, which is recorded as a known gap in the
+     * feature doc rather than hidden: the debt keeps its minimum and its place rather than
+     * disappearing from the plan.
+     */
+    private List<LadderDebt> ladderDebts(List<DebtFacts> facts) {
+        YearMonth first = firstMonth();
+        List<LadderDebt> ladderDebts = new ArrayList<>(facts.size());
+        for (DebtFacts debt : facts) {
+            ladderDebts.add(
+                    new LadderDebt(
+                            debt.id(),
+                            debt.debt().name(),
+                            debt.balance(),
+                            debt.apr(),
+                            debt.debt().minimumPayment(),
+                            debt.debt().customOrder().orElse(null),
+                            // The plan's month 1 is this month. A payment already recorded in it
+                            // carried its interest, so the plan does not charge it twice
+                            // (ADR-0043).
+                            debt.firstMonthAt(first)));
+        }
+        return List.copyOf(ladderDebts);
+    }
+
+    /** The household's base currency first, then the rest alphabetically — a stable order. */
+    private Map<Currency, List<DebtFacts>> groupByCurrency(List<DebtFacts> facts) {
+        Map<Currency, List<DebtFacts>> grouped = new LinkedHashMap<>();
+        List<DebtFacts> ranked = new ArrayList<>();
+        for (DebtFacts debt : facts) {
+            if (debt.isInThePlan()) {
+                ranked.add(debt);
+            }
+        }
+        ranked.sort(Comparator.comparing(debt -> debt.debt().currency().getCurrencyCode()));
+        for (DebtFacts debt : ranked) {
+            grouped.computeIfAbsent(debt.debt().currency(), currency -> new ArrayList<>())
+                    .add(debt);
+        }
+        return grouped;
+    }
+
+    /**
+     * What was paid this month in {@code currency} towards debts that are not in the ladder — in
+     * practice, a debt this month's payments cleared. It was spent this month all the same, so
+     * month 1 counts it as paid (debt-plan.md decision 10). Archived debts are left out: the
+     * household took them out of the plan.
+     */
+    private Money paidOutsideTheLadder(List<DebtFacts> facts, Currency currency) {
+        YearMonth first = firstMonth();
+        Money paid = Money.zero(currency);
+        for (DebtFacts debt : facts) {
+            if (!debt.isInThePlan()
+                    && !debt.debt().isArchived()
+                    && debt.debt().currency().equals(currency)) {
+                paid = paid.plus(debt.firstMonthAt(first).alreadyPaid());
+            }
+        }
+        return paid;
+    }
+
+    private static Money totalMinimums(List<DebtFacts> facts) {
+        Money minimums = Money.zero(facts.get(0).debt().currency());
+        for (DebtFacts debt : facts) {
+            minimums = minimums.plus(debt.debt().minimumPayment());
+        }
+        return minimums;
+    }
+
+    /**
+     * What a currency group's projection is driven by.
+     *
+     * <p>The plan's monthly amount for the household's own currency, and that group's <b>own
+     * minimums</b> for any other. The surplus exists in one currency and cannot be allocated in
+     * another without a rate the instance may not have (ADR-0022), so a second currency is
+     * projected at its minimums and the group reports the amount it assumed.
+     */
+    private static Money groupAmount(
+            PayoffPlan plan, Currency base, Currency currency, List<DebtFacts> facts) {
+        return plan != null && currency.equals(base)
+                ? plan.monthlyAmount(currency)
+                : totalMinimums(facts);
+    }
+
+    private YearMonth firstMonth() {
+        return YearMonth.from(balances.today());
+    }
+
+    private static PayoffStrategy strategyOf(PayoffPlan plan) {
+        return plan == null ? PayoffStrategy.AVALANCHE : strategyNamed(plan.strategy());
+    }
+
+    private static Money monthlyAmountOf(PayoffPlan plan, Currency currency) {
+        return plan == null ? Money.zero(currency) : plan.monthlyAmount(currency);
+    }
+
+    private static PayoffStrategy strategyNamed(String name) {
+        try {
+            return PayoffStrategy.valueOf(name.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException unknown) {
+            throw new InvalidRequestException(
+                    ErrorCode.VALIDATION_FAILED, "unknown strategy", Map.of("field", "strategy"));
+        }
+    }
+
+    /** See {@code AccountService.requireCurrentVersion} — the clear message, not the control. */
+    private static void requireCurrentVersion(long actual, long expected) {
+        if (actual != expected) {
+            throw new ConflictException(
+                    ErrorCode.STALE_VERSION, "the plan changed since it was read");
+        }
+    }
+}

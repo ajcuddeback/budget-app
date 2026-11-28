@@ -58,13 +58,20 @@ having that conversation with them yourself too.
 
 ## What you'll see
 
-Your account is created and you are signed in straight away. You land on the **Household**
-screen, with your household's name in the **Household name** box and yourself at the top of the
-**Members** list, marked **You** and **Owner**.
+Your account is created and you are signed in straight away. You land on the **Transactions**
+screen, which is where Budget Owl starts every time — it's empty for now, because you haven't
+recorded anything yet.
 
-![The Household screen after setup, showing the household name, base currency and the Members list with one person.](../images/create-your-account--setup-done.png)
+![The Transactions screen you land on after creating your account, with nothing recorded yet.](../images/create-your-account--setup-done.png)
 
-The next thing to do is usually [invite the rest of your household](invite-someone.md).
+Your household already has a set of categories waiting for you, so you can start recording as soon
+as you've added an account.
+
+The usual next steps:
+
+1. [Add an account](add-an-account.md) — Budget Owl needs somewhere to put transactions.
+2. [Record a transaction](record-a-transaction.md).
+3. [Invite the rest of your household](invite-someone.md).
 
 ## Things that can go wrong
 

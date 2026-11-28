@@ -18,21 +18,24 @@ write one from the designs first (`/feature-doc`), not from imagination.
 | 0e | Designs imported; docs reconciled to them | 0d | **Done** |
 | 1 | Backend + frontend skeletons, design tokens, Compose packaging, **the CI gate built for real** | 0e | **Done** |
 | 2 | [Authentication & households](features/authentication-and-households.md) | 1 | **Done** |
-| 3 | Accounts (money containers) | 2 | Next |
-| 4 | Categories + defaults on household creation | 2 | Planned |
-| 5 | Transactions (create, list, edit, delete) | 3, 4 | Planned |
-| 6 | **Envelopes** — set an amount, log against it, fully unsynced | 4, 5 | Planned |
-| 7 | **Bills & Income** — the scheduled page, incl. charge mapping | 5 | Planned |
-| 8 | Transfers between accounts | 5 | Planned |
-| 9 | **Admin console** — the instance the operator runs | 2 | Planned |
-| 10 | **Debt plan & debt detail** — terms solver, payments, strategies | 7 | Planned |
-| 11 | Goals | 5 | Planned |
-| 12 | File import (CSV / OFX / QIF) | 5 | Planned |
-| 13 | Reporting & insights | 5, 7 | Planned |
-| 14 | **Weekly check-in** — the four-step pass | 6, 7, 10 | Planned |
-| 15 | Mobile app (Flutter) | 2–10 | Planned |
+| 3 | [Accounts](features/accounts.md) (money containers) | 2 | **Done** |
+| 4 | [Categories](features/categories.md) + defaults on household creation | 2 | **Done** |
+| 5 | [Transactions](features/transactions.md) (create, list, edit, delete) | 3, 4 | **Done** |
+| 6 | **[Envelopes](features/envelopes.md)** — set an amount, log against it, fully unsynced | 4, 5 | **Done** |
+| 7 | **[Bills & Income](features/bills-and-income.md)** — the scheduled page | 5 | **Done** (charge mapping deferred to 16) |
+| 8 | [Transfers](features/transfers.md) between accounts | 5 | **Done** |
+| 9 | **[Admin console](features/admin-console.md)** — the instance the operator runs | 2 | **Done** |
+| 10 | **[Debt plan & debt detail](features/debt-plan.md)** — terms solver, payments, strategies | 7 | **Done** |
+| 11 | [Goals](features/goals.md) | 5 | **Done** |
+| 12 | [File import](features/file-import.md) (CSV / OFX / QIF), plus the manual "these two rows are one transfer" ledger action | 5, 8 | **Done** |
+| 13 | **[Reporting & insights](features/reporting.md)** — income and spending, where it went, CSV | 5, 7 | **Done** |
+| 14 | **[Weekly check-in](features/weekly-check-in.md)** — the four-step pass | 6, 7, 10, 11 | **Done** |
+| 15 | **[Mobile app (Flutter)](features/mobile-app.md)** — every screen, Android and iOS | 2–14 | **Done** (device checks pending) |
+| 15b | **[Deployment-ready: install, back up, restore, upgrade](features/deployment.md)** — tested restore, upgrade and rollback, a Proxmox VM | 1, 9 | In progress |
 | 16 | Bank connections (pluggable providers) | 12 | Planned |
 | 17 | AI insights / Owl chat (opt-in, local-first) | 13 | Planned |
+
+Reconciliation is not part of slice 13 and has no slice yet ([reporting.md](features/reporting.md), decision 12).
 
 ## Why this order
 
@@ -85,6 +88,9 @@ same change. The required set is:
 `CodeQL (actions)`
 
 Adding a job means adding it to the ruleset too, or it runs and nobody is required to care.
+`Mobile` (the phone app's gate: `tools/verify.sh mobile` on a pinned Flutter release, Android
+debug APK included) was added to `ci.yml` on 2026-11-28 and is **not yet in the ruleset**; the
+repository owner adds it there, then moves it into the list above.
 
 Docker is required on the runner and a missing one fails the job rather than skipping the tests it
 would have run — `tools/verify.sh` distinguishes "not built yet" from "should have run and could

@@ -1,0 +1,27 @@
+<dl class="facts">
+  <div>
+    <dt>{{ 'admin.versionLabel' | t }}</dt>
+    <dd>{{ instance().version }}</dd>
+  </div>
+  <div>
+    <dt>{{ 'admin.setupLabel' | t }}</dt>
+    <dd>
+      @if (instance().setupCompletedAt; as completed) {
+        {{ completed | dateTime }}
+      } @else {
+        {{ 'admin.setupUnrecorded' | t }}
+      }
+    </dd>
+  </div>
+  <div>
+    <dt>{{ 'admin.administratorLabel' | t }}</dt>
+    <dd>
+      {{ instance().administratorName }}
+      <span class="fact-sub">{{ instance().administratorEmail }}</span>
+    </dd>
+  </div>
+  <div>
+    <dt>{{ 'admin.accountCountLabel' | t }}</dt>
+    <dd>{{ instance().accountCount }}</dd>
+  </div>
+</dl>

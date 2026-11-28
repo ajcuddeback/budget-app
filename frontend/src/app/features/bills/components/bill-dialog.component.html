@@ -1,0 +1,110 @@
+<dialog appModal class="dialog" aria-labelledby="bill-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="bill-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="bill-name">{{ 'bills.name' | t }}</label>
+      <input
+        id="bill-name"
+        class="input"
+        type="text"
+        maxlength="80"
+        autocomplete="off"
+        formControlName="name"
+        aria-describedby="bill-name-hint bill-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="bill-name-hint">{{ 'bills.nameHint' | t }}</p>
+      <app-field-error [control]="form.controls.name" errorId="bill-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="bill-amount">{{ 'bills.expectedAmount' | t }}</label>
+      <!-- inputmode="decimal" so a phone opens the keypad, and deliberately type="text": a number
+           input hands back a double (ADR-0006). -->
+      <input
+        id="bill-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="expectedAmount"
+        aria-describedby="bill-amount-hint bill-amount-error"
+        [attr.aria-invalid]="
+          form.controls.expectedAmount.invalid && form.controls.expectedAmount.touched
+            ? 'true'
+            : null
+        "
+      />
+      <p class="field-hint" id="bill-amount-hint">
+        {{ 'bills.expectedAmountHint' | t: { currency: currency() } }}
+      </p>
+      <app-field-error [control]="form.controls.expectedAmount" errorId="bill-amount-error" />
+    </div>
+
+    <app-schedule-fields [form]="form.controls.schedule" idPrefix="bill" />
+
+    <div class="field">
+      <label for="bill-category">{{ 'bills.category' | t }}</label>
+      <select id="bill-category" class="input" formControlName="categoryId">
+        <!-- First, and named: a bill with no category is ordinary, not a missing choice. -->
+        <option value="">{{ 'bills.noCategory' | t }}</option>
+        @for (category of choosableCategories(); track category.id) {
+          <option [value]="category.id">
+            @if (category.parentName) {
+              {{
+                'transactions.categoryPath'
+                  | t: { parent: category.parentName, name: category.name }
+              }}
+            } @else {
+              {{ category.name }}
+            }
+          </option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="bill-varies">
+        <input id="bill-varies" type="checkbox" formControlName="amountVaries" />
+        <span>{{ 'bills.amountVaries' | t }}</span>
+      </label>
+      <p class="field-hint">{{ 'bills.amountVariesHint' | t }}</p>
+    </div>
+
+    @if (varies()) {
+      <div class="field">
+        <label for="bill-tolerance">{{ 'bills.tolerance' | t }}</label>
+        <input
+          id="bill-tolerance"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="tolerance"
+          aria-describedby="bill-tolerance-hint bill-tolerance-error"
+          [attr.aria-invalid]="
+            form.controls.tolerance.invalid && form.controls.tolerance.touched ? 'true' : null
+          "
+        />
+        <p class="field-hint" id="bill-tolerance-hint">
+          {{ 'bills.toleranceHint' | t: { currency: currency() } }}
+        </p>
+        <app-field-error [control]="form.controls.tolerance" errorId="bill-tolerance-error" />
+      </div>
+    }
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

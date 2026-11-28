@@ -1,0 +1,25 @@
+/* Four facts, side by side where there is room and stacked where there is not. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.fact-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}

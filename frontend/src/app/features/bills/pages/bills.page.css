@@ -1,0 +1,270 @@
+/* Every value here is a design token (design/README.md). */
+
+.period-bar {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.period-name {
+  margin: 0;
+}
+
+/* ---- what's left ------------------------------------------------------------------------- */
+
+.headline {
+  margin: 0 0 var(--space-3);
+}
+
+.headline-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.headline-label {
+  display: block;
+  color: var(--color-muted);
+}
+
+/*
+ * Short is marked by the word beside the figure and by the sign in it, not by colour alone — but
+ * the colour must not contradict them either. The olive accent reads as a success, which is the
+ * opposite of what being short means, so this uses the same token .btn-danger does.
+ */
+.headline.is-short .headline-amount {
+  color: var(--color-accent-text);
+}
+
+.terms {
+  gap: var(--space-6);
+  margin: 0 0 var(--space-3);
+  flex-wrap: wrap;
+}
+
+.terms dt {
+  color: var(--color-muted);
+}
+
+.terms dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.overdue-total {
+  color: var(--color-accent-text);
+}
+
+.secondary-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.secondary-label {
+  color: var(--color-muted);
+}
+
+.secondary-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- rows -------------------------------------------------------------------------------- */
+
+.figures {
+  display: flex;
+  flex-direction: column;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.figure-main {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure-note {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.is-busy {
+  opacity: 0.6;
+}
+
+.retired .row-title,
+.retired .figure-main {
+  color: var(--color-muted);
+}
+
+.subheading {
+  margin-block: var(--space-6) var(--space-2);
+  font-size: 1.125rem;
+}
+
+/* ---- bills and their occurrences --------------------------------------------------------- */
+
+.bills,
+.occurrences {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bill {
+  padding-block: var(--space-4);
+}
+
+.bill + .bill {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.bill-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.bill-naming {
+  min-inline-size: 0;
+  flex: 1 1 14rem;
+}
+
+.bill-naming p {
+  margin: 0;
+}
+
+.occurrences {
+  margin-block-start: var(--space-3);
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-divider);
+}
+
+.occurrence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.occurrence + .occurrence {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.occurrence-date {
+  font-weight: 600;
+  min-inline-size: 7rem;
+}
+
+.occurrence-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.occurrence-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.pair-label {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.pair-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* An overdue date says so in words and in a tag; the rule is the quiet third signal. */
+.occurrence.is-overdue {
+  border-inline-start: 2px solid var(--color-accent-text);
+  margin-inline-start: calc(var(--space-4) * -1);
+  padding-inline-start: calc(var(--space-4) - 2px);
+}
+
+.occurrence-actions {
+  margin-inline-start: auto;
+}
+
+@media (max-width: 40rem) {
+  .bill-head,
+  .figures {
+    text-align: start;
+  }
+
+  .figures {
+    align-items: flex-start;
+  }
+
+  .occurrence-actions {
+    margin-inline-start: 0;
+  }
+
+  .headline-amount {
+    font-size: 2rem;
+  }
+}
+
+/*
+ * The corrections, behind a disclosure.
+ *
+ * A weekly bill has four or five occurrences in a month and each one can be paid, paid for a
+ * different amount, skipped, put back to due, or forgotten. Five controls on each of five rows
+ * is twenty-five buttons for one bill, and the only one anybody taps is the first. So that one
+ * stays in the open and the rest live here.
+ */
+.occurrence-more {
+  margin-top: var(--space-2);
+}
+
+.occurrence-more > summary {
+  cursor: pointer;
+  color: var(--color-muted);
+  padding: var(--space-1) 0;
+  /* Underlined, so it reads as a control without the focus ring — which a mouse user never
+     sees. Colour alone would not do it. */
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.occurrence-more > summary:hover {
+  color: var(--color-text);
+}
+
+.occurrence-more > summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.occurrence-more[open] > summary {
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * A skipped amount, which is shown but does not count.
+ *
+ * Struck through AND labelled: a line through a figure is easy to miss at a glance and invisible
+ * to a screen reader, so the words beside it are what actually carry the meaning.
+ */
+.pair-amount.is-discounted {
+  text-decoration: line-through;
+  color: var(--color-muted);
+}

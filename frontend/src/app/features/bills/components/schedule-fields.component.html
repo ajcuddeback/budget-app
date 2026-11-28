@@ -1,0 +1,85 @@
+<fieldset class="schedule" [formGroup]="form()">
+  <legend>{{ legendKey() | t }}</legend>
+
+  <div class="field">
+    <label [attr.for]="idPrefix() + '-kind'">{{ 'bills.howOften' | t }}</label>
+    <select [id]="idPrefix() + '-kind'" class="input" formControlName="kind">
+      @for (kind of kinds; track kind) {
+        <option [value]="kind">{{ kindKey(kind) | t }}</option>
+      }
+    </select>
+  </div>
+
+  @if (showsMonth()) {
+    <div class="field">
+      <label [attr.for]="idPrefix() + '-month'">{{ 'bills.month' | t }}</label>
+      <select [id]="idPrefix() + '-month'" class="input" formControlName="month">
+        <option value="">{{ 'bills.choose' | t }}</option>
+        @for (month of months; track month) {
+          <option [value]="month">{{ month | monthName }}</option>
+        }
+      </select>
+      <app-field-error [control]="form().controls.month" [errorId]="idPrefix() + '-month-error'" />
+    </div>
+  }
+
+  @if (showsDayOfMonth()) {
+    <div class="field">
+      <label [attr.for]="idPrefix() + '-day-of-month'">{{ 'bills.dayOfMonth' | t }}</label>
+      <select [id]="idPrefix() + '-day-of-month'" class="input" formControlName="dayOfMonth">
+        <option value="">{{ 'bills.choose' | t }}</option>
+        @for (day of daysOfMonth; track day) {
+          <option [value]="day">{{ day }}</option>
+        }
+      </select>
+      <!-- Said rather than discovered: the 31st in February is the 28th or 29th. -->
+      <p class="field-hint" [id]="idPrefix() + '-day-of-month-hint'">
+        {{ 'bills.dayOfMonthHint' | t }}
+      </p>
+      <app-field-error
+        [control]="form().controls.dayOfMonth"
+        [errorId]="idPrefix() + '-day-of-month-error'"
+      />
+    </div>
+  }
+
+  @if (showsDayOfWeek()) {
+    <div class="field">
+      <label [attr.for]="idPrefix() + '-day-of-week'">{{ 'bills.dayOfWeek' | t }}</label>
+      <select [id]="idPrefix() + '-day-of-week'" class="input" formControlName="dayOfWeek">
+        <option value="">{{ 'bills.choose' | t }}</option>
+        @for (day of weekdays; track day) {
+          <option [value]="day">{{ isoWeekday(day) | weekdayName }}</option>
+        }
+      </select>
+      <app-field-error
+        [control]="form().controls.dayOfWeek"
+        [errorId]="idPrefix() + '-day-of-week-error'"
+      />
+    </div>
+  }
+
+  @if (showsAnchorDate()) {
+    <div class="field">
+      <label [attr.for]="idPrefix() + '-anchor'">{{ 'bills.anchorDate' | t }}</label>
+      <input
+        [id]="idPrefix() + '-anchor'"
+        class="input"
+        type="date"
+        formControlName="anchorDate"
+        [attr.aria-describedby]="idPrefix() + '-anchor-hint ' + idPrefix() + '-anchor-error'"
+      />
+      <!-- Without an anchor, "every other Wednesday" names two different sets of Wednesdays and
+           nothing says which. -->
+      <p class="field-hint" [id]="idPrefix() + '-anchor-hint'">{{ 'bills.anchorDateHint' | t }}</p>
+      <app-field-error
+        [control]="form().controls.anchorDate"
+        [errorId]="idPrefix() + '-anchor-error'"
+      />
+    </div>
+  }
+
+  @if (showsNothing()) {
+    <p class="field-hint">{{ 'bills.irregularHint' | t }}</p>
+  }
+</fieldset>

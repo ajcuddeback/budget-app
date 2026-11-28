@@ -489,6 +489,43 @@ class SchemaConstraintsIT extends PersistenceTestBase {
     }
 
     @Test
+    void acceptsTheRecoveryUpdateThatDeployRestorePasswordLoginRuns() {
+        // Every other case here proves a refusal. This one proves the way BACK, which is the case
+        // an operator meets at 11pm when their provider has broken and the browser route is the
+        // thing that is gone: deploy/restore-password-login.sh, exactly as it writes it.
+        //
+        // Worth asserting rather than assuming. The recovery script is the last resort behind
+        // four CHECK constraints, it is never exercised by any other test, and a future constraint
+        // that happened to refuse this statement would break it silently — nobody runs the
+        // recovery path until they need it, and that is the worst moment to discover it was
+        // wrong. security-model.md requires this command to exist; a command that the schema
+        // rejects does not.
+        enableOidcWithAnOwnerLogin();
+        jdbc.update("UPDATE instance_settings SET password_login_enabled = false WHERE id = 1");
+
+        assertThatCode(
+                        () ->
+                                jdbc.update(
+                                        """
+                                        UPDATE instance_settings
+                                           SET password_login_enabled = true,
+                                               version = version + 1,
+                                               updated_at = now()
+                                         WHERE id = 1
+                                        """))
+                .doesNotThrowAnyException();
+
+        // And the operator can now sign in, with the provider configuration left alone so they
+        // can fix it and hide password login again.
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT password_login_enabled AND oidc_enabled"
+                                        + " FROM instance_settings WHERE id = 1",
+                                Boolean.class))
+                .isTrue();
+    }
+
+    @Test
     void refusesToClearTheOwnerLoginProofWhilePasswordLoginIsOff() {
         enableOidcWithAnOwnerLogin();
         jdbc.update("UPDATE instance_settings SET password_login_enabled = false WHERE id = 1");

@@ -1,0 +1,63 @@
+<dialog appModal class="dialog" aria-labelledby="plan-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="plan-dialog-title">
+      {{ 'goals.plan.title' | t: { name: goal().name } }}
+    </h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="plan-amount">{{ 'goals.plan.amount' | t }}</label>
+      <input
+        id="plan-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="monthlyAmount"
+        aria-describedby="plan-amount-hint plan-amount-error"
+        [attr.aria-invalid]="
+          form.controls.monthlyAmount.invalid && form.controls.monthlyAmount.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="plan-amount-hint">{{ 'goals.plan.amountHint' | t }}</p>
+      <app-field-error [control]="form.controls.monthlyAmount" errorId="plan-amount-error" />
+    </div>
+
+    <fieldset class="choices stack-tight">
+      <legend class="field-label">{{ 'goals.plan.from' | t }}</legend>
+      <label class="checkbox">
+        <input type="radio" formControlName="from" value="this" />
+        {{ 'goals.plan.fromThis' | t: { month: thisMonth() | period } }}
+      </label>
+      <label class="checkbox">
+        <input type="radio" formControlName="from" value="next" />
+        {{ 'goals.plan.fromNext' | t: { month: followingMonth() | period } }}
+      </label>
+    </fieldset>
+
+    <div class="stack-tight" role="status">
+      @if (fromNextMonth()) {
+        <p class="preview">
+          {{ 'goals.plan.thisMonthUnchanged' | t: { month: thisMonth() | period } }}
+        </p>
+      } @else {
+        @for (said of previewSaid(); track $index) {
+          <p class="preview">{{ said.key | t: said.params }}</p>
+        }
+      }
+    </div>
+    @if (previewUnavailable()) {
+      <p class="card-note">{{ 'goals.previewUnavailable' | t }}</p>
+    }
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ submitLabel() | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

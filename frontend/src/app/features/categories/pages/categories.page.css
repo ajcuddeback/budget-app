@@ -1,0 +1,64 @@
+/* Spacing, type and colour all come from the design tokens (design/README.md). Nothing here is a
+   literal hex or px that a token already carries. */
+
+.kind-group + .kind-group {
+  margin-block-start: var(--space-6);
+}
+
+.kind-heading {
+  color: var(--color-muted);
+  margin-block-end: var(--space-2);
+}
+
+.category-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.branch + .branch {
+  margin-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-divider);
+  padding-block-start: var(--space-2);
+}
+
+.row {
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.row-name {
+  font-weight: 600;
+}
+
+.children {
+  list-style: none;
+  margin: 0;
+  /* Indented with a rule rather than a bullet, so the two levels read as a hierarchy without
+     relying on colour alone. */
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-divider);
+}
+
+.child-name {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.archived-row .row-name {
+  color: var(--color-muted);
+}
+
+.row-actions {
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 40rem) {
+  /* On a phone the actions sit under the name rather than squeezing it to nothing. */
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

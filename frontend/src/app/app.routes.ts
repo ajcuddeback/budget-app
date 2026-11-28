@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth.guards';
+import { authGuard, instanceAdminGuard } from './core/auth.guards';
 
 export const routes: Routes = [
   {
@@ -21,12 +21,58 @@ export const routes: Routes = [
     path: '',
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'household' },
+      // The ledger is the screen somebody opens the app to use, so it is what '/' lands on.
+      { path: '', pathMatch: 'full', redirectTo: 'transactions' },
+      {
+        path: 'transactions',
+        title: 'title.transactions',
+        loadChildren: () =>
+          import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES),
+      },
+      {
+        path: 'check-in',
+        title: 'title.checkIn',
+        loadChildren: () =>
+          import('./features/check-in/check-in.routes').then((m) => m.CHECK_IN_ROUTES),
+      },
+      {
+        path: 'bills',
+        title: 'title.bills',
+        loadChildren: () => import('./features/bills/bills.routes').then((m) => m.BILLS_ROUTES),
+      },
+      {
+        path: 'debt-plan',
+        title: 'title.debtPlan',
+        loadChildren: () => import('./features/debt/debt.routes').then((m) => m.DEBT_ROUTES),
+      },
+      {
+        path: 'goals',
+        title: 'title.goals',
+        loadChildren: () => import('./features/goals/goals.routes').then((m) => m.GOALS_ROUTES),
+      },
+      {
+        path: 'envelopes',
+        title: 'title.envelopes',
+        loadChildren: () =>
+          import('./features/envelopes/envelopes.routes').then((m) => m.ENVELOPES_ROUTES),
+      },
+      {
+        path: 'categories',
+        title: 'title.categories',
+        loadChildren: () =>
+          import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES),
+      },
       {
         path: 'accounts',
         title: 'title.accounts',
         loadChildren: () =>
           import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES),
+      },
+      {
+        path: 'insights',
+        title: 'title.insights',
+        loadChildren: () =>
+          import('./features/insights/insights.routes').then((m) => m.INSIGHTS_ROUTES),
       },
       {
         path: 'household',
@@ -41,10 +87,23 @@ export const routes: Routes = [
           import('./features/devices/devices.routes').then((m) => m.DEVICES_ROUTES),
       },
       {
+        path: 'admin',
+        title: 'title.admin',
+        canActivate: [instanceAdminGuard],
+        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+      },
+      {
         path: 'preferences',
         title: 'title.preferences',
         loadChildren: () =>
           import('./features/preferences/preferences.routes').then((m) => m.PREFERENCES_ROUTES),
+      },
+      {
+        // A household page, not the admin console: importing is a household write by an owner or
+        // a member (file-import.md decision 2, ADR-0029).
+        path: 'import',
+        title: 'title.import',
+        loadChildren: () => import('./features/import/import.routes').then((m) => m.IMPORT_ROUTES),
       },
     ],
   },

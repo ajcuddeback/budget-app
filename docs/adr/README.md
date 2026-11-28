@@ -46,7 +46,7 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0019](0019-flutter-for-mobile.md)                               | Flutter for the mobile app                                      | Accepted                   | 2026-09-05 |
 | [0020](0020-bank-connections-use-user-credentials.md)            | Bank connections use the user's own credentials                 | Accepted                   | 2026-09-05 |
 | [0021](0021-licence-agpl-3.md)                                   | Licence — AGPL-3.0                                              | Accepted                   | 2026-09-25 |
-| [0022](0022-multi-currency-display.md)                           | Multi-currency — store in account currency, convert for display | Accepted                   | 2026-09-07 |
+| [0022](0022-multi-currency-display.md)                           | Multi-currency — store in account currency, convert for display | Accepted (amended by 0039) | 2026-09-07 |
 | [0023](0023-internationalisation.md)                             | Internationalisation — runtime locale, codes over prose         | Accepted                   | 2026-09-07 |
 | [0024](0024-test-quality-enforcement.md)                         | Measure test quality, not just coverage                         | Accepted                   | 2026-09-07 |
 | [0025](0025-bills-are-occurrences-not-generated-transactions.md) | Bills are occurrences with a status, not generated transactions | Accepted                   | 2026-09-09 |
@@ -55,3 +55,16 @@ in `memory/gotchas.md`. Reach for an ADR when the _reasoning_ is what needs pres
 | [0028](0028-account-last-four-digits.md)                         | Store an optional last four digits on an account                | Accepted                   | 2026-10-10 |
 | [0029](0029-one-instance-administrator.md)                       | Exactly one instance administrator, enforced in the schema      | Accepted                   | 2026-11-14 |
 | [0030](0030-the-runtime-cannot-change-the-schema.md)             | The runtime connects as a role that cannot change the schema    | Accepted                   | 2026-11-16 |
+| [0031](0031-envelope-periods-and-rollover.md)                    | An envelope's period is a label; rollover is not built yet      | Accepted                   | 2026-11-20 |
+| [0032](0032-bill-occurrences-are-projected-not-generated.md)     | Bill occurrences are projected on read, not generated           | Accepted                   | 2026-11-20 |
+| [0033](0033-a-transfer-is-a-linked-pair-and-may-cross-currencies.md) | A transfer is a linked pair; a cross-currency pair does not sum to zero | Accepted      | 2026-11-21 |
+| [0034](0034-rotating-the-oidc-client-secret-withdraws-the-proof.md) | Rotating the OIDC client secret withdraws the proof that the provider works | Accepted      | 2026-11-22 |
+| [0035](0035-a-debt-payment-is-a-plan-record-not-a-transaction.md) | A debt payment is a plan record, not a transaction | Accepted      | 2026-11-23 |
+| [0036](0036-the-ladder-never-overpays-a-rung.md) | The ladder never overpays a rung; the leftover flows down the same month | Accepted      | 2026-11-24 |
+| [0037](0037-import-preview-is-stateless-commit-re-uploads-the-file.md) | An import preview is stateless; the commit re-uploads the file and proves it with a digest | Accepted      | 2026-11-25 |
+| [0038](0038-an-imported-file-is-never-stored.md) | An imported file is never stored — not its bytes, not its name, not its hash | Accepted      | 2026-11-25 |
+| [0039](0039-reports-are-per-currency-until-rates-exist.md) | Reports are per currency; exchange rates and the roll-up get their own slice | Accepted      | 2026-11-25 |
+| [0040](0040-next-weeks-figure-is-built-from-the-plan.md) | Next week's spending figure is built from the plan, not from balances | Accepted      | 2026-11-26 |
+| [0041](0041-payee-and-charge-rules-act-only-through-a-completed-check-in.md) | Payee and charge rules act only through a completed check-in | Accepted      | 2026-11-26 |
+| [0042](0042-the-mobile-app-reaches-a-server-over-verified-https-and-keeps-an-encrypted-cache.md) | The mobile app reaches a server only over verified HTTPS, and keeps an encrypted, read-only cache | Accepted      | 2026-11-26 |
+| [0043](0043-interest-is-charged-once-per-debt-per-month.md) | Interest is charged once per debt per calendar month | Accepted      | 2026-11-27 |

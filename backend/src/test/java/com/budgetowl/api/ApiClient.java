@@ -118,9 +118,55 @@ public final class ApiClient {
         return send("DELETE", path, null);
     }
 
+    /**
+     * A {@code GET} asking for one representation, for the endpoints that have more than one — the
+     * reports answer {@code Accept: text/csv} with a file.
+     *
+     * <p>The body is decoded as UTF-8, so a CSV's byte-order mark arrives as {@code U+FEFF} at the
+     * start of the string; {@link #getBytes} keeps the raw bytes when that matters.
+     */
+    public ApiResponse getAccepting(String path, String accept) {
+        return send("GET", path, null, Map.of("Accept", accept));
+    }
+
+    /** The raw bytes of a {@code GET}, with an {@code Accept} header: a file, as it was sent. */
+    public byte[] getBytes(String path, String accept) {
+        HttpRequest.Builder request =
+                HttpRequest.newBuilder(URI.create(baseUrl + path))
+                        .timeout(Duration.ofSeconds(30))
+                        .header("Accept", accept)
+                        .GET();
+        authenticate(request);
+        try {
+            HttpResponse<byte[]> response =
+                    http.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
+            return response.body();
+        } catch (IOException | InterruptedException failure) {
+            if (failure instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException("GET " + path + " failed", failure);
+        }
+    }
+
     public ApiResponse send(String method, String path, String jsonBody) {
+        return send(method, path, jsonBody, Map.of());
+    }
+
+    private void authenticate(HttpRequest.Builder request) {
+        if (bearerToken != null) {
+            request.header("Authorization", "Bearer " + bearerToken);
+        }
+        if (!cookies.isEmpty()) {
+            request.header("Cookie", cookieHeader());
+        }
+    }
+
+    private ApiResponse send(
+            String method, String path, String jsonBody, Map<String, String> extraHeaders) {
         HttpRequest.Builder request =
                 HttpRequest.newBuilder(URI.create(baseUrl + path)).timeout(Duration.ofSeconds(30));
+        extraHeaders.forEach(request::header);
         request.method(
                 method,
                 jsonBody == null

@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * First run.
  *
- * <p><b>Two of the five public routes in the entire application</b> (the others being login, token
- * issue and invitation acceptance). Being public is an explicit, reviewed exception to
- * non-negotiable #2, and both are listed by name in {@code SecurityConfig} — adding a third is a
- * security change.
+ * <p><b>Two of the six public routes in the entire application</b> (the others being login, token
+ * issue, invitation acceptance and {@code GET /api/meta}). Being public is an explicit, reviewed
+ * exception to non-negotiable #2, and both are listed by name in {@code SecurityConfig} — adding a
+ * third is a security change.
  *
  * <p>Neither endpoint decides anything. "Is this instance still fresh?" is not answered by reading
  * a count and trusting it, because two callers can read the same count; it is claimed in the

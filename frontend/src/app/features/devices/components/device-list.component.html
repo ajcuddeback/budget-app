@@ -15,9 +15,13 @@
         <span class="row-sub">
           {{ kindKey(device) | t }}
         </span>
-        <span class="row-sub">{{ 'devices.signedInAt' | t: { date: (device.createdAt | dateTime) } }}</span>
+        <span class="row-sub">{{
+          'devices.signedInAt' | t: { date: (device.createdAt | dateTime) }
+        }}</span>
         @if (device.lastUsedAt) {
-          <span class="row-sub">{{ 'devices.lastUsed' | t: { date: (device.lastUsedAt | dateTime) } }}</span>
+          <span class="row-sub">{{
+            'devices.lastUsed' | t: { date: (device.lastUsedAt | dateTime) }
+          }}</span>
         }
       </div>
       <div class="row-actions">

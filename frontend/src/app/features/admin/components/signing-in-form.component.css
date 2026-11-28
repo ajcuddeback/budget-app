@@ -1,0 +1,52 @@
+/* Three settings that are about three different things, grouped so a screen reader announces
+   which one a checkbox belongs to. The border is the heading's job, not the fieldset's. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.group + .group {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.group-title {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 1.125rem;
+}
+
+/* `.alert p` has no margin, which is right for a block of one paragraph and wrong the moment a
+   second one appears beside it: ticking "let anyone create an account" adds an announcement under
+   the standing consequence, and with no space between them the new sentence read as the last line
+   of the old paragraph. Seen in a screenshot, not in a test. */
+.alert p + p {
+  margin-block-start: var(--space-2);
+}
+
+/* A fact about the instance, not an editable value: whether a secret exists, whether password
+   sign-in is on. Full contrast, because it is the answer somebody came to the page for. */
+.state {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* A command to be typed, not prose to be read. No monospace token exists yet (design/README.md
+   records the type-scale gap), so this does not invent a font family — it gives the path its own
+   line and refuses to break it, which is the part that was actually wrong. The scroller is
+   insurance: at 412px the string is about 250px wide, so it is not expected to be used. */
+.alert p.command {
+  white-space: nowrap;
+  overflow-x: auto;
+  /* 600, not a var: there is no weight token. --weight-bold does not exist, and a CSS variable
+     that does not exist fails silently to the inherited value — it lints clean and does nothing.
+     The rest of this file uses the literal for the same reason. */
+  font-weight: 600;
+}

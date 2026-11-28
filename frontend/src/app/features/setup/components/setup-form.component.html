@@ -8,7 +8,9 @@
       formControlName="displayName"
       autocomplete="name"
       aria-describedby="setup-name-error"
-      [attr.aria-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.displayName.invalid && form.controls.displayName.touched ? 'true' : null
+      "
     />
     <app-field-error [control]="form.controls.displayName" errorId="setup-name-error" />
   </div>
@@ -23,7 +25,9 @@
       autocomplete="email"
       spellcheck="false"
       aria-describedby="setup-email-error"
-      [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.email.invalid && form.controls.email.touched ? 'true' : null
+      "
     />
     <app-field-error [control]="form.controls.email" errorId="setup-email-error" />
   </div>
@@ -37,7 +41,9 @@
       formControlName="password"
       autocomplete="new-password"
       aria-describedby="setup-password-hint setup-password-error"
-      [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.password.invalid && form.controls.password.touched ? 'true' : null
+      "
     />
     <p class="field-hint" id="setup-password-hint">
       {{ 'setup.passwordHint' | t: { min: minimumLength } }}
@@ -54,7 +60,9 @@
       formControlName="householdName"
       autocomplete="off"
       aria-describedby="setup-household-error"
-      [attr.aria-invalid]="form.controls.householdName.invalid && form.controls.householdName.touched ? 'true' : null"
+      [attr.aria-invalid]="
+        form.controls.householdName.invalid && form.controls.householdName.touched ? 'true' : null
+      "
     />
     <app-field-error [control]="form.controls.householdName" errorId="setup-household-error" />
   </div>

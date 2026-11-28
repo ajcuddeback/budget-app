@@ -1,0 +1,148 @@
+/* Every value here is a design token (design/README.md). */
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.counts,
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.count,
+.figure {
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.count dt,
+.figure dt {
+  color: var(--color-muted);
+}
+
+.count dd,
+.figure dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.attention {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attention-row {
+  padding-block: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.attention-row + .attention-row {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.attention-row p {
+  margin: 0;
+}
+
+.attention-row .checkbox {
+  align-items: flex-start;
+}
+
+.cell {
+  font-weight: 600;
+}
+
+/* The ledger's row layout, repeated rather than imported: the list component's styles are
+   encapsulated to it, and the sample is not a list of transactions anybody can act on yet. */
+.ledger {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.ledger-row {
+  padding-block: var(--space-3);
+}
+
+.ledger-row + .ledger-row {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.row-main {
+  min-width: 0;
+}
+
+.row-primary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.row-payee {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.unnamed {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.row-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* Text roles, not ramp steps: the ledger's fixed -700 steps fail contrast on the dark ground. */
+.incoming {
+  color: var(--color-accent-text);
+}
+
+.row-secondary {
+  margin-block: var(--space-1) 0;
+  color: var(--color-muted);
+}
+
+.row-sep {
+  margin-inline: var(--space-1);
+}
+
+.needs-category {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.row-note {
+  margin-block: var(--space-1) 0;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}

@@ -8,7 +8,9 @@ describe('I18nService', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     i18n = TestBed.inject(I18nService);
     http = TestBed.inject(HttpTestingController);
   });
@@ -39,7 +41,7 @@ describe('I18nService', () => {
 
   it('loads a translation file at run time, and falls back to English for what it lacks', async () => {
     const loading = i18n.use('de-DE');
-    http.expectOne('/i18n/de.json').flush({ 'nav.signOut': 'Abmelden', 'bad': 7 });
+    http.expectOne('/i18n/de.json').flush({ 'nav.signOut': 'Abmelden', bad: 7 });
     await loading;
 
     expect(i18n.t('nav.signOut')).toBe('Abmelden');

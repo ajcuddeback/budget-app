@@ -1,0 +1,89 @@
+<dialog appModal class="dialog" aria-labelledby="envelope-dialog-title" (closed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="envelope-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <div class="field">
+      <label for="envelope-name">{{ 'envelopes.name' | t }}</label>
+      <input
+        id="envelope-name"
+        class="input"
+        type="text"
+        maxlength="60"
+        autocomplete="off"
+        formControlName="name"
+        aria-describedby="envelope-name-hint envelope-name-error"
+        [attr.aria-invalid]="
+          form.controls.name.invalid && form.controls.name.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="envelope-name-hint">{{ 'envelopes.nameHint' | t }}</p>
+      <app-field-error [control]="form.controls.name" errorId="envelope-name-error" />
+    </div>
+
+    <div class="field">
+      <label for="envelope-period">{{ 'envelopes.month' | t }}</label>
+      <input
+        id="envelope-period"
+        class="input"
+        type="month"
+        formControlName="period"
+        aria-describedby="envelope-period-hint"
+      />
+      @if (editing()) {
+        <!-- Said rather than hidden: the server does not accept a month change. -->
+        <p class="field-hint" id="envelope-period-hint">{{ 'envelopes.monthFixedHint' | t }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="envelope-amount">{{ 'envelopes.amount' | t }}</label>
+      <input
+        id="envelope-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="amount"
+        aria-describedby="envelope-amount-hint envelope-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="envelope-amount-hint">
+        {{ 'envelopes.amountHint' | t: { currency: currency() } }}
+      </p>
+      <app-field-error [control]="form.controls.amount" errorId="envelope-amount-error" />
+    </div>
+
+    <div class="field">
+      <label for="envelope-category">{{ 'envelopes.category' | t }}</label>
+      <select id="envelope-category" class="input" formControlName="categoryId">
+        <!-- First, and named: an envelope with no category is ordinary, not a missing choice. -->
+        <option value="">{{ 'envelopes.noCategory' | t }}</option>
+        @for (category of choosableCategories(); track category.id) {
+          <option [value]="category.id">
+            @if (category.parentName) {
+              {{
+                'transactions.categoryPath'
+                  | t: { parent: category.parentName, name: category.name }
+              }}
+            } @else {
+              {{ category.name }}
+            }
+          </option>
+        }
+      </select>
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

@@ -9,9 +9,10 @@ import java.util.UUID;
 /**
  * What the transactions recorded against an account add up to, and whether there are any.
  *
- * <p><b>This is the seam slice 5 fills in, and it exists now so that slice adds a term rather than
- * rewrites a call site.</b> Three rules in docs/features/accounts.md depend on transactions that do
- * not exist yet:
+ * <p><b>This was the seam slice 5 filled in, and it worked: slice 5 added a term rather than
+ * rewriting a call site.</b> {@code PostedTransactions} now answers from the {@code transactions}
+ * table and nothing in {@link AccountService} changed. Three rules in docs/features/accounts.md
+ * depend on it:
  *
  * <ul>
  *   <li>balance is {@code openingBalance} plus the sum of the account's transactions,
@@ -19,12 +20,12 @@ import java.util.UUID;
  *   <li>deletion is permitted only while the account has none ({@code 409}).
  * </ul>
  *
- * <p>Implementing those against a hard-coded zero would mean three call sites to find and change
- * later, and the feature doc is explicit that a client must never assume {@code balance} equals
- * {@code openingBalance} — an assumption that breaks silently the moment transactions land. So the
- * service asks this interface, {@link NoTransactionsRecorded} answers "none" until there is a
- * transactions table, and the arithmetic and the two refusals are written, reachable and tested
- * today.
+ * <p>Implementing those against a hard-coded zero would have meant three call sites to find and
+ * change later, and the feature doc is explicit that a client must never assume {@code balance}
+ * equals {@code openingBalance} — an assumption that breaks silently the moment transactions land.
+ * So the service asks this interface. Until slice 5 the implementation honestly answered "none" for
+ * a schema with no transactions table; the arithmetic and the two refusals were written, reachable
+ * and tested before there was anything to sum.
  *
  * <p><b>Totals are fetched in a batch</b>, not one account at a time. A list endpoint that asked
  * per row would be an N+1 the day slice 5 makes these real queries, and the shape of the call is

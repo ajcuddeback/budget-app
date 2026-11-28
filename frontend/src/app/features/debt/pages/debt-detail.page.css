@@ -1,0 +1,174 @@
+/* Every colour, space and radius here is a design token (design/README.md). Font sizes and
+ * weights are literals with a reason: the token sheet carries families and a heading weight and
+ * nothing else, and `var(--weight-bold)` does not exist — a CSS variable that does not exist fails
+ * silently to the inherited value, so it lints clean and renders wrong.
+ */
+
+.back {
+  align-self: flex-start;
+}
+
+.switcher,
+.stepper {
+  gap: var(--space-3);
+}
+
+/* The same navigation in two shapes: the full ladder on desktop, prev/next on a phone. Hidden
+   with `display: none` so only one is ever in the accessibility tree. */
+.only-narrow {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .only-wide {
+    display: none;
+  }
+
+  .only-narrow {
+    display: block;
+  }
+
+  nav.only-narrow {
+    display: flex;
+  }
+}
+
+/* ---- the solver panel -------------------------------------------------------------------- */
+
+.terms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.term dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.term dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+}
+
+.term-value {
+  font-size: 1.125rem;
+  /* 600, not a var: there is no weight token. See the note at the top. */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An absent figure is not a zero, and does not pretend to be one. */
+.term-missing {
+  color: var(--color-muted);
+}
+
+/* ---- balance now -------------------------------------------------------------------------- */
+
+.headline {
+  margin: 0 0 var(--space-3);
+}
+
+.headline-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.headline-label {
+  display: block;
+  color: var(--color-muted);
+}
+
+/* An estimate is marked by the word beneath it as well as by the colour — colour alone says
+   nothing to a screen reader, and this figure is the one the app invented. */
+.headline.is-estimated .headline-amount {
+  color: var(--color-accent-text);
+}
+
+.progress {
+  margin: 0 0 var(--space-3);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- the history --------------------------------------------------------------------------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.history-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  /* 0.9375rem: six columns of figures at body size do not fit the card. No type scale exists. */
+  font-size: 0.9375rem;
+}
+
+.history-table th,
+.history-table td {
+  padding: var(--space-3) var(--space-2) var(--space-3) 0;
+  border-block-end: 1px solid var(--color-divider);
+  text-align: start;
+  vertical-align: top;
+}
+
+.history-table thead th {
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-table tbody tr:last-child th,
+.history-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.history-table tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Money lines up so the splits can be scanned down the column, which is why this is a table. */
+.history-table .numeric {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-table .row-sub {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.figures {
+  display: flex;
+  flex-direction: column;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.figure-main {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the sheets ----------------------------------------------------------------------------- */
+
+.quick {
+  margin-block-start: var(--space-2);
+}
+
+/* The two quieter answers the designs put beneath the main pair, kept visibly secondary. */
+.secondary-actions {
+  margin: 0;
+  gap: var(--space-3);
+}

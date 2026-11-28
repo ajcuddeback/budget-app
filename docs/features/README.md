@@ -27,21 +27,23 @@ A feature doc is the answer to "what is this supposed to do, and what did we alr
 
 | Feature | Status | Doc |
 |---|---|---|
-| Authentication & households | In progress — backend and web client built | [authentication-and-households.md](authentication-and-households.md) |
-| Envelopes | Planned — spec ready | [envelopes.md](envelopes.md) |
-| Household management (invites, roles) | Planned | _not written_ |
-| File import (CSV/OFX/QIF) | Planned | _not written_ |
+| Authentication & households | Shipped — API, web UI and user guide | [authentication-and-households.md](authentication-and-households.md) |
+| Accounts (money containers) | Shipped — API, web UI and user guide | [accounts.md](accounts.md) |
+| Categories | Shipped — API and web UI; user guide outstanding | [categories.md](categories.md) |
+| Transactions | Shipped — API and web UI; user guide outstanding | [transactions.md](transactions.md) |
+| Envelopes | Shipped — API, web UI and user guide | [envelopes.md](envelopes.md) |
+| Bills & income | Shipped — API, web UI and user guide | [bills-and-income.md](bills-and-income.md) |
+| Transfers | In progress — slice 8 | [transfers.md](transfers.md) |
+| Household management (invites, roles) | Shipped with authentication & households | [authentication-and-households.md](authentication-and-households.md) |
+| File import (CSV/OFX/QIF) | Shipped — API, web UI and user guide (slice 12) | [file-import.md](file-import.md) |
 | Bank connections | Planned | _not written_ |
-| Accounts (money containers) | In progress — API and web UI done, user guide outstanding | [accounts.md](accounts.md) |
-| Transactions | Planned | _not written_ |
-| Categories | Planned | _not written_ |
-| Bills & income (incl. charge mapping) | Planned | _not written_ |
-| Transfers | Planned | _not written_ |
-| Admin console (instance operation) | Planned | _not written_ |
-| Debt plan & debt detail | Planned | _not written_ |
-| Goals | Planned | _not written_ |
-| Reporting & insights | Planned | _not written_ |
-| Weekly check-in | Planned | _not written_ |
+| Admin console (instance operation) | In progress — slice 9 | [admin-console.md](admin-console.md) |
+| Debt plan & debt detail | Done — slice 10 | [debt-plan.md](debt-plan.md) |
+| Goals | Done — slice 11 | [goals.md](goals.md) |
+| Reporting & insights | Done — slice 13 | [reporting.md](reporting.md) |
+| Weekly check-in | Done — slice 14 | [weekly-check-in.md](weekly-check-in.md) |
+| Mobile app (Flutter) | Done — slice 15 (device checks pending) | [mobile-app.md](mobile-app.md) |
+| Deployment: install, back up, restore, upgrade | In progress — slice 15b, audit round 2 (signed backups); Proxmox VM script untested on Proxmox | [deployment.md](deployment.md) |
 | Owl chat (AI insights) | Planned | _not written_ |
 
 Keep this table current — it is the index an agent scans first.

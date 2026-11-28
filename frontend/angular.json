@@ -74,16 +74,14 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "coverage": {
-              "thresholds": {
-                "statements": 80,
-                "branches": 70,
-                "functions": 80,
-                "lines": 80
-              },
-              "exclude": ["src/main.ts", "src/**/*.spec.ts"],
-              "reporters": ["text-summary", "lcovonly"]
-            }
+            "coverageThresholds": {
+              "statements": 80,
+              "branches": 70,
+              "functions": 80,
+              "lines": 80
+            },
+            "coverageExclude": ["src/main.ts", "src/**/*.spec.ts"],
+            "coverageReporters": ["text-summary", "lcovonly"]
           }
         },
         "lint": {

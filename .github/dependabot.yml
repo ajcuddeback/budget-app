@@ -1,0 +1,9 @@
+# Proposes updates to the actions ci.yml pins by commit SHA, so a pin does not quietly age into
+# a known-vulnerable release. Workflow actions only: application dependencies are reviewed by
+# hand and scanned in CI (OWASP dependency-check, npm audit).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

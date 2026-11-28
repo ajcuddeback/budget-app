@@ -1,0 +1,351 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'envelopes.title' | t }}</h1>
+    <p class="page-lede">{{ 'envelopes.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <section class="card" aria-labelledby="envelopes-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="envelopes-heading">{{ 'envelopes.heading' | t }}</h2>
+        @if (canWrite()) {
+          <button type="button" class="btn btn-primary" (click)="openAdd()">
+            {{ 'envelopes.add' | t }}
+          </button>
+        }
+      </div>
+
+      <div class="stack">
+        <nav class="cluster period-bar" [attr.aria-label]="'envelopes.periodLabel' | t">
+          <button type="button" class="btn btn-secondary btn-small" (click)="shift(-1)">
+            {{ 'envelopes.previousMonth' | t }}
+          </button>
+          <h3 class="period-name" role="status">{{ periodName() }}</h3>
+          <button type="button" class="btn btn-secondary btn-small" (click)="shift(1)">
+            {{ 'envelopes.nextMonth' | t }}
+          </button>
+        </nav>
+
+        <app-error-alert [error]="actionError()" [subject]="actionErrorSubject()" />
+        @if (notice(); as said) {
+          <div class="alert alert-success" role="status">
+            <p>{{ said | t }}</p>
+          </div>
+        }
+
+        @if (totals(); as sums) {
+          @if (active().length > 0) {
+            <dl class="cluster totals">
+              <div>
+                <dt>{{ 'envelopes.totalAllocated' | t }}</dt>
+                <dd>{{ sums.allocated | money: sums.currency }}</dd>
+              </div>
+              <div>
+                <dt>{{ 'envelopes.totalSpent' | t }}</dt>
+                <dd>{{ sums.spent | money: sums.currency }}</dd>
+              </div>
+              <div>
+                <dt>{{ 'envelopes.totalRemaining' | t }}</dt>
+                <dd class="total-remaining">{{ sums.remaining | money: sums.currency }}</dd>
+              </div>
+            </dl>
+          }
+        }
+
+        @if (active().length === 0) {
+          <p class="card-note">{{ 'envelopes.emptyBody' | t }}</p>
+          @if (canWrite()) {
+            <div>
+              <button type="button" class="btn btn-primary" (click)="openAdd()">
+                {{ 'envelopes.addFirst' | t }}
+              </button>
+            </div>
+          } @else {
+            <p class="field-hint">{{ 'envelopes.emptyReadOnly' | t }}</p>
+          }
+        } @else {
+          <ul class="envelopes">
+            @for (envelope of active(); track envelope.id) {
+              <li class="envelope" [class.is-busy]="busyId() === envelope.id">
+                <div class="envelope-head">
+                  <div class="envelope-naming">
+                    <p class="envelope-name">{{ envelope.name }}</p>
+                    <!-- Hidden when it only repeats the name: "Groceries / Groceries" is noise,
+                         and naming an envelope after its category is the common case. -->
+                    @if (envelope.categoryName && envelope.categoryName !== envelope.name) {
+                      <p class="envelope-category">
+                        @if (envelope.categoryParentName) {
+                          {{
+                            'transactions.categoryPath'
+                              | t
+                                : {
+                                    parent: envelope.categoryParentName,
+                                    name: envelope.categoryName,
+                                  }
+                          }}
+                        } @else {
+                          {{ envelope.categoryName }}
+                        }
+                      </p>
+                    }
+                  </div>
+
+                  <!-- The headline. Negative when overspent, and never clamped. -->
+                  <p class="envelope-remaining" [class.overspent]="overspent(envelope)">
+                    <span class="remaining-amount">{{
+                      envelope.remaining | money: envelope.currency
+                    }}</span>
+                    <span class="remaining-label">
+                      {{ (overspent(envelope) ? 'envelopes.over' : 'envelopes.left') | t }}
+                    </span>
+                  </p>
+                </div>
+
+                <!-- Presentational only; the running total beneath says the real figures. -->
+                <div
+                  class="meter"
+                  [class.overspent]="overspent(envelope)"
+                  role="img"
+                  [attr.aria-label]="
+                    'envelopes.meterLabel'
+                      | t: { name: envelope.name, percent: spentPercent(envelope) }
+                  "
+                >
+                  <span class="meter-fill" [style.width.%]="spentPercent(envelope)"></span>
+                </div>
+
+                <p class="envelope-running">
+                  {{
+                    'envelopes.runningTotal'
+                      | t
+                        : {
+                            spent: envelope.spent,
+                            amount: envelope.amount,
+                          }
+                  }}
+                  <span class="running-figures">
+                    {{ envelope.spent | money: envelope.currency }} /
+                    {{ envelope.amount | money: envelope.currency }}
+                  </span>
+                </p>
+
+                <div class="cluster envelope-actions">
+                  @if (canWrite()) {
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-small"
+                      [disabled]="busyId() === envelope.id"
+                      (click)="openQuickAdd(envelope)"
+                    >
+                      {{ 'envelopes.logSpend' | t }}
+                    </button>
+                  }
+                  @if (envelope.entryCount > 0) {
+                    <!-- Nothing logged means nothing to show: a toggle that opens an empty list is
+                         a button that wastes a tap. The running total already says there is none. -->
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [attr.aria-expanded]="openLogFor() === envelope.id"
+                      [attr.aria-controls]="'log-' + envelope.id"
+                      (click)="toggleLog(envelope)"
+                    >
+                      {{ showLogKey(envelope) | t: { count: envelope.entryCount } }}
+                    </button>
+                  }
+                  @if (canWrite()) {
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [disabled]="busyId() === envelope.id"
+                      (click)="openEdit(envelope)"
+                    >
+                      {{ 'common.edit' | t }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [disabled]="busyId() === envelope.id"
+                      (click)="askToArchive(envelope)"
+                    >
+                      {{ 'envelopes.archive' | t }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-danger btn-small"
+                      [disabled]="busyId() === envelope.id"
+                      (click)="askToDelete(envelope)"
+                    >
+                      {{ 'common.delete' | t }}
+                    </button>
+                  }
+                </div>
+
+                <div [id]="'log-' + envelope.id">
+                  @if (openLogFor() === envelope.id) {
+                    @if (logLoading()) {
+                      <p role="status">{{ 'common.loading' | t }}</p>
+                    } @else if (logEntries().length === 0) {
+                      <p class="field-hint">{{ 'envelopes.logEmpty' | t }}</p>
+                    } @else {
+                      <ul class="log">
+                        @for (entry of logEntries(); track entry.id) {
+                          <li class="log-row">
+                            <span class="log-amount">{{
+                              entry.amount | money: entry.currency
+                            }}</span>
+                            <span class="log-meta">
+                              <span>{{ entry.date | dateOnly }}</span>
+                              @if (entry.payeeName) {
+                                <span class="log-sep" aria-hidden="true">·</span>
+                                <span>{{ entry.payeeName }}</span>
+                              }
+                              <span class="log-sep" aria-hidden="true">·</span>
+                              <!-- Said on every row: a figure typed and one taken from a
+                                   transaction are different kinds of claim. -->
+                              <span class="badge">{{ sourceKey(entry.source) | t }}</span>
+                            </span>
+                            @if (entry.note) {
+                              <span class="log-note">{{ entry.note }}</span>
+                            }
+                            @if (canWrite()) {
+                              <span class="cluster log-actions">
+                                <button
+                                  type="button"
+                                  class="btn btn-secondary btn-small"
+                                  [disabled]="busyId() === entry.id"
+                                  (click)="openEditEntry(envelope, entry)"
+                                >
+                                  {{ 'common.edit' | t }}
+                                </button>
+                                <button
+                                  type="button"
+                                  class="btn btn-danger btn-small"
+                                  [disabled]="busyId() === entry.id"
+                                  (click)="askToDeleteEntry(envelope, entry)"
+                                >
+                                  {{ 'common.delete' | t }}
+                                </button>
+                              </span>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </section>
+
+    @if (archived().length > 0) {
+      <section class="card" aria-labelledby="archived-envelopes-heading">
+        <div class="cluster section-head">
+          <h2 class="card-title" id="archived-envelopes-heading">
+            {{ 'envelopes.archivedHeading' | t }}
+          </h2>
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            aria-controls="archived-envelopes"
+            [attr.aria-expanded]="showArchived()"
+            (click)="toggleArchived()"
+          >
+            {{
+              (showArchived() ? 'envelopes.hideArchived' : 'envelopes.showArchived')
+                | t: { count: archived().length }
+            }}
+          </button>
+        </div>
+
+        <div id="archived-envelopes">
+          @if (showArchived()) {
+            <p class="card-note">{{ 'envelopes.archivedNote' | t }}</p>
+            <ul class="envelopes">
+              @for (envelope of archived(); track envelope.id) {
+                <li class="cluster archived-row">
+                  <span class="envelope-name">{{ envelope.name }}</span>
+                  <span class="archived-figures">
+                    {{ envelope.spent | money: envelope.currency }} /
+                    {{ envelope.amount | money: envelope.currency }}
+                  </span>
+                  @if (canWrite()) {
+                    <span class="cluster log-actions">
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-small"
+                        [disabled]="busyId() === envelope.id"
+                        (click)="unarchive(envelope)"
+                      >
+                        {{ 'envelopes.unarchive' | t }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-small"
+                        [disabled]="busyId() === envelope.id"
+                        (click)="askToDelete(envelope)"
+                      >
+                        {{ 'common.delete' | t }}
+                      </button>
+                    </span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+    }
+  }
+</div>
+
+@if (envelopeDialog(); as target) {
+  <app-envelope-dialog
+    [envelope]="target.envelope"
+    [categories]="categories()"
+    [period]="period()"
+    [currency]="currency()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitEnvelope($event)"
+    (closed)="closeEnvelopeDialog()"
+  />
+}
+
+@if (entryDialog(); as target) {
+  <app-quick-add
+    [envelope]="target.envelope"
+    [entry]="target.entry"
+    [today]="today()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitEntry($event)"
+    (closed)="closeEntryDialog()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [tone]="text.tone"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmPending()"
+    (cancelled)="cancelPending()"
+  />
+}

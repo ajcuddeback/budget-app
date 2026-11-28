@@ -5,7 +5,15 @@ import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
 import { SetupService } from '../../../core/setup.service';
-import { PASSPHRASE, apiError, buttonNamed, fakeAuth, FakeAuth, settle, type as typeInto } from '../../../testing/helpers';
+import {
+  PASSPHRASE,
+  apiError,
+  buttonNamed,
+  fakeAuth,
+  FakeAuth,
+  settle,
+  type as typeInto,
+} from '../../../testing/helpers';
 import { SetupPage } from './setup.page';
 
 describe('SetupPage', () => {
@@ -85,18 +93,24 @@ describe('SetupPage', () => {
     buttonNamed(fixture.nativeElement, 'Create account').click();
     await settle(fixture);
 
-    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { reason: 'created' } });
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { reason: 'created' },
+    });
   });
 
   it('explains a refusal and lets them try again', async () => {
     const fixture = await render();
-    createFirstUser.mockReturnValue(throwError(() => apiError(400, 'password-unacceptable', { reason: 'breached' })));
+    createFirstUser.mockReturnValue(
+      throwError(() => apiError(400, 'password-unacceptable', { reason: 'breached' })),
+    );
     fill(fixture.nativeElement);
 
     buttonNamed(fixture.nativeElement, 'Create account').click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('commonly used passwords');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'commonly used passwords',
+    );
     expect(buttonNamed(fixture.nativeElement, 'Create account').disabled).toBe(false);
     expect(auth.login).not.toHaveBeenCalled();
   });
@@ -109,7 +123,9 @@ describe('SetupPage', () => {
     buttonNamed(fixture.nativeElement, 'Create account').click();
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('already been set up');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'already been set up',
+    );
   });
 
   it('cannot be submitted twice while the first request is in flight', async () => {

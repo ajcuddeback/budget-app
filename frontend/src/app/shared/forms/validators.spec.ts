@@ -24,7 +24,10 @@ describe('validators', () => {
   it('marks the controls the server rejected, and ignores names it does not know', () => {
     const form = new FormGroup({ email: new FormControl('a'), password: new FormControl('b') });
 
-    applyServerFieldErrors(form, new ApiError(400, 'validation-failed', {}, ['email', '__proto__', 'nope']));
+    applyServerFieldErrors(
+      form,
+      new ApiError(400, 'validation-failed', {}, ['email', '__proto__', 'nope']),
+    );
 
     expect(form.controls.email.errors).toEqual({ server: true });
     expect(form.controls.email.touched).toBe(true);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -26,6 +27,52 @@ class AuthorizationIT extends ApiTestBase {
      */
     static List<Endpoint> protectedEndpoints() {
         UUID any = UUID.fromString("00000000-0000-4000-8000-00000000f00d");
+        // Goals' routes come from GoalIT's own list, so a route added there joins this sweep too
+        // (slice-11 security audit).
+        List<Endpoint> goals =
+                GoalIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path().replace("{id}", any.toString()),
+                                                route.body()))
+                        .toList();
+        // Import and pairing routes likewise, from ImportAuthorizationIT's list (slice-12 audit).
+        // Its placeholders — {account}, {batch}, {transaction}, {other}, {transfer}, {file} — all
+        // become the same unknown id: a 401 must come before any of them is looked at.
+        List<Endpoint> imports =
+                ImportAuthorizationIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path()
+                                                        .replaceAll("\\{[a-z]+\\}", any.toString()),
+                                                route.bodyTemplate() == null
+                                                        ? null
+                                                        : route.bodyTemplate()
+                                                                .replaceAll(
+                                                                        "\\{[a-z]+\\}",
+                                                                        any.toString())))
+                        .toList();
+        // The check-in's eleven routes likewise, from CheckInIT's own list (slice 14). Any week
+        // will do: a 401 comes before the week is parsed, let alone looked up.
+        List<Endpoint> checkIns =
+                CheckInIT.everyRoute().stream()
+                        .map(
+                                route ->
+                                        new Endpoint(
+                                                route.method(),
+                                                route.path().replace("{week}", "2026-W34"),
+                                                route.body()))
+                        .toList();
+        return Stream.of(fixedEndpoints(any), goals, imports, checkIns)
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    private static List<Endpoint> fixedEndpoints(UUID any) {
         return List.of(
                 new Endpoint("POST", "/api/auth/logout", null),
                 new Endpoint("GET", "/api/auth/me", null),
@@ -64,13 +111,107 @@ class AuthorizationIT extends ApiTestBase {
                         "PATCH", "/api/accounts/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
                 new Endpoint("POST", "/api/accounts/" + any + "/archive", null),
                 new Endpoint("POST", "/api/accounts/" + any + "/unarchive", null),
-                new Endpoint("DELETE", "/api/accounts/" + any, null));
+                new Endpoint("DELETE", "/api/accounts/" + any, null),
+                new Endpoint("GET", "/api/categories", null),
+                new Endpoint(
+                        "POST", "/api/categories", "{\"name\":\"Bills\",\"kind\":\"EXPENSE\"}"),
+                new Endpoint("GET", "/api/categories/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/categories/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/categories/" + any + "/archive", null),
+                new Endpoint("POST", "/api/categories/" + any + "/unarchive", null),
+                new Endpoint("DELETE", "/api/categories/" + any, null),
+                new Endpoint("GET", "/api/transactions", null),
+                new Endpoint(
+                        "POST",
+                        "/api/transactions",
+                        "{\"accountId\":\""
+                                + any
+                                + "\",\"date\":\"2026-11-20\","
+                                + "\"amount\":\"-1.00\"}"),
+                new Endpoint("GET", "/api/transactions/" + any, null),
+                new Endpoint(
+                        "PATCH",
+                        "/api/transactions/" + any,
+                        "{\"version\":0,\"amount\":\"-2.00\"}"),
+                new Endpoint("DELETE", "/api/transactions/" + any, null),
+                new Endpoint("GET", "/api/transactions/payee-suggestions?typed=te", null),
+                new Endpoint("GET", "/api/envelopes?period=2026-08", null),
+                new Endpoint("GET", "/api/envelopes/periods", null),
+                new Endpoint(
+                        "POST",
+                        "/api/envelopes",
+                        "{\"name\":\"Groceries\",\"period\":\"2026-08\",\"amount\":\"400\"}"),
+                new Endpoint("GET", "/api/envelopes/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/envelopes/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("POST", "/api/envelopes/" + any + "/archive", null),
+                new Endpoint("POST", "/api/envelopes/" + any + "/unarchive", null),
+                new Endpoint("DELETE", "/api/envelopes/" + any, null),
+                new Endpoint("GET", "/api/envelopes/" + any + "/entries", null),
+                new Endpoint(
+                        "POST", "/api/envelopes/" + any + "/entries", "{\"amount\":\"12.00\"}"),
+                new Endpoint(
+                        "PATCH",
+                        "/api/envelopes/" + any + "/entries/" + any,
+                        "{\"version\":0,\"amount\":\"13.00\"}"),
+                new Endpoint("DELETE", "/api/envelopes/" + any + "/entries/" + any, null),
+                new Endpoint("GET", "/api/bills?period=2099-03", null),
+                new Endpoint(
+                        "POST",
+                        "/api/bills",
+                        """
+                        {"name":"Rent","expectedAmount":"1200.00",
+                         "schedule":{"kind":"MONTHLY","dayOfMonth":15}}
+                        """),
+                new Endpoint("GET", "/api/bills/" + any + "?period=2099-03", null),
+                new Endpoint("PATCH", "/api/bills/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("DELETE", "/api/bills/" + any, null),
+                new Endpoint(
+                        "PUT",
+                        "/api/bills/" + any + "/occurrences/2099-03-15",
+                        "{\"status\":\"PAID\"}"),
+                new Endpoint("DELETE", "/api/bills/" + any + "/occurrences/2099-03-15", null),
+                new Endpoint("GET", "/api/income?period=2099-03", null),
+                new Endpoint(
+                        "POST",
+                        "/api/income",
+                        """
+                        {"name":"Salary","amount":"2400.00",
+                         "schedule":{"kind":"MONTHLY","dayOfMonth":28}}
+                        """),
+                new Endpoint("GET", "/api/income/" + any + "?period=2099-03", null),
+                new Endpoint("PATCH", "/api/income/" + any, "{\"version\":0,\"name\":\"Renamed\"}"),
+                new Endpoint("DELETE", "/api/income/" + any, null),
+                new Endpoint("GET", "/api/periods/2099-03/summary", null),
+                new Endpoint(
+                        "POST",
+                        "/api/transfers",
+                        """
+                        {"fromAccountId":"%s","toAccountId":"%s","date":"2026-08-12",
+                         "amount":"1.00"}
+                        """
+                                .formatted(any, any)),
+                new Endpoint("GET", "/api/transfers/" + any, null),
+                new Endpoint(
+                        "PATCH", "/api/transfers/" + any, "{\"amount\":\"1.00\",\"version\":0}"),
+                new Endpoint("DELETE", "/api/transfers/" + any, null),
+                new Endpoint("GET", "/api/admin/instance", null),
+                new Endpoint("GET", "/api/admin/settings", null),
+                new Endpoint("PATCH", "/api/admin/settings", "{\"version\":0}"),
+                new Endpoint("GET", "/api/admin/users", null),
+                new Endpoint(
+                        "GET", "/api/reports/income-and-spending?from=2026-08&to=2026-08", null),
+                new Endpoint(
+                        "GET", "/api/reports/spending-by-category?from=2026-08&to=2026-08", null));
     }
 
-    /** The five exceptions, listed here so that a sixth cannot appear unnoticed. */
+    /** The six exceptions, listed here so that a seventh cannot appear unnoticed. */
     static List<Endpoint> publicEndpoints() {
         return List.of(
                 new Endpoint("GET", "/api/setup/status", null),
+                // ADR-0042: the phone identifies the server before it sends a password.
+                new Endpoint("GET", "/api/meta", null),
                 new Endpoint("POST", "/api/setup/first-user", "{}"),
                 new Endpoint("POST", "/api/auth/login", "{}"),
                 new Endpoint("POST", "/api/auth/token", "{}"),

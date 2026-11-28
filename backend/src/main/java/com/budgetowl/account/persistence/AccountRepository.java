@@ -1,6 +1,8 @@
 package com.budgetowl.account.persistence;
 
 import com.budgetowl.account.domain.Account;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -115,6 +117,15 @@ public interface AccountRepository extends Repository<Account, UUID> {
                     where a.householdId = :householdId
                     """)
     Page<Account> findAllByHouseholdId(@Param("householdId") UUID householdId, Pageable pageable);
+
+    /**
+     * The named accounts, as far as they belong to this household.
+     *
+     * <p>Batched for the transaction ledger, which needs each row's account name and would
+     * otherwise ask once per row. Ids that belong elsewhere are simply absent from the result,
+     * which is the same answer {@link #findByIdAndHouseholdId} gives one at a time.
+     */
+    List<Account> findAllByHouseholdIdAndIdIn(UUID householdId, Collection<UUID> ids);
 
     /**
      * How many accounts the household has, archived included.

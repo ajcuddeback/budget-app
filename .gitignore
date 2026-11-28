@@ -151,3 +151,6 @@ frontend/dist/
 frontend/coverage/
 frontend/.angular/
 .jqwik-database
+
+# Agent git worktrees (each holds a full checkout; never commit them)
+.claude/worktrees/

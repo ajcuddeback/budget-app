@@ -1,0 +1,695 @@
+<div class="stack">
+  <div>
+    <h1 class="page-title">{{ 'bills.title' | t }}</h1>
+    <p class="page-lede">{{ 'bills.lede' | t }}</p>
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    <nav class="cluster period-bar" [attr.aria-label]="'bills.periodLabel' | t">
+      <button type="button" class="btn btn-secondary btn-small" (click)="shift(-1)">
+        {{ 'bills.previousMonth' | t }}
+      </button>
+      <h2 class="period-name" role="status">{{ periodName() }}</h2>
+      <button type="button" class="btn btn-secondary btn-small" (click)="shift(1)">
+        {{ 'bills.nextMonth' | t }}
+      </button>
+    </nav>
+
+    <app-error-alert [error]="actionError()" [subject]="actionErrorSubject()" />
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said | t }}</p>
+      </div>
+    }
+
+    <!-- 1. What's left — the one figure the page is for. -->
+    @if (summary(); as sums) {
+      <section class="card" aria-labelledby="left-heading">
+        <h2 class="card-title" id="left-heading">{{ 'bills.leftHeading' | t }}</h2>
+
+        <!-- Negative when the month does not add up, and never clamped: "you are £180 short" is
+             the information. The colour is the one .btn-danger uses, because the olive accent
+             reads as success. -->
+        <p class="headline" [class.is-short]="negative(sums.left)">
+          <span class="headline-amount">{{ sums.left | money: sums.currency }}</span>
+          <span class="headline-label">
+            {{ (negative(sums.left) ? 'bills.short' : 'bills.left') | t }}
+          </span>
+        </p>
+
+        <!-- The three terms, so a plan counted twice — rent as a bill *and* an envelope — is
+             visible rather than hidden. -->
+        <dl class="cluster terms">
+          <div>
+            <dt>{{ 'bills.termIncome' | t }}</dt>
+            <dd>{{ sums.income | money: sums.currency }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'bills.termBills' | t }}</dt>
+            <dd>{{ sums.bills | money: sums.currency }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'bills.termEnvelopes' | t }}</dt>
+            <dd>{{ sums.envelopesAllocated | money: sums.currency }}</dd>
+          </div>
+          <!-- The fourth term (debt-plan.md, decision 2). Shown beside the other three so the
+               subtraction is explainable on the page rather than mysterious: only the minimums no
+               bill row already carries come off, which is how a card's minimum is counted once. -->
+          <div>
+            <dt>{{ 'bills.termDebtMinimums' | t }}</dt>
+            <dd>{{ sums.debtMinimumsNotInBills | money: sums.currency }}</dd>
+          </div>
+          <!-- The fifth term (goals.md, decision 2): each goal counts the greater of its plan and
+               what was recorded for the month, so setting money aside never makes this go up. -->
+          <div>
+            <dt>{{ 'bills.termGoals' | t }}</dt>
+            <dd>{{ sums.goalsSetAside | money: sums.currency }}</dd>
+          </div>
+        </dl>
+        <p class="card-note">{{ 'bills.goalsNote' | t }}</p>
+        <!-- Decision 3: the debt plan's extra is the household's own figure and is never taken off
+             here. When it is more than what is left, the page says so in words and changes
+             nothing. The comparison is the server's. -->
+        @if (sums.debtPlanExtraExceedsLeft && sums.debtPlanExtra; as extra) {
+          <p class="card-note">
+            {{
+              'bills.debtExtraExceedsLeft'
+                | t
+                  : {
+                      extra: extra | money: sums.currency,
+                      left: sums.left | money: sums.currency,
+                    }
+            }}
+          </p>
+        }
+
+        <!-- Secondary, deliberately: bills count whether or not they are paid, so this is not the
+             figure the page leads with. -->
+        <!-- A sentence, not a fraction. "$266.00 / $1,959.10" with a label beside it reads as a
+             ratio and needed a paragraph of the user guide to explain. -->
+        <p class="secondary-figure">
+          {{
+            'bills.stillToPayOf'
+              | t
+                : {
+                    outstanding: sums.billsOutstanding | money: sums.currency,
+                    total: sums.bills | money: sums.currency,
+                  }
+          }}
+        </p>
+        <!-- The one thing people get wrong about this figure, said on the card rather than left
+             to the guide: paying a bill does not make it go up. -->
+        <p class="card-note">{{ 'bills.billsCountEitherWay' | t }}</p>
+        @if (negative(sums.left)) {
+          <p class="card-note">{{ 'bills.shortNote' | t }}</p>
+        }
+      </section>
+    }
+
+    <!-- 2. Income. -->
+    <section class="card" aria-labelledby="income-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="income-heading">{{ 'bills.income.heading' | t }}</h2>
+        @if (canWrite()) {
+          <button type="button" class="btn btn-primary btn-small" (click)="openAddIncome()">
+            {{ 'bills.income.add' | t }}
+          </button>
+        }
+      </div>
+
+      @if (activeIncome().length === 0) {
+        <p class="card-note">{{ 'bills.income.emptyBody' | t }}</p>
+        @if (canWrite()) {
+          <div>
+            <button type="button" class="btn btn-primary" (click)="openAddIncome()">
+              {{ 'bills.income.addFirst' | t }}
+            </button>
+          </div>
+        } @else {
+          <p class="field-hint">{{ 'bills.emptyReadOnly' | t }}</p>
+        }
+      } @else {
+        <p class="secondary-figure">
+          <span class="secondary-label">{{ 'bills.income.total' | t }}</span>
+          <span class="secondary-amount">{{ incomeTotal() | money: currency() }}</span>
+        </p>
+
+        <ul class="rows">
+          @for (source of activeIncome(); track source.id) {
+            <li class="row" [class.is-busy]="busyId() === source.id">
+              <span class="row-main">
+                <span class="row-title">{{ source.name }}</span>
+                <span class="row-sub">{{ said(source.schedule) }}</span>
+                <!-- A fortnightly wage lands two or three times in a month. That is the month the
+                     household actually has, not a figure to be averaged flat. -->
+                <span class="row-sub">
+                  {{ arrivalsKey(source) | t: { count: source.dates.length } }}
+                </span>
+                @if (source.accountName) {
+                  <span class="row-sub">{{ source.accountName }}</span>
+                }
+                <span class="row-sub">{{ truthKey(source.sourceOfTruth) | t }}</span>
+              </span>
+
+              <span class="figures">
+                <span class="figure-main">{{
+                  source.expectedForPeriod | money: source.currency
+                }}</span>
+                <span class="figure-note">
+                  <span class="pair-label">{{ 'bills.income.eachLabel' | t }}</span>
+                  {{ source.amount | money: source.currency }}
+                </span>
+              </span>
+
+              @if (canWrite()) {
+                <span class="row-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [disabled]="busyId() === source.id"
+                    (click)="openEditIncome(source)"
+                  >
+                    {{ 'common.edit' | t }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [disabled]="busyId() === source.id"
+                    (click)="askToRetireIncome(source)"
+                  >
+                    {{ 'bills.retire' | t }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-small"
+                    [disabled]="busyId() === source.id"
+                    (click)="askToDeleteIncome(source)"
+                  >
+                    {{ 'common.delete' | t }}
+                  </button>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @if (retiredIncome().length > 0) {
+        <h3 class="subheading">{{ 'bills.income.retiredHeading' | t }}</h3>
+        <ul class="rows">
+          @for (source of retiredIncome(); track source.id) {
+            <li class="row retired" [class.is-busy]="busyId() === source.id">
+              <span class="row-main">
+                <span class="row-title">{{ source.name }}</span>
+                <span class="row-sub">{{ said(source.schedule) }}</span>
+              </span>
+              <span class="figures">
+                <span class="figure-main">{{ source.amount | money: source.currency }}</span>
+              </span>
+              @if (canWrite()) {
+                <span class="row-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [disabled]="busyId() === source.id"
+                    (click)="restoreIncome(source)"
+                  >
+                    {{ 'bills.restore' | t }}
+                  </button>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- 3. Bills, each with this month's occurrences. -->
+    <section class="card" aria-labelledby="bills-heading">
+      <div class="cluster section-head">
+        <h2 class="card-title" id="bills-heading">{{ 'bills.heading' | t }}</h2>
+        @if (canWrite()) {
+          <button type="button" class="btn btn-primary btn-small" (click)="openAddBill()">
+            {{ 'bills.add' | t }}
+          </button>
+        }
+      </div>
+
+      @if (activeBills().length === 0) {
+        <p class="card-note">{{ 'bills.emptyBody' | t }}</p>
+        @if (canWrite()) {
+          <div>
+            <button type="button" class="btn btn-primary" (click)="openAddBill()">
+              {{ 'bills.addFirst' | t }}
+            </button>
+          </div>
+        } @else {
+          <p class="field-hint">{{ 'bills.emptyReadOnly' | t }}</p>
+        }
+      } @else {
+        @if (billTotals(); as totals) {
+          <dl class="cluster terms">
+            <div>
+              <dt>{{ 'bills.totalLabel' | t }}</dt>
+              <dd>{{ totals.total | money: currency() }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'bills.outstandingLabel' | t }}</dt>
+              <dd>{{ totals.outstanding | money: currency() }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'bills.overdueLabel' | t }}</dt>
+              <dd class="overdue-total">{{ totals.overdue | money: currency() }}</dd>
+            </div>
+          </dl>
+        }
+
+        <ul class="bills">
+          @for (bill of activeBills(); track bill.id) {
+            <li class="bill">
+              <div class="bill-head">
+                <div class="bill-naming">
+                  <p class="row-title">{{ bill.name }}</p>
+                  <p class="row-sub">{{ said(bill.schedule) }}</p>
+                  @if (bill.categoryName) {
+                    <p class="row-sub">
+                      @if (bill.categoryParentName) {
+                        {{
+                          'transactions.categoryPath'
+                            | t: { parent: bill.categoryParentName, name: bill.categoryName }
+                        }}
+                      } @else {
+                        {{ bill.categoryName }}
+                      }
+                    </p>
+                  }
+                  @if (bill.amountVaries) {
+                    <p class="row-sub">
+                      {{ 'bills.variesBy' | t }}
+                      {{ bill.tolerance | money: bill.currency }}
+                    </p>
+                  }
+                  @for (mapping of bill.mappings ?? []; track mapping.ruleId) {
+                    <p class="row-sub mapping">
+                      <span class="tag tag-neutral">{{ 'checkIn.mapping.label' | t }}</span>
+                      <span dir="auto">{{ mapping.payeeName }}</span>
+                      <span>
+                        ·
+                        @if (mapping.accountLastFour) {
+                          {{
+                            'checkIn.account'
+                              | t: { name: mapping.accountName, lastFour: mapping.accountLastFour }
+                          }}
+                        } @else {
+                          {{ mapping.accountName }}
+                        }
+                        ·
+                        @if (bill.amountVaries && bill.tolerance) {
+                          {{
+                            'checkIn.mapping.varies'
+                              | t: { amount: (bill.tolerance | money: bill.currency) }
+                          }}
+                        } @else {
+                          {{ 'checkIn.mapping.exact' | t }}
+                        }
+                      </span>
+                      @if (canWrite()) {
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-small"
+                          [disabled]="busyId() !== null"
+                          (click)="unmap(bill, mapping.ruleId)"
+                        >
+                          {{ 'checkIn.mapping.unmap' | t }}
+                          <span class="visually-hidden" dir="auto">{{ mapping.payeeName }}</span>
+                        </button>
+                      }
+                    </p>
+                  }
+                </div>
+
+                <p class="figures">
+                  <span class="figure-main">{{ bill.expectedAmount | money: bill.currency }}</span>
+                  <span class="figure-note">{{ 'bills.expectedLabel' | t }}</span>
+                </p>
+
+                @if (canWrite()) {
+                  <span class="row-actions">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [disabled]="busyId() === bill.id"
+                      (click)="openEditBill(bill)"
+                    >
+                      {{ 'common.edit' | t }}
+                    </button>
+                    @if (bill.schedule.kind === 'IRREGULAR') {
+                      <!-- Irregular bills project nothing, so recording against a date is what
+                           brings the occurrence into being (ADR-0032). -->
+                      <button
+                        type="button"
+                        class="btn btn-primary btn-small"
+                        [disabled]="busyId() === bill.id"
+                        (click)="openPayment(bill, null)"
+                      >
+                        {{ 'bills.recordPayment' | t }}
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [disabled]="busyId() === bill.id"
+                      (click)="askToRetireBill(bill)"
+                    >
+                      {{ 'bills.retire' | t }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-danger btn-small"
+                      [disabled]="busyId() === bill.id"
+                      (click)="askToDeleteBill(bill)"
+                    >
+                      {{ 'common.delete' | t }}
+                    </button>
+                  </span>
+                }
+              </div>
+
+              @if (bill.occurrences.length === 0) {
+                <!-- Still listed, and said plainly: nothing is missing. -->
+                <p class="field-hint">{{ emptyOccurrencesKey(bill) | t }}</p>
+              } @else {
+                <ul class="occurrences">
+                  <!-- One row per date. A weekly bill falls four or five times a month and each
+                       payment is ticked off separately. -->
+                  @for (occurrence of bill.occurrences; track occurrence.dueDate) {
+                    <li
+                      class="occurrence"
+                      [class.is-overdue]="occurrence.overdue"
+                      [class.is-busy]="busyId() === rowId(occurrence)"
+                    >
+                      <span class="occurrence-date">{{ occurrence.dueDate | dateOnly }}</span>
+
+                      <span class="occurrence-status">
+                        <span class="tag tag-neutral">{{ statusKey(occurrence.status) | t }}</span>
+                        @if (occurrence.overdue) {
+                          <span class="tag">{{ 'bills.overdue' | t }}</span>
+                        }
+                        @if (occurrence.surprising) {
+                          <span class="tag">{{ 'bills.surprising' | t }}</span>
+                        }
+                        @if (occurrence.recorded) {
+                          <!-- A figure somebody asserted is never shown as one the app inferred. -->
+                          <span class="tag tag-neutral">{{
+                            sourceKey(occurrence.statusSource) | t
+                          }}</span>
+                        }
+                      </span>
+
+                      @if (showsBothFigures(occurrence)) {
+                        <!-- Both figures, because the difference is the useful number. -->
+                        <span class="occurrence-figures">
+                          <span class="pair">
+                            <span class="pair-label">{{ 'bills.expectedLabel' | t }}</span>
+                            <span class="pair-amount">{{
+                              occurrence.expectedAmount | money: bill.currency
+                            }}</span>
+                          </span>
+                          <span class="pair">
+                            <span class="pair-label">{{ 'bills.paidLabel' | t }}</span>
+                            <span class="pair-amount">{{
+                              occurrence.actualAmount | money: bill.currency
+                            }}</span>
+                          </span>
+                        </span>
+                      } @else {
+                        <!-- One figure, because there is one figure to report. Struck through on
+                             a skipped row: the amount is still worth seeing, and it is no longer
+                             part of what the month costs. -->
+                        <span class="occurrence-figures">
+                          <span
+                            class="pair-amount"
+                            [class.is-discounted]="occurrence.status === 'SKIPPED'"
+                            >{{ theFigure(occurrence) | money: bill.currency }}</span
+                          >
+                          @if (occurrence.status === 'SKIPPED') {
+                            <span class="pair-label">{{ 'bills.notCounted' | t }}</span>
+                          }
+                        </span>
+                      }
+
+                      @if (occurrence.paidDate) {
+                        <span class="pair">
+                          <span class="pair-label">{{ 'bills.paidOnLabel' | t }}</span>
+                          <span>{{ occurrence.paidDate | dateOnly }}</span>
+                        </span>
+                      }
+
+                      @if (canWrite()) {
+                        <span class="row-actions occurrence-actions">
+                          @if (occurrence.status === 'DUE') {
+                            <!-- One tap: paid, for what was budgeted, today. The ONLY control
+                                 kept in the open — a weekly bill has four or five rows a month,
+                                 and five buttons on each of them buries the one that matters.
+                                 DUE only, not "not PAID": a SKIPPED row said "Skipped" with a
+                                 prominent "Mark paid" beside it, so the loudest thing on the row
+                                 contradicted the tag on it. -->
+                            <button
+                              type="button"
+                              class="btn btn-primary btn-small"
+                              [disabled]="busyId() === rowId(occurrence)"
+                              (click)="markPaid(bill, occurrence)"
+                            >
+                              {{ 'bills.markPaid' | t }}
+                            </button>
+                          }
+                        </span>
+                        <!-- Everything else is a CORRECTION: rarer than the tap above, and one
+                             disclosure away rather than competing with it. A <details> because it
+                             needs no script and is reachable and announced without any. -->
+                        <details class="occurrence-more">
+                          <summary>{{ 'bills.moreActions' | t }}</summary>
+                          <span class="row-actions">
+                            @if (occurrence.status === 'SKIPPED') {
+                              <!-- Reachable, but not competing with the tag that says it does not
+                                 apply this month. -->
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="markPaid(bill, occurrence)"
+                              >
+                                {{ 'bills.markPaid' | t }}
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              class="btn btn-secondary btn-small"
+                              [disabled]="busyId() === rowId(occurrence)"
+                              (click)="openPayment(bill, occurrence)"
+                            >
+                              {{ 'bills.otherAmount' | t }}
+                            </button>
+                            @if (occurrence.status !== 'SKIPPED') {
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="skip(bill, occurrence)"
+                              >
+                                {{ 'bills.skip' | t }}
+                              </button>
+                            }
+                            @if (occurrence.status !== 'DUE') {
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="markDue(bill, occurrence)"
+                              >
+                                {{ 'bills.markDue' | t }}
+                              </button>
+                            }
+                            @if (occurrence.recorded) {
+                              <!-- Only on a recorded one: there is nothing to forget about a
+                                 projection, and forgetting is not the same as marking it due. -->
+                              <button
+                                type="button"
+                                class="btn btn-danger btn-small"
+                                [disabled]="busyId() === rowId(occurrence)"
+                                (click)="askToForget(bill, occurrence)"
+                              >
+                                {{ 'bills.forget' | t }}
+                              </button>
+                            }
+                          </span>
+                        </details>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @if (retiredBills().length > 0) {
+        <h3 class="subheading">{{ 'bills.retiredHeading' | t }}</h3>
+        <p class="card-note">{{ 'bills.retiredNote' | t }}</p>
+        <ul class="rows">
+          @for (bill of retiredBills(); track bill.id) {
+            <li class="row retired" [class.is-busy]="busyId() === bill.id">
+              <span class="row-main">
+                <span class="row-title">{{ bill.name }}</span>
+                <span class="row-sub">{{ said(bill.schedule) }}</span>
+              </span>
+              <span class="figures">
+                <span class="figure-main">{{ bill.expectedAmount | money: bill.currency }}</span>
+              </span>
+              @if (canWrite()) {
+                <span class="row-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [disabled]="busyId() === bill.id"
+                    (click)="restoreBill(bill)"
+                  >
+                    {{ 'bills.restore' | t }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-small"
+                    [disabled]="busyId() === bill.id"
+                    (click)="askToDeleteBill(bill)"
+                  >
+                    {{ 'common.delete' | t }}
+                  </button>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- 4. Owed — a balance, and the one figure here that is NOT part of the subtraction. -->
+    @if (summary(); as sums) {
+      <section class="card" aria-labelledby="owed-heading">
+        <h2 class="card-title" id="owed-heading">{{ 'bills.owed.heading' | t }}</h2>
+
+        @if (sums.debtCount === 0) {
+          <p class="card-note">{{ 'bills.owed.none' | t }}</p>
+        } @else {
+          <p class="secondary-figure">
+            <span class="secondary-label">{{ 'bills.owed.total' | t }}</span>
+            <span class="secondary-amount">{{ sums.owed | money: sums.currency }}</span>
+          </p>
+          <p class="secondary-figure">
+            <span class="secondary-label">{{ 'bills.owed.minimums' | t }}</span>
+            <span class="secondary-amount">{{ sums.debtMinimums | money: sums.currency }}</span>
+          </p>
+          <p class="card-note">{{ debtCountKey(sums) | t: { count: sums.debtCount } }}</p>
+          <!-- Said out loud because the figures are NOT period-scoped: the summary asks the debt
+               service for today's balances whatever month the page is showing, and a past month's
+               heading over today's balance would be the wrong one (debt-plan.md, Known gaps). -->
+          <p class="card-note">{{ 'bills.owed.asOfToday' | t }}</p>
+          <p class="card-note">{{ 'bills.owed.body' | t }}</p>
+          <!-- Says which part of the minimums actually comes off, so the headline's fourth term is
+               explainable from this card. -->
+          <p class="card-note">
+            {{
+              'bills.owed.notInBills'
+                | t: { amount: sums.debtMinimumsNotInBills | money: sums.currency }
+            }}
+          </p>
+          <!-- The count spans every currency; the two totals are the base currency only
+               (ADR-0022). Said out loud, because a count and a total that look like they describe
+               the same debts and do not is worse than either on its own. -->
+          <p class="card-note">{{ 'bills.owed.mixedCurrency' | t: { currency: sums.currency } }}</p>
+        }
+        <div>
+          <a class="btn btn-secondary" routerLink="/debt-plan">{{ 'bills.owed.open' | t }}</a>
+        </div>
+      </section>
+    }
+
+    <!-- 5. Envelopes — the other half of the subtraction, which has its own screen. -->
+    @if (summary(); as sums) {
+      <section class="card" aria-labelledby="envelopes-summary-heading">
+        <h2 class="card-title" id="envelopes-summary-heading">
+          {{ 'bills.envelopes.heading' | t }}
+        </h2>
+        <p class="card-note">{{ 'bills.envelopes.body' | t }}</p>
+        <p class="secondary-figure">
+          <span class="secondary-label">{{ 'bills.envelopes.allocated' | t }}</span>
+          <span class="secondary-amount">{{ sums.envelopesAllocated | money: sums.currency }}</span>
+        </p>
+        <div>
+          <a class="btn btn-secondary" routerLink="/envelopes">
+            {{ 'bills.envelopes.open' | t }}
+          </a>
+        </div>
+      </section>
+    }
+  }
+</div>
+
+@if (billDialog(); as target) {
+  <app-bill-dialog
+    [bill]="target.bill"
+    [categories]="categories()"
+    [currency]="currency()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitBill($event)"
+    (closed)="closeBillDialog()"
+  />
+}
+
+@if (incomeDialog(); as target) {
+  <app-income-dialog
+    [source]="target.source"
+    [accounts]="accounts()"
+    [currency]="currency()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitIncome($event)"
+    (closed)="closeIncomeDialog()"
+  />
+}
+
+@if (paymentDialog(); as target) {
+  <app-record-payment
+    [bill]="target.bill"
+    [occurrence]="target.occurrence"
+    [today]="today()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    (submitted)="submitPayment($event)"
+    (closed)="closePayment()"
+  />
+}
+
+@if (confirmText(); as text) {
+  <app-confirm-dialog
+    [heading]="text.heading"
+    [message]="text.message"
+    [confirmLabel]="text.action"
+    [tone]="text.tone"
+    [busy]="busyId() !== null"
+    (confirmed)="confirmPending()"
+    (cancelled)="cancelPending()"
+  />
+}

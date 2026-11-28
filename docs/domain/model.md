@@ -94,8 +94,11 @@ signed — negative is an outflow), `payeeId`, `categoryId`, `note`, `status`
 (`PENDING` | `CLEARED` | `RECONCILED`), `externalId` for imports.
 
 A **transfer** between two accounts is a linked pair of transactions sharing a `transferGroupId`,
-equal and opposite. It is never a single row with two account columns, and a transfer is never
-counted as income or expense in reporting.
+with opposite signs. It is never a single row with two account columns, and a transfer is never
+counted as income or expense in reporting. Between two accounts in the same currency the legs are
+equal and opposite; across currencies each leg carries the figure that really moved in its own
+account and the household supplies both, because no rate we could invent would match the bank's
+(ADR-0033, ADR-0022).
 
 Transactions are **append-mostly**: correcting one keeps an audit trail rather than silently
 overwriting history.
@@ -114,7 +117,12 @@ month end — that is the whole point, because the remaining figure is the numbe
 while standing in a shop.
 
 Fields: `id`, `householdId`, `name`, `categoryId`, `period` (`YearMonth`), `amount` (`Money`),
-`rollover` (boolean), `archived`.
+`archived`.
+
+> `rollover` was listed here and **is deliberately not in the schema** (ADR-0031). A column that is
+> always `false` reads as a feature and is not one. The period is stored as a *label* — the first
+> day of the labelled month — so that slice 9's configurable month start changes what people log
+> where, not what any existing row means.
 
 `EnvelopeEntry`: `envelopeId`, `date`, `amount` (`Money`), `payeeId` (**nullable — an amount
 alone is a valid entry**), `note`, `source` (`MANUAL` | `SYNCED`), `transactionId` (nullable,
@@ -139,10 +147,11 @@ user attached an entry to a real transaction, not that the app did it unprompted
 envelope a record of intent rather than a guess, and it is the same principle as marking a bill
 paid by hand (ADR-0025).
 
-> **Open:** rollover. The field is here because the designs show a `rollover` affordance
-> ("Roll into next week / Target becomes $543"), but the designs do not say whether an unspent
-> envelope carries forward automatically, on request, or not at all — nor what happens to an
-> *overspent* one. Needs a feature doc before implementation.
+> **Decided, by not building it:** rollover. The designs show a `rollover` affordance ("Roll into
+> next week / Target becomes $543") but say nothing about an *overspent* envelope, which is the
+> half that matters for the households this feature is for. ADR-0031 ships slice 6 without it:
+> unspent does not carry, and an overspend shows as a negative remaining. Building it needs its own
+> ADR answering the overspend question first.
 
 > **Open:** `Budget`/`BudgetLine` are gone from this model. The designs have no budget page —
 > planning happens on Bills & Income (bills, income, envelopes) and on the debt plan. If a
@@ -172,9 +181,13 @@ Three consequences worth stating plainly:
   this model invites.
 
 A `ChargeRule` maps a bill to the **real charge** that pays it — the bit that turns a list of
-intentions into a reconciled ledger. It carries the matched `payeeId`/descriptor, the
-`accountId` it lands on, a `matchKind` (`EXACT` | `VARIES_WITHIN_TOLERANCE`), and a
-`standing` flag meaning "label this every month without asking again".
+intentions into a reconciled ledger. As built in slice 14 (`docs/features/weekly-check-in.md`) it
+is `(billId, payeeId, accountId)`, one per payee and account. There is no `matchKind`: whether a
+charge matches is derived from the bill's own `amountVaries` and tolerance. There is no `standing`
+flag, because every rule is standing. **A rule acts only through a completed check-in**
+(ADR-0041): nothing matches at import or at sync, and a match the check-in applies is recorded
+`AUTO_MATCHED`. Rules are created only by completing a check-in and removed with **Unmap** on Bills
+& income.
 
 An unmapped bill is a **first-class state**, not an error: the designs show "Not mapped" beside
 a suggestion ("COMCAST XFINITY $71.99 looks likely") with `Link` / `Different bill` actions. A
@@ -198,9 +211,20 @@ because a number derived from six months means something different from a number
 ### Debt and DebtPayment
 First-class, and the most arithmetically demanding part of the product.
 
-`Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `currentBalance`,
-`apr`, `minimumPayment`, `accountId` (nullable — a debt need not be linked), `rung` (its place
-in the plan), plus a **`balanceSource`**: `LINKED_STATEMENT` | `CONFIRMED` | `ESTIMATED`.
+`Debt`: `name`, `kind` (`CREDIT_CARD` | `INSTALLMENT`), `originalBalance`, `apr`,
+`minimumPayment`, `accountId` (nullable — a debt need not be linked), plus the **balance anchor**:
+`anchorBalance`, `anchorDate` and `balanceSource` (`LINKED_STATEMENT` | `CONFIRMED` |
+`ESTIMATED`).
+
+> **`currentBalance` is not stored either.** This listed it as a field; slice 10 stores an *anchor*
+> — a figure and the date it was true — and derives today's balance from it plus the payments
+> since. A stored current balance would be a fourth thing to keep in step with the anchor, the
+> payments and the account, and the first one to drift.
+
+> **`rung` is not stored.** This paragraph said it was, and slice 10's feature doc corrects it:
+> for `AVALANCHE` and `SNOWBALL` a debt's place in the plan is *derived* from the strategy, and
+> only `CUSTOM` stores an order. Storing it as well would give the plan two sources of truth for
+> the same ordering, and they would disagree the first time an APR changed.
 
 `balanceSource` is not decoration. The designs show a student loan whose balance is Owl's
 *estimate* ("I've assumed three $118 payments since June — if that's right, tap confirm"), and
@@ -216,12 +240,21 @@ wins**; the difference is recorded as a `STATEMENT_CORRECTION` row rather than s
 history. Money arithmetic here is exactly why `NUMERIC(19,4)` and `BigDecimal` are
 non-negotiable (ADR-0006).
 
-**The terms solver.** The designs state it plainly: *"Give me any four and I'll solve the
-rest."* Original balance, APR, current balance, minimum payment, months left, payoff date, and
-payment amount are mutually constrained; entering four derives the others, and each derived field
-is labelled `Solved`. Overriding a solved field makes it entered and re-solves around it. Every
-field therefore needs an `entered` / `solved` flag — this is a real modelling requirement, not UI
-sugar.
+**The terms solver.** The designs say *"Give me any four and I'll solve the rest"*, and this
+paragraph used to repeat it as seven mutually constrained fields. **Both are looser than the
+arithmetic**, and slice 10's feature doc settles it: **four** quantities are constrained by one
+equation — current balance, APR, the payment being made, and the horizon (months-left and
+payoff-date are one unknown with two faces, not two fields) — so there are three degrees of
+freedom and *any three give the fourth*.
+
+The other three fields only look like solver inputs. `minimumPayment` is always entered and is the
+plan's floor; `originalBalance` is an optional progress baseline; `totalInterestLeft` is always
+derived. The current balance is supplied and **never solved**, because inferring what somebody
+owes and printing it in the headline position replaces a fact with a guess.
+
+Each field still carries its state, but there are **three** labels rather than two — entered,
+solved, and *from your plan* — which is what makes the designs' own "4 entered · 3 solved" count
+over eight cells add up. A solved field is stored as `NULL`: nullability *is* the flag.
 
 A debt's **minimum payment appears in Bills & Income as a bill row** and is counted once. The
 designs are explicit: *"Minimums · each counted once in Bills & Income (the car payment is its
@@ -234,9 +267,25 @@ are computed and **compared**, never one silently chosen — the designs present
 and say "Either is a good answer."
 
 ### CheckIn
-The weekly pass: `period` (week), `status`, and per-step outcomes. Four steps — what's new,
-categorize, bills, next week — each of which **writes something** (income confirmed, a category
-and payee rule, a bill↔charge mapping, an allocation and weekly target).
+The weekly pass (`docs/features/weekly-check-in.md`, slice 14): an ISO `week_start` (a Monday),
+`status` (`DRAFT` | `COMPLETED`), a `window_start`, who started and completed it, and, once
+completed, a snapshot (`week_target`, `week_spending`, `rolled_over`, `next_week_target`,
+`debt_free_month`). Four steps — what's new, categorize, bills, next week — each of which **writes
+something** at completion (an occurrence's status, a category and a `PayeeRule`, a bill↔charge
+attach and a `ChargeRule`, a `CHECK_IN` debt payment or goal contribution and the weekly target).
+
+**Items are derived, answers are stored.** The questions are recomputed from the ledger on every
+read; a `CheckInAnswer` is keyed by the item it answers and carries the version of the row it was
+given against. Completion re-derives everything, compares a digest of it (the `basis`) and each
+answer's version, and refuses the whole check-in if anything moved. It never moves money and never
+creates, deletes or splits a transaction.
+
+A **`PayeeRule`** is `(payeeId, categoryId)`, one per payee. Like a `ChargeRule`, it only
+pre-answers a later check-in, which applies it when completed (ADR-0041). Import never sets a
+category.
+
+**Next week's figure is built from the plan** (ADR-0040): `free(M) = left(M) − unbudgeted
+spending so far in M − CHECK_IN debt payments in M`, spread over the month's remaining days.
 
 A step with nothing to answer is **skipped, not shown empty**, which is why a quiet week is
 much shorter than four steps implies. Only "next week" is never skipped.
@@ -251,9 +300,30 @@ Who money went to or came from. Normalized so "STARBUCKS #1234" and "Starbucks" 
 one payee, which makes reporting and auto-categorization possible.
 
 ### Goal
-A savings target: `name`, `targetAmount`, `targetDate`, linked `accountId`, `monthlyContribution`,
-computed progress. The designs show goals absorbing surplus from the weekly check-in and being
-adjusted by the assistant ("Japan trip: $110 → $165 per month, starting Sep 1").
+Money a household is putting aside for something (`docs/features/goals.md`, slice 11): a `name`, a
+`targetAmount`, an optional `targetMonth` (a month, not a day), a `startingAmount` already saved
+when tracking began, a currency fixed at creation, and an optional `accountId` that is
+**informational only**. One account often holds several goals, so its balance is never the source
+of progress.
+
+Progress comes from **contributions**: dated, signed, non-zero plan records the household logs. A
+negative one is a withdrawal. Like a debt payment (ADR-0035), a contribution writes no transaction
+and moves no account balance; a nullable `transactionId` attaches the real movement as evidence.
+`saved = startingAmount + Σ contributions`, and `remaining` and `reached` follow from it; all three
+are derived and never stored.
+
+The **monthly contribution is an effective-dated plan** of `(fromPeriod, monthlyAmount)` steps,
+changed only from the current month forwards, so raising it in September never rewrites August.
+A goal takes `max(planned, recorded)` out of a month's left-over figure. That is the fifth term of
+**Left over**, and it is zero for a month that began with the goal reached.
+
+The projection walks forward from `saved` at the plan in force, capped at 600 months, with no
+interest or growth. It gives the projected month and the smallest monthly amount, rounded up at the
+currency's minor unit, that reaches the target by `targetMonth`. Goals are not ranked against debts
+and never enter the payoff ladder. The weekly check-in (slice 14) records a contribution with
+provenance `CHECK_IN` when surplus goes to a goal, and that counts on top of the month's plan:
+`max(planned, recordedOther) + recordedByCheckIn`, and the assistant's *"Japan trip: $110 → $165 per month, starting Sep 1"*
+(slice 17) is a proposal that reaches the same plan endpoint a person uses.
 
 ## Derived figures
 
@@ -315,7 +385,11 @@ These hold everywhere. A change that breaks one needs a very good reason and an 
 1. Every financial row has a non-null `household_id`, and every query filters on a household the
    authenticated user is a verified member of.
 2. Account balance always equals opening balance plus the sum of its transactions.
-3. A transfer's two legs always sum to zero and always share a `transferGroupId`.
+3. A transfer is exactly **two rows sharing a `transferGroupId`**, in two different accounts of
+   the same household, with opposite signs. Where both accounts share a currency the amounts are
+   equal in magnitude. Where they do not, each leg is the true figure for its own account and the
+   pair does **not** sum to zero — see ADR-0033, which explains why that is the absence of a lie
+   rather than a defect.
 4. `Money` arithmetic never mixes currencies. Totals group by currency first; conversion, if
    any, happens last and only for display.
 5. A transaction's amount is in its account's currency and is **never rewritten** by a conversion

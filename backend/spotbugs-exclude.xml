@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SpotBugs exclusions. Two, both argued rather than assumed — an exclusion file is where static
+  SpotBugs exclusions. Three, each argued rather than assumed — an exclusion file is where static
   analysis quietly stops applying, so each one says what it covers and why it is not a defect.
 -->
 <FindBugsFilter>
@@ -28,6 +28,16 @@
       <Bug pattern="EI_EXPOSE_REP"/>
       <Bug pattern="EI_EXPOSE_REP2"/>
     </Or>
+  </Match>
+
+  <!--
+    EI_EXPOSE_REP2 on ImportPayees: the same injected-collaborator case as above (it holds the
+    JdbcTemplate Spring hands it), in a persistence package the rule above does not cover. Named
+    by class rather than widening to ..persistence.., so an entity there is still checked.
+  -->
+  <Match>
+    <Class name="com.budgetowl.imports.persistence.ImportPayees"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
 
   <!--

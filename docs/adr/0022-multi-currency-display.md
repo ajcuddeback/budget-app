@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-09-07
 - **Deciders:** Repository owner
+- **Amended by:** [ADR-0039](0039-reports-are-per-currency-until-rates-exist.md) — the decision
+  below is unchanged; the `ExchangeRate` entity and the roll-up move from the reporting slice to a
+  follow-on slice of their own.
 
 ## Context
 

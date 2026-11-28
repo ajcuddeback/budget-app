@@ -162,6 +162,19 @@ class AuthenticationIT extends ApiTestBase {
     }
 
     @Test
+    void refusesAMalformedDeviceHandleAsABadRequestRatherThanFailing() {
+        Household household = seedHousehold();
+
+        ApiResponse refused = household.owner().delete("/api/auth/devices/not-a-handle");
+
+        // DeviceController's javadoc has always said "a malformed one is a 400 naming the
+        // parameter". It was a 500: the class was @Validated, which sends the @Pattern through an
+        // AOP proxy whose ConstraintViolationException nothing handles. Nothing had ever sent one.
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.stringField("code")).isEqualTo("validation-failed");
+    }
+
+    @Test
     void revokesOneDeviceImmediatelyAndLeavesTheOthers() {
         seedHousehold();
         ApiClient phone = mobile(OWNER_EMAIL, OWNER_SECRET, "Ada's phone");

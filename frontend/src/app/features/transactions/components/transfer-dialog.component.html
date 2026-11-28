@@ -1,0 +1,194 @@
+<dialog appModal class="dialog" aria-labelledby="transfer-dialog-title" (dismissed)="closed.emit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="stack">
+    <h2 class="card-title" id="transfer-dialog-title">{{ titleKey() | t }}</h2>
+
+    <app-error-alert [error]="error()" />
+
+    <!-- Said once, plainly: this is why there is no category and no payee on this form. -->
+    <p class="card-note">{{ 'transfers.noCategoryNote' | t }}</p>
+
+    @if (transfer()) {
+      <!-- The delete confirmation leads with "Both halves go"; editing said nothing, so the
+           reader was told the scary thing about the destructive action and left to infer it
+           about the quiet one. -->
+      <p class="card-note">{{ 'transfers.editBothHalves' | t }}</p>
+    }
+
+    @if (transfer(); as existing) {
+      <div class="field">
+        <p class="field-label">{{ 'transfers.accountsLabel' | t }}</p>
+        <!-- Composed through a template so a right-to-left locale can reorder it. -->
+        <p>
+          {{
+            'transfers.accountsFixed'
+              | t: { from: existing.fromAccountName, to: existing.toAccountName }
+          }}
+        </p>
+        <p class="field-hint">{{ 'transfers.accountsFixedHint' | t }}</p>
+      </div>
+    } @else {
+      <div class="field">
+        <label for="transfer-from">{{ 'transfers.from' | t }}</label>
+        <select
+          id="transfer-from"
+          class="input"
+          formControlName="fromAccountId"
+          aria-describedby="transfer-from-error"
+        >
+          <option value="">{{ 'transfers.chooseAccount' | t }}</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">{{ account.name }} ({{ account.currency }})</option>
+          }
+        </select>
+        <app-field-error [control]="form.controls.fromAccountId" errorId="transfer-from-error" />
+      </div>
+
+      <div class="field">
+        <label for="transfer-to">{{ 'transfers.to' | t }}</label>
+        <select
+          id="transfer-to"
+          class="input"
+          formControlName="toAccountId"
+          aria-describedby="transfer-to-error"
+          [attr.aria-invalid]="
+            form.controls.toAccountId.invalid && form.controls.toAccountId.touched ? 'true' : null
+          "
+        >
+          <option value="">{{ 'transfers.chooseAccount' | t }}</option>
+          @for (account of accounts(); track account.id) {
+            <option [value]="account.id">{{ account.name }} ({{ account.currency }})</option>
+          }
+        </select>
+        <!-- The same account twice lands here, as it is chosen rather than on submit. -->
+        <app-field-error [control]="form.controls.toAccountId" errorId="transfer-to-error" />
+      </div>
+    }
+
+    <div class="field">
+      <label for="transfer-amount">{{ 'transfers.amount' | t }}</label>
+      <!-- Deliberately type="text": a number input hands back a double (ADR-0006). Unsigned, too:
+           the direction is which account it leaves, never a minus sign. -->
+      <input
+        id="transfer-amount"
+        class="input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        formControlName="amount"
+        aria-describedby="transfer-amount-hint transfer-amount-error"
+        [attr.aria-invalid]="
+          form.controls.amount.invalid && form.controls.amount.touched ? 'true' : null
+        "
+      />
+      <p class="field-hint" id="transfer-amount-hint">
+        @if (fromCurrency()) {
+          {{ 'transfers.amountHint' | t: { currency: fromCurrency() } }}
+        } @else {
+          {{ 'transfers.amountHintNoAccount' | t }}
+        }
+      </p>
+      <app-field-error [control]="form.controls.amount" errorId="transfer-amount-error" />
+    </div>
+
+    <!-- A live region that is always in the DOM, so the field appearing is announced rather than
+         silently inserted under somebody's cursor. -->
+    <div aria-live="polite">
+      @if (crossCurrency()) {
+        <div class="field">
+          <label for="transfer-amount-received">{{ 'transfers.amountReceived' | t }}</label>
+          <input
+            id="transfer-amount-received"
+            class="input"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            formControlName="amountReceived"
+            aria-describedby="transfer-received-hint transfer-received-error"
+            [attr.aria-invalid]="
+              form.controls.amountReceived.invalid && form.controls.amountReceived.touched
+                ? 'true'
+                : null
+            "
+          />
+          <!-- Says *why* it is being asked for. Nobody should have to guess that we are not
+               hiding a conversion we could have done. -->
+          <p class="field-hint" id="transfer-received-hint">
+            {{
+              'transfers.amountReceivedHint' | t: { sent: fromCurrency(), received: toCurrency() }
+            }}
+          </p>
+          <app-field-error
+            [control]="form.controls.amountReceived"
+            errorId="transfer-received-error"
+          />
+
+          @if (transfer()?.impliedRate; as rate) {
+            <!-- Derived for display, and labelled as such: it is not what the bank charged, and
+                 nothing in Budget Owl reads it back (ADR-0022). -->
+            <p class="field-hint">
+              {{
+                'transfers.impliedRate'
+                  | t: { sent: fromCurrency(), rate: rate | rate, received: toCurrency() }
+              }}
+            </p>
+            <p class="field-hint">{{ 'transfers.impliedRateNote' | t }}</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="field">
+      <label for="transfer-date">{{ 'transfers.date' | t }}</label>
+      @if (legsDiffer(); as differ) {
+        @if (differ.dates) {
+          <p class="field-hint" id="transfer-date-legs">
+            {{
+              'transfers.legDates'
+                | t
+                  : {
+                      from: (differ.transfer.fromDate | dateOnly),
+                      to: (differ.transfer.toDate | dateOnly),
+                    }
+            }}
+          </p>
+        }
+      }
+      <input
+        id="transfer-date"
+        class="input"
+        type="date"
+        formControlName="date"
+        [attr.aria-describedby]="
+          legsDiffer()?.dates ? 'transfer-date-legs transfer-date-error' : 'transfer-date-error'
+        "
+      />
+      <app-field-error [control]="form.controls.date" errorId="transfer-date-error" />
+    </div>
+
+    <div class="field">
+      <label for="transfer-note">{{ 'transfers.note' | t }}</label>
+      <input
+        id="transfer-note"
+        class="input"
+        type="text"
+        maxlength="500"
+        autocomplete="off"
+        formControlName="note"
+        aria-describedby="transfer-note-hint transfer-note-error"
+      />
+      <p class="field-hint" id="transfer-note-hint">
+        {{ (legsDiffer()?.notes ? 'transfers.legNotes' : 'transfers.noteHint') | t }}
+      </p>
+      <app-field-error [control]="form.controls.note" errorId="transfer-note-error" />
+    </div>
+
+    <div class="cluster dialog-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        {{ (busy() ? 'common.saving' : 'common.save') | t }}
+      </button>
+      <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="closed.emit()">
+        {{ 'common.cancel' | t }}
+      </button>
+    </div>
+  </form>
+</dialog>

@@ -1,0 +1,206 @@
+/* Every value here is a design token (design/README.md). */
+
+.period-bar {
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--color-divider);
+}
+
+.period-name {
+  margin: 0;
+}
+
+.totals {
+  gap: var(--space-6);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.totals dt {
+  color: var(--color-muted);
+}
+
+.totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.total-remaining {
+  font-size: 1.25em;
+}
+
+.envelopes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.envelope {
+  padding-block: var(--space-4);
+}
+
+.envelope + .envelope {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.is-busy {
+  opacity: 0.6;
+}
+
+.envelope-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.envelope-naming {
+  min-width: 0;
+}
+
+.envelope-name {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.envelope-category {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+/* The headline. Big, because it is the number somebody acts on while standing in a shop. */
+.envelope-remaining {
+  margin: 0;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.remaining-amount {
+  font-size: 1.5em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.remaining-label {
+  display: block;
+  color: var(--color-muted);
+}
+
+/* Overspent is marked by the word beside the figure and by the sign in it, not by colour alone —
+   but the colour must not contradict them either. The green accent reads as a success, which is
+   the opposite of what being over means, so this uses the same token .btn-danger does. */
+.envelope-remaining.overspent .remaining-amount {
+  color: var(--color-accent-text);
+}
+
+.meter {
+  margin-block: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-200);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+}
+
+.meter.overspent .meter-fill {
+  background: var(--color-accent-text);
+}
+
+.envelope-running {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.running-figures {
+  font-variant-numeric: tabular-nums;
+}
+
+.envelope-actions {
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-block-start: var(--space-2);
+}
+
+.log {
+  list-style: none;
+  margin-block: var(--space-3) 0;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-divider);
+}
+
+.log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+}
+
+.log-row + .log-row {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.log-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 6rem;
+}
+
+.log-meta,
+.log-note {
+  color: var(--color-muted);
+}
+
+.log-sep {
+  margin-inline: var(--space-1);
+}
+
+.badge {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-1);
+}
+
+.log-actions {
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.archived-row {
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.archived-row + .archived-row {
+  border-block-start: 1px solid var(--color-divider);
+}
+
+.archived-row .envelope-name,
+.archived-figures {
+  color: var(--color-muted);
+}
+
+@media (max-width: 40rem) {
+  .envelope-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .envelope-remaining {
+    text-align: start;
+  }
+
+  .log-actions {
+    margin-inline-start: 0;
+  }
+}

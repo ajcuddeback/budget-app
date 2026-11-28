@@ -38,6 +38,54 @@ export class MoneyPipe implements PipeTransform {
   }
 }
 
+/**
+ * `{{ transfer.impliedRate | rate }}` — a derived rate, never money.
+ *
+ * Deliberately not the `money` pipe: a rate has no currency, and formatting one as currency would
+ * dress a division up as a figure somebody could spend. See `I18nService.formatRate`.
+ */
+@Pipe({ name: 'rate', pure: false })
+export class RatePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(rate: string | null | undefined): string {
+    return this.i18n.formatRate(rate);
+  }
+}
+
+/** `{{ 8 | monthName }}` — "August". For a month picker, which has no year to show. */
+@Pipe({ name: 'monthName', pure: false })
+export class MonthNamePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(month: number): string {
+    return this.i18n.formatMonthName(month);
+  }
+}
+
+/**
+ * `{{ '2027-11' | period }}` — "November 2027". A month label is not a date, so it never gains a
+ * day it does not have; anything that is not a period renders as nothing rather than as itself.
+ */
+@Pipe({ name: 'period', pure: false })
+export class PeriodPipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(period: string | null | undefined): string {
+    return this.i18n.formatMonth(period);
+  }
+}
+
+/** `{{ 3 | weekdayName }}` — "Wednesday", from the ISO weekday number, Monday first. */
+@Pipe({ name: 'weekdayName', pure: false })
+export class WeekdayNamePipe implements PipeTransform {
+  private readonly i18n = inject(I18nService);
+
+  transform(isoDay: number): string {
+    return this.i18n.formatWeekday(isoDay);
+  }
+}
+
 @Pipe({ name: 'currencyName', pure: false })
 export class CurrencyNamePipe implements PipeTransform {
   private readonly i18n = inject(I18nService);

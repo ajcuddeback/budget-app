@@ -1,0 +1,74 @@
+name: budget_owl
+description: "Budget Owl for iOS and Android: your household's budget, talking to your own server."
+# Never published to pub.dev. The app ships knowing no server (ADR-0016, ADR-0042).
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.14.0
+
+# Every package is pinned by pubspec.lock, which is committed (mobile-app.md, attack 12).
+# Nothing that phones home: no analytics, no crash reporting, no ads. A package that does is a
+# privacy defect, not a dependency choice (ADR-0016) — test/architecture/guards_test.dart
+# ("no package that phones home is in the lockfile") fails the build on the usual suspects.
+dependencies:
+  # SHA-256 of the one user CA a server is pinned to (user_trust.dart). Already in the lockfile,
+  # through Flutter's own tooling; declared because the app now uses it directly.
+  crypto: ^3.0.8
+  decimal: ^3.2.7
+  dio: ^5.11.1
+  drift: ^2.35.4
+  # Import's file picker (flutter.dev): the system document picker (Android ACTION_OPEN_DOCUMENT,
+  # iOS UIDocumentPickerViewController), so no storage permission is declared. Both platforms
+  # hand back a copy in the app's temporary directory as well as the bytes; the import screen
+  # deletes that copy as soon as the bytes are in memory (lib/features/import/data/statement_file.dart).
+  file_selector: ^1.1.0
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^3.5.0
+  flutter_secure_storage: ^11.2.0
+  go_router: ^18.1.4
+  intl: ^0.20.3
+  material_ui: ^1.1.0
+  meta: ^1.19.0
+  path_provider: ^2.1.6
+  # Insights' CSV export (fluttercommunity.dev): the platform share sheet. No permission; on
+  # Android a FileProvider over cache/share_plus only. The export file is written to the app's
+  # temporary directory and deleted after sharing (lib/features/insights/data/csv_export.dart).
+  share_plus: ^13.3.1
+  # SQLite itself, bundled through build hooks. The user define below selects the SQLCipher
+  # build, which is what encrypts the cache (ADR-0042). sqlcipher_flutter_libs is end-of-life and
+  # replaced by exactly this option.
+  sqlite3: ^3.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.5
+  very_good_analysis: ^11.0.0
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
+
+flutter:
+  uses-material-design: true
+  generate: true
+  # Bundled from design/fonts by tools/mobile-tokens.sh, never fetched (non-negotiable 9). Each
+  # web subset is its own family; lib/core/theme/app_theme.dart lists the -ext one as a fallback.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Latin.ttf
+    - family: Figtree Ext
+      fonts:
+        - asset: assets/fonts/Figtree-LatinExt.ttf
+    - family: Caprasimo
+      fonts:
+        - asset: assets/fonts/Caprasimo-Latin.ttf
+    - family: Caprasimo Ext
+      fonts:
+        - asset: assets/fonts/Caprasimo-LatinExt.ttf

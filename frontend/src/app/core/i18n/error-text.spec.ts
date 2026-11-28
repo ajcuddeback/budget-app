@@ -9,7 +9,9 @@ describe('errorMessage', () => {
   let i18n: I18nService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     i18n = TestBed.inject(I18nService);
   });
 
@@ -20,9 +22,14 @@ describe('errorMessage', () => {
   });
 
   it('prefers the more specific code-and-reason sentence, and fills its numbers', () => {
-    const error = apiError(400, 'password-unacceptable', { reason: 'too-short', minimumLength: 12 });
+    const error = apiError(400, 'password-unacceptable', {
+      reason: 'too-short',
+      minimumLength: 12,
+    });
 
-    expect(errorMessage(i18n, error)).toBe('That password is too short. Use at least 12 characters.');
+    expect(errorMessage(i18n, error)).toBe(
+      'That password is too short. Use at least 12 characters.',
+    );
   });
 
   it('falls back to the plain code when the reason has no sentence of its own', () => {
@@ -31,7 +38,7 @@ describe('errorMessage', () => {
     expect(errorMessage(i18n, error)).toBe('That password cannot be used. Choose a different one.');
   });
 
-  it('says how long to wait, from the server\'s own figure', () => {
+  it("says how long to wait, from the server's own figure", () => {
     expect(errorMessage(i18n, apiError(429, 'rate-limited', { retryAfterSeconds: 300 }))).toBe(
       'Too many attempts. Wait 5 minutes and try again.',
     );
@@ -51,6 +58,8 @@ describe('errorMessage', () => {
   it('is available as a pipe', () => {
     const pipe = TestBed.runInInjectionContext(() => new ErrorTextPipe());
 
-    expect(pipe.transform(apiError(403, 'owner-only'))).toBe('Only an owner of the household can do that.');
+    expect(pipe.transform(apiError(403, 'owner-only'))).toBe(
+      'Only an owner of the household can do that.',
+    );
   });
 });

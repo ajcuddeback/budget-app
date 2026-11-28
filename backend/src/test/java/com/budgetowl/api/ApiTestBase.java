@@ -1,7 +1,12 @@
 package com.budgetowl.api;
 
 import com.budgetowl.auth.service.AuthRateLimiter;
+import com.budgetowl.debt.service.TermsSolveRateLimiter;
+import com.budgetowl.imports.service.ImportRateLimiter;
+import com.budgetowl.instance.service.MetaRateLimiter;
 import com.budgetowl.smoke.PostgresTestBase;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,18 +56,43 @@ public abstract class ApiTestBase extends PostgresTestBase {
      */
     @Autowired private AuthRateLimiter rateLimiter;
 
+    /**
+     * The solve endpoint's limiter, for the same reason: it is in memory and one instance serves
+     * the whole shared context, so {@code DebtLimitsIT} deliberately exhausting it would leave
+     * every later test's solve refused with a {@code 429}.
+     */
+    @Autowired private TermsSolveRateLimiter solveRateLimiter;
+
+    /** File import's limiter, for the same reason (slice 12). */
+    @Autowired private ImportRateLimiter importRateLimiter;
+
+    /** {@code GET /api/meta}'s limiter, for the same reason (slice 15): {@code MetaIT} fills it. */
+    @Autowired private MetaRateLimiter metaRateLimiter;
+
     protected JdbcTemplate jdbc;
 
     @BeforeEach
     void resetDatabase() {
         rateLimiter.clearAll();
         jdbc = new JdbcTemplate(dataSource);
+        solveRateLimiter.clearAll();
+        importRateLimiter.clearAll();
+        metaRateLimiter.clearAll();
         jdbc.execute(
                 """
-                TRUNCATE accounts, household_invitations, auth_tokens, household_members,
-                         households, users, spring_session_attributes, spring_session
+                TRUNCATE debt_payments, debts, payoff_plan_snapshots, payoff_plans,
+                         envelope_entries, envelopes, transactions, payees, categories, accounts,
+                         household_invitations,
+                         auth_tokens, household_members, households, users,
+                         spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE
                 """);
+        // instance_settings is a singleton row that V6 inserts, so it survives the TRUNCATE above
+        // and has to be put back by hand. The three oidc_* TEXT columns were missing from this
+        // list: a test that configured a provider left its issuer, client id and CLIENT SECRET in
+        // the database for every test after it. That made "this instance has no OIDC configured"
+        // depend on the order the suite happened to run in, and left a credential sitting in the
+        // database for the rest of the run. Found while writing AdminIT.
         jdbc.update(
                 """
                 UPDATE instance_settings
@@ -70,8 +100,12 @@ public abstract class ApiTestBase extends PostgresTestBase {
                        registration_open = false,
                        password_login_enabled = true,
                        oidc_enabled = false,
+                       oidc_issuer_uri = NULL,
+                       oidc_client_id = NULL,
+                       oidc_client_secret = NULL,
                        oidc_provisioning_enabled = false,
-                       oidc_owner_login_at = NULL
+                       oidc_owner_login_at = NULL,
+                       version = 0
                  WHERE id = 1
                 """);
     }
@@ -199,6 +233,104 @@ public abstract class ApiTestBase extends PostgresTestBase {
                                         name, lastFour == null ? "null" : "\"" + lastFour + "\""));
         if (response.status() != 201) {
             throw new AssertionError("could not create an account: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * A category, created through the API.
+     *
+     * @param parentId null for a top-level category
+     * @return its id
+     */
+    protected UUID createCategory(ApiClient client, String name, String kind, UUID parentId) {
+        ApiResponse response =
+                client.post(
+                        "/api/categories",
+                        """
+                        {"name":"%s","kind":%s,"parentId":%s}
+                        """
+                                .formatted(
+                                        name,
+                                        kind == null ? "null" : "\"" + kind + "\"",
+                                        parentId == null ? "null" : "\"" + parentId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a category: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * One of the categories every household is seeded with at setup, by name.
+     *
+     * <p>Read straight from the database rather than through the list endpoint: a test that wants a
+     * category to file a transaction under should not also be exercising the listing, or it fails
+     * for two unrelated reasons at once.
+     */
+    protected UUID seededCategoryId(String name) {
+        return jdbc.queryForObject(
+                "SELECT id FROM categories WHERE lower(name) = lower(?)", UUID.class, name);
+    }
+
+    /**
+     * A transaction, created through the API as a caller who may write.
+     *
+     * @param amount a signed decimal string — negative is money leaving the account
+     * @return its id
+     */
+    protected UUID createTransaction(
+            ApiClient client, UUID accountId, String date, String amount, UUID categoryId) {
+        ApiResponse response =
+                client.post(
+                        "/api/transactions",
+                        """
+                        {"accountId":"%s","date":"%s","amount":"%s","categoryId":%s}
+                        """
+                                .formatted(
+                                        accountId,
+                                        date,
+                                        amount,
+                                        categoryId == null ? "null" : "\"" + categoryId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a transaction: " + response.body());
+        }
+        return UUID.fromString(response.stringField("id"));
+    }
+
+    /**
+     * A debt, created through the API as a caller who may write.
+     *
+     * <p>Only the fields every debt needs: a name, a kind, a balance and the date it was true, a
+     * rate and a minimum. The rate alone is enough — the payment comes from the plan, or falls back
+     * to the minimum — which is exactly what onboarding's three fields capture.
+     *
+     * @param billId the bill whose occurrence pays this minimum, or null. The only thing that keeps
+     *     a minimum from being counted in both Bills &amp; Income and the debt plan
+     * @return its id
+     */
+    protected UUID createDebt(
+            ApiClient client,
+            String name,
+            String balance,
+            String apr,
+            String minimumPayment,
+            UUID billId) {
+        ApiResponse response =
+                client.post(
+                        "/api/debts",
+                        """
+                        {"name":"%s","kind":"CREDIT_CARD","balance":"%s","balanceDate":"%s",
+                         "apr":"%s","minimumPayment":"%s","billId":%s}
+                        """
+                                .formatted(
+                                        name,
+                                        balance,
+                                        LocalDate.now(ZoneOffset.UTC),
+                                        apr,
+                                        minimumPayment,
+                                        billId == null ? "null" : "\"" + billId + "\""));
+        if (response.status() != 201) {
+            throw new AssertionError("could not create a debt: " + response.body());
         }
         return UUID.fromString(response.stringField("id"));
     }

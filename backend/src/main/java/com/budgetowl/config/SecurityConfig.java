@@ -41,10 +41,10 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 /**
  * Deny by default (non-negotiable #2), two credential transports, one authorization (ADR-0018).
  *
- * <p><b>The public routes are the five below and nothing else.</b> Setup status, first user, login,
- * token issue, invitation acceptance — each is public because the caller cannot possibly be
- * authenticated yet, and each is rate-limited or single-claim in the service behind it. Adding a
- * sixth is a security change and needs to be reviewed as one.
+ * <p><b>The public routes are the six below and nothing else.</b> Setup status, first user, login,
+ * token issue, invitation acceptance, and {@code GET /api/meta} (ADR-0042) — each is public because
+ * the caller cannot possibly be authenticated yet, and each is rate-limited or single-claim in the
+ * service behind it. Adding a seventh is a security change and needs to be reviewed as one.
  *
  * <p><b>CSRF is never disabled.</b> It is exempted for exactly two shapes, both of which carry no
  * ambient credential for a hostile page to ride on: a request authenticated by an {@code
@@ -97,11 +97,16 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(route.matcher("/actuator/health/**"))
                                         .permitAll()
-                                        // The five public routes. A fresh instance has nobody to
+                                        // The six public routes. A fresh instance has nobody to
                                         // authenticate as; a login cannot require being logged in;
-                                        // and an invited person has no account until they accept.
+                                        // an invited person has no account until they accept; and
+                                        // a phone must know it is talking to Budget Owl before it
+                                        // sends anybody's password (ADR-0042). GET only: a write
+                                        // to /api/meta is an ordinary authenticated request.
                                         .requestMatchers(
                                                 route.matcher(HttpMethod.GET, "/api/setup/status"))
+                                        .permitAll()
+                                        .requestMatchers(route.matcher(HttpMethod.GET, "/api/meta"))
                                         .permitAll()
                                         .requestMatchers(
                                                 route.matcher(

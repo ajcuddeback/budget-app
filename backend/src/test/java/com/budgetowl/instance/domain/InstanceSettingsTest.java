@@ -148,15 +148,38 @@ class InstanceSettingsTest {
     }
 
     @Test
-    void reconfiguringTheSameProviderKeepsTheProof() {
-        // Rotating the client secret is not a change of provider, and forcing password login back
-        // on for it would train an administrator to ignore the setting.
+    void rotatingTheClientSecretDiscardsTheProofToo() {
+        // THIS TEST ASSERTED THE OPPOSITE UNTIL ADR-0034, with the reasoning that "rotating the
+        // client secret is not a change of provider, and forcing password login back on for it
+        // would train an administrator to ignore the setting". That reasoning is about annoyance.
+        // The thing on the other side of it is a lockout: the secret is half the client
+        // credential, so a mistyped rotation leaves a route nobody has proven, with password login
+        // still hidden and the CHECK constraint unable to see the difference — it can only tell
+        // that OIDC is on and that somebody once signed in. One routine PATCH, nobody can sign in,
+        // host shell the only way back. Annoyance loses to that.
         InstanceSettings settings = fresh();
         settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
         settings.recordOwnerOidcLoginAt(NOW);
         settings.disablePasswordLogin();
 
         settings.configureOidc("https://idp.example.com", "budget-owl", "rotated-not-a-secret");
+
+        assertThat(settings.oidcOwnerLoginAt()).isNull();
+        assertThat(settings.isPasswordLoginEnabled()).isTrue();
+    }
+
+    @Test
+    void resavingTheIdenticalConfigurationDisturbsNothing() {
+        // The other half of ADR-0034, and the reason it is a comparison rather than "any write to
+        // the secret clears the proof": an administrator who saves the form without changing
+        // anything — or who changes only the provisioning flag — sends all three values back
+        // unchanged, and must not be punished for it. Only a DIFFERENT credential is unproven.
+        InstanceSettings settings = fresh();
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
+        settings.recordOwnerOidcLoginAt(NOW);
+        settings.disablePasswordLogin();
+
+        settings.configureOidc("https://idp.example.com", "budget-owl", "not-a-real-secret");
 
         assertThat(settings.oidcOwnerLoginAt()).isEqualTo(NOW);
         assertThat(settings.isPasswordLoginEnabled()).isFalse();

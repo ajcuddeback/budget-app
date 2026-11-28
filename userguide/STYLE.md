@@ -60,7 +60,9 @@ insulting. Delete the word — the sentence is always better without it.
 ## Screenshots
 
 - Every screenshot comes from `tools/userguide-capture.sh`, which renders the real UI against
-  the demo fixtures in `tools/ui/fixtures/demo-data.ts`. Never mock one up by hand.
+  the demo fixtures in `tools/ui/fixtures/demo-data.ts`, or, for the phone app, from
+  `tools/userguide-mobile.sh`, which copies the app's own golden screenshots. Never mock one up by
+  hand.
 - Put it **after** the step it illustrates, not before.
 - Every image needs alt text describing what it shows — people using screen readers are using
   this app too.

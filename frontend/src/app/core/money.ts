@@ -58,6 +58,65 @@ export function sameAmount(left: string, right: string): boolean {
   return a !== null && b !== null && a === b;
 }
 
+/**
+ * Which of two amounts is the larger: `-1`, `0` or `1`, and `null` when either is not an amount.
+ *
+ * Ordering, not arithmetic — it produces no figure, so nothing it returns can be mistaken for
+ * money. It exists because "avalanche costs less in interest than snowball" is a comparison the
+ * debt plan has to make, and the alternative on offer was `parseFloat`. Exact, because it compares
+ * `bigint` minor units rather than two doubles that have each already lost something.
+ */
+export function compareAmounts(left: string, right: string): number | null {
+  const a = toMinorUnits(left);
+  const b = toMinorUnits(right);
+  if (a === null || b === null) {
+    return null;
+  }
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+
+/**
+ * `value ÷ largest` as a plain `number` between 0 and 1 — **geometry, never money**.
+ *
+ * The one place a figure legitimately becomes a `number`: an SVG needs coordinates, and a chart
+ * cannot be drawn from decimal strings. What is converted is a *dimensionless ratio*, computed by
+ * exact `bigint` division at a millionth of a unit; no amount is ever handed to a double, and the
+ * figures the chart *states* are still the server's own strings through the `money` pipe. A
+ * sixth-decimal rounding error in a ratio moves a line by a fraction of a pixel.
+ *
+ * `null` when either side is not an amount, or `largest` is zero — an unplottable point is a
+ * visible gap, never a silent zero.
+ */
+export function amountFraction(value: string, largest: string): number | null {
+  const numerator = toMinorUnits(value);
+  const denominator = toMinorUnits(largest);
+  if (numerator === null || denominator === null || denominator === 0n) {
+    return null;
+  }
+  const precision = 1_000_000n;
+  return Number((numerator * precision) / denominator) / Number(precision);
+}
+
+/**
+ * `'445.0000'` → `'445'` — the same figure with its trailing zeros off, for a form field.
+ *
+ * **String surgery, never a parse.** The API reports every amount at the server's scale, which is
+ * right on the wire and reads like a glitch in a text box somebody is about to edit. Dropping
+ * trailing zeros changes no value: `sameAmount('445', '445.0000')` is true, and what is submitted
+ * is a figure the household can see is theirs.
+ *
+ * It assumes nothing about how many decimals a currency has — it removes zeros and stops. Anything
+ * that is not an amount is returned untouched, because this is cosmetic and must never be the
+ * thing that loses a figure.
+ */
+export function trimAmount(amount: string): string {
+  if (!isAmount(amount) || !amount.includes('.')) {
+    return amount;
+  }
+  const trimmed = amount.replace(/0+$/, '').replace(/\.$/, '');
+  return trimmed === '' || trimmed === '-' ? amount : trimmed;
+}
+
 /** `'-400.0000'` → `-4000000n`. `null` for anything that is not an amount. */
 function toMinorUnits(amount: string): bigint | null {
   if (!isAmount(amount)) {

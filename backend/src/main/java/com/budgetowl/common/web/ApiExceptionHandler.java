@@ -119,25 +119,46 @@ public class ApiExceptionHandler {
                 ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
     }
 
+    /**
+     * A constrained handler parameter, or a {@code @Valid} body validated alongside one.
+     *
+     * <p><b>A body is expanded into its fields.</b> When a handler has a constrained parameter
+     * <em>and</em> a {@code @Valid} body — {@code POST /api/invitations/{token}/accept} has both —
+     * Spring validates the body inside method validation, and it arrives here as a single {@code
+     * ParameterErrors} rather than as a {@code MethodArgumentNotValidException}. Mapped by
+     * parameter, the response named the field {@code "body"} and carried only the first message,
+     * where it had always named {@code "displayName"}. So a body's own field errors are unpacked,
+     * exactly as {@link #handleInvalidBody} does: the field name and the message, and <b>never the
+     * rejected value</b> — on that route the body holds a password.
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     ResponseEntity<Map<String, Object>> handleInvalidParameter(
             HandlerMethodValidationException exception, HttpServletRequest request) {
         List<ApiProblem.FieldProblem> errors =
                 exception.getParameterValidationResults().stream()
-                        .map(
-                                result ->
-                                        new ApiProblem.FieldProblem(
-                                                result.getMethodParameter().getParameterName(),
-                                                result.getResolvableErrors().isEmpty()
-                                                        ? "is invalid"
-                                                        : result.getResolvableErrors()
-                                                                .get(0)
-                                                                .getDefaultMessage()))
+                        .flatMap(ApiExceptionHandler::fieldProblemsOf)
                         .toList();
         String correlationId = ApiProblem.newCorrelationId();
         log(ErrorCode.VALIDATION_FAILED, correlationId, null);
         return problem(
                 ApiProblem.ofFieldErrors(ApiProblem.instanceOf(request), errors, correlationId));
+    }
+
+    private static java.util.stream.Stream<ApiProblem.FieldProblem> fieldProblemsOf(
+            org.springframework.validation.method.ParameterValidationResult result) {
+        if (result instanceof org.springframework.validation.method.ParameterErrors body) {
+            return body.getFieldErrors().stream()
+                    .map(
+                            error ->
+                                    new ApiProblem.FieldProblem(
+                                            error.getField(), error.getDefaultMessage()));
+        }
+        return java.util.stream.Stream.of(
+                new ApiProblem.FieldProblem(
+                        result.getMethodParameter().getParameterName(),
+                        result.getResolvableErrors().isEmpty()
+                                ? "is invalid"
+                                : result.getResolvableErrors().get(0).getDefaultMessage()));
     }
 
     /**
@@ -148,6 +169,17 @@ public class ApiExceptionHandler {
     ResponseEntity<Map<String, Object>> handleUnreadableBody(
             HttpMessageNotReadableException exception, HttpServletRequest request) {
         String correlationId = ApiProblem.newCorrelationId();
+        if (BodyTooLargeException.isIn(exception)) {
+            // A body stopped at the import cap while Jackson was reading it (file-import.md rule
+            // 3): too large, not malformed — the same 413 nginx and the declared-length check give.
+            log(ErrorCode.IMPORT_FILE_TOO_LARGE, correlationId, null);
+            return problem(
+                    ApiProblem.of(
+                            ErrorCode.IMPORT_FILE_TOO_LARGE,
+                            ApiProblem.instanceOf(request),
+                            Map.of(),
+                            correlationId));
+        }
         log(ErrorCode.MALFORMED_REQUEST, correlationId, null);
         return problem(
                 ApiProblem.of(
@@ -173,6 +205,39 @@ public class ApiExceptionHandler {
         return problem(
                 ApiProblem.of(
                         ErrorCode.STALE_VERSION,
+                        ApiProblem.instanceOf(request),
+                        Map.of(),
+                        correlationId));
+    }
+
+    /**
+     * A row lock this request needed was not granted: another transaction held it past the lock
+     * timeout, or PostgreSQL broke a deadlock by rolling this one back.
+     *
+     * <p>A {@code 409 record-busy}, never a {@code 500}: nothing was written — the transaction
+     * rolled back whole — and the same request can be sent again. Debts take their row locks with a
+     * short timeout for exactly this (ADR-0043, {@code DebtLocks}). Both the Spring and the JPA
+     * forms are listed: a lock taken through the {@code EntityManager} directly, rather than a
+     * repository, is not translated into Spring's.
+     */
+    @ExceptionHandler({
+        org.springframework.dao.PessimisticLockingFailureException.class,
+        jakarta.persistence.PessimisticLockException.class,
+        jakarta.persistence.LockTimeoutException.class
+    })
+    ResponseEntity<Map<String, Object>> handleLockNotGranted(
+            RuntimeException exception, HttpServletRequest request) {
+        String correlationId = ApiProblem.newCorrelationId();
+        log(ErrorCode.RECORD_BUSY, correlationId, null);
+        // Which of the three it was — a lock timeout or a deadlock — tells an operator what to
+        // look for. The class name only: the message can quote the SQL and its parameters.
+        log.debug(
+                "lock not granted correlationId={} exception={}",
+                correlationId,
+                exception.getClass().getName());
+        return problem(
+                ApiProblem.of(
+                        ErrorCode.RECORD_BUSY,
                         ApiProblem.instanceOf(request),
                         Map.of(),
                         correlationId));

@@ -87,6 +87,48 @@ class ArchitectureTest {
                                     + " overview puts entities in ..domain.. with their JPA"
                                     + " mapping annotations");
 
+    /**
+     * Nothing in the application is {@code @Validated} — not a controller, and not anything else.
+     *
+     * <p>It reads as the thing that makes a constraint on a {@code @RequestParam} or
+     * {@code @PathVariable} work, and it does the opposite. Spring MVC validates a constrained
+     * handler parameter <b>natively</b> and throws {@code HandlerMethodValidationException}, which
+     * {@code ApiExceptionHandler} answers as a {@code 400} naming the field. A {@code @Validated}
+     * class swaps that for the AOP method-validation proxy, which throws {@code
+     * ConstraintViolationException} — and nothing handles that, so it is a {@code 500} with a stack
+     * trace at {@code ERROR}.
+     *
+     * <p>Four controllers had it, and every one was a latent {@code 500}. The worst was {@code POST
+     * /api/invitations/{token}/accept}: a public route, so an anonymous caller could write a full
+     * stack trace to the log at {@code ERROR} on every request, in a loop — and the constraint
+     * fired before the service, so the auth rate limiter inside it never saw the request. The
+     * logged text itself was fixed ({@code accept.token: size must be between 0 and 256}); what the
+     * caller controlled was how often, which is a log flood rather than log injection. The device
+     * route's own javadoc promised a {@code 400}. Each was found by sending one malformed value,
+     * which no test had ever done.
+     *
+     * <p><b>Why every class and not only controllers, and why meta-annotations.</b> The first
+     * version of this rule checked {@code @RestController} classes for a <em>direct</em>
+     * {@code @Validated}. Spring's own lookup is wider than that: it searches superclasses and
+     * meta-annotations. So a {@code @Validated abstract class ScopedController}, or a composed
+     * {@code @ApiController} carrying it, put the {@code 500} straight back while this rule stayed
+     * green — and a {@code @Validated} <em>service</em> throws the same unhandled exception on
+     * whatever route calls it. Refusing it on every class, directly or through a meta-annotation,
+     * covers all three: a base class that carries it is itself a class, and fails here. The
+     * security review after the first version found the gap.
+     */
+    @ArchTest
+    static final ArchRule nothing_is_validated_at_class_level =
+            noClasses()
+                    .should()
+                    .beMetaAnnotatedWith(org.springframework.validation.annotation.Validated.class)
+                    .because(
+                            "Spring MVC already validates constrained handler parameters and"
+                                    + " answers 400; @Validated replaces that with an AOP proxy"
+                                    + " whose ConstraintViolationException nothing handles, so a"
+                                    + " malformed parameter becomes a 500 with a stack trace."
+                                    + " Remove it — the constraints keep working without it");
+
     @ArchTest
     static final ArchRule transactional_only_in_service =
             methods()
@@ -219,7 +261,103 @@ class ArchitectureTest {
                     .notHaveRawReturnType(Float.class)
                     .because("ADR-0006 — no floating point anywhere near this codebase");
 
+    /**
+     * File import reads amounts from a file nobody here wrote, and no amount from a file goes
+     * anywhere near floating point (ADR-0006, docs/features/file-import.md rule 7).
+     *
+     * <p>{@code Double.parseDouble("0x1p3")} is 8 and {@code NumberFormat.parse("12abc")} is 12,
+     * and both return a binary float on the way. The field and return-type rules above cannot see a
+     * local {@code double} or a call that returns one, so this rule looks at every call the import
+     * package makes: none may take or return {@code double}, {@code float} or their boxes, and none
+     * may touch {@code NumberFormat} or {@code DecimalFormat} at all.
+     */
+    @ArchTest
+    static final ArchRule import_never_reads_a_number_through_floating_point =
+            noClasses()
+                    .that()
+                    .resideInAPackage("com.budgetowl.imports..")
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(
+                            Double.class,
+                            Float.class,
+                            java.text.NumberFormat.class,
+                            java.text.DecimalFormat.class)
+                    .orShould()
+                    .callCodeUnitWhere(takesOrReturnsFloatingPoint())
+                    .because(
+                            "an amount from a file goes through ImportAmountLexer to a canonical"
+                                    + " string and only then to BigDecimal; every floating-point"
+                                    + " path accepts something it must not (file-import.md rule 7)");
+
+    /**
+     * One XML parser in the application, configured in one place (docs/features/file-import.md rule
+     * 5). A second {@code XMLInputFactory} made with defaults — or a DOM or SAX parser, whose
+     * defaults resolve external entities — would be an XXE the moment it met a file.
+     */
+    @ArchTest
+    static final ArchRule only_the_ofx_factory_creates_an_xml_parser =
+            noClasses()
+                    .that()
+                    .doNotHaveFullyQualifiedName(
+                            com.budgetowl.imports.domain.OfxXmlFactory.class.getName())
+                    .should()
+                    .callMethodWhere(createsAStaxFactory())
+                    .because(
+                            "OfxXmlFactory is the only factory configured with DTDs and external"
+                                    + " entities off (file-import.md rule 5)");
+
+    @ArchTest
+    static final ArchRule nothing_uses_a_dom_sax_or_transformer_parser =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(
+                            javax.xml.parsers.DocumentBuilderFactory.class,
+                            javax.xml.parsers.SAXParserFactory.class,
+                            javax.xml.transform.TransformerFactory.class,
+                            javax.xml.validation.SchemaFactory.class)
+                    .because(
+                            "their defaults resolve external entities; OFX 2.x is read with StAX"
+                                    + " from OfxXmlFactory and nothing else (file-import.md rule 5)");
+
     // ---------------------------------------------------------------------------------- helpers
+
+    private static DescribedPredicate<com.tngtech.archunit.core.domain.JavaCall<?>>
+            takesOrReturnsFloatingPoint() {
+        return new DescribedPredicate<>("takes or returns double, float, Double or Float") {
+            @Override
+            public boolean test(com.tngtech.archunit.core.domain.JavaCall<?> call) {
+                var target = call.getTarget();
+                if (isFloatingPoint(target.getRawReturnType().getName())) {
+                    return true;
+                }
+                return target.getRawParameterTypes().stream()
+                        .anyMatch(type -> isFloatingPoint(type.getName()));
+            }
+        };
+    }
+
+    private static boolean isFloatingPoint(String typeName) {
+        return typeName.equals("double")
+                || typeName.equals("float")
+                || typeName.equals(Double.class.getName())
+                || typeName.equals(Float.class.getName());
+    }
+
+    private static DescribedPredicate<com.tngtech.archunit.core.domain.JavaMethodCall>
+            createsAStaxFactory() {
+        return new DescribedPredicate<>("creates an XMLInputFactory") {
+            @Override
+            public boolean test(com.tngtech.archunit.core.domain.JavaMethodCall call) {
+                var target = call.getTarget();
+                return target.getOwner().isAssignableTo(javax.xml.stream.XMLInputFactory.class)
+                        && (target.getName().equals("newInstance")
+                                || target.getName().equals("newFactory")
+                                || target.getName().equals("newDefaultFactory"));
+            }
+        };
+    }
 
     private static DescribedPredicate<JavaMethod> declaredOnARepositoryForHouseholdOwnedData() {
         return new DescribedPredicate<>("declared on a repository for household-owned data") {

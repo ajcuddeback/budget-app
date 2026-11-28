@@ -320,8 +320,21 @@ class AccountDisclosureIT extends ApiTestBase {
         return event -> true;
     }
 
+    /**
+     * The captured lines, read from a SNAPSHOT of the appender's list.
+     *
+     * <p>{@code ListAppender.list} is an {@code ArrayList} written to by whichever thread logged —
+     * Tomcat's request threads, Hibernate's, the connection pool's — and streaming it directly
+     * raced with a line arriving mid-iteration, which surfaced as an intermittent {@code
+     * ConcurrentModificationException} that had nothing to do with what this test asserts. Copying
+     * first is enough: a line that arrives after the copy is one this assertion was never about.
+     */
     private List<String> loggedLines(Predicate<ILoggingEvent> matching) {
-        return captured.list.stream()
+        List<ILoggingEvent> snapshot;
+        synchronized (captured.list) {
+            snapshot = new ArrayList<>(captured.list);
+        }
+        return snapshot.stream()
                 .filter(matching)
                 .map(
                         event ->

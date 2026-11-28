@@ -7,8 +7,32 @@
 
   @if (signedIn()) {
     <nav class="nav" [attr.aria-label]="'nav.label' | t">
+      <a routerLink="/transactions" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.transactions' | t
+      }}</a>
+      <a routerLink="/check-in" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.checkIn' | t
+      }}</a>
       <a routerLink="/accounts" routerLinkActive="active" ariaCurrentWhenActive="page">{{
         'nav.accounts' | t
+      }}</a>
+      <a routerLink="/bills" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.bills' | t
+      }}</a>
+      <a routerLink="/debt-plan" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.debtPlan' | t
+      }}</a>
+      <a routerLink="/goals" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.goals' | t
+      }}</a>
+      <a routerLink="/envelopes" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.envelopes' | t
+      }}</a>
+      <a routerLink="/categories" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.categories' | t
+      }}</a>
+      <a routerLink="/insights" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+        'nav.insights' | t
       }}</a>
       <a routerLink="/household" routerLinkActive="active" ariaCurrentWhenActive="page">{{
         'nav.household' | t
@@ -19,6 +43,13 @@
       <a routerLink="/preferences" routerLinkActive="active" ariaCurrentWhenActive="page">{{
         'nav.preferences' | t
       }}</a>
+      <!-- Hidden rather than shown-and-refused (admin-console.md): an operator menu that is always
+           visible and always refuses teaches people to ignore refusals. The API refuses regardless. -->
+      @if (instanceAdmin()) {
+        <a routerLink="/admin" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+          'nav.admin' | t
+        }}</a>
+      }
     </nav>
   }
 

@@ -25,7 +25,7 @@ describe('TranslatedTitleStrategy', () => {
     });
   });
 
-  it('titles the page from its route\'s message key', async () => {
+  it("titles the page from its route's message key", async () => {
     await RouterTestingHarness.create('/devices');
 
     expect(TestBed.inject(Title).getTitle()).toBe('Devices · Budget Owl');

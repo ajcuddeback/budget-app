@@ -1,8 +1,9 @@
 # Getting started
 
-> **Status: partly written.** Steps 1, 1b and 2 below are written from the running app. Steps 3
-> onward are still outlines: their screens do not exist yet, and each gets written, with real
-> screenshots, as its slice ships. See `docs/roadmap.md` for the order.
+> **Status: partly written.** Steps 1 to 8 and 10 below are written from the running app. Step 9
+> is still an outline, and gets written, with real screenshots, once somebody has run
+> `tools/userguide-capture.sh` against the screen it describes. See `docs/roadmap.md` for the
+> order.
 >
 > **Do not write steps here from the feature docs.** Feature docs describe what we intend to
 > build; a user guide describes what shipped. Write each section only after running
@@ -75,6 +76,10 @@ Full steps: [Invite someone to your household](features/invite-someone.md). What
 invite goes through: [Join a household](features/join-a-household.md). Changing roles, removing
 people, and leaving: [See who is in your household](features/manage-members.md).
 
+An invitation is the only way in on a new server — nobody can create their own account unless you
+let them. If you run the server, you can change that, and choose how people sign in, from the
+**Admin** screen: [Choose how people sign in](features/choose-how-people-sign-in.md).
+
 ## 2. Add your accounts
 
 Tell Budget Owl where your money sits. Do this once for each account, and everything you record
@@ -107,60 +112,286 @@ dollars to euros needs a rate and a date, and the answer would be a guess printe
 Full steps: [Add an account](features/add-an-account.md). Closing an account later:
 [Archive or delete an account](features/archive-or-delete-an-account.md).
 
-## 3. Set up your categories
+## 3. Make the categories yours
 
-*Awaiting slice 4.*
+A category is how you say what money was **for**. You already have about twenty of them — you
+don't have to design a list before you start, and this step is five minutes of tidying rather than
+homework.
 
-Will cover: the categories you start with, renaming them to match how you actually think about
-your money, and adding your own.
+1. Select **Categories** in the menu across the top.
+
+   They're grouped under **Income** and **Spending**, with sub-categories indented under their
+   parent.
+
+   ![The Categories screen: Income and Spending groups, with sub-categories indented under their parent, and Add a category at the top right.](images/organise-your-categories--tree.png)
+
+2. Select **Edit** on anything whose name isn't how you'd say it, and change it.
+
+3. Select **Archive** on the ones you'd never use.
+
+   They drop out of the list and out of the category box when you record a transaction. Your old
+   transactions still show them, so last year's spending still reads correctly.
+
+4. Select **Add a category** for anything missing, or **Add a sub-category** on the one it belongs
+   under.
+
+**Choose the Kind carefully — it's the one thing you can't change.** **Income** for money
+arriving, **Spending** for money going out. Changing it later would change the meaning of
+everything already filed under it, so Budget Owl asks now rather than arguing with you later.
+
+**Two levels, no more.** **Bills → Utilities** works. **Bills → Utilities → Water** doesn't. If
+you find yourself wanting a third level, that's usually a sign the thing you want is a note on the
+transaction, not another category.
+
+Don't spend long here. You can add a category at the moment you need it, and every transaction can
+sit as **Needs a category** until you decide.
+
+Full steps: [Organise your categories](features/organise-your-categories.md).
 
 ## 4. Record your first transactions
 
-*Awaiting slice 5.*
+This is the thing you'll do most. Everything else in Budget Owl is worked out from it, and there's
+nothing to tidy up first.
 
-Will cover: adding an expense, adding income, categorising as you go, and how your account
-balance updates.
+1. Select **Transactions** in the menu across the top — it's also where Budget Owl starts when you
+   sign in.
+
+2. Select **Record a transaction**.
+
+   ![The Transactions screen: what has happened to your money, newest first, with the Record a transaction button circled.](images/record-a-transaction--ledger.png)
+
+3. Check the **Account** and the **Date**.
+
+   The date starts on today, which is right most of the time.
+
+4. Choose **Money out** or **Money in**, then enter the **Amount**.
+
+   Just the number — `18.40`. **You never type a minus sign**; that choice is what makes it count
+   the right way.
+
+5. Fill in **Who it was with**, choose a **Category**, and select **Save**.
+
+   Both are optional. After a couple of letters, Budget Owl suggests names you've used before.
+
+   Your transaction appears at the top of the list, and the balance on the **Accounts** screen has
+   already changed to match.
+
+**Your balances come from what you record.** You give an account its opening balance once, and
+from then on every balance is worked out from your transactions. You never type a balance in to
+correct one — you record the thing you missed.
+
+**It's fine to leave the category blank.** Getting it written down matters more than getting it
+filed. Transactions without one are marked **Needs a category**, and the button of the same name
+turns the list into a to-do list for later.
+
+Full steps: [Record a transaction](features/record-a-transaction.md) and
+[Give a transaction a category](features/give-a-transaction-a-category.md).
 
 ## 5. Give your spending an envelope
 
-*Awaiting slice 6.*
+An envelope is money set aside for one kind of spending this month — groceries, eating out, fuel.
+It's for the spending that changes week to week; something owed on a date, like rent, is a bill
+instead (step 6).
 
-Will cover: setting an amount for groceries, logging what you spend against it as you go, and
-reading the one number that matters — what is left. Works whether or not you ever connect a bank.
+1. Select **Envelopes** in the menu across the top, then select **Add an envelope**.
+
+2. Enter a **Name**, check the **Month**, and enter the **Amount** you're setting aside.
+
+   A **Category** is optional — it's there so your envelopes and your transactions use the same
+   words.
+
+3. Select **Save**.
+
+   ![The Envelopes screen for August 2026: Set aside $700.00, Spent $386.50, Left $313.50, and each envelope leading with what is left.](images/set-up-an-envelope--list.png)
+
+4. Select **Log spend** on the envelope as you spend, enter the **Amount**, and select **Log it**.
+
+   The amount is the only thing you have to fill in, and the envelope's **left** figure changes
+   straight away. On a phone the number keypad opens for you.
+
+**The big number is what's left**, not what you've spent. That's the number you can still do
+something about, so it's the one in large type — and an envelope you've gone past shows what
+you're **over**, in a colour you'll notice.
+
+**Keep envelopes narrow.** "Groceries" and "Eating out" are two envelopes, not one. A weekly shop
+and a restaurant are different decisions, and lumping them together hides the thing you set the
+envelope up to see.
+
+**An envelope belongs to one month.** Next month you decide again, which is what lets you compare
+the two.
+
+**Nothing is filed into an envelope automatically.** You can attach a transaction you've already
+recorded, and the log says whether each entry was **Typed** or came **From a transaction** — but
+Budget Owl never guesses the match for you, however obvious it looks.
+
+Full steps: [Set up an envelope](features/set-up-an-envelope.md) and
+[Log spend in an envelope](features/log-spend-in-an-envelope.md).
 
 ## 6. Put in your bills and income
 
-*Awaiting slice 7.*
+Rent, subscriptions and payday are the predictable half of your money. Put them in once and they
+appear in every month they fall in — and Budget Owl can tell you what's left.
 
-Will cover: rent, subscriptions and payday — entering something once so it appears every month,
-and letting Budget Owl match a bill to the real charge that pays it.
+1. Select **Bills** in the menu across the top.
+
+   You'll see **Bills & income**, opened on the month you're in.
+
+2. Select **Add an income source**, and enter a name, what arrives **each time**, and when.
+
+   The month's total is worked out from the schedule, so something arriving every other week is
+   worth more in the months that hold three arrivals.
+
+3. Select **Add a bill**, under **Your bills**, and enter a name, the amount you expect, and when
+   it's due.
+
+   Monthly, yearly, weekly, every other week, or irregular — for the vet, where there's no date to
+   predict.
+
+4. Select **Mark paid** on a bill's row when you pay it.
+
+   Each date gets its own row, so a weekly bill is ticked off a week at a time.
+
+![The What's left this month card: $25.90 left to spend, with income expected $3,640.00, bills this month $2,301.10, set aside in envelopes $700.00, debt minimums $303.00, goals $310.00, and $608.00 of $2,301.10 still to pay.](images/see-whats-left-this-month--whats-left.png)
+
+**A bill is a plan, not a payment.** Marking one paid records what your household says happened.
+It doesn't move money and doesn't create a transaction — only a transaction is ever money that
+really went.
+
+**Bills count towards the month whether or not you've paid them.** Rent that has already gone is
+not money you still have, so ticking it off doesn't make **What's left this month** go up. The
+**Still to pay** line is the one that drops.
+
+**Five things come off.** **Debt minimums** is the fourth: the minimum payments on your debts that
+aren't already one of your bills. **Goals** is the fifth: what you plan to put towards your goals
+this month. If you used to see a larger figure here, that is why. The money was always committed,
+and the page now says so. The full explanation is in
+[See what's left this month](features/see-whats-left-this-month.md#what-changed-and-why).
+
+Full steps: [See what's left this month](features/see-whats-left-this-month.md),
+[Add your income](features/add-your-income.md), [Add a bill](features/add-a-bill.md) and
+[Mark a bill paid](features/mark-a-bill-paid.md).
 
 ## 7. Move money between your own accounts
 
-*Awaiting slice 8.*
+Money going from your current account into savings hasn't been spent, and money coming back out
+hasn't been earned. It's the same money in a different place, and it goes in as a **transfer**.
 
-Will cover: recording a transfer, and why a transfer is neither income nor an expense — the
-thing people most often get wrong and then wonder why their totals look off.
+1. Select **Transactions** in the menu across the top.
+
+2. Select **Move money**, beside **Record a transaction**.
+
+   A window opens, and says at the top that a transfer has no category and nobody to pay.
+
+   ![The Move money between your accounts window as it opens, with Out of, Into, Amount that left and Date.](images/move-money-between-accounts--sheet.png)
+
+3. Choose the account the money left, in **Out of**.
+
+   Each account is listed with its currency, because that's what the amount will be in.
+
+4. Choose the account it arrived in, in **Into**.
+
+5. Enter the **Amount that left** — the number on its own, with no minus sign.
+
+6. Select **Save**.
+
+   You'll see **Money moved.** above the list.
+
+**A transfer shows up as two rows**, one in each account: **Transfer out** where the money left,
+**Transfer in** where it landed.
+
+![The list showing one transfer as two rows: Transfer in, $500.00, Emergency Fund, and Transfer out, -$500.00, Everyday Checking, both labelled Between your accounts with a Transfer badge.](images/move-money-between-accounts--two-rows.png)
+
+Nothing is counted twice. An account's balance is worked out from the rows in that account, so
+each account has to carry its own side of the move. Both rows say **Between your accounts** rather
+than asking for a category — a transfer is never spending and never income, so no category could
+be right for it.
+
+**If the two accounts are in different currencies**, Budget Owl asks for a second figure: what
+arrived. It doesn't convert anything, because it doesn't know what your bank charged — the fee is
+usually inside the rate. Copy both figures off your statement.
+
+Full steps, correcting one, and deleting one:
+[Move money between your own accounts](features/move-money-between-accounts.md).
 
 ## 8. Make a plan for what you owe
 
-*Awaiting slice 10.*
+If you owe money on a card or a loan, put it in once and Budget Owl works out when it's gone and
+which one to attack first.
 
-Will cover: entering a debt's terms, choosing between paying the highest rate first or the
-smallest balance first, and seeing what each one does to the date you are finally clear.
+1. Select **Debt plan** in the menu across the top, then select **Add a debt**.
+
+2. Fill in the name, the **Balance now** and **The date that balance was true**, the **Annual rate**
+   and the **Minimum payment**.
+
+   All five come off your statement. Nothing here needs a bank connection.
+
+3. If the minimum already goes out as one of your bills, say which one in **The bill that pays its
+   minimum**.
+
+   This is the step people skip, and it's the one that stops the same money being counted twice.
+
+4. Select **Save**.
+
+   The debt joins the ladder, and the page works out when it clears.
+
+5. Choose an **Order of attack** — **Avalanche**, **Snowball** or **Your own order**.
+
+   ![The Avalanche or snowball card: Avalanche, in use, debt-free April 2029 with $2,880.41 of interest; Snowball, debt-free April 2029 with $2,923.93 of interest; then the sentence saying either is a good answer.](images/choose-how-to-clear-your-debts--compare.png)
+
+**Budget Owl works both orders out and refuses to pick for you.** Avalanche goes at the highest rate
+first, snowball at the smallest balance first. For the household above they finish in the same
+month and differ by about $44 of interest, and the page says so: _"Either is a good answer."_ How
+much you put in moves the date far more than which order you put it in. **Your own order** lets you
+rank the debts yourself, and the page tells you what your order costs next to the other two.
+
+**Logging a debt payment doesn't move money.** Like a bill, it records what you say happened — no
+transaction is created, and the account you name in **Paid from** is untouched.
+
+**A balance is yours, not Budget Owl's.** It comes off a statement, and between statements the app
+estimates and says plainly that it's estimating. After a year it stops guessing and asks you for a
+statement instead.
+
+Full steps: [Add a debt](features/add-a-debt.md),
+[Choose how to clear your debts](features/choose-how-to-clear-your-debts.md),
+[Log a payment against a debt](features/log-a-debt-payment.md) and
+[Confirm what you owe](features/confirm-what-you-owe.md).
+
+## 8b. Save towards a goal
+
+A trip, a new laptop, an emergency fund: a goal is money you're putting aside for something.
+
+1. Select **Goals** in the menu across the top, then select **Add a goal**.
+
+2. Fill in **What it is for** and **How much it needs**, and a **Month you want it by** if you have
+   one.
+
+3. Enter what you plan to put aside in **Each month**.
+
+   As you type, the window works out when that gets you there.
+
+4. Select **Add a goal**.
+
+   ![The Goals page: New laptop, Japan and Emergency fund, each with a bar, how much is saved of the target, and a sentence saying when it gets there.](images/save-towards-a-goal--list.png)
+
+**A goal's monthly amount comes off what's left to spend**, in full, from the start of the month.
+Money you mean to save isn't money you can spend.
+
+**Setting money aside doesn't move money.** Like marking a bill paid, it records what you did at
+your bank. A goal's figure is what you record against it, not an account's balance.
+
+Full steps: [Save towards a goal](features/save-towards-a-goal.md) and
+[Change what you set aside each month](features/change-what-you-set-aside.md).
 
 ## 9. See where your money went
 
-*Awaiting slice 13.*
+_Awaiting slice 13._
 
 Will cover: reading the reports, spotting the category that surprised you, and comparing months.
 
 ## 10. Put it on your phone
 
-*Awaiting slice 15.*
-
-Will cover: installing the mobile app, pointing it at your own server, and adding a transaction
-while you are standing in the shop — which is where most budgeting actually happens.
+Want Budget Owl on your phone, for the transaction you record standing in the shop? See
+[Use Budget Owl on your phone](features/use-budget-owl-on-your-phone.md).
 
 ## Where to go next
 

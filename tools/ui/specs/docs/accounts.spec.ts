@@ -183,10 +183,10 @@ test('@doc archiving an account and bringing it back', async ({ page, doc }) => 
 test('@doc deleting an account', async ({ page, doc }) => {
     doc.guide('archive-or-delete-an-account');
     await page.goto('/accounts');
-    await page.getByRole('button', { name: /Delete\s+Travel Card/ }).click();
-    const confirm = page.getByRole('dialog', { name: 'Delete Travel Card?' });
+    await page.getByRole('button', { name: /Delete\s+Berlin Savings/ }).click();
+    const confirm = page.getByRole('dialog', { name: 'Delete Berlin Savings?' });
     await expect(confirm).toBeVisible();
-    await doc.capture('delete-confirm', 'The window asking whether to delete Travel Card, saying it cannot be undone.', {
+    await doc.capture('delete-confirm', 'The window asking whether to delete Berlin Savings, saying it cannot be undone.', {
         highlight: confirm.getByRole('button', { name: 'Delete' }),
         step: 3,
     });
@@ -201,15 +201,15 @@ test('@doc deleting an account', async ({ page, doc }) => {
 test('@doc a delete the app will not do', async ({ page, doc }) => {
     doc.guide('archive-or-delete-an-account');
     await page.route(
-        (url) => url.pathname === `/api/accounts/${DEMO_ACCOUNTS[2].id}`,
+        (url) => url.pathname === `/api/accounts/${DEMO_ACCOUNTS[3].id}`,
         (route) =>
             route.request().method() === 'DELETE'
                 ? route.fulfill({ status: 409, contentType: 'application/problem+json', body: JSON.stringify(DEMO_PROBLEMS.accountNotEmpty) })
                 : route.fallback(),
     );
     await page.goto('/accounts');
-    await page.getByRole('button', { name: /Delete\s+Travel Card/ }).click();
-    await page.getByRole('dialog', { name: 'Delete Travel Card?' }).getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('button', { name: /Delete\s+Berlin Savings/ }).click();
+    await page.getByRole('dialog', { name: 'Delete Berlin Savings?' }).getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByRole('alert')).toContainText('Archive it instead');
     await doc.capture('delete-refused', 'The message shown when an account has transactions: it cannot be deleted, and archiving is offered instead.', {
         fullPage: true,

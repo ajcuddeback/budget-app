@@ -1,0 +1,146 @@
+<div class="stack">
+  <div class="cluster section-head">
+    <div>
+      <h1 class="page-title">{{ 'goals.title' | t }}</h1>
+      <p class="page-lede">{{ 'goals.lede' | t }}</p>
+    </div>
+    @if (canWrite() && !loading() && !empty()) {
+      <button type="button" class="btn btn-primary" (click)="openAdd()">
+        {{ 'goals.add' | t }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p role="status">{{ 'common.loading' | t }}</p>
+  } @else if (noHousehold()) {
+    <app-no-household />
+  } @else if (loadError(); as failure) {
+    <app-error-alert [error]="failure" />
+    <div>
+      <button type="button" class="btn btn-secondary" (click)="load()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  } @else {
+    @if (notice(); as said) {
+      <div class="alert alert-success" role="status">
+        <p>{{ said.key | t: said.params }}</p>
+      </div>
+    }
+
+    @if (empty()) {
+      <!-- What a goal is for, and Add. Never a $0 of $0 bar. -->
+      <section class="card" aria-labelledby="goals-empty-heading">
+        <h2 class="card-title" id="goals-empty-heading">{{ 'goals.empty.heading' | t }}</h2>
+        <p class="card-note">{{ 'goals.empty.body' | t }}</p>
+        @if (canWrite()) {
+          <div>
+            <button type="button" class="btn btn-primary" (click)="openAdd()">
+              {{ 'goals.add' | t }}
+            </button>
+          </div>
+        } @else {
+          <p class="field-hint">{{ 'goals.emptyReadOnly' | t }}</p>
+        }
+      </section>
+    } @else {
+      @for (group of groups(); track group.currency) {
+        <section
+          class="card"
+          [attr.aria-labelledby]="grouped() ? 'goals-' + group.currency : null"
+          [attr.aria-label]="grouped() ? null : ('goals.listLabel' | t)"
+        >
+          @if (grouped()) {
+            <h2 class="card-title" [id]="'goals-' + group.currency">
+              {{ 'goals.currencyGroup' | t: { currency: group.currency } }}
+            </h2>
+          }
+          <ul class="goal-list">
+            @for (row of group.rows; track row.goal.id) {
+              <li class="goal-item">
+                <app-goal-progress
+                  [name]="row.goal.name"
+                  [targetMonth]="row.goal.targetMonth"
+                  [saved]="row.goal.saved"
+                  [target]="row.goal.targetAmount"
+                  [currency]="row.goal.currency"
+                />
+                <div class="goal-said">
+                  @for (said of row.said; track $index) {
+                    <p class="card-note">{{ said.key | t: said.params }}</p>
+                  }
+                </div>
+                <div>
+                  <a class="btn btn-secondary btn-small" [routerLink]="['/goals', row.goal.id]">
+                    {{ 'goals.open' | t }}
+                    <span class="visually-hidden">{{ row.goal.name }}</span>
+                  </a>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+      <!-- The canvas's copy, which is simply true once goals come off "left" (decision 3). -->
+      <p class="card-note">{{ 'goals.countsTowardsLeft' | t }}</p>
+    }
+
+    @if (archived().length > 0) {
+      <div>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          [attr.aria-expanded]="showArchived()"
+          aria-controls="goals-archived"
+          (click)="toggleArchived()"
+        >
+          {{ (showArchived() ? 'goals.archived.hide' : 'goals.archived.show') | t }}
+        </button>
+      </div>
+      @if (showArchived()) {
+        <section
+          class="card is-archived"
+          id="goals-archived"
+          aria-labelledby="goals-archived-heading"
+        >
+          <h2 class="card-title" id="goals-archived-heading">{{ 'goals.archived.heading' | t }}</h2>
+          <p class="card-note">{{ 'goals.archived.body' | t }}</p>
+          <ul class="goal-list">
+            @for (row of archived(); track row.goal.id) {
+              <li class="goal-item">
+                <app-goal-progress
+                  [name]="row.goal.name"
+                  [targetMonth]="row.goal.targetMonth"
+                  [saved]="row.goal.saved"
+                  [target]="row.goal.targetAmount"
+                  [currency]="row.goal.currency"
+                />
+                <div>
+                  <a class="btn btn-secondary btn-small" [routerLink]="['/goals', row.goal.id]">
+                    {{ 'goals.open' | t }}
+                    <span class="visually-hidden">{{ row.goal.name }}</span>
+                  </a>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  }
+</div>
+
+@if (adding()) {
+  <app-goal-dialog
+    [accounts]="accounts()"
+    [baseCurrency]="baseCurrency()"
+    [busy]="dialogBusy()"
+    [error]="dialogError()"
+    [previewSaid]="previewSaid()"
+    [previewUnavailable]="previewUnavailable()"
+    (previewRequested)="askPreview($event)"
+    (submitted)="submitGoal($event)"
+    (closed)="closeDialog()"
+  />
+}

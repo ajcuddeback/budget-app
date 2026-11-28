@@ -293,8 +293,23 @@ class CredentialDisclosureIT extends ApiTestBase {
         return event -> true;
     }
 
+    /**
+     * The captured lines, read from a SNAPSHOT of the appender's list.
+     *
+     * <p>{@code ListAppender.list} is an {@code ArrayList} written to by whichever thread logged —
+     * Tomcat's request threads, Hibernate's, the connection pool's — so streaming it directly raced
+     * and threw {@code ConcurrentModificationException}. It surfaced only once the suite gained
+     * enough concurrent log traffic to lose the race, which is the worst way for a test to be
+     * wrong: it passed for months and then failed on an unrelated change.
+     *
+     * <p>{@code AccountDisclosureIT} already had this fix; this copy did not.
+     */
     private List<String> loggedLines(java.util.function.Predicate<ILoggingEvent> matching) {
-        return captured.list.stream()
+        List<ILoggingEvent> snapshot;
+        synchronized (captured.list) {
+            snapshot = new java.util.ArrayList<>(captured.list);
+        }
+        return snapshot.stream()
                 .filter(matching)
                 .map(event -> event.getLoggerName() + " " + event.getFormattedMessage())
                 .toList();
