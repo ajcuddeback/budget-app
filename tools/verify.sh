@@ -35,7 +35,16 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 run() { # run <label> <command...>
   local label="$1"; shift
   if "$@" >/tmp/verify-out.txt 2>&1; then pass "$label"
-  else fail "$label"; sed 's/^/      /' /tmp/verify-out.txt | tail -40; fi
+  else
+    fail "$label"
+    # The last 40 lines of a long suite are whatever finished last, not what failed: CI's first
+    # Mobile run printed "1136 tests passed, 1 failed" under 40 lines of passing goldens. Under
+    # GitHub Actions, `flutter test` and `dart test` use the github reporter, which wraps each
+    # failure in a `::group::❌ <test name> (failed)` block. Print those blocks first.
+    awk '/^::group::❌/ { p = 1 } p { print } /^::endgroup::/ { p = 0 }' /tmp/verify-out.txt \
+      | head -200 | sed 's/^/      /'
+    sed 's/^/      /' /tmp/verify-out.txt | tail -40
+  fi
 }
 
 section "Repository hygiene"
