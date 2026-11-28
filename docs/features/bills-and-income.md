@@ -169,6 +169,61 @@ varies is unrepresentable without it.
 `amountVaries` with a `tolerance` lets a bill say "about £120, give or take £22", so that a £134
 payment is not flagged as a surprise and a £300 one is.
 
+### The paid date
+
+_Decided 2026-11-28._ **The day an occurrence is marked paid is the household's day, and the
+client says what it is.** There is no household time zone, and the server's clock is UTC. A
+household in Sydney tapping **Mark paid** at 09:00 on September 1st is at 23:00 on August 31st by
+the server, so a paid date the server filled in put September's rent in August. So both clients
+send the device's own date as `paidDate` with the one-tap action, read from the clock when the
+button is tapped (web `currentDate()` in `core/period.ts`; phone `markPaidBody`, from
+`clockProvider`), not when the page opened. That is the same fix the weekly check-in made
+(`today` on the completion, ADR-0043, `weekly-check-in.md`, Completing a check-in), and the full
+**Record a payment** form always sent its date. A body without `paidDate`, from a client older than
+this, is still accepted and dated by the server's UTC day.
+
+**The server bounds `paidDate` exactly as it bounds a debt payment's date** (`HouseholdDates`,
+`debt-plan.md`, The split, rule 8): **no later than today in UTC+14**, the latest date anywhere on
+Earth, and **no earlier than 1900-01-01**. Anything else is `400 validation-failed` naming
+`paidDate`, and nothing is written. The reasons, in order:
+
+1. **It was unbounded, and that was a defect, not a freedom.** At 23:00 UTC on Aug 31, a body dated
+   Sept 2, 1899-12-31 or `+10000-01-01` was stored as paid, and `-5000-01-01` reached PostgreSQL and
+   came back a `409 conflict` that named nothing anyone could fix (`BillPaidDateIT`). A payment that
+   has not happened is not a payment: it moves what the page says is settled, and it would be read
+   as a fact by everything downstream, reporting and the check-in included.
+2. **The upper bound never refuses the household's own date.** UTC+14 is the latest calendar on
+   Earth, so whatever a correctly set device says today is, the server accepts it. The slack is
+   the same day the check-in's `today` and reporting's months already allow.
+3. **One rule for every date a household states.** A bill marked paid and the debt payment it can
+   become (through the check-in's bill prompt) describe the same event. Bounding one and not the
+   other would let the same payment be accepted on one path and refused on the other. The rule
+   moved from `debt.service.DebtDates` to `common.HouseholdDates` so bills can use it without a
+   package cycle (`debt` already depends on `bill`).
+4. **Back-dating stays open.** The lower bound is 1900, not today in UTC−12: recording last week's
+   payment, or last year's, is ordinary bookkeeping through **Record a payment**.
+
+**The check-in's path is held to the same rule.** A completed check-in that attaches a charge to
+a bill (or marks it prepaid) dates the occurrence with the charge's own date, and a transaction may
+be dated ahead and still fall inside the week: a charge for Sunday entered on Friday. That date is
+now **capped at the household's today** (`CheckInCompletion.paidOn`, `HouseholdDay`), as the debt
+payment the same prompt writes always was, so one payment no longer carries two dates. And
+`BillService.recordFromCheckIn` checks `HouseholdDates` itself, so no future caller can store a paid
+date the occurrence `PUT` refuses (`CheckInCompletionIT.a_charge_dated_ahead_pays_its_bill_on_the_households_today`).
+Found by the security review of this change; it predated it.
+
+The bound is checked only on `PAID`, where `paidDate` is used, and after the role and household
+checks, so a `VIEWER` is still answered `403` and a stranger `404` before a date is looked at. It
+lives in the service rather than as Bean Validation because it needs the application clock.
+
+**The pickers stop at the device's own today** on both clients (web `max`, phone `lastDate`), as the
+debt forms' do, so the slack is accepted but never offered. A refusal anyway, from a typed date or a
+device clock set wrong, lands on the date field it names.
+
+The occurrence's due date as the paid date was considered and rejected for the reason the check-in
+rejected it: it invents a payment date, and puts a late payment in the month it was owed rather
+than the month it was paid.
+
 ### Overdue is derived, never stored
 
 `status` is `DUE` | `PAID` | `SKIPPED`. "Overdue" is `dueDate` in the past and `status` still
@@ -247,7 +302,8 @@ picker (previous / next) that every block follows at once:
    month's figure, and **how many arrivals the month has**: a fortnightly wage lands two or three
    times, and that is the month the household has rather than a figure averaged flat.
 3. **Bills** — each bill with **one row per occurrence**, and each row its own due date, status
-   and one-tap **Mark paid** (`PUT` to that row's date, no amount and no date in the body). A
+   and one-tap **Mark paid** (`PUT` to that row's date with no amount, and the device's own date as
+   `paidDate`; see [The paid date](#the-paid-date)). A
    weekly bill is four or five rows; a bill with no occurrence this month is still listed and
    says why. **Mark paid is the only control in the open**, and only on a row that is actually
    `DUE`: a weekly bill is five rows a month, and five buttons on each buries the one anybody
@@ -300,6 +356,9 @@ Retiring a bill or a source is `PATCH active: false` and is offered as **Retire*
 - A `VIEWER` reads everything and marks nothing paid.
 - **No amounts in logs.** A bill's amount is somebody's rent.
 - The `period` in a path is parsed, not interpolated: a malformed one is a `400`, never a query.
+- **A paid date is a bounded statement, not free text.** 1900-01-01 to today anywhere on Earth,
+  else `400` naming `paidDate` with nothing written; checked after authorization, so it tells a
+  `VIEWER` or a stranger nothing ([The paid date](#the-paid-date)).
 
 ## Out of scope
 
@@ -327,6 +386,20 @@ Retiring a bill or a source is `PATCH active: false` and is offered as **Retire*
 - `BillIT` — projection across all five schedules, the clamped month end, overdue derivation,
   idempotent `PUT`, and that a projected period and an untouched one read identically.
 - `BillProjectionTest` — the schedule arithmetic as a unit, including February and leap years.
+- `BillPaidDateIT` — at 23:00 UTC on Aug 31 (09:00 Sept 1 in Sydney): a one-tap dated Sept 1 is
+  stored Sept 1; a body with no date is still accepted and gets the server's Aug 31; Sept 1, Aug
+  31, a back-dated Aug 3 and 1900-01-01 are accepted; Sept 2, 1899-12-31, `-5000-01-01` and
+  `+10000-01-01` are `400` naming `paidDate` and write no row. Run against the unbounded service,
+  the refusal test fails: three of the four were stored and `-5000` was a `409`.
+- `period.spec.ts` (`currentDate`) and `bills.page.spec.ts` (_the date a one-tap Mark paid sends_)
+  — the device's local date, read at the tap after the page was opened on another day. **The
+  frontend runner's zone is UTC, where local and UTC dates agree**, so a `toISOString()`
+  regression passes there. It was run once under `TZ=Australia/Sydney` with that regression in
+  place, and all three tests failed; with the real code they pass in both zones.
+- `bills_requests_test.dart` — `markPaidBody` against the body the API accepted in
+  `bills.generated.json`, and the Sydney morning sending Sept 1; `bills_screen_test.dart` — both
+  phone one-tap paths go through `_markPaid`, the fixture server matches the body exactly (so the
+  date sent is the clock's), and the paid date's picker stops at the phone's today.
 - `IncomeIT`, `PeriodSummaryIT` — the figure the page leads with.
 - `DebtPeriodSummaryIT` (slice 10) — the fourth term: the counted-once arithmetic on the designs'
   own 185 / 342 / 118, that `left` subtracts 303 and **not** 645, and that deleting the linked bill

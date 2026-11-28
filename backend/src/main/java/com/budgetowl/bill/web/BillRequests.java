@@ -177,7 +177,9 @@ public final class BillRequests {
      *
      * <p><b>No version</b>: see {@code StatusRecord}. {@code actualAmount} and {@code paidDate}
      * belong to {@code PAID} and are both optional there — the one-tap case is "I paid it", which
-     * means what was budgeted, today.
+     * means what was budgeted, today. Both clients send {@code paidDate} with the tap, as the
+     * device's own date, because the server's UTC day is the wrong one east of UTC on the 1st. The
+     * service bounds it (1900 to today anywhere on Earth), since the bound needs the clock.
      */
     public record RecordStatusRequest(
             @NotNull OccurrenceStatus status,

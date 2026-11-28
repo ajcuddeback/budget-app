@@ -44,7 +44,20 @@
 
     <div class="field">
       <label for="record-paid-date">{{ 'bills.paidDate' | t }}</label>
-      <input id="record-paid-date" class="input" type="date" formControlName="paidDate" />
+      <!-- Stops at the device's own today: the server refuses a later date than today anywhere on
+           Earth (bills-and-income.md, The paid date), so the picker never offers one. -->
+      <input
+        id="record-paid-date"
+        class="input"
+        type="date"
+        formControlName="paidDate"
+        [attr.max]="today()"
+        aria-describedby="record-paid-date-error"
+        [attr.aria-invalid]="
+          form.controls.paidDate.invalid && form.controls.paidDate.touched ? 'true' : null
+        "
+      />
+      <app-field-error [control]="form.controls.paidDate" errorId="record-paid-date-error" />
     </div>
 
     <div class="cluster dialog-actions">

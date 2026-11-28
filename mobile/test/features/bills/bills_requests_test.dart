@@ -28,11 +28,29 @@ void main() {
   );
 
   group('occurrences', () {
-    test('Mark paid, Skip and Mark as due send the status alone, with no version', () {
+    test("Mark paid sends the status and the phone's own date, with no version", () {
       expect(
-        statusBody(OccurrenceStatus.paid),
+        markPaidBody(CalendarDate.parse('2026-08-20')),
         recorded.sent('plans', 'PUT', '/api/bills/bil-0003/occurrences/2026-08-18'),
       );
+    });
+
+    test('Mark paid on the morning of the 1st east of UTC sends the 1st', () {
+      // 09:00 on September 1st in Sydney is 23:00 on August 31st UTC, the server's day. The phone's
+      // own calendar is the household's, so the payment is September's.
+      final sydneyMorning = DateTime(2026, 9, 1, 9);
+      expect(markPaidBody(CalendarDate.of(sydneyMorning)), {
+        'status': 'PAID',
+        'paidDate': '2026-09-01',
+      });
+      expect(
+        CalendarDate.of(DateTime.utc(2026, 8, 31, 23)).iso,
+        '2026-08-31',
+        reason: 'the same instant by the server clock, which is why the date is sent',
+      );
+    });
+
+    test('Skip and Mark as due send the status alone, with no version', () {
       expect(
         statusBody(OccurrenceStatus.skipped),
         recorded.sent('paid-other', 'PUT', '/api/bills/bil-0004/occurrences/2026-08-25'),

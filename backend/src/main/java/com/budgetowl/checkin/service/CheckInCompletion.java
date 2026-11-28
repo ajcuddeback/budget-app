@@ -553,7 +553,7 @@ public class CheckInCompletion {
                     item.target(),
                     OccurrenceStatus.PAID,
                     Money.of(item.row().amount().negate(), picture.weekSpending().currency()),
-                    item.row().date(),
+                    paidOn(item),
                     item.row().id(),
                     StatusSource.MANUAL);
             for (LocalDate skipped : item.skips()) {
@@ -574,9 +574,21 @@ public class CheckInCompletion {
                     target,
                     OccurrenceStatus.PAID,
                     Money.of(item.row().amount().negate(), picture.weekSpending().currency()),
-                    item.row().date(),
+                    paidOn(item),
                     item.row().id(),
                     source);
+        }
+
+        /**
+         * The day a charge pays a bill on: the charge's own date, capped at the household's today,
+         * exactly as the debt payment the same prompt writes is. A transaction may be dated ahead
+         * (a manual entry for Saturday, entered on Wednesday) and still fall in the week; the bill
+         * must not then read as paid on a day that has not happened, which the occurrence {@code
+         * PUT} refuses (bills-and-income.md, The paid date). Never moved earlier, so a charge dated
+         * the 1st east of UTC stays in the new month.
+         */
+        private LocalDate paidOn(Item item) {
+            return day.noLaterThanToday(item.row().date());
         }
 
         private void recategorise(Item item, UUID categoryId, long version) {

@@ -1540,3 +1540,37 @@ To see what CI sees, run the suite against the shell:
 (expand the glob first). That reproduced this failure exactly.
 
 _Added 2026-11-28 — fixing CI on PR #7._
+
+## `dart format` before `flutter pub get` formats at 80 columns, not the project's 100
+
+**Symptom.** `dart format lib/features/bills test/features/bills`, run in a fresh container,
+reported "9 changed" for a two-line edit and rewrapped every file in the feature, splitting
+one-line `if`s so the analyzer then raised `curly_braces_in_flow_control_structures` on code nobody
+had touched.
+
+**Why.** The formatter reads `formatter: page_width: 100` from `mobile/analysis_options.yaml` only
+once the package is resolved. With no `.dart_tool/package_config.json` yet, it fell back to its
+default of 80.
+
+**What to do.** Run `flutter pub get --enforce-lockfile` first (as `tools/verify.sh mobile` does).
+If it already happened, running `dart format` again after `pub get` restores the untouched files
+exactly; check that `git diff --stat` lists only what you meant to change.
+
+_Added 2026-11-28 — the one-tap Mark paid date._
+
+## The frontend test runner is in UTC, so a local-versus-UTC date bug passes there
+
+**Symptom.** `currentDate()` swapped for `new Date().toISOString().slice(0, 10)`, which is the
+UTC date and wrong east of UTC every morning, kept all 50 bills and period tests green.
+
+**Why.** Vitest runs in the container's zone, UTC, where the local calendar and the UTC one agree
+at every instant. The test cannot pin a zone for itself: a runtime `process.env.TZ` change works
+on Node's main thread but not in a worker thread, which is where test files can run.
+
+**What to do.** Write the test with a local-time `Date` just after midnight
+(`new Date(2026, 8, 1, 0, 30)`): it holds in any zone and fails a UTC implementation in every zone
+east of UTC. Then prove that once, by hand:
+`TZ=Australia/Sydney npx ng test --watch=false --include=<spec>` with the regression in place
+should fail, and pass without it. The same applies to any date a household states (ADR-0043).
+
+_Added 2026-11-28 — the one-tap Mark paid date._

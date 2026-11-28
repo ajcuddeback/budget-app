@@ -8,7 +8,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { MessageKey } from '../../../core/i18n/messages';
 import { sameAmount } from '../../../core/money';
 import { TranslatePipe } from '../../../core/i18n/t.pipe';
-import { currentPeriod, shiftPeriod } from '../../../core/period';
+import { currentDate, currentPeriod, shiftPeriod } from '../../../core/period';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog.component';
 import { ErrorAlertComponent } from '../../../shared/components/error-alert.component';
 import { NoHouseholdComponent } from '../../../shared/components/no-household.component';
@@ -176,10 +176,7 @@ export class BillsPage {
   protected readonly pending = signal<PendingAction | null>(null);
 
   /** Today as `YYYY-MM-DD`, in the viewer's own calendar — a date is a calendar question. */
-  protected readonly today = computed(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`;
-  });
+  protected readonly today = computed(() => currentDate());
 
   protected readonly confirmText = computed(() => {
     const action = this.pending();
@@ -353,14 +350,18 @@ export class BillsPage {
   /**
    * The one-tap action: paid, for what was budgeted, today.
    *
-   * No amount and no date in the body — both are optional, and the server defaults them to the
-   * expected amount and today. "I paid it" is the thing somebody taps while looking at a bank app.
+   * No amount — the server defaults it to the expected amount. "I paid it" is the thing somebody
+   * taps while looking at a bank app. **The date is sent**: the device's own, read when the button
+   * is tapped (not `today`, which is read once and goes stale on a page left open overnight). The
+   * server's clock is UTC, and on the morning of the 1st east of UTC its today is the month before
+   * (bills-and-income.md, The paid date).
    */
   protected async markPaid(bill: Bill, occurrence: BillOccurrence): Promise<void> {
     await this.run(
       occurrenceId(occurrence),
       bill.name,
-      () => this.bills.record(bill.id, occurrence.dueDate, { status: 'PAID' }),
+      () =>
+        this.bills.record(bill.id, occurrence.dueDate, { status: 'PAID', paidDate: currentDate() }),
       'bills.markedPaid',
     );
   }

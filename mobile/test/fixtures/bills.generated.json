@@ -2822,7 +2822,8 @@
     "path" : "/api/bills/bil-0003/occurrences/2026-08-18",
     "auth" : "viewer",
     "request" : {
-      "status" : "PAID"
+      "status" : "PAID",
+      "paidDate" : "2026-08-20"
     },
     "status" : 403,
     "body" : {
@@ -2840,7 +2841,8 @@
     "path" : "/api/bills/bil-0003/occurrences/2026-08-18",
     "auth" : "owner",
     "request" : {
-      "status" : "PAID"
+      "status" : "PAID",
+      "paidDate" : "2026-08-20"
     },
     "status" : 200,
     "body" : {

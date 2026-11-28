@@ -4,6 +4,7 @@ import com.budgetowl.common.AmountText;
 import com.budgetowl.common.Change;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
+import com.budgetowl.common.HouseholdDates;
 import com.budgetowl.common.InvalidRequestException;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.NotFoundException;
@@ -605,12 +606,12 @@ public class DebtPaymentService {
     }
 
     /**
-     * A payment's date: see {@link DebtDates}. Not before 1900, and not after today anywhere on
-     * Earth, so a household east of UTC can date a payment with its own today, and the month whose
-     * interest it carries is the household's month.
+     * A payment's date: see {@link HouseholdDates}. Not before 1900, and not after today anywhere
+     * on Earth, so a household east of UTC can date a payment with its own today, and the month
+     * whose interest it carries is the household's month.
      */
     private LocalDate requireNotInTheFuture(LocalDate date, String field) {
-        return DebtDates.requirePlausible(date, field, balances.now());
+        return HouseholdDates.requirePlausible(date, field, balances.now());
     }
 
     /** See {@code AccountService.requireCurrentVersion} — the clear message, not the control. */

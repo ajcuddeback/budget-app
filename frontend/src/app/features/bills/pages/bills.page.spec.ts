@@ -428,7 +428,10 @@ describe('BillsPage', () => {
 
     // The third Friday, and no other: a month is how occurrences are listed, a date is what one is.
     expect(bills.record).toHaveBeenCalledTimes(1);
-    expect(bills.record).toHaveBeenCalledWith('b2', '2026-08-21', { status: 'PAID' });
+    expect(bills.record).toHaveBeenCalledWith('b2', '2026-08-21', {
+      status: 'PAID',
+      paidDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
   });
 
   it('marks a bill paid for what was budgeted, with nothing else to fill in', async () => {
@@ -438,9 +441,33 @@ describe('BillsPage', () => {
     buttonNamed(root(fixture), /Mark paid/).click();
     await settle(fixture);
 
-    // No amount and no date: "I paid it" means what was budgeted, today, and the server defaults
-    // both. One tap is the whole point of the action.
-    expect(bills.record).toHaveBeenCalledWith('b1', '2026-08-15', { status: 'PAID' });
+    // No amount: "I paid it" means what was budgeted, and the server defaults it. One tap is the
+    // whole point of the action, so nothing is asked; the date travels without being asked for.
+    expect(bills.record).toHaveBeenCalledTimes(1);
+    const [, , body] = bills.record.mock.lastCall as [string, string, Record<string, unknown>];
+    expect(Object.keys(body).sort()).toEqual(['paidDate', 'status']);
+  });
+
+  describe('the date a one-tap Mark paid sends', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('is the device’s own date, read when the button is tapped', async () => {
+      // The page is opened on one day and left open; the tap happens at 00:30 on September 1st,
+      // where the viewer is. East of UTC that is still August 31st by the server's clock, so the
+      // date has to come from here, and from the moment of the tap rather than of the page load.
+      const fixture = await render();
+      bills.record.mockReturnValue(of(due({ status: 'PAID' })));
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 8, 1, 0, 30));
+
+      buttonNamed(root(fixture), /Mark paid/).click();
+      await settle(fixture);
+
+      expect(bills.record).toHaveBeenCalledWith('b1', '2026-08-15', {
+        status: 'PAID',
+        paidDate: '2026-09-01',
+      });
+    });
   });
 
   it('says an occurrence is overdue', async () => {
@@ -611,6 +638,29 @@ describe('BillsPage', () => {
       'b3',
       '2026-08-09',
       expect.objectContaining({ status: 'PAID', actualAmount: '96.40' }),
+    );
+  });
+
+  it('stops the paid date at the device’s own today, and says so beside it when refused', async () => {
+    const fixture = await render();
+    buttonNamed(occurrenceRows(fixture)[0], /Paid a different amount/).click();
+    await settle(fixture);
+
+    // The server refuses a date later than today anywhere on Earth, so the picker never offers one.
+    const paidDate = root(fixture).querySelector<HTMLInputElement>('#record-paid-date')!;
+    expect(paidDate.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(paidDate.getAttribute('max')).toBe(paidDate.value);
+
+    // A refusal anyway (a typed date, a wrong device clock) lands on the field it names.
+    bills.record.mockReturnValue(
+      throwError(() => apiError(400, 'validation-failed', { field: 'paidDate' }, ['paidDate'])),
+    );
+    buttonNamed(root(fixture), /Record it/).click();
+    await settle(fixture);
+
+    expect(paidDate.getAttribute('aria-invalid')).toBe('true');
+    expect(root(fixture).querySelector('#record-paid-date-error')?.textContent?.trim()).not.toBe(
+      '',
     );
   });
 

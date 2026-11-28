@@ -1,5 +1,6 @@
 import 'package:budget_owl/core/cache/cached_resource.dart';
 import 'package:budget_owl/core/config/environment.dart';
+import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/core/errors/app_error.dart';
 import 'package:budget_owl/core/http/reachability.dart';
 import 'package:budget_owl/core/l10n/l10n.dart';
@@ -197,14 +198,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                     BillSheet(categories: categories, currency: data.summary.currency),
                   ),
                   onBillActions: (bill) => _billActions(bill, categories),
-                  onMarkPaid: (bill, o) => _run(
-                    _rowId(o),
-                    bill.name,
-                    () => ref
-                        .read(billsWriterProvider)
-                        .record(bill.id, o.dueDate, statusBody(OccurrenceStatus.paid)),
-                    l.bills_markedPaid,
-                  ),
+                  onMarkPaid: _markPaid,
                   onCorrect: _correct,
                   onUnmap: (bill, mapping) => _run(
                     mapping.ruleId,
@@ -230,6 +224,21 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
     );
   }
 
+  /// One-tap Mark paid, from the row or from *Correct this* on a skipped one: what was budgeted, on
+  /// the phone's own date, read from the clock when it is tapped rather than when the screen opened.
+  Future<void> _markPaid(Bill bill, BillOccurrence occurrence) => _run(
+    _rowId(occurrence),
+    bill.name,
+    () => ref
+        .read(billsWriterProvider)
+        .record(
+          bill.id,
+          occurrence.dueDate,
+          markPaidBody(CalendarDate.of(ref.read(clockProvider)())),
+        ),
+    context.l10n.bills_markedPaid,
+  );
+
   /// The corrections behind *Correct this*: rarer than Mark paid, and one tap away rather than
   /// competing with it on a weekly bill's five rows.
   Future<void> _correct(Bill bill, BillOccurrence occurrence) async {
@@ -244,12 +253,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
     final writer = ref.read(billsWriterProvider);
     switch (choice) {
       case _Correction.markPaid:
-        await _run(
-          _rowId(occurrence),
-          bill.name,
-          () => writer.record(bill.id, occurrence.dueDate, statusBody(OccurrenceStatus.paid)),
-          l.bills_markedPaid,
-        );
+        await _markPaid(bill, occurrence);
       case _Correction.otherAmount:
         await _openSheet(RecordPaymentSheet(bill: bill, occurrence: occurrence));
       case _Correction.skip:

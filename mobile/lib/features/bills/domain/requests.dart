@@ -191,9 +191,17 @@ Map<String, Object?> activePatch(int version, {required bool active}) => {
   'active': active,
 };
 
-/// One-tap Mark paid, Skip and Mark as due: the status alone. **No version**: the URL is valid
-/// before anything exists at it, and recording the same status twice is the same request twice.
+/// One-tap Skip and Mark as due: the status alone. **No version**: the URL is valid before anything
+/// exists at it, and recording the same status twice is the same request twice.
 Map<String, Object?> statusBody(OccurrenceStatus status) => {'status': status.wire};
+
+/// One-tap Mark paid: what was budgeted, on [today], the phone's own date. No version, as
+/// [statusBody]. The date is sent because the server's clock is UTC: on the morning of the 1st east
+/// of UTC its today is still the month before (bills-and-income.md, The paid date).
+Map<String, Object?> markPaidBody(CalendarDate today) => {
+  'status': OccurrenceStatus.paid.wire,
+  'paidDate': today.iso,
+};
 
 /// A payment that was not simply "what was budgeted, today". Both figures are left out when empty.
 Map<String, Object?> paidBody({required String actualAmount, CalendarDate? paidDate}) => {

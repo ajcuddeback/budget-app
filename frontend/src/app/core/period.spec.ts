@@ -1,10 +1,23 @@
-import { currentPeriod, isPeriod, periodAsDate, shiftPeriod } from './period';
+import { currentDate, currentPeriod, isPeriod, periodAsDate, shiftPeriod } from './period';
 
 describe('period helpers', () => {
   it('reads the current month from the viewer’s own calendar', () => {
     expect(currentPeriod(new Date(2026, 7, 20))).toBe('2026-08');
     // Zero-padded, because the server matches on the string.
     expect(currentPeriod(new Date(2026, 0, 1))).toBe('2026-01');
+  });
+
+  it('reads today from the viewer’s own calendar, zero-padded', () => {
+    expect(currentDate(new Date(2026, 8, 1, 9, 0))).toBe('2026-09-01');
+    expect(currentDate(new Date(2026, 11, 31, 23, 59))).toBe('2026-12-31');
+  });
+
+  it('gives the local date, not the UTC one, just after local midnight', () => {
+    // 00:30 on the 1st where the viewer is. Anywhere east of UTC this instant is still the 31st in
+    // UTC, which `toISOString()` would answer. The household's day is the 1st.
+    const justAfterMidnight = new Date(2026, 8, 1, 0, 30);
+    expect(currentDate(justAfterMidnight)).toBe('2026-09-01');
+    expect(currentDate(justAfterMidnight).slice(0, 7)).toBe(currentPeriod(justAfterMidnight));
   });
 
   it('steps forward and back across a year boundary', () => {

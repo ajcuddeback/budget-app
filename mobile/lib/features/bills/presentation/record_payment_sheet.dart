@@ -55,12 +55,17 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
     super.dispose();
   }
 
-  Future<CalendarDate?> _pick(CalendarDate current) async {
+  /// [last] is the latest date offered. A due date may be ahead (a bill paid early); a paid date
+  /// stops at the phone's own today, which the server always accepts and nothing later than today
+  /// anywhere on Earth (bills-and-income.md, The paid date).
+  Future<CalendarDate?> _pick(CalendarDate current, {DateTime? last}) async {
+    final lastDate = last ?? DateTime(2100);
+    final initial = current.forPicker;
     final picked = await showDatePicker(
       context: context,
-      initialDate: current.forPicker,
+      initialDate: initial.isAfter(lastDate) ? lastDate : initial,
       firstDate: DateTime(1970),
-      lastDate: DateTime(2100),
+      lastDate: lastDate,
     );
     return picked == null ? null : CalendarDate.of(picked);
   }
@@ -140,7 +145,7 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
         fieldGap,
         InkWell(
           onTap: () async {
-            final picked = await _pick(_paidDate);
+            final picked = await _pick(_paidDate, last: _today.forPicker);
             if (picked != null) setState(() => _paidDate = picked);
           },
           child: InputDecorator(

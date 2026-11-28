@@ -12,6 +12,7 @@ import java.time.LocalDate;
  *
  * @param actualAmount what was really paid, for {@code PAID}. Null means "what was budgeted", so
  *     the common case is one tap
- * @param paidDate when, for {@code PAID}. Null means today
+ * @param paidDate when, for {@code PAID}: the device's own date, from 1900 to today anywhere on
+ *     Earth. Null, from a client older than the field, means the server's UTC day
  */
 public record StatusRecord(OccurrenceStatus status, String actualAmount, LocalDate paidDate) {}

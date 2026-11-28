@@ -1,8 +1,8 @@
 package com.budgetowl.checkin.service;
 
 import com.budgetowl.common.ErrorCode;
+import com.budgetowl.common.HouseholdDates;
 import com.budgetowl.common.InvalidRequestException;
-import com.budgetowl.debt.service.DebtDates;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
@@ -32,10 +32,10 @@ record HouseholdDay(LocalDate markedPaidOn, LocalDate latest) {
      */
     static HouseholdDay of(LocalDate sent, Instant now, LocalDate serverToday) {
         if (sent == null) {
-            return new HouseholdDay(serverToday, DebtDates.latestToday(now));
+            return new HouseholdDay(serverToday, HouseholdDates.latestToday(now));
         }
-        if (sent.isBefore(DebtDates.earliestToday(now))
-                || sent.isAfter(DebtDates.latestToday(now))) {
+        if (sent.isBefore(HouseholdDates.earliestToday(now))
+                || sent.isAfter(HouseholdDates.latestToday(now))) {
             // Not a calendar anybody is living in now: a back- or forward-dated completion.
             throw new InvalidRequestException(
                     ErrorCode.VALIDATION_FAILED,

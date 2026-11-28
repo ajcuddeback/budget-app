@@ -189,6 +189,29 @@ test.describe('bills and income, as an owner', () => {
     ui.noErrors();
   });
 
+  test.describe('in Sydney, at 09:00 on the 1st', () => {
+    // 23:00 UTC on August 31st, which is the server's day. The browser's calendar is the
+    // household's, and a real browser can be put in a zone, which the unit-test runner cannot.
+    test.use({ timezoneId: 'Australia/Sydney' });
+
+    test('sends the device’s own date with a one-tap Mark paid', async ({ page, ui }) => {
+      await page.clock.setFixedTime(new Date('2026-08-31T23:00:00Z'));
+      const calls = await mockApi(page, { session: 'owner' });
+      await page.goto('/bills');
+
+      const cleaner = billNamed(page, 'Cleaner');
+      const row = cleaner.getByRole('listitem').filter({ hasText: 'Mark paid' }).first();
+      await row.getByRole('button', { name: /Mark paid/ }).click();
+
+      await expect.poll(() => calls.filter((call) => call.method === 'PUT').length).toBe(1);
+      const [recorded] = calls.filter((call) => call.method === 'PUT');
+      expect(recorded.body).toEqual({ status: 'PAID', paidDate: '2026-09-01' });
+
+      await ui.shot('bills-marked-paid-east-of-utc');
+      ui.noErrors();
+    });
+  });
+
   test('shows income as what the month actually holds, not a monthly average', async ({
     page,
     ui,

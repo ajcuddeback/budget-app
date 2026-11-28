@@ -5,6 +5,7 @@ import com.budgetowl.common.AmountText;
 import com.budgetowl.common.Change;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
+import com.budgetowl.common.HouseholdDates;
 import com.budgetowl.common.InvalidRequestException;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.NotFoundException;
@@ -1033,9 +1034,9 @@ public class DebtService {
         }
     }
 
-    /** A balance's date: see {@link DebtDates} — not before 1900, not after today anywhere. */
+    /** A balance's date: see {@link HouseholdDates}. Not before 1900, not after today anywhere. */
     private LocalDate requireNotInTheFuture(LocalDate date, String field) {
-        return DebtDates.requirePlausible(date, field, balances.now());
+        return HouseholdDates.requirePlausible(date, field, balances.now());
     }
 
     /**

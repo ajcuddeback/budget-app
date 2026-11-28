@@ -1,6 +1,5 @@
 import 'package:budget_owl/core/dates/calendar_date.dart';
 import 'package:budget_owl/features/bills/data/bills_repository.dart';
-import 'package:budget_owl/features/bills/domain/bill.dart';
 import 'package:budget_owl/features/bills/domain/requests.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -80,7 +79,7 @@ void main() {
             .record(
               'bil-0003',
               CalendarDate.parse('2026-08-18'),
-              statusBody(OccurrenceStatus.paid),
+              markPaidBody(CalendarDate.parse('2026-08-20')),
             ),
       );
 
@@ -90,7 +89,9 @@ void main() {
   });
 
   group('occurrences', () {
-    testWidgets('Mark paid sends the status alone, and the month re-reads', (tester) async {
+    testWidgets("Mark paid sends the status and the phone's date, and the month re-reads", (
+      tester,
+    ) async {
       final p = await bills(tester);
       final reads = p.server.served.where((s) => s.startsWith('GET /api/bills?')).length;
 
@@ -103,6 +104,19 @@ void main() {
         p.server.served.where((s) => s.startsWith('GET /api/bills?')).length,
         greaterThan(reads),
       );
+    });
+
+    testWidgets("the paid date's picker stops at the phone's own today", (tester) async {
+      final p = await bills(tester, state: 'paid');
+
+      await correct(tester, 'Aug 17, 2026');
+      await p.tap('Paid a different amount…');
+      await tapVisible(tester, find.text('Date paid'));
+
+      // The server refuses a date later than today anywhere on Earth, so none is offered.
+      final picker = tester.widget<DatePickerDialog>(find.byType(DatePickerDialog));
+      expect(DateUtils.dateOnly(picker.lastDate), DateTime(2026, 8, 20));
+      expect(p.writes, isEmpty);
     });
 
     testWidgets('a different amount sends the figure and the date', (tester) async {
@@ -292,7 +306,11 @@ void main() {
       final before = p.server.served.length;
       Future<void> write(ProviderContainer c) => c
           .read(billsWriterProvider)
-          .record('bil-0003', CalendarDate.parse('2026-08-18'), statusBody(OccurrenceStatus.paid));
+          .record(
+            'bil-0003',
+            CalendarDate.parse('2026-08-18'),
+            markPaidBody(CalendarDate.parse('2026-08-20')),
+          );
 
       await p.believeOffline();
       expect((await p.forced(write))?.isConnectivity, isTrue);

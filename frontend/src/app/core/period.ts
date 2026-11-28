@@ -15,6 +15,17 @@ export function currentPeriod(now: Date = new Date()): string {
   return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}`;
 }
 
+/**
+ * Today as `YYYY-MM-DD`, in the viewer's own calendar: the device's date, which is the household's.
+ *
+ * **Never `toISOString().slice(0, 10)`** — that is the UTC date, and on the morning of the 1st east
+ * of UTC it is still the month before. The server has no household time zone, so a date the
+ * household states (a bill marked paid, a completed check-in) comes from here (ADR-0043).
+ */
+export function currentDate(now: Date = new Date()): string {
+  return `${currentPeriod(now)}-${`${now.getDate()}`.padStart(2, '0')}`;
+}
+
 /** The month before or after, by `step` months. */
 export function shiftPeriod(period: string, step: number): string {
   const [year, month] = period.split('-').map(Number);

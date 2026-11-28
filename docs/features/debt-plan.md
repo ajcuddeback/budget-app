@@ -485,7 +485,8 @@ How the edge cases are decided, so nobody re-derives them:
    was considered and rejected: it needs a migration and a three-state rule for old rows (slice-14
    check-in rows carry interest 0 and must not book their month), to prevent a case that charges
    at most one real month of interest anyway.
-8. **The month comes from the household's date, so the server accepts it** (`DebtDates`). There is
+8. **The month comes from the household's date, so the server accepts it** (`HouseholdDates`,
+   formerly `DebtDates`; bills share it, `bills-and-income.md`, The paid date). There is
    no household time zone, and the server's clock is UTC. A household in Sydney paying on the
    morning of Sept 1 is still on Aug 31 by the server. Refusing Sept 1 as "in the future" would
    push them to date it Aug 31, into a month already booked, and September would never be charged.

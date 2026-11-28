@@ -249,6 +249,38 @@ class CheckInCompletionIT extends CheckInTestBase {
                 "SELECT category_id FROM transactions WHERE id = ?", UUID.class, transaction);
     }
 
+    /**
+     * A charge dated ahead of today still falls in the week, because a member can enter one dated
+     * Sunday on Friday. Attached to a bill, it must not make the bill read as paid on a day that
+     * has not happened: the date is capped at the household's today, as the debt payment the same
+     * prompt writes already was (bills-and-income.md, The paid date).
+     */
+    @Test
+    void a_charge_dated_ahead_pays_its_bill_on_the_households_today() {
+        Canvas canvas = canvasWeek();
+        ApiClient owner = canvas.household().owner();
+        String comcast = "/api/transactions/" + canvas.id("comcast");
+        long version = owner.get(comcast).numberField("version");
+        ok(owner.patch(comcast, "{\"version\":" + version + ",\"date\":\"2026-08-23\"}"), 200);
+        JsonNode week = answerTheCanvas(canvas, owner);
+        answer(
+                owner,
+                "alloc",
+                "{\"choice\":\"ROLL_OVER\",\"amount\":\"%s\"}"
+                        .formatted(amount(figures(week).get("surplus"))));
+
+        ok(complete(owner, "2026-08-21"), 200);
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT paid_date::text FROM bill_occurrences"
+                                        + " WHERE bill_id = ? AND due_date = '2026-08-25'",
+                                String.class,
+                                canvas.id("internet")))
+                .as("Sunday's charge, attached on Friday, pays the bill on Friday")
+                .isEqualTo("2026-08-21");
+    }
+
     private long count(String sql) {
         return jdbc.queryForObject(sql, Long.class);
     }

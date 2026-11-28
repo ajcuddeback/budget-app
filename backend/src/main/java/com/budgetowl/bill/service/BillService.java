@@ -13,6 +13,7 @@ import com.budgetowl.common.Change;
 import com.budgetowl.common.ConflictException;
 import com.budgetowl.common.ErrorCode;
 import com.budgetowl.common.ForbiddenException;
+import com.budgetowl.common.HouseholdDates;
 import com.budgetowl.common.InvalidRequestException;
 import com.budgetowl.common.Money;
 import com.budgetowl.common.NotFoundException;
@@ -306,7 +307,7 @@ public class BillService {
                                     // One tap: "I paid it" means "I paid what was budgeted".
                                     ? Money.of(occurrence.expectedAmount(), currency)
                                     : amount(recorded.actualAmount(), currency),
-                            recorded.paidDate() == null ? today() : recorded.paidDate(),
+                            paidDate(recorded.paidDate()),
                             null,
                             StatusSource.MANUAL,
                             currency);
@@ -365,6 +366,11 @@ public class BillService {
         BillOccurrence occurrence = occurrenceToRecord(household, bill, dueDate);
         if (occurrence.status() != OccurrenceStatus.DUE) {
             throw new ConflictException(ErrorCode.CONFLICT, "this occurrence is already recorded");
+        }
+        if (status == OccurrenceStatus.PAID) {
+            // The completion has already capped the date at the household's day. Checked here as
+            // well so that no caller can store a paid date the occurrence PUT would refuse.
+            HouseholdDates.requirePlausible(paidDate, "paidDate", clock.instant());
         }
         switch (status) {
             case SKIPPED -> occurrence.markSkipped();
@@ -717,5 +723,22 @@ public class BillService {
 
     private LocalDate today() {
         return LocalDate.now(clock);
+    }
+
+    /**
+     * The day an occurrence is marked paid on: the one the client sent, which since the one-tap
+     * action sends the device's own date is the household's day (bills-and-income.md, The paid
+     * date). Bounded the way a debt payment's date is ({@link HouseholdDates}): never later than
+     * today anywhere on Earth, so the device's date is always accepted, and never before 1900, so a
+     * year that parses but PostgreSQL cannot hold is a {@code 400}, not a {@code 500}.
+     *
+     * <p>Without one, as from a client older than the change, the server's UTC day — which east of
+     * UTC on the morning of the 1st is still the month before.
+     */
+    private LocalDate paidDate(LocalDate sent) {
+        if (sent == null) {
+            return today();
+        }
+        return HouseholdDates.requirePlausible(sent, "paidDate", clock.instant());
     }
 }

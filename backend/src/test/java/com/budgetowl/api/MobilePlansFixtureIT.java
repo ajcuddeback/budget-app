@@ -138,7 +138,7 @@ class MobilePlansFixtureIT extends ApiTestBase {
                 phones.viewer(),
                 "PUT",
                 occurrence(plans, "bil-0003", "2026-08-18"),
-                "{\"status\":\"PAID\"}");
+                "{\"status\":\"PAID\",\"paidDate\":\"" + TODAY + "\"}");
 
         String bills = "/api/bills/";
         record.in("plans");
@@ -150,7 +150,8 @@ class MobilePlansFixtureIT extends ApiTestBase {
                 "paid",
                 "PUT",
                 occurrence(plans, "bil-0003", "2026-08-18"),
-                "{\"status\":\"PAID\"}");
+                // One tap: the status and the phone's own date (bills-and-income.md).
+                "{\"status\":\"PAID\",\"paidDate\":\"" + TODAY + "\"}");
         billsStep(
                 record,
                 owner,
