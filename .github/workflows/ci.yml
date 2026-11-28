@@ -412,7 +412,7 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-      - uses: github/codeql-action/init@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3.39.5
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           # NOT `language:` — that input does not exist, and CodeQL only emits a warning for
           # an unknown input, so the misspelling silently disabled the matrix.
