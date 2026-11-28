@@ -119,14 +119,7 @@ public class AdminService {
         // OWNER has signed in through it, and a single request may be doing both. Applying it
         // after the OIDC changes means "configure the provider and hide passwords" is judged
         // against the configuration the request is leaving behind, not the one it arrived with.
-        if (changes.passwordLoginEnabled() != null) {
-            if (changes.passwordLoginEnabled()) {
-                current.enablePasswordLogin();
-            } else {
-                requireAnotherRouteProven(current);
-                current.disablePasswordLogin();
-            }
-        }
+        applyPasswordLogin(current, changes.passwordLoginEnabled());
 
         // Flushed, not merely saved: @Version is incremented at flush, and the console reads the
         // version out of this response to send with its next PATCH. A response assembled before
@@ -245,6 +238,31 @@ public class AdminService {
      */
     private static String presentCredential(String value) {
         return present(value) == null ? null : value;
+    }
+
+    /**
+     * Applies the password-login switch, if the request carries one.
+     *
+     * <p>Shaped like {@link #applyOidc}: nothing asked for is an early return, and each value of
+     * the switch has its own path. Written as one nested {@code if} inside the caller, CodeQL's
+     * {@code java/user-controlled-bypass} read it as "a request field decides whether the
+     * login-named methods run" (three high alerts on PR #7). That reading is a false positive: the
+     * caller is the administrator, checked before anything else; asking for nothing is meant to
+     * change nothing; turning password login on is the safe direction and needs no proof; turning
+     * it off always passes {@link #requireAnotherRouteProven}, and the database's lockout CHECK
+     * stands behind that. The value is read once, so there is one decision rather than two reads of
+     * the same field.
+     */
+    private static void applyPasswordLogin(InstanceSettings current, Boolean requested) {
+        if (requested == null) {
+            return;
+        }
+        if (requested) {
+            current.enablePasswordLogin();
+        } else {
+            requireAnotherRouteProven(current);
+            current.disablePasswordLogin();
+        }
     }
 
     /**

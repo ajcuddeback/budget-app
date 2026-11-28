@@ -322,9 +322,12 @@ public class DebtBalanceService {
             return new Estimate(
                     anchored, debt.balanceSource(), from, Math.toIntExact(months), true);
         }
+        // Bounded just above, so it fits an int; the loop counter and its limit are then the same
+        // width (CodeQL java/comparison-with-wider-type flagged an int counter against a long).
+        int monthCount = Math.toIntExact(months);
         Money balance = anchored;
         Money minimum = debt.minimumPayment();
-        for (int month = 1; month <= months; month++) {
+        for (int month = 1; month <= monthCount; month++) {
             balance = balance.plus(solver.interestFor(balance, apr)).minus(minimum);
             if (!balance.isPositive()) {
                 // The assumed minimums have cleared it. Estimating past zero would invent an
@@ -333,8 +336,7 @@ public class DebtBalanceService {
                 break;
             }
         }
-        return new Estimate(
-                balance, BalanceSource.ESTIMATED, today, Math.toIntExact(months), false);
+        return new Estimate(balance, BalanceSource.ESTIMATED, today, monthCount, false);
     }
 
     /**
