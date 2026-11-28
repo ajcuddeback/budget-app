@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# Prove a backup restores. Brings the real Compose stack up from nothing, sets up a household
-# through the API, backs it up, DESTROYS the database volume, restores, and checks the data came
-# back — then checks the two refusals (a database with data in it, a checksum that does not match)
-# and an encrypted --replace round trip. A restore nobody has tested is a hope.
+# Prove a backup restores, and that a restore refuses what it must. Brings the real Compose stack
+# up from nothing, sets up a household through the API, backs it up, DESTROYS the database
+# volume, restores onto a "new server" with its own signing key, and checks the data came back.
+# Then the refusals: data present without --replace, a damaged checksum, a forged or re-signed
+# backup, a backup newer than this version, a database left by an interrupted restore. Then
+# rotation, encryption of safety backups, and test-restore.sh. A restore nobody has tested is a
+# hope.
 #
 #   tools/deploy-check.sh                 # build the images if they are not there, then check
-#   tools/deploy-check.sh --keep-images   # leave the images afterwards (default: leave them too)
 #   tools/deploy-check.sh --remove-images # remove this run's two app images when done
 #
 # It runs as its OWN Compose project (COMPOSE_PROJECT_NAME, default budgetowl-deploycheck) with
-# its own env file of throwaway random passwords, so it never reads your .env and never touches
-# your real stack or its volume. It refuses any project name without "check" in it, because it
-# deletes that project's volumes. Published on 127.0.0.1:${WEB_PORT:-8480}.
+# its own env file of throwaway random passwords and its own signing keys, so it never reads your
+# .env or /etc/budgetowl and never touches your real stack or its volume. It refuses any project
+# name without "check" in it, because it deletes that project's volumes. Published on
+# 127.0.0.1:${WEB_PORT:-8480}; test-restore.sh's copy on the next port up.
 #
 # Images: ghcr.io/ajcuddeback/budget-owl-{api,web}:${BUDGET_OWL_VERSION:-deploycheck}. If they
 # are not present locally they are built with `docker compose build`.
@@ -38,14 +41,24 @@ case "$COMPOSE_PROJECT_NAME" in
           "deletes that project's volumes" >&2; exit 2 ;;
 esac
 port="${WEB_PORT:-8480}"
+test_port=$((port + 1))
 version="${BUDGET_OWL_VERSION:-deploycheck}"
 base="http://127.0.0.1:$port"
+for tool in age age-keygen ssh-keygen python3 curl openssl; do
+  command -v "$tool" >/dev/null 2>&1 || { echo "deploy check needs $tool" >&2; exit 2; }
+done
 
-# Nothing from the caller's shell or .env leaks in: only the variables written below apply.
+# Nothing from the caller's shell, .env or /etc/budgetowl leaks in: only what is written below.
 unset DB_NAME DB_USER DB_PASSWORD DB_APP_USER DB_APP_PASSWORD BIND_ADDRESS WEB_PORT \
-      BUDGET_OWL_VERSION BACKUP_DIR
+      BUDGET_OWL_VERSION BACKUP_DIR BACKUP_KEEP BACKUP_KEEP_WEEKLY BACKUP_KEEP_MONTHLY \
+      BACKUP_AGE_RECIPIENT BACKUP_GPG_RECIPIENT BACKUP_SIGNING_KEY
 work=$(mktemp -d)
 chmod 700 "$work"
+export BACKUP_ENV_FILE=/dev/null
+export XDG_STATE_HOME="$work/state"
+# "Server 1" made the backups. Its key is made on first use, as on any non-VM install.
+export BACKUP_SIGNING_KEY="$work/server1/backup-signing-key"
+server1_signers="$work/server1/backup-signing-key.allowed_signers"
 export COMPOSE_ENV_FILES="$work/check.env"
 # Throwaway credentials, generated per run; nothing secret is in this file or the repository.
 {
@@ -60,10 +73,15 @@ chmod 600 "$COMPOSE_ENV_FILES"
 # shellcheck disable=SC2329  # invoked by the EXIT trap
 cleanup() {
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  if [ -f "$work/state/budgetowl/restore-test.env" ]; then
+    COMPOSE_PROJECT_NAME=budgetowl-restore-test COMPOSE_ENV_FILES="$work/state/budgetowl/restore-test.env" \
+      docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  fi
   if [ "$remove_images" -eq 1 ]; then
     docker rmi "ghcr.io/ajcuddeback/budget-owl-api:$version" \
                "ghcr.io/ajcuddeback/budget-owl-web:$version" >/dev/null 2>&1 || true
   fi
+  chmod -R u+w "$work" 2>/dev/null || true
   rm -rf -- "$work"
 }
 trap cleanup EXIT
@@ -74,26 +92,31 @@ bad()  { printf '  FAIL %s\n' "$1"; failed=1; }
 check() { if [ "$2" = ok ]; then ok "$1"; else bad "$1"; fi; }
 step() { printf '\n%s\n' "$1"; }
 quiet() { "$@" >"$work/last.log" 2>&1 || { sed 's/^/       /' "$work/last.log" | tail -30; return 1; }; }
+# expect <exit> <log> <command...> — run it, keep its output, and say whether it exited <exit>.
+expect() {
+  local want="$1" logf="$2" code; shift 2
+  set +e; "$@" >"$logf" 2>&1; code=$?; set -e
+  [ "$code" = "$want" ] && return 0
+  { echo "       | exit $code, wanted $want: $*"; tail -12 "$logf" | sed 's/^/       | /'; } >&2
+  return 1
+}
 
-wait_api() {
-  local id status
+wait_api() { # wait_api [base-url]
+  local url="${1:-$base}"
   for _ in $(seq 1 100); do
-    id=$(docker compose ps -q api 2>/dev/null || true)
-    status=$([ -n "$id" ] && docker inspect -f '{{.State.Health.Status}}' "$id" 2>/dev/null || echo none)
-    [ "$status" = healthy ] && return 0
+    curl -fsS -o /dev/null "$url/api/setup/status" 2>/dev/null && return 0
     sleep 3
   done
-  docker compose logs --tail 40 api >&2 || true
   return 1
 }
 json() { python3 -c "import json,sys; d=json.load(sys.stdin); print($1)"; }
-token() {
+token() { # token [base-url]
   curl -fsS -H 'Content-Type: application/json' \
     -d '{"email":"owner@example.com","password":"deploy-check-not-a-real-password","deviceLabel":"deploy-check"}' \
-    "$base/api/auth/token" | json 'd["token"]'
+    "${1:-$base}/api/auth/token" | json 'd["token"]'
 }
-account_names() { # account_names <token>
-  curl -fsS -H "Authorization: Bearer $1" "$base/api/accounts" \
+account_names() { # account_names <token> [base-url]
+  curl -fsS -H "Authorization: Bearer $1" "${2:-$base}/api/accounts" \
     | json '",".join(sorted(a["name"] + "=" + a["balance"] for a in d["content"]))'
 }
 add_account() { # add_account <token> <name> <balance>
@@ -101,8 +124,11 @@ add_account() { # add_account <token> <name> <balance>
     -d "{\"name\":\"$2\",\"type\":\"CHECKING\",\"currency\":\"USD\",\"openingBalance\":\"$3\"}" \
     "$base/api/accounts"
 }
-db_query() { # db_query <<SQL — one value, as the owning role, inside the db container
-  docker compose exec -T db sh -c 'exec psql -X -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+db_query() { # db_query <<SQL — as the owning role, inside the db container
+  docker compose exec -T db sh -c 'exec psql -X -At -w -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+}
+admin_query() { # admin_query <<SQL — in the maintenance database, with :'target'
+  docker compose exec -T db sh -c 'exec psql -X -At -w -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres --set=target="$POSTGRES_DB"'
 }
 pool_role() { # the role(s) the api's connection pool is connected as right now
   db_query <<'SQL'
@@ -111,6 +137,13 @@ SELECT coalesce(string_agg(DISTINCT usename, ','), 'none') FROM pg_stat_activity
    AND pid <> pg_backend_pid();
 SQL
 }
+in_toc() { # in_toc <dump> <table> — whether the dump holds that table's rows. The listing is read
+  # whole before grep sees it: grep -q stopping early would fail the pipe under pipefail.
+  local toc
+  toc=$(docker compose exec -T db pg_restore --list < "$1")
+  grep -q "TABLE DATA public $2 " <<<"$toc"
+}
+meta_get() { sed -n "s/^$2=//p" "$1"; }
 
 step "Stack from nothing (project $COMPOSE_PROJECT_NAME, $base)"
 docker compose down -v --remove-orphans >/dev/null 2>&1 || true
@@ -123,6 +156,20 @@ fi
 if quiet docker compose up -d --no-build; then ok "docker compose up"; else bad "docker compose up"; exit 1; fi
 if wait_api; then ok "api healthy"; else bad "api never became healthy"; exit 1; fi
 
+step "Rotation never runs for an install with nobody in it"
+mkdir -m 700 "$work/empty-rotation"
+old="budgetowl-20260101T000000Z-old-schema20.dump"
+touch "$work/empty-rotation/$old"; printf 'instance=0123456789abcdef\npeople=yes\n' > "$work/empty-rotation/$old.meta"
+if expect 0 "$work/b0.log" deploy/backup.sh --out "$work/empty-rotation" --keep 1; then
+  ok "backup of the empty install"; else bad "backup of the empty install"; fi
+check "  ... keeps the older real backup (--keep 1 did not remove it)" \
+  "$([ -f "$work/empty-rotation/$old" ] && grep -q 'nobody in it' "$work/b0.log" && echo ok)"
+check "the signing key was made on first use, mode 0600, with its allowed_signers line" \
+  "$([ "$(stat -c %a "$BACKUP_SIGNING_KEY")" = 600 ] && grep -q '^budgetowl-backup namespaces="budgetowl-backup" ssh-ed25519 ' "$server1_signers" && echo ok)"
+printed=$(deploy/backup.sh --print-signing-key 2>/dev/null)
+check "backup.sh --print-signing-key prints that line" \
+  "$([ "$printed" = "$(cat "$server1_signers")" ] && echo ok)"
+
 step "A household, through the API"
 curl -fsS -c "$work/jar" -o /dev/null "$base/api/setup/status"
 xsrf=$(awk '$6 == "XSRF-TOKEN" {print $7}' "$work/jar")
@@ -132,6 +179,7 @@ code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$work/jar" -H "X-XSRF-TOKEN: 
   "$base/api/setup/first-user")
 check "first account created (got $code)" "$([ "$code" = 201 ] && echo ok)"
 tok=$(token)
+phone_token="$tok"
 add_account "$tok" "Everyday Checking" "2480.15"
 add_account "$tok" "Rainy Day" "-17.0001"
 before=$(account_names "$tok")
@@ -139,102 +187,163 @@ check "two accounts recorded ($before)" "$([ "$before" = 'Everyday Checking=2480
 role=$(pool_role)
 check "the api's pool connects as budgetowl_app, not the owner ($role)" \
   "$([ "$role" = budgetowl_app ] && echo ok)"
-
 # A browser sign-in, so there is a live web session for the backup to leave out.
 code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$work/jar" -c "$work/jar" -H "X-XSRF-TOKEN: $xsrf" \
   -H 'Content-Type: application/json' \
   -d '{"email":"owner@example.com","password":"deploy-check-not-a-real-password"}' "$base/api/auth/login")
 check "browser sign-in (got $code)" "$([ "$code" = 200 ] || [ "$code" = 204 ] && echo ok)"
 sessions=$(db_query <<<'SELECT count(*) FROM spring_session;')
+tokens=$(db_query <<<'SELECT count(*) FROM auth_tokens;')
 
 step "Back up"
 mkdir -m 700 "$work/backups"
 plain=$(deploy/backup.sh --out "$work/backups" 2>"$work/backup.log" | tail -1) \
   || { sed 's/^/       /' "$work/backup.log"; bad "backup.sh"; exit 1; }
 ok "backup.sh wrote $(basename "$plain")"
-check "backup is mode 0600 ($(stat -c %a "$plain"))" "$([ "$(stat -c %a "$plain")" = 600 ] && echo ok)"
-check "checksum is mode 0600" "$([ "$(stat -c %a "$plain.sha256")" = 600 ] && echo ok)"
+check "backup, .sha256, .sig and .meta are all mode 0600" "$(for x in "" .sha256 .sig .meta; do \
+  [ "$(stat -c %a "$plain$x")" = 600 ] || echo no; done | grep -q no && echo no || echo ok)"
 check "name carries UTC time, version and schema" \
   "$(basename "$plain" | grep -qE "^budgetowl-[0-9]{8}T[0-9]{6}Z-${version}-schema[0-9]+\.dump$" && echo ok)"
-check "the live database holds a web session ($sessions)" "$([ "$sessions" -ge 1 ] && echo ok)"
-check "  ... and the backup holds no session rows" "$(docker compose exec -T db pg_restore --list \
-  < "$plain" | grep -q 'TABLE DATA public spring_session ' && echo no || echo ok)"
+check "the signature verifies against this server's line" "$(ssh-keygen -Y verify -f "$server1_signers" \
+  -I budgetowl-backup -n budgetowl-backup -s "$plain.sig" < "$plain" >/dev/null 2>&1 && echo ok)"
+check "the live database holds a web session ($sessions) and phone tokens ($tokens)" \
+  "$([ "$sessions" -ge 1 ] && [ "$tokens" -ge 1 ] && echo ok)"
+check "  ... and the backup holds no session rows" "$(in_toc "$plain" spring_session && echo no || echo ok)"
+check "  ... and no phone-token rows" "$(in_toc "$plain" auth_tokens && echo no || echo ok)"
+check "  ... but does hold the accounts" "$(in_toc "$plain" accounts && echo ok)"
 
-encrypted=""
-if command -v age >/dev/null 2>&1 && command -v age-keygen >/dev/null 2>&1; then
-  mkdir -m 700 "$work/keys"
-  age-keygen -o "$work/keys/identity.txt" 2>/dev/null
-  recipient=$(age-keygen -y "$work/keys/identity.txt")
-  encrypted=$(deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" 2>>"$work/backup.log" \
-    | tail -1) || { bad "encrypted backup"; encrypted=""; }
-  if [ -n "$encrypted" ]; then
-    check "age backup written ($(basename "$encrypted"))" "$([ -s "$encrypted" ] && echo ok)"
-    check "  ... and it is not a readable dump without the key" \
-      "$(head -c 5 "$encrypted" | grep -q PGDMP && echo no || echo ok)"
-  fi
-  cp "$work/keys/identity.txt" "$work/backups/stray-key.txt"
-  if deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" >/dev/null 2>&1; then
-    bad "backup refuses a folder holding a private key"
-  else
-    ok "backup refuses a folder holding a private key"
-  fi
-  rm -f "$work/backups/stray-key.txt"
-else
-  printf '  -    age not installed: the encrypted round trip is not checked\n'
-fi
+mkdir -m 700 "$work/keys"
+age-keygen -o "$work/keys/identity.txt" 2>/dev/null
+recipient=$(age-keygen -y "$work/keys/identity.txt")
+encrypted=$(deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" 2>>"$work/backup.log" \
+  | tail -1) || { bad "encrypted backup"; encrypted=""; }
+check "age backup written and signed ($(basename "$encrypted"))" "$([ -s "$encrypted" ] && [ -s "$encrypted.sig" ] && echo ok)"
+check "  ... and it is not a readable dump without the key" \
+  "$(head -c 5 "$encrypted" | grep -q PGDMP && echo no || echo ok)"
+
+if expect 1 "$work/b1.log" deploy/backup.sh --out "$work/backups"; then
+  check "a plaintext backup into a folder of encrypted ones is refused" \
+    "$(grep -q 'already holds encrypted backups' "$work/b1.log" && echo ok)"
+else bad "a plaintext backup into a folder of encrypted ones is refused"; fi
+mkdir -m 700 "$work/mixed"; cp "$encrypted" "$work/mixed/"
+check "  ... unless --allow-plaintext" "$(expect 0 "$work/b2.log" deploy/backup.sh --out "$work/mixed" --allow-plaintext && echo ok)"
+
+cp "$work/keys/identity.txt" "$work/backups/budgetowl-backup-key.txt"
+check "backup refuses a folder holding an age key, even one named budgetowl-backup-key.txt" \
+  "$(expect 1 "$work/b3.log" deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" && grep -q 'PRIVATE key' "$work/b3.log" && echo ok)"
+rm -f "$work/backups/budgetowl-backup-key.txt"
+cp "$BACKUP_SIGNING_KEY" "$work/backups/stray-signing-key"
+check "  ... or a copy of the signing key" \
+  "$(expect 1 "$work/b4.log" deploy/backup.sh --out "$work/backups" --age-recipient "$recipient" && grep -q 'PRIVATE key' "$work/b4.log" && echo ok)"
+rm -f "$work/backups/stray-signing-key"
+
+mkdir -m 777 "$work/open"; mkdir -m 700 "$work/open/backups"
+check "backup refuses a folder inside one that others can write to" \
+  "$(expect 1 "$work/b5.log" deploy/backup.sh --out "$work/open/backups" && grep -q 'writable by other users' "$work/b5.log" && echo ok)"
+mkdir -m 700 "$work/real"; ln -s "$work/real" "$work/link"
+check "a symlinked --out works" "$(expect 0 "$work/b6.log" deploy/backup.sh --out "$work/link" && echo ok)"
 
 step "Refusals: nothing is changed"
-set +e
-deploy/restore.sh "$plain" >"$work/r1.log" 2>&1; code=$?
-set -e
-check "restore over a database with data in it, without --replace, refuses (exit $code)" \
-  "$([ "$code" = 4 ] && echo ok)"
-check "  ... and says to use --replace" "$(grep -q -- '--replace' "$work/r1.log" && echo ok)"
+check "restore over a database with data in it, without --replace, refuses (exit 4)" \
+  "$(expect 4 "$work/r1.log" deploy/restore.sh "$plain" && grep -q -- '--replace' "$work/r1.log" && echo ok)"
 check "  ... and the app is still up with the same data" \
   "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
 
-tampered="$work/backups/tampered.dump"
-cp "$plain" "$tampered"; cp "$plain.sha256" "$tampered.sha256"
-printf 'X' | dd of="$tampered" bs=1 seek=4096 conv=notrunc status=none
-set +e
-deploy/restore.sh "$tampered" --replace >"$work/r2.log" 2>&1; code=$?
-set -e
-check "a changed backup is refused on its checksum, even with --replace (exit $code)" \
-  "$([ "$code" = 3 ] && grep -q 'CHECKSUM MISMATCH' "$work/r2.log" && echo ok)"
-check "  ... and no safety backup was needed, because nothing was touched" \
-  "$(find "$work/backups" -name '*pre-restore*' | grep -q . && echo no || echo ok)"
+mkdir -m 700 "$work/forged"
+cp "$plain" "$work/forged/damaged.dump"; cp "$plain.sig" "$work/forged/damaged.dump.sig"
+sed 's/^./0/' "$plain.sha256" > "$work/forged/damaged.dump.sha256"
+check "a signed backup whose checksum does not match is refused (exit 3)" \
+  "$(expect 3 "$work/r2.log" deploy/restore.sh "$work/forged/damaged.dump" --replace && grep -q 'CHECKSUM MISMATCH' "$work/r2.log" && echo ok)"
 
-step "Disaster: the database volume is destroyed"
+f="$work/forged/changed.dump"
+cp "$plain" "$f"; cp "$plain.sig" "$f.sig"
+printf 'X' | dd of="$f" bs=1 seek=4096 conv=notrunc status=none
+sha256sum "$f" > "$f.sha256"
+check "a changed backup with a recomputed checksum is refused on its signature (exit 6)" \
+  "$(expect 6 "$work/r3.log" deploy/restore.sh "$f" --replace && grep -q 'BAD SIGNATURE' "$work/r3.log" && echo ok)"
+
+f="$work/forged/forged.dump.age"
+age -r "$recipient" -o "$f" "$plain"; sha256sum "$f" > "$f.sha256"
+check "an age file anyone could encrypt to the operator's key, with no signature, is refused (exit 6)" \
+  "$(expect 6 "$work/r4.log" deploy/restore.sh "$f" --replace --age-identity "$work/keys/identity.txt" && echo ok)"
+cp "$encrypted.sig" "$f.sig"
+check "  ... and with a real backup's signature beside it (exit 6)" \
+  "$(expect 6 "$work/r5.log" deploy/restore.sh "$f" --replace --age-identity "$work/keys/identity.txt" && echo ok)"
+
+ssh-keygen -q -t ed25519 -N '' -C attacker -f "$work/forged/attacker" </dev/null
+f="$work/forged/attacker.dump"
+cp "$plain" "$f"; sha256sum "$f" > "$f.sha256"
+ssh-keygen -Y sign -q -f "$work/forged/attacker" -n budgetowl-backup "$f" </dev/null
+check "a backup signed by another key is refused (exit 6)" \
+  "$(expect 6 "$work/r6.log" deploy/restore.sh "$f" --replace && grep -q 'BAD SIGNATURE' "$work/r6.log" && echo ok)"
+check "  ... and no safety backup was needed for any of these, because nothing was touched" \
+  "$(find "$work/backups" "$work/forged" -name '*pre-restore*' | grep -q . && echo no || echo ok)"
+check "  ... and the data is as it was" "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
+
+f="$work/forged/unsigned.dump"
+cp "$plain" "$f"; sha256sum "$f" > "$f.sha256"
+check "a restore whose safety backup would be plaintext among encrypted ones replaces nothing" \
+  "$(expect 1 "$work/r7a.log" deploy/restore.sh "$f" --replace --allow-unsigned --safety-out "$work/backups" \
+     && grep -q 'already holds encrypted backups' "$work/r7a.log" && grep -q 'nothing was replaced' "$work/r7a.log" && echo ok)"
+wait_api || true
+mkdir -m 700 "$work/plain-safety"
+check "an unsigned backup restores with --allow-unsigned" \
+  "$(expect 0 "$work/r7.log" deploy/restore.sh "$f" --replace --allow-unsigned --safety-out "$work/plain-safety" && echo ok)"
+check "  ... and says plainly that it runs as the database superuser" \
+  "$(grep -q 'WARNING: --allow-unsigned' "$work/r7.log" && grep -q 'SUPERUSER' "$work/r7.log" && echo ok)"
+check "  ... and the database from before was dropped once the app was healthy" \
+  "$([ "$(admin_query <<<"SELECT count(*) FROM pg_database WHERE datname LIKE 'budgetowl_restore_%';")" = 0 ] && echo ok)"
+
+step "An interrupted restore's leftovers are found, not overwritten"
+docker compose stop api web >/dev/null 2>&1
+admin_query >/dev/null <<'SQL'
+SELECT format('ALTER DATABASE %I RENAME TO budgetowl_restore_previous', :'target') \gexec
+SQL
+check "restore refuses when the live database is missing but the previous one is there (exit 7)" \
+  "$(expect 7 "$work/r8.log" deploy/restore.sh "$plain" --replace && grep -q 'RENAME TO' "$work/r8.log" && echo ok)"
+admin_query >/dev/null <<'SQL'
+SELECT format('ALTER DATABASE budgetowl_restore_previous RENAME TO %I', :'target') \gexec
+SQL
+docker compose start api web >/dev/null 2>&1; wait_api || true
+check "  ... and after putting it back, the data is there" "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
+
+step "Disaster: the database volume is destroyed, and the new server has a new signing key"
 if quiet docker compose down -v; then ok "down -v (volume deleted)"; else bad "down -v (volume deleted)"; fi
 check "volume is gone" "$(docker volume ls -q | grep -qx "${COMPOSE_PROJECT_NAME}_db-data" && echo no || echo ok)"
 if quiet docker compose up -d db; then ok "a new, empty database"; else bad "a new, empty database"; fi
-if deploy/restore.sh "$plain" >"$work/r3.log" 2>&1; then ok "restore.sh onto the empty install"
-else sed 's/^/       /' "$work/r3.log" | tail -30; bad "restore.sh onto the empty install"; fi
+export BACKUP_SIGNING_KEY="$work/server2/backup-signing-key"
+deploy/backup.sh --print-signing-key >/dev/null 2>&1
+check "the old server's backup is refused by default on the new server (exit 6)" \
+  "$(expect 6 "$work/r9.log" deploy/restore.sh "$plain" && echo ok)"
+if expect 0 "$work/r10.log" deploy/restore.sh "$plain" --signers "$server1_signers"; then
+  ok "restore.sh --signers <old server's line> onto the empty install"
+else bad "restore.sh --signers <old server's line> onto the empty install"; fi
 after=$(account_names "$(token)" || echo "unreadable")
 check "the accounts are back, to the fourth decimal ($after)" "$([ "$after" = "$before" ] && echo ok)"
+code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $phone_token" "$base/api/accounts")
+check "a phone token from before the backup no longer works (got $code)" "$([ "$code" = 401 ] && echo ok)"
 role=$(pool_role)
 check "the api still connects as budgetowl_app after a restore ($role)" \
   "$([ "$role" = budgetowl_app ] && echo ok)"
 
-if [ -n "$encrypted" ]; then
-  step "Encrypted --replace over live data"
-  tok=$(token)
-  add_account "$tok" "Added After Backup" "1.00"
-  set +e
-  deploy/restore.sh "$encrypted" --replace --age-identity "$work/keys/identity.txt" \
-    >"$work/r4.log" 2>&1; code=$?
-  set -e
-  if [ "$code" = 0 ]; then ok "restore.sh --replace from the age backup"
-  else sed 's/^/       /' "$work/r4.log" | tail -30; bad "restore.sh --replace from the age backup (exit $code)"; fi
-  check "the data is the backup's again ($(account_names "$(token)"))" \
-    "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
-  safety=$(find "$work/backups" -name '*-pre-restore.dump' | head -1)
-  check "a safety backup of what was replaced exists, mode 0600" \
-    "$([ -n "$safety" ] && [ "$(stat -c %a "$safety")" = 600 ] && echo ok)"
-  check "  ... and it holds the account added after the backup" "$([ -n "$safety" ] && \
-    docker compose exec -T db sh -c 'pg_restore --data-only -t accounts -f - 2>/dev/null' < "$safety" \
-      | grep -q 'Added After Backup' && echo ok)"
-fi
+step "Encrypted --replace over live data"
+add_account "$(token)" "Added After Backup" "1.00"
+if expect 0 "$work/r11.log" deploy/restore.sh "$encrypted" --replace --signers "$server1_signers" \
+     --age-identity <(cat "$work/keys/identity.txt"); then
+  ok "restore.sh --replace from the age backup, key given as <(cat …)"
+else bad "restore.sh --replace from the age backup, key given as <(cat …)"; fi
+check "the data is the backup's again ($(account_names "$(token)"))" \
+  "$([ "$(account_names "$(token)")" = "$before" ] && echo ok)"
+safety=$(find "$work/backups" -name '*-pre-restore.dump*' ! -name '*.sha256' ! -name '*.sig' ! -name '*.meta' -newer "$encrypted" | sort | tail -1)
+check "the safety backup is encrypted, like the backup restored ($(basename "${safety:-none}"))" \
+  "$(case "$safety" in *.age) echo ok ;; esac)"
+check "  ... is mode 0600 and signed by this server" "$([ -n "$safety" ] && [ "$(stat -c %a "$safety")" = 600 ] \
+  && ssh-keygen -Y verify -f "$work/server2/backup-signing-key.allowed_signers" -I budgetowl-backup \
+       -n budgetowl-backup -s "$safety.sig" < "$safety" >/dev/null 2>&1 && echo ok)"
+check "  ... and holds the account added after the backup" "$([ -n "$safety" ] && \
+  age -d -i "$work/keys/identity.txt" "$safety" \
+  | docker compose exec -T db sh -c 'pg_restore --data-only -t accounts -f - 2>/dev/null' \
+  | grep -q 'Added After Backup' && echo ok)"
 
 step "Rollback guard: a backup from a newer version is refused"
 # Pretend a later version ran migration 9999, back that up, and try to restore it with this one.
@@ -244,21 +353,79 @@ INSERT INTO flyway_schema_history
 SELECT max(installed_rank) + 1, '9999', 'from the future', 'SQL', 'V9999__from_the_future.sql', 0,
        current_user, 0, true FROM flyway_schema_history;
 SQL
-future=$(deploy/backup.sh --out "$work/backups" --label future 2>>"$work/backup.log" | tail -1) || future=""
+mkdir -m 700 "$work/future"
+future=$(deploy/backup.sh --out "$work/future" --label future 2>>"$work/backup.log" | tail -1) || future=""
 check "the backup's name says schema 9999 ($(basename "${future:-none}"))" \
   "$(basename "${future:-none}" | grep -q -- '-schema9999-future\.dump$' && echo ok)"
 db_query >/dev/null <<<"DELETE FROM flyway_schema_history WHERE version = '9999';"
 add_account "$(token)" "Still Here" "3.00"
 expected=$(account_names "$(token)")
-set +e
-deploy/restore.sh "$future" --replace >"$work/r5.log" 2>&1; code=$?
-set -e
-check "restore refuses a backup newer than this version (exit $code)" \
-  "$([ "$code" = 5 ] && grep -q 'NEWER Budget Owl' "$work/r5.log" && echo ok)"
-# The app was stopped for the restore and is started again on the old database; let it come up.
+check "restore refuses a backup newer than this version (exit 5)" \
+  "$(expect 5 "$work/r12.log" deploy/restore.sh "$future" --replace && grep -q 'NEWER Budget Owl' "$work/r12.log" && echo ok)"
 wait_api || true
 check "  ... before replacing anything: the data is as it was" \
   "$([ "$(account_names "$(token)" || true)" = "$expected" ] && echo ok)"
+
+step "test-restore.sh: a separate copy, with its own passwords"
+if expect 0 "$work/t1.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$plain" --signers "$server1_signers" --port "$test_port"; then
+  ok "test-restore.sh brings the backup up on :$test_port"
+else bad "test-restore.sh brings the backup up on :$test_port"; fi
+check "  ... with the backup's accounts there" \
+  "$([ "$(account_names "$(token "http://127.0.0.1:$test_port")" "http://127.0.0.1:$test_port" || true)" = "$before" ] && echo ok)"
+check "  ... and with passwords of its own, not this install's" \
+  "$(grep -q "^DB_PASSWORD=$(sed -n 's/^DB_PASSWORD=//p' "$COMPOSE_ENV_FILES")\$" "$work/state/budgetowl/restore-test.env" && echo no || echo ok)"
+check "  ... while the real one keeps its own data" \
+  "$([ "$(account_names "$(token)")" = "$expected" ] && echo ok)"
+quiet deploy/test-restore.sh --clean || true
+check "test-restore.sh --clean removes the copy and its volume" \
+  "$(docker volume ls -q | grep -q '^budgetowl-restore-test_' && echo no || echo ok)"
+check "test-restore.sh refuses a forged backup too (exit 6)" \
+  "$(expect 6 "$work/t2.log" env BUDGET_OWL_VERSION="$version" deploy/test-restore.sh "$work/forged/attacker.dump" --port "$test_port" && echo ok)"
+quiet deploy/test-restore.sh --clean || true
+
+step "Rotation: daily, weekly and monthly, this install's backups only"
+mkdir -m 700 "$work/rot"
+first=$(deploy/backup.sh --out "$work/rot" 2>/dev/null | tail -1)
+instance=$(meta_get "$first.meta" instance)
+fake() { # fake <yyyymmdd> <instance>
+  local n="budgetowl-${1}T030000Z-old-schema20.dump"
+  touch "$work/rot/$n" "$work/rot/$n.sha256" "$work/rot/$n.sig"
+  printf 'instance=%s\npeople=yes\n' "$2" > "$work/rot/$n.meta"
+}
+for d in 20261120 20261119 20261110 20261015 20260915 20260815 20260701 20260702; do fake "$d" "$instance"; done
+fake 20260501 0000000000000000
+expect 0 "$work/rot.log" deploy/backup.sh --out "$work/rot" --keep 2 --keep-weekly 3 --keep-monthly 4 || true
+survivors=$(find "$work/rot" -name 'budgetowl-*.dump' -printf '%f\n' | sort | tr '\n' ' ')
+# The policy, computed from the names the check made (all of which existed before the prune).
+expected_survivors=$(python3 - "$instance" "$first" "$(sed -n 's/^Backing up to //p' "$work/rot.log")" <<'PY'
+import datetime, os, sys
+inst, first, second = sys.argv[1], os.path.basename(sys.argv[2]), os.path.basename(sys.argv[3])
+fakes = ["20261120", "20261119", "20261110", "20261015", "20260915", "20260815", "20260701", "20260702"]
+mine = sorted([first, second] + ["budgetowl-%sT030000Z-old-schema20.dump" % d for d in fakes], reverse=True)
+keep, weeks, months = set(mine[:2]), [], []
+for n in mine:
+    day = datetime.date(int(n[10:14]), int(n[14:16]), int(n[16:18]))
+    w, m = day.isocalendar()[:2], n[10:16]
+    if w not in weeks and len(weeks) < 3: weeks.append(w); keep.add(n)
+    if m not in months and len(months) < 4: months.append(m); keep.add(n)
+keep.add("budgetowl-20260501T030000Z-old-schema20.dump")  # another install's: never touched
+print(" ".join(sorted(keep)) + " ")
+PY
+)
+check "keeps exactly the newest 2, one a week for 3 weeks, one a month for 4 months" \
+  "$([ "$survivors" = "$expected_survivors" ] && echo ok)"
+[ "$survivors" = "$expected_survivors" ] || printf '       got:    %s\n       wanted: %s\n' "$survivors" "$expected_survivors"
+check "  ... and removed each pruned backup's .sha256, .sig and .meta with it" \
+  "$([ ! -e "$work/rot/budgetowl-20260701T030000Z-old-schema20.dump.meta" ] \
+     && [ ! -e "$work/rot/budgetowl-20260701T030000Z-old-schema20.dump.sig" ] && echo ok)"
+mkdir -m 700 "$work/rot2"
+n="budgetowl-20261101T030000Z-old-schema20.dump"; touch "$work/rot2/$n"
+printf 'instance=ffffffffffffffff\npeople=yes\n' > "$work/rot2/$n.meta"
+n="budgetowl-20261001T030000Z-old-schema20.dump"; touch "$work/rot2/$n"
+printf 'instance=%s\npeople=yes\n' "$instance" > "$work/rot2/$n.meta"
+expect 0 "$work/rot2.log" deploy/backup.sh --out "$work/rot2" --keep 1 || true
+check "nothing is rotated away when the newest earlier backup is from a different install" \
+  "$([ -f "$work/rot2/$n" ] && grep -q 'different' "$work/rot2.log" && echo ok)"
 
 step "Resources"
 mapfile -t ids < <(docker compose ps -q)

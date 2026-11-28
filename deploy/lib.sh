@@ -42,8 +42,142 @@ db_sh() {
 db_psql() {
   local db="$1"; shift
   dc exec -T -e BO_DB="$db" -e PGOPTIONS='-c client_min_messages=warning' "$DB_SERVICE" \
-    sh -c 'exec psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${BO_DB:-$POSTGRES_DB}" "$@"' \
+    sh -c 'exec psql -X -q -w -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${BO_DB:-$POSTGRES_DB}" "$@"' \
     sh "$@"
+}
+
+# db_admin_sql — SQL on stdin, run in the maintenance database `postgres`, with this install's
+# database name available as :'target' (from the container's own POSTGRES_DB).
+db_admin_sql() {
+  dc exec -T -e PGOPTIONS='-c client_min_messages=warning' "$DB_SERVICE" \
+    sh -c 'exec psql -X -q -w -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres --set=target="$POSTGRES_DB"'
+}
+
+# ---------------------------------------------------------------- settings shared with the timer
+# /etc/budgetowl/backup.env is what budgetowl-backup.service reads. backup.sh, restore.sh and
+# upgrade.sh read it too, so a backup taken by hand or before an upgrade is encrypted and signed
+# exactly like the nightly one. It is PARSED, never sourced: only these keys, only KEY=value.
+# Anything already in the environment wins.
+BACKUP_ENV_FILE="${BACKUP_ENV_FILE:-/etc/budgetowl/backup.env}"
+load_backup_env() {
+  local key value
+  [ -r "$BACKUP_ENV_FILE" ] || return 0
+  for key in BACKUP_DIR BACKUP_KEEP BACKUP_KEEP_WEEKLY BACKUP_KEEP_MONTHLY \
+             BACKUP_AGE_RECIPIENT BACKUP_GPG_RECIPIENT BACKUP_SIGNING_KEY; do
+    [ -z "${!key:-}" ] || continue
+    value=$(sed -n "s/^${key}=//p" "$BACKUP_ENV_FILE" | tail -1)
+    value="${value%\"}"; value="${value#\"}"
+    [ -z "$value" ] || printf -v "$key" '%s' "$value"
+  done
+}
+
+# ---------------------------------------------------------------- folders and private keys
+writable_by_others() { [ -n "$(find "$1" -maxdepth 0 -perm /022 2>/dev/null)" ]; }
+root_sticky() {
+  [ -n "$(find "$1" -maxdepth 0 -perm -1000 2>/dev/null)" ] && [ "$(stat -c %u -- "$1")" = 0 ]
+}
+
+# check_backup_folder <dir> — <dir> must already be absolute and physical (pwd -P).
+# Anyone who can write to the folder, or to any folder above it, can replace a backup or its
+# checksum, or swap the whole folder for one of their own. /tmp-style folders (root's, sticky)
+# are the one safe exception above it: nobody can rename another user's entry in them.
+check_backup_folder() {
+  local dir="$1" up fstype
+  if writable_by_others "$dir"; then
+    die 1 "$dir is writable by other users (mode $(stat -c %a -- "$dir")). Fix it: chmod 700 $dir"
+  fi
+  up=$(dirname "$dir")
+  while :; do
+    if writable_by_others "$up" && ! root_sticky "$up"; then
+      die 1 "$up, which holds $dir, is writable by other users (mode $(stat -c %a -- "$up")).
+       They could move the backup folder aside and put their own in its place.
+       Fix it: chmod go-w $up"
+    fi
+    [ "$up" = / ] && break
+    up=$(dirname "$up")
+  done
+  fstype=$(stat -f -c %T -- "$dir" 2>/dev/null || echo unknown)
+  case "$fstype" in
+    nfs*|cifs|smb*|fuse*|9p)
+      log "warning: $dir is on a network filesystem ($fstype). Its permissions are enforced by the"
+      log "         server, if at all: limit the share to this machine's address, and encrypt." ;;
+  esac
+}
+
+# refuse_private_keys <dir> — the key that undoes encryption, or the key that signs, must never
+# sit beside the backups. Every small file is read, whatever it is called; only the dumps
+# themselves (large, binary) are skipped.
+refuse_private_keys() {
+  local leaked
+  leaked=$(find "$1" -maxdepth 1 -type f -size -64k \
+      ! -name '*.dump' ! -name '*.dump.age' ! -name '*.dump.gpg' \
+      -exec grep -l -s -e 'AGE-SECRET-KEY-' -e 'BEGIN PGP PRIVATE KEY BLOCK' \
+                       -e 'BEGIN OPENSSH PRIVATE KEY' {} + 2>/dev/null || true)
+  [ -z "$leaked" ] || die 1 "a PRIVATE key is in the backup folder:
+$(printf '         %s\n' "$leaked")
+       Move it somewhere else. With the age key beside them, anyone who can read the backups
+       can read the household's whole history; with the signing key, anyone can forge one."
+}
+
+# ---------------------------------------------------------------- signing (ssh-keygen -Y)
+# Every backup is signed by a key only this server holds. A restore runs the backup's contents
+# as the database SUPERUSER, so "who made this file" matters as much as "is it intact": a
+# checksum beside the file proves only the second, and an age file proves neither — anyone can
+# encrypt to a public key. The operator keeps the public half (one allowed_signers line) in
+# their password manager, next to the age key.
+SIGNING_NAMESPACE=budgetowl-backup
+SIGNING_PRINCIPAL=budgetowl-backup
+
+signing_key_path() {
+  if [ -n "${BACKUP_SIGNING_KEY:-}" ]; then printf '%s\n' "$BACKUP_SIGNING_KEY"
+  elif [ -e /etc/budgetowl/backup-signing-key ]; then printf '%s\n' /etc/budgetowl/backup-signing-key
+  else printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/budgetowl/backup-signing-key"
+  fi
+}
+
+require_ssh_keygen() {
+  command -v ssh-keygen >/dev/null 2>&1 \
+    || die 1 "ssh-keygen is needed to sign and check backups (Debian/Ubuntu: apt install openssh-client)"
+}
+
+# check_private_file <file> — ours, and readable by nobody else.
+check_private_file() {
+  local f="$1" mode
+  [ "$(stat -L -c %u -- "$f")" = "$(id -u)" ] || die 1 "$f belongs to another user; it must be yours"
+  mode=$(stat -L -c %a -- "$f")
+  case "$mode" in 600|400) ;; *) die 1 "$f is mode $mode; it must be readable by you only: chmod 600 $f" ;; esac
+}
+
+# allowed_signers_line <public key file>
+allowed_signers_line() {
+  printf '%s namespaces="%s" %s\n' "$SIGNING_PRINCIPAL" "$SIGNING_NAMESPACE" "$(cut -d' ' -f1,2 -- "$1")"
+}
+
+# ensure_signing_key — the key's path; made on first use (mode 0600, no passphrase, so the nightly
+# timer can use it unattended).
+ensure_signing_key() {
+  local key
+  key=$(signing_key_path)
+  require_ssh_keygen
+  if [ ! -e "$key" ]; then
+    ( umask 077 && mkdir -p -- "$(dirname "$key")" )
+    ssh-keygen -q -t ed25519 -N '' -C "budgetowl-backup@$(hostname)" -f "$key" </dev/null >/dev/null
+    chmod 600 -- "$key"
+    allowed_signers_line "$key.pub" > "$key.allowed_signers"
+    chmod 644 -- "$key.pub" "$key.allowed_signers"
+    log "Made this server's backup-signing key: $key"
+    log "Keep this line in your password manager, next to your age key. A restore on a new"
+    log "server needs it (restore.sh --signers):"
+    log "  $(cat -- "$key.allowed_signers")"
+  fi
+  check_private_file "$key"
+  printf '%s\n' "$key"
+}
+
+# verify_signature <file> <allowed-signers file> — 0 only for a good signature by a listed key.
+verify_signature() {
+  ssh-keygen -Y verify -f "$2" -I "$SIGNING_PRINCIPAL" -n "$SIGNING_NAMESPACE" -s "$1.sig" \
+    < "$1" >/dev/null 2>&1
 }
 
 # wait_healthy <service> [timeout-seconds] — 0 once the container reports healthy.

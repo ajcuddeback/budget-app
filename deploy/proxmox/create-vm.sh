@@ -18,17 +18,26 @@
 #   --ip CIDR --gw ADDR    a static address. DHCP if you give neither.
 #   --user NAME            [owl] the login created on the VM.
 #   --repo URL             [https://github.com/ajcuddeback/budget-app.git]
-#   --ref BRANCH|TAG       [main] what to check out on the VM.
+#   --ref BRANCH|TAG       [the branch this checkout is on] what to check out on the VM.
+#   --commit SHA           [this checkout's HEAD] the commit --ref must be at on the VM. The VM
+#                          refuses to build anything else: it runs the code you looked at here.
+#   --no-commit-check      skip that check (a ref you chose deliberately, e.g. a moving branch).
 #   --snippets-storage ID  [local] a storage with the "snippets" content type enabled.
 #   --image-dir DIR        [/var/lib/vz/template/iso] where the Debian image is kept.
+#   --image-base URL       [https://cloud.debian.org/images/cloud/trixie/latest] the Debian folder
+#                          to download from. "latest" moves with every Debian build; to pin a
+#                          hash, use a dated build folder, e.g.
+#                          https://cloud.debian.org/images/cloud/trixie/20261123-2671
 #   --image-sha512 HEX     also require the image to have exactly this SHA-512 (one you checked
-#                          yourself), on top of Debian's SHA512SUMS.
+#                          yourself), on top of Debian's SHA512SUMS. Pair it with a dated
+#                          --image-base, or it breaks at Debian's next build.
 #   --no-start             create the VM but do not start it.
 #   --print-user-data      print the cloud-init snippet and exit (nothing is created).
 #   --dry-run              print every qm/pvesm/download command instead of running it.
 #   -h, --help             this text.
 #
-# The cloud-init snippet it writes holds your SSH PUBLIC key, a user name, a git URL and a ref.
+# The cloud-init snippet it writes holds your SSH PUBLIC key, a user name, a git URL, a ref and
+# a commit id.
 # It holds no password and no private key: the database passwords are generated inside the VM.
 
 set -euo pipefail
@@ -45,17 +54,19 @@ ip=""
 gw=""
 user=owl
 repo="https://github.com/ajcuddeback/budget-app.git"
-ref=main
+ref=""
+commit=""
+commit_check=1
 snippets_storage=local
 image_dir=/var/lib/vz/template/iso
 image_sha512=""
 ssh_key=""
+image_base=https://cloud.debian.org/images/cloud/trixie/latest
 start=1
 dry_run=0
 print_only=0
 
 image_name=debian-13-genericcloud-amd64.qcow2
-image_base=https://cloud.debian.org/images/cloud/trixie/latest
 
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 need() { [ -n "${2:-}" ] || die "$1 needs a value"; }
@@ -77,6 +88,9 @@ while [ $# -gt 0 ]; do
     --ref) need "$1" "${2:-}"; ref="$2"; shift 2 ;;
     --snippets-storage) need "$1" "${2:-}"; snippets_storage="$2"; shift 2 ;;
     --image-dir) need "$1" "${2:-}"; image_dir="$2"; shift 2 ;;
+    --image-base) need "$1" "${2:-}"; image_base="$2"; shift 2 ;;
+    --commit) need "$1" "${2:-}"; commit="$2"; shift 2 ;;
+    --no-commit-check) commit_check=0; shift ;;
     --image-sha512) need "$1" "${2:-}"; image_sha512="$2"; shift 2 ;;
     --no-start) start=0; shift ;;
     --print-user-data) print_only=1; shift ;;
@@ -101,7 +115,29 @@ done
 [[ "$user" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "--user must be a Linux user name"
 [ "$user" != root ] || die "--user cannot be root"
 [[ "$repo" =~ ^https://[A-Za-z0-9./_~-]+$ ]] || die "--repo must be an https:// git URL"
-[[ "$ref" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || die "--ref is not a branch or tag name"
+# What the VM checks out, and the commit it must be at: by default, exactly this checkout.
+checkout="$(cd "$HERE/../.." && pwd)"
+if [ -z "$ref" ]; then
+  ref=$(git -C "$checkout" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+  [ -n "$ref" ] || die "this checkout is not on a branch: give --ref"
+fi
+[[ "$ref" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] && [[ "$ref" != *..* ]] || die "--ref is not a branch or tag name"
+if [ "$commit_check" -eq 1 ]; then
+  [ -n "$commit" ] || commit=$(git -C "$checkout" rev-parse HEAD 2>/dev/null || true)
+  [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || die "--commit must be a full 40-character commit id (or use --no-commit-check)"
+else
+  commit=""
+fi
+[[ "$image_dir" =~ ^/[A-Za-z0-9._/-]+$ ]] && [[ "$image_dir" != *..* ]] \
+  || die "--image-dir must be an absolute path of letters, digits, . _ - and /"
+[[ "$image_base" =~ ^https://(cloud|cdimage)\.debian\.org/[A-Za-z0-9._/-]+$ ]] && [[ "$image_base" != *..* ]] \
+  || die "--image-base must be an https:// folder on cloud.debian.org or cdimage.debian.org"
+image_base="${image_base%/}"
+# A dated build folder names its files after the build: debian-13-genericcloud-amd64-<build>.qcow2
+build_id=$(basename "$image_base")
+if [[ "$build_id" =~ ^[0-9]{8}-[0-9]+$ ]]; then
+  image_name="debian-13-genericcloud-amd64-$build_id.qcow2"
+fi
 [ -z "$image_sha512" ] || [[ "$image_sha512" =~ ^[0-9a-f]{128}$ ]] || die "--image-sha512 is 128 hex digits"
 if [ -n "$ip$gw" ]; then
   [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}/[0-9]{1,2}$ ]] || die "--ip must look like 192.168.1.50/24"
@@ -149,6 +185,7 @@ write_files:
       BUDGETOWL_USER=$user
       BUDGETOWL_REPO=$repo
       BUDGETOWL_REF=$ref
+      BUDGETOWL_COMMIT=$commit
       BUDGETOWL_DIR=/opt/budget-owl
       BACKUP_DIR=/srv/budgetowl-backups
   - path: /usr/local/sbin/budgetowl-bootstrap

@@ -3,27 +3,38 @@
 #
 #   deploy/backup.sh --out /mnt/backups/budgetowl
 #   deploy/backup.sh --out DIR --age-recipient age1...        # encrypted with age
-#   deploy/backup.sh --out DIR --age-recipients-file FILE     # ...to the public keys in FILE
 #   deploy/backup.sh --out DIR --gpg-recipient KEY-ID         # encrypted with gpg
-#   deploy/backup.sh --out DIR --keep 14                      # then keep only the newest 14
+#   deploy/backup.sh --out DIR --keep 14 --keep-weekly 8 --keep-monthly 12
+#   deploy/backup.sh --print-signing-key                      # the line for your password manager
 #
 # Options:
-#   --out DIR                   where to write (or set BACKUP_DIR). Created 0700 if missing.
+#   --out DIR                   where to write. Created 0700 if missing.
 #   --age-recipient KEY         encrypt to an age PUBLIC key (age1...). Repeatable.
 #   --age-recipients-file FILE  encrypt to every age public key in FILE.
 #   --gpg-recipient KEY         encrypt to a gpg PUBLIC key already in your keyring.
-#   --keep N                    after a good backup, delete all but the newest N scheduled
-#                               backups in DIR. Labelled ones (pre-upgrade, pre-restore) are
-#                               never deleted by this.
+#   --keep N                    after a good backup, keep the newest N nightly backups...
+#   --keep-weekly N             ...plus the newest from each of the last N weeks...
+#   --keep-monthly N            ...plus the newest from each of the last N months, and delete
+#                               the other nightly backups OF THIS INSTALL. Labelled backups
+#                               (pre-upgrade, pre-restore) and other installs' are never deleted.
 #   --label NAME                add NAME to the file name (letters, digits, dashes).
+#   --allow-plaintext           write an unencrypted backup into a folder that holds encrypted
+#                               ones. Refused otherwise: it is usually a forgotten setting.
+#   --print-signing-key         print this server's allowed_signers line (making the key if
+#                               needed) and exit.
 #   -h, --help                  this text.
 #
-# For a timer, the same can come from the environment: BACKUP_DIR, BACKUP_KEEP,
-# BACKUP_AGE_RECIPIENT, BACKUP_GPG_RECIPIENT. Options on the command line win.
+# Settings also come from /etc/budgetowl/backup.env (the nightly timer's file) and the
+# environment: BACKUP_DIR, BACKUP_KEEP, BACKUP_KEEP_WEEKLY, BACKUP_KEEP_MONTHLY,
+# BACKUP_AGE_RECIPIENT, BACKUP_GPG_RECIPIENT, BACKUP_SIGNING_KEY. Options win.
 #
-# Writes budgetowl-<UTC time>-<version>-schema<N>[-label].dump (plus .age or .gpg when
-# encrypted), mode 0600, with a .sha256 beside it. The plain dump never touches the disk when
-# you encrypt. The last line printed on stdout is the backup's path.
+# Writes budgetowl-<UTC time>-<version>-schema<N>[-label].dump (.age or .gpg when encrypted),
+# mode 0600, and beside it: .sha256 (damage), .sig (made by THIS server: restore refuses anything
+# else) and .meta (which install it came from, for --keep). The plain dump never touches the disk
+# when you encrypt. The last line on stdout is the backup's path.
+#
+# Signing key: BACKUP_SIGNING_KEY, else /etc/budgetowl/backup-signing-key, else
+# ~/.config/budgetowl/backup-signing-key — made on first use, mode 0600, never in DIR.
 #
 # Run it from the folder that holds docker-compose.yml. It reads the database through
 # `docker compose exec`, as the role that owns it, and never needs a password.
@@ -35,10 +46,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE/.."
 # shellcheck source=deploy/lib.sh
 . "$HERE/lib.sh"
+load_backup_env
 
 out="${BACKUP_DIR:-}"
 keep="${BACKUP_KEEP:-}"
+keep_weekly="${BACKUP_KEEP_WEEKLY:-}"
+keep_monthly="${BACKUP_KEEP_MONTHLY:-}"
 label=""
+allow_plaintext=0
 age_args=()
 [ -z "${BACKUP_AGE_RECIPIENT:-}" ] || age_args=(-r "$BACKUP_AGE_RECIPIENT")
 gpg_recipient="${BACKUP_GPG_RECIPIENT:-}"
@@ -50,14 +65,23 @@ while [ $# -gt 0 ]; do
     --age-recipients-file) age_args+=(-R "${2:?--age-recipients-file needs a file}"); shift 2 ;;
     --gpg-recipient) gpg_recipient="${2:?--gpg-recipient needs a key}"; shift 2 ;;
     --keep) keep="${2:?--keep needs a number}"; shift 2 ;;
+    --keep-weekly) keep_weekly="${2:?--keep-weekly needs a number}"; shift 2 ;;
+    --keep-monthly) keep_monthly="${2:?--keep-monthly needs a number}"; shift 2 ;;
     --label) label="${2:?--label needs a name}"; shift 2 ;;
+    --allow-plaintext) allow_plaintext=1; shift ;;
+    --print-signing-key)
+      key=$(ensure_signing_key)
+      cat -- "$key.allowed_signers"
+      exit 0 ;;
     -h|--help) print_help "$0"; exit 0 ;;
     *) die 2 "unknown option: $1 (see --help)" ;;
   esac
 done
 
 [ -n "$out" ] || die 2 "say where to write the backup: --out DIR (see --help)"
-[ -z "$keep" ] || [[ "$keep" =~ ^[1-9][0-9]*$ ]] || die 2 "--keep takes a whole number of at least 1"
+for n in "$keep" "$keep_weekly" "$keep_monthly"; do
+  [ -z "$n" ] || [[ "$n" =~ ^[0-9]+$ ]] || die 2 "--keep, --keep-weekly and --keep-monthly take whole numbers"
+done
 [ -z "$label" ] || [[ "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
   || die 2 "--label takes lower-case letters, digits and dashes"
 if [ ${#age_args[@]} -gt 0 ] && [ -n "$gpg_recipient" ]; then
@@ -71,6 +95,8 @@ if [ -n "$gpg_recipient" ]; then
   gpg --batch --list-keys -- "$gpg_recipient" >/dev/null 2>&1 \
     || die 1 "no public key for '$gpg_recipient' in your gpg keyring (gpg --import it first)"
 fi
+encrypted=0
+{ [ ${#age_args[@]} -gt 0 ] || [ -n "$gpg_recipient" ]; } && encrypted=1
 
 # Everything this script creates is readable by its owner and nobody else, including the
 # partial file a crash would leave behind.
@@ -79,23 +105,38 @@ if [ ! -d "$out" ]; then
   mkdir -p -- "$out"
   chmod 700 -- "$out"
 fi
-out="$(cd "$out" && pwd)"
-# A directory others can write to lets them replace a backup, or its checksum, with their own.
-perms=$(stat -c %a -- "$out")
-case "$perms" in
-  *[2367]?|*?[2367]) die 1 "$out is writable by other users (mode $perms). Fix it: chmod 700 $out" ;;
+out="$(cd "$out" && pwd -P)"
+check_backup_folder "$out"
+refuse_private_keys "$out"
+
+signing_key=$(ensure_signing_key)
+case "$(cd "$(dirname "$signing_key")" && pwd -P)/" in
+  "$out"/*) die 1 "the signing key ($signing_key) is inside the backup folder. Move it out:
+       anyone who can read it can sign a backup of their own." ;;
 esac
-# Encryption is pointless if the key that undoes it is in the same place as what it protects.
-leaked=$(find "$out" -maxdepth 1 -type f -size -64k ! -name 'budgetowl-*' \
-  -exec grep -l -s -e 'AGE-SECRET-KEY-' -e 'BEGIN PGP PRIVATE KEY BLOCK' {} + 2>/dev/null || true)
-[ -z "$leaked" ] || die 1 "a PRIVATE key is in the backup folder ($leaked). Move it somewhere else:
-       anyone who can read the backups can then read the household's whole history."
+
+if [ "$encrypted" -eq 0 ] && [ "$allow_plaintext" -eq 0 ] \
+   && find "$out" -maxdepth 1 -type f \( -name 'budgetowl-*.dump.age' -o -name 'budgetowl-*.dump.gpg' \) \
+        | grep -q .; then
+  die 1 "$out already holds encrypted backups, and this one would not be encrypted.
+       Give the same --age-recipient (or set BACKUP_AGE_RECIPIENT in $BACKUP_ENV_FILE),
+       or --allow-plaintext if an unencrypted one is really what you want."
+fi
 
 require_docker
 ensure_db_up
 
 schema=$(schema_version "")
 version=$(app_version)
+# Which install this is, for --keep: a hash of when its instance_settings row was created, which
+# a new install never shares with an old one. Not secret, but not the timestamp itself either.
+read -r instance people < <(db_psql "" -At -F ' ' -c "SELECT
+    CASE WHEN to_regclass('public.instance_settings') IS NULL THEN 'none'
+         ELSE coalesce((SELECT left(md5('budgetowl:' || created_at::text), 16)
+                          FROM instance_settings WHERE id = 1), 'none') END,
+    CASE WHEN to_regclass('public.users') IS NULL THEN 'no'
+         WHEN EXISTS (SELECT 1 FROM users) THEN 'yes' ELSE 'no' END" 2>/dev/null \
+  || echo "none no")
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 name="budgetowl-${stamp}-${version}-schema${schema:-none}${label:+-$label}.dump"
 if [ ${#age_args[@]} -gt 0 ]; then name="$name.age"
@@ -104,7 +145,7 @@ fi
 final="$out/$name"
 partial="$final.partial"
 work=$(mktemp -d)
-trap 'rm -f -- "$partial" "$final.sha256.partial"; rm -rf -- "$work"' EXIT
+trap 'rm -f -- "$partial" "$partial.sig" "$final.sha256.partial" "$final.meta.partial"; rm -rf -- "$work"' EXIT
 
 encrypt() {
   if [ ${#age_args[@]} -gt 0 ]; then age "${age_args[@]}"
@@ -116,16 +157,16 @@ encrypt() {
 log "Backing up to $final"
 
 # --format=custom: compressed, and pg_restore can check it and restore it selectively.
-# Web sign-in sessions are left out (their rows, not their tables): a session id is a live
-# credential for up to 12 hours, a backup is kept for months, and a restored server signing
-# everyone out of the browser is the right outcome anyway. Phone sign-ins survive a restore —
-# only a hash of each token is stored.
+# Sign-ins are left out (their rows, not their tables). A web session id is a live credential;
+# a phone token row is only a hash, but restoring it would bring back a phone someone signed
+# out — a lost one, say. After a restore everybody signs in again, which is the right outcome.
 #
 # The stream is also read by pg_restore --list as it goes past, so a dump that pg_restore cannot
 # read fails here, today, rather than on the day you need it. That check drains the rest of the
 # stream after reading the table of contents, so it never cuts the pipe short.
 db_sh 'exec pg_dump --format=custom --no-password -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-         --exclude-table-data=spring_session --exclude-table-data=spring_session_attributes' \
+         --exclude-table-data=spring_session --exclude-table-data=spring_session_attributes \
+         --exclude-table-data=auth_tokens' \
   | tee >(db_sh 'pg_restore --list >/dev/null; s=$?; cat >/dev/null; exit $s' \
             >/dev/null 2>&1; echo $? > "$work/listed") \
   | encrypt > "$partial"
@@ -134,27 +175,70 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$work/listed" ] && break; sleep 1; done
 [ "$(cat "$work/listed" 2>/dev/null)" = 0 ] \
   || die 1 "pg_restore could not read the dump that was just taken; nothing was kept"
 [ -s "$partial" ] || die 1 "the backup came out empty; nothing was kept"
-
 chmod 600 -- "$partial"
+
+# The signature is over the exact bytes on disk (after encryption), so it can be checked before
+# anything is decrypted.
+ssh-keygen -Y sign -q -f "$signing_key" -n "$SIGNING_NAMESPACE" "$partial" </dev/null \
+  || die 1 "signing the backup failed; nothing was kept"
+( cd "$out" && sha256sum -- "$(basename "$partial")" | sed "s/\.partial\$//" > "$name.sha256.partial" )
+printf 'instance=%s\npeople=%s\n' "$instance" "$people" > "$final.meta.partial"
+chmod 600 -- "$partial.sig" "$final.sha256.partial" "$final.meta.partial"
+mv -- "$partial.sig" "$final.sig"
+mv -- "$final.sha256.partial" "$final.sha256"
+mv -- "$final.meta.partial" "$final.meta"
 mv -- "$partial" "$final"
-( cd "$out" && sha256sum -- "$name" > "$name.sha256.partial" && chmod 600 -- "$name.sha256.partial" \
-    && mv -- "$name.sha256.partial" "$name.sha256" )
 
 size=$(du -h -- "$final" | cut -f1)
-log "Done: $size, schema version ${schema:-none}, checksum in $name.sha256"
-if [ ${#age_args[@]} -eq 0 ] && [ -z "$gpg_recipient" ]; then
+log "Done: $size, schema version ${schema:-none}, signed, checksum in $name.sha256"
+if [ "$encrypted" -eq 0 ]; then
   log "Not encrypted. Anyone who can read this file can read every transaction in it."
 fi
 
-if [ -n "$keep" ]; then
-  # Scheduled (unlabelled) backups only, oldest first; the timestamp makes names sort by time.
-  mapfile -t scheduled < <(find "$out" -maxdepth 1 -type f -printf '%f\n' \
-    | grep -E '^budgetowl-[0-9]{8}T[0-9]{6}Z-.+-schema([0-9]+|none)\.dump(\.age|\.gpg)?$' | sort)
-  excess=$(( ${#scheduled[@]} - keep ))
-  for ((i = 0; i < excess; i++)); do
-    log "Removing old backup ${scheduled[$i]}"
-    rm -f -- "$out/${scheduled[$i]}" "$out/${scheduled[$i]}.sha256"
+# ------------------------------------------------------------------------------ rotation
+meta_get() { sed -n "s/^$2=//p" "$1" 2>/dev/null | tail -1; }
+prune() {
+  local names=() n prev kept_daily=0 week month i
+  local -A keep_names=() weeks=() months=()
+  [ -n "$keep$keep_weekly$keep_monthly" ] || return 0
+  # Rotation must never be the thing that loses the real history. Two ways it could:
+  if [ "$people" != yes ]; then
+    log "Not removing any old backups: this one has nobody in it (a new, unset-up install?)."
+    return 0
+  fi
+  # Nightly (unlabelled) backups, newest first; the timestamp makes names sort by time.
+  mapfile -t names < <(find "$out" -maxdepth 1 -type f -printf '%f\n' \
+    | grep -E '^budgetowl-[0-9]{8}T[0-9]{6}Z-.+-schema([0-9]+|none)\.dump(\.age|\.gpg)?$' \
+    | sort -r)
+  for n in "${names[@]}"; do
+    [ "$n" = "$name" ] && continue
+    prev="$n"; break
   done
-fi
+  if [ -n "${prev:-}" ] && [ "$(meta_get "$out/$prev.meta" instance)" != "$instance" ]; then
+    log "Not removing any old backups: the newest one before this ($prev) is from a different"
+    log "install, or does not say which. Restore it, or move the old backups elsewhere, first."
+    return 0
+  fi
+  for n in "${names[@]}"; do
+    [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ] || continue
+    week=$(date -u -d "${n:10:8}" +%G-W%V)
+    month=${n:10:6}
+    if [ "$kept_daily" -lt "${keep:-0}" ]; then keep_names[$n]=1; kept_daily=$((kept_daily + 1)); fi
+    if [ -z "${weeks[$week]:-}" ] && [ "${#weeks[@]}" -lt "${keep_weekly:-0}" ]; then
+      weeks[$week]=1; keep_names[$n]=1
+    fi
+    if [ -z "${months[$month]:-}" ] && [ "${#months[@]}" -lt "${keep_monthly:-0}" ]; then
+      months[$month]=1; keep_names[$n]=1
+    fi
+  done
+  keep_names[$name]=1
+  for n in "${names[@]}"; do
+    [ "$(meta_get "$out/$n.meta" instance)" = "$instance" ] || continue
+    [ -n "${keep_names[$n]:-}" ] && continue
+    log "Removing old backup $n"
+    for i in "" .sha256 .sig .meta; do rm -f -- "$out/$n$i"; done
+  done
+}
+prune
 
 printf '%s\n' "$final"

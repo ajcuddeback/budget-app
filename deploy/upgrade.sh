@@ -7,8 +7,9 @@
 #   deploy/upgrade.sh --backup-dir DIR --age-recipient age1...   # encrypt the pre-upgrade backup
 #
 # Options:
-#   --backup-dir DIR        where the pre-upgrade backup goes. Required: there is no upgrade
-#                           without one.
+#   --backup-dir DIR        where the pre-upgrade backup goes. Required (or BACKUP_DIR in
+#                           /etc/budgetowl/backup.env): there is no upgrade without one. It is
+#                           encrypted and signed exactly like the nightly backups.
 #   --ref REF               check out REF (fetched from origin) instead of pulling this branch.
 #   --no-pull               do not touch the code; rebuild and restart what is checked out.
 #   --no-build              do not build; use the images already on this machine (you built or
@@ -27,8 +28,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE/.."
 # shellcheck source=deploy/lib.sh
 . "$HERE/lib.sh"
+# The nightly backup's settings (folder, encryption, signing key) apply to the pre-upgrade one.
+load_backup_env
 
-backup_dir=""
+backup_dir="${BACKUP_DIR:-}"
 ref=""
 pull=1
 build=1
@@ -46,6 +49,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$backup_dir" ] || die 2 "say where the pre-upgrade backup goes: --backup-dir DIR"
+# A ref reaches git as an argument; hold it to the shape of a branch, tag or commit so it can
+# never be read as an option.
+if [ -n "$ref" ] && { ! [[ "$ref" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || [[ "$ref" == *..* ]]; }; then
+  die 2 "--ref must be a branch, tag or commit name"
+fi
 
 require_docker
 if [ "$pull" -eq 1 ]; then
@@ -70,7 +78,10 @@ rollback_help() {
   log "To go back to the version you had (commit $old_rev, schema ${old_schema:-none}):"
   log "  git checkout $old_rev"
   log "  docker compose build"
-  log "  deploy/restore.sh --replace $backup${backup_args[*]:+ --age-identity <your private key>}"
+  case "$backup" in
+    *.age) log "  deploy/restore.sh --replace $backup --age-identity <your age private key>" ;;
+    *) log "  deploy/restore.sh --replace $backup" ;;
+  esac
   log "Restoring the backup is not optional: the new version may have changed the database in ways"
   log "the old one does not understand, and migrations cannot be run backwards."
 }
@@ -79,11 +90,13 @@ rollback_help() {
 if [ "$pull" -eq 1 ]; then
   if [ -n "$ref" ]; then
     git fetch --tags origin
-    if git rev-parse --verify --quiet "refs/remotes/origin/$ref" >/dev/null; then
-      git -c advice.detachedHead=false checkout --detach "origin/$ref"
+    if git rev-parse --verify --quiet --end-of-options "refs/remotes/origin/$ref" >/dev/null; then
+      target="origin/$ref"
     else
-      git -c advice.detachedHead=false checkout --detach "$ref"
+      target=$(git rev-parse --verify --quiet --end-of-options "$ref^{commit}") \
+        || die 1 "no branch, tag or commit called '$ref' in origin"
     fi
+    git -c advice.detachedHead=false checkout --detach --end-of-options "$target"
   else
     git pull --ff-only
   fi

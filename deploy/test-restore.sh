@@ -7,13 +7,18 @@
 #
 # Options:
 #   --age-identity FILE   the age private key, for an .age backup.
+#   --signers FILE        the allowed_signers line(s) to check the backup against (default: this
+#                         server's own). Exactly as for restore.sh.
+#   --allow-unsigned      as for restore.sh: only for a file you know you made yourself.
 #   --port N              [8481] the test copy answers on http://localhost:N.
 #   --clean               stop the test copy and delete its database. Your real one is untouched.
 #   -h, --help            this text.
 #
 # The test copy is its own Compose project, "budgetowl-restore-test", with its own database
-# volume, on 127.0.0.1 only. Your real instance keeps running and is never touched: the project
-# name is fixed in this script, so neither the restore nor --clean can reach it.
+# volume, on 127.0.0.1 only, and its OWN throwaway passwords (it never reads your .env's): a
+# restore needs none of the old ones. Your real instance keeps running and is never touched: the
+# project name is fixed in this script, so neither the restore nor --clean can reach it. The
+# backup is checked exactly as a real restore checks it — signature first.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -23,6 +28,7 @@ cd "$HERE/.."
 
 export COMPOSE_PROJECT_NAME=budgetowl-restore-test
 export BIND_ADDRESS=127.0.0.1
+state="${XDG_STATE_HOME:-$HOME/.local/state}/budgetowl"
 port=8481
 clean=0
 restore_args=()
@@ -30,6 +36,8 @@ restore_args=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --age-identity) restore_args+=(--age-identity "${2:?--age-identity needs a file}"); shift 2 ;;
+    --signers) restore_args+=(--signers "${2:?--signers needs a file}"); shift 2 ;;
+    --allow-unsigned) restore_args+=(--allow-unsigned); shift ;;
     --port) port="${2:?--port needs a number}"; shift 2 ;;
     --clean) clean=1; shift ;;
     -h|--help) print_help "$0"; exit 0 ;;
@@ -38,20 +46,38 @@ while [ $# -gt 0 ]; do
   esac
 done
 [[ "$port" =~ ^[0-9]{2,5}$ ]] || die 2 "--port takes a port number"
-export WEB_PORT="$port"
 require_docker
 
+# The test copy's own settings: random passwords made here, and the image tag your install uses
+# (the only thing taken from your .env, and read as a value, not run).
+envfile="$state/restore-test.env"
+export COMPOSE_ENV_FILES="$envfile"
+
 if [ "$clean" -eq 1 ]; then
-  dc down -v --remove-orphans >&2
+  if [ -f "$envfile" ]; then dc down -v --remove-orphans >&2; rm -f -- "$envfile"; fi
   log "The test copy and its database are gone. Your real instance was not touched."
   exit 0
 fi
 [ ${#restore_args[@]} -gt 0 ] || die 2 "say which backup to test (see --help)"
 
-if [ -n "$(dc ps -a -q 2>/dev/null)" ] \
-   || docker volume inspect "${COMPOSE_PROJECT_NAME}_db-data" >/dev/null 2>&1; then
+if [ -f "$envfile" ] || docker volume inspect "${COMPOSE_PROJECT_NAME}_db-data" >/dev/null 2>&1; then
   die 1 "a test copy already exists. Remove it first: deploy/test-restore.sh --clean"
 fi
+( umask 077 && mkdir -p -- "$state" )
+version=""
+if [ -f .env ]; then
+  version=$(sed -n 's/^BUDGET_OWL_VERSION=//p' .env | tail -1 | tr -cd 'A-Za-z0-9._-')
+fi
+( umask 077
+  {
+    printf 'DB_PASSWORD=%s\n' "$(openssl rand -hex 24)"
+    printf 'DB_APP_USER=budgetowl_app\n'
+    printf 'DB_APP_PASSWORD=%s\n' "$(openssl rand -hex 24)"
+    printf 'WEB_PORT=%s\n' "$port"
+    printf 'BIND_ADDRESS=127.0.0.1\n'
+    [ -z "${BUDGET_OWL_VERSION:-$version}" ] || printf 'BUDGET_OWL_VERSION=%s\n' "${BUDGET_OWL_VERSION:-$version}"
+  } > "$envfile" )
+export WEB_PORT="$port"
 
 dc up -d "$DB_SERVICE" >&2
 # The test copy is new and empty, so no --replace: restore.sh will refuse if that is not so.
